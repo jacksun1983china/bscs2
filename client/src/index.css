@@ -72,10 +72,14 @@
 /* ── 竖屏容器（PC居中，手机全屏） ──────────────────────────────── */
 .phone-container {
   width: 100%;
-  min-height: 100vh;
+  /* 移动端：占满整个视口高度，flex column 布局让底部导航沉底 */
+  height: 100dvh;
+  height: 100vh; /* fallback for older browsers */
   position: relative;
   background: #0d0621;
   overflow-x: hidden;
+  /* 禁止 phone-container 自身滚动，滚动只发生在游戏菜单区 */
+  overflow-y: hidden;
 }
 
 @media (min-width: 600px) {
@@ -101,7 +105,9 @@
     max-width: 520px; /* 超宽屏上限 */
     box-shadow: 0 0 60px rgba(120, 60, 220, 0.4), 0 0 120px rgba(60, 20, 120, 0.3);
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;
+    /* 禁止容器自身滚动，滚动只发生在游戏菜单区 */
+    overflow-y: hidden;
     flex-shrink: 0;
   }
 }

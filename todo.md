@@ -183,6 +183,11 @@
 - [ ] 游戏列表动态从后台加载（支持4~N个）
 - [ ] 管理后台：游戏列表管理（图片上传、名称、跳转链接、排序）
 
+## 首页布局严格还原（蓝湖1:1）
+- [ ] 严格按蓝湖CSS/JSX重写Home.tsx（750px设计稿比例转换）
+- [ ] 严格按蓝湖CSS/JSX重写BottomNav.tsx
+- [ ] 严格按蓝湖CSS/JSX重写PlayerInfoBar.tsx
+
 ## 头像功能
 - [x] 16个系统头像（8男8女，001-016）复制到public/img/avatars
 - [x] 数据库players表avatar字段改为存储头像ID（001-016）
