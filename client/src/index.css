@@ -89,10 +89,12 @@
     overflow: hidden;
   }
   body {
-    background: #050210;
+    /* 背景色填充 phone-container 外部区域，避免黑色空白 */
+    background: #0d0621;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
+    /* 改为垂直居中，避免大屏幕时下方留白 */
+    align-items: center;
     min-height: 100vh;
     height: 100vh;
     overflow: hidden;

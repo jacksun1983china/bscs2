@@ -216,9 +216,8 @@ export default function Home() {
               width: q(663),
               /* 设计稿原始高度 281px，固定高度确保背景图不拉伸 */
               height: q(281),
-              overflow: 'visible',
-              /* 防止 margin collapse：用 paddingTop 代替内部元素的 marginTop */
-              paddingTop: q(50),
+              /* overflow:hidden 解决 margin collapse，让内部 marginTop 正确生效 */
+              overflow: 'hidden',
               marginLeft: q(87),
               backgroundImage: `url(${LANHU.userInfoBg})`,
               backgroundSize: '100% 100%',
@@ -236,21 +235,28 @@ export default function Home() {
                 backgroundRepeat: 'no-repeat',
                 overflow: 'hidden',
               }}
-            >
-              {/* 广播图标+文字行 489×32px, margin: 26px 0 0 47px */}
+          >
+            {/* box_3: 广播栏图标+文字行：蓝湖原始 image-text_1: 489×32px, margin: 26px 0 0 47px
+                   box_4(喇叭图标): 31×32px
+                   text-group_1(文字): 447×24px, margin-top: 4px
+                   容器高度102px，内容行top=26px，垂直居中 = (102-32)/2 = 35px ≈ 26px(偏上)
+                   按蓝湖原始值 margin-top: 26px 还原 */}
               <div
                 style={{
                   display: 'flex',
                   flexDirection: 'row',
                   alignItems: 'center',
-                  width: q(489),
+                  width: q(600),
                   height: q(32),
-                  marginTop: q(26),
-                  marginLeft: q(47),
-                  overflow: 'hidden',
+                  /* 蓝湖原始 margin-top: 26px，但容器102px高，垂直居中应为35px */
+                  marginTop: 0,
+                  position: 'absolute',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  left: q(47),
                 }}
               >
-                {/* 广播图标 31×32px */}
+                {/* 广播喇叭图标 31×32px */}
                 <div
                   style={{
                     width: q(31), height: q(32),
@@ -261,8 +267,8 @@ export default function Home() {
                     flexShrink: 0,
                   }}
                 />
-                {/* 广播文字 — 单条滚入，overflow hidden 防止多条重叠 */}
-                <div style={{ flex: 1, height: q(32), overflow: 'hidden', marginLeft: q(11) }}>
+                {/* 广播文字 447px宽，单条淡入淡出 */}
+                <div style={{ width: q(560), height: q(32), overflow: 'hidden', marginLeft: q(11) }}>
                   <span
                     key={msgIndex}
                     style={{
@@ -273,10 +279,8 @@ export default function Home() {
                       fontWeight: 500,
                       whiteSpace: 'nowrap',
                       lineHeight: q(32),
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
                       opacity: msgVisible ? 1 : 0,
-                      transform: msgVisible ? 'translateY(0)' : 'translateY(100%)',
+                      transform: msgVisible ? 'translateY(0)' : 'translateY(8px)',
                       transition: 'opacity 0.3s ease, transform 0.3s ease',
                     }}
                   >
@@ -287,14 +291,14 @@ export default function Home() {
               {/* broadcastScroll 装饰图已移除，避免与动态文字重叠 */}
             </div>
 
-            {/* 名字行 533×46px, marginLeft: 82px — marginTop 由 block_1 的 paddingTop 控制 */}
+            {/* 名字行(box_1): 533×46px, 蓝湖原始 margin: 70px 0 0 82px */}
             <div
               style={{
                 display: 'flex',
                 flexDirection: 'row',
                 alignItems: 'center',
                 width: q(533),
-                marginTop: 0,
+                marginTop: q(70),
                 marginLeft: q(82),
               }}
             >
@@ -369,14 +373,16 @@ export default function Home() {
               </div>
             </div>
 
-            {/* ── VIP标签：紧跟在 ID+金币行下方，margin: 8px 0 0 82px ── */}
+            {/* VIP标签(text-wrapper_2): 蓝湖原始 184×73px，背景图偏移 -12px 0px，实际尺寸 196×73px
+                 在 block_1 内部，紧跟 ID+金币行下方，蓝湖原始 margin: 16px 0 115px 82px（下方115px是占位） */}
             <div
               style={{
-                width: q(184), height: q(46),
+                width: q(184), height: q(73),
                 backgroundImage: `url(${LANHU.vipTagBg})`,
-                backgroundSize: '100% 100%',
+                backgroundPosition: `${q(-12)} 0px`,
+                backgroundSize: `${q(196)} ${q(73)}`,
                 backgroundRepeat: 'no-repeat',
-                marginTop: q(8),
+                marginTop: q(16),
                 marginLeft: q(82),
                 display: 'flex',
                 alignItems: 'center',
@@ -390,8 +396,8 @@ export default function Home() {
                   fontFamily: 'Alibaba-PuHuiTi-B, sans-serif',
                   fontWeight: 700,
                   whiteSpace: 'nowrap',
-                  lineHeight: 1,
-                  marginLeft: q(55),
+                  lineHeight: q(34),
+                  marginLeft: q(60),
                 }}
               >
                 VIP{player?.vipLevel ?? 0}
