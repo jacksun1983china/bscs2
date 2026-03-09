@@ -152,6 +152,7 @@ export default function Home() {
 
           {/* 客服 79×80px */}
           <img src={LANHU.kefuIcon} alt="客服"
+            onClick={() => navigate('/kefu')}
             style={{ width: q(79), height: q(80), marginTop: q(22), marginLeft: q(326), cursor: 'pointer', flexShrink: 0, objectFit: 'contain' }}
           />
           {/* VIP图标 79×80px */}
@@ -206,94 +207,96 @@ export default function Home() {
           )}
         </div>
 
-        {/* ── section_2: 用户信息区 750×281px, margin-top: 53px ── */}
-        <div style={{ position: 'relative', width: q(750), marginTop: q(53) }}>
+        {/* ── section_2: 用户信息区 750×281px, margin-top: 8.6667cqw ── */}
+        <div style={{ position: 'relative', width: q(750), marginTop: '8.6667cqw' }}>
+
+          {/* box_3: 广播栏 absolute，相对section_2: left=87-80=7px, top=-64px, 739×102px */}
+          <div
+            style={{
+              position: 'absolute',
+              left: q(7), top: q(-64),
+              width: q(739), height: q(102),
+              backgroundImage: `url(${LANHU.broadcastBg})`,
+              backgroundSize: '100% 100%',
+              backgroundRepeat: 'no-repeat',
+              zIndex: 2,
+            }}
+          >
+            {/* 广播内容行：垂直居中于102px容器 */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                position: 'absolute',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                left: q(47),
+                right: q(20),
+              }}
+            >
+              {/* 广播喇叭图标 31×32px */}
+              <div
+                style={{
+                  width: q(31), height: q(32),
+                  backgroundImage: `url(${LANHU.broadcastIcon})`,
+                  backgroundPosition: `${q(-12)} ${q(-9)}`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundSize: `${q(56)} ${q(57)}`,
+                  flexShrink: 0,
+                }}
+              />
+              {/* 广播文字，单条淡入淡出 */}
+              <div style={{ flex: 1, height: q(32), overflow: 'hidden', marginLeft: q(11) }}>
+                <span
+                  key={msgIndex}
+                  style={{
+                    display: 'block',
+                    color: 'rgba(255,255,255,1)',
+                    fontSize: q(24),
+                    fontFamily: 'Alibaba-PuHuiTi-M, sans-serif',
+                    fontWeight: 500,
+                    whiteSpace: 'nowrap',
+                    lineHeight: q(32),
+                    opacity: msgVisible ? 1 : 0,
+                    transform: msgVisible ? 'translateY(0)' : 'translateY(8px)',
+                    transition: 'opacity 0.3s ease, transform 0.3s ease',
+                  }}
+                >
+                  {messages[msgIndex]}
+                </span>
+              </div>
+            </div>
+          </div>
 
           {/* block_1: 用户信息卡 663×281px, margin-left: 87px */}
           <div
             style={{
               position: 'relative',
               width: q(663),
-              /* 设计稿原始高度 281px，固定高度确保背景图不拉伸 */
-              height: q(281),
-              /* overflow:hidden 解决 margin collapse，让内部 marginTop 正确生效 */
-              overflow: 'hidden',
+              height: '28cqw',
+              display: 'flow-root',
               marginLeft: q(87),
-              backgroundImage: `url(${LANHU.userInfoBg})`,
-              backgroundSize: '100% 100%',
-              backgroundRepeat: 'no-repeat',
             }}
           >
-            {/* box_3: 广播栏 absolute left:-80px top:-64px, 739×102px */}
-            <div
+            {/* 背景图固定尺寸，不随容器高度变化 */}
+            <img
+              src={LANHU.userInfoBg}
+              alt=""
               style={{
                 position: 'absolute',
-                left: q(-80), top: q(-64),
-                width: q(739), height: q(102),
-                backgroundImage: `url(${LANHU.broadcastBg})`,
-                backgroundSize: '100% 100%',
-                backgroundRepeat: 'no-repeat',
-                overflow: 'hidden',
+                left: 0, top: 0,
+                width: q(663), height: q(281),
+                pointerEvents: 'none',
+                zIndex: 0,
               }}
-          >
-            {/* box_3: 广播栏图标+文字行：蓝湖原始 image-text_1: 489×32px, margin: 26px 0 0 47px
-                   box_4(喇叭图标): 31×32px
-                   text-group_1(文字): 447×24px, margin-top: 4px
-                   容器高度102px，内容行top=26px，垂直居中 = (102-32)/2 = 35px ≈ 26px(偏上)
-                   按蓝湖原始值 margin-top: 26px 还原 */}
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  width: q(600),
-                  height: q(32),
-                  /* 蓝湖原始 margin-top: 26px，但容器102px高，垂直居中应为35px */
-                  marginTop: 0,
-                  position: 'absolute',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  left: q(47),
-                }}
-              >
-                {/* 广播喇叭图标 31×32px */}
-                <div
-                  style={{
-                    width: q(31), height: q(32),
-                    backgroundImage: `url(${LANHU.broadcastIcon})`,
-                    backgroundPosition: `${q(-12)} ${q(-9)}`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundSize: `${q(56)} ${q(57)}`,
-                    flexShrink: 0,
-                  }}
-                />
-                {/* 广播文字 447px宽，单条淡入淡出 */}
-                <div style={{ width: q(560), height: q(32), overflow: 'hidden', marginLeft: q(11) }}>
-                  <span
-                    key={msgIndex}
-                    style={{
-                      display: 'block',
-                      color: 'rgba(255,255,255,1)',
-                      fontSize: q(24),
-                      fontFamily: 'Alibaba-PuHuiTi-M, sans-serif',
-                      fontWeight: 500,
-                      whiteSpace: 'nowrap',
-                      lineHeight: q(32),
-                      opacity: msgVisible ? 1 : 0,
-                      transform: msgVisible ? 'translateY(0)' : 'translateY(8px)',
-                      transition: 'opacity 0.3s ease, transform 0.3s ease',
-                    }}
-                  >
-                    {messages[msgIndex]}
-                  </span>
-                </div>
-              </div>
-              {/* broadcastScroll 装饰图已移除，避免与动态文字重叠 */}
-            </div>
+            />
 
             {/* 名字行(box_1): 533×46px, 蓝湖原始 margin: 70px 0 0 82px */}
             <div
               style={{
+                position: 'relative',
+                zIndex: 1,
                 display: 'flex',
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -328,14 +331,16 @@ export default function Home() {
               />
             </div>
 
-            {/* ID + 金币行 557×34px, margin: 8px 0 0 82px */}
+            {/* ID + 金币行 557×34px, margin: 18px 0 0 82px (下移10px) */}
             <div
               style={{
+                position: 'relative',
+                zIndex: 1,
                 display: 'flex',
                 flexDirection: 'row',
                 alignItems: 'center',
                 width: q(557),
-                marginTop: q(8),
+                marginTop: q(18),
                 marginLeft: q(82),
               }}
             >
@@ -354,58 +359,28 @@ export default function Home() {
                 ID：{player?.id ?? ''}
               </span>
 
-              {/* 金币框 133×34px */}
-              <div style={{ position: 'relative', width: q(133), height: q(34), backgroundImage: `url(${LANHU.coinBg1})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', marginLeft: q(60), display: 'flex', flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}>
-                <span style={{ color: 'rgba(255,255,255,1)', fontSize: q(26), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500, whiteSpace: 'nowrap', lineHeight: q(34), marginLeft: q(40) }}>
+              {/* 金币框 170×34px */}
+              <div style={{ position: 'relative', width: q(170), height: q(34), backgroundImage: `url(${LANHU.coinBg1})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', marginLeft: q(60), display: 'flex', flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}>
+                <span style={{ flex: 1, color: 'rgba(255,255,255,1)', fontSize: q(26), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500, whiteSpace: 'nowrap', lineHeight: q(34), textAlign: 'center', paddingLeft: q(28) }}>
                   {parseFloat(player?.gold || '0').toFixed(0)}
                 </span>
                 <img src={LANHU.arrowIcon} alt="" style={{ width: q(10), height: q(19), marginLeft: 'auto', marginRight: q(10), objectFit: 'contain' }} />
                 <img src={LANHU.coinArrow} alt="金币" style={{ position: 'absolute', left: q(-13), top: q(-4), width: q(42), height: q(42), objectFit: 'contain' }} />
               </div>
 
-              {/* 钻石框 133×34px */}
-              <div style={{ position: 'relative', width: q(133), height: q(34), backgroundImage: `url(${LANHU.coinBg2})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', marginLeft: q(20), display: 'flex', flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}>
-                <span style={{ color: 'rgba(255,255,255,1)', fontSize: q(26), fontFamily: 'Alibaba-PuHuiTi-B, sans-serif', fontWeight: 700, whiteSpace: 'nowrap', lineHeight: q(34), marginLeft: q(38) }}>
+              {/* 钒石框 170×34px */}
+              <div style={{ position: 'relative', width: q(170), height: q(34), backgroundImage: `url(${LANHU.coinBg2})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', marginLeft: q(50), display: 'flex', flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}>
+                <span style={{ flex: 1, color: 'rgba(255,255,255,1)', fontSize: q(26), fontFamily: 'Alibaba-PuHuiTi-B, sans-serif', fontWeight: 700, whiteSpace: 'nowrap', lineHeight: q(34), textAlign: 'center', paddingLeft: q(28) }}>
                   {parseFloat(player?.diamond || '0').toFixed(0)}
                 </span>
                 <img src={LANHU.arrowIcon} alt="" style={{ width: q(10), height: q(19), marginLeft: 'auto', marginRight: q(10), objectFit: 'contain' }} />
-                <img src={LANHU.diamondArrow} alt="钻石" style={{ position: 'absolute', left: q(-21), top: q(-4), width: q(42), height: q(42), objectFit: 'contain' }} />
+                <img src={LANHU.diamondArrow} alt="钒石" style={{ position: 'absolute', left: q(-21), top: q(-4), width: q(42), height: q(42), objectFit: 'contain' }} />
               </div>
             </div>
 
-            {/* VIP标签(text-wrapper_2): 蓝湖原始 184×73px，背景图偏移 -12px 0px，实际尺寸 196×73px
-                 在 block_1 内部，紧跟 ID+金币行下方，蓝湖原始 margin: 16px 0 115px 82px（下方115px是占位） */}
-            <div
-              style={{
-                width: q(184), height: q(73),
-                backgroundImage: `url(${LANHU.vipTagBg})`,
-                backgroundPosition: `${q(-12)} 0px`,
-                backgroundSize: `${q(196)} ${q(73)}`,
-                backgroundRepeat: 'no-repeat',
-                marginTop: q(16),
-                marginLeft: q(82),
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <span
-                style={{
-                  WebkitTextStroke: `${q(2)} rgba(105,51,0,1)`,
-                  color: 'rgba(255,255,255,1)',
-                  fontSize: q(24),
-                  fontFamily: 'Alibaba-PuHuiTi-B, sans-serif',
-                  fontWeight: 700,
-                  whiteSpace: 'nowrap',
-                  lineHeight: q(34),
-                  marginLeft: q(60),
-                }}
-              >
-                VIP{player?.vipLevel ?? 0}
-              </span>
-            </div>
           </div>
 
-          {/* 头像框 absolute left:0 top:32px, 160×179px */}
+          {/* 头像框 absolute left:0 top:32px, 160×179px, z-index:1 */}
           <div
             style={{
               position: 'absolute',
@@ -415,13 +390,50 @@ export default function Home() {
               backgroundPosition: `${q(-11)} 0px`,
               backgroundRepeat: 'no-repeat',
               backgroundSize: `${q(171)} ${q(179)}`,
+              zIndex: 1,
             }}
           >
-            <img
-              src={player ? getAvatarUrl(player.avatar) : LANHU.avatar}
-              alt="头像"
-              style={{ width: q(108), height: q(111), marginTop: q(24), marginLeft: q(32), borderRadius: '50%', objectFit: 'cover' }}
-            />
+            {player && (
+              <img
+                src={getAvatarUrl(player.avatar)}
+                alt="头像"
+                style={{ width: q(108), height: q(111), marginTop: q(24), marginLeft: q(32), borderRadius: '50%', objectFit: 'cover' }}
+              />
+            )}
+          </div>
+
+          {/* VIP标签: 背景图196×73，实际内容区域居中 */}
+          <div
+            style={{
+              position: 'absolute',
+              left: q(-6), top: q(148),
+              width: q(196), height: q(73),
+              backgroundImage: `url(${LANHU.vipTagBg})`,
+              backgroundPosition: 'left top',
+              backgroundSize: `${q(196)} ${q(73)}`,
+              backgroundRepeat: 'no-repeat',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2,
+            }}
+          >
+            <span
+              style={{
+                WebkitTextStroke: `2px rgba(80,30,0,0.9)`,
+                paintOrder: 'stroke fill',
+                color: 'rgba(255,255,255,1)',
+                fontSize: q(26),
+                fontFamily: '"Orbitron", sans-serif',
+                fontWeight: 900,
+                whiteSpace: 'nowrap',
+                lineHeight: '1',
+                letterSpacing: q(1),
+                marginTop: q(-30),
+              }}
+            >
+              VIP{player?.vipLevel ?? 0}
+            </span>
           </div>
         </div>
       </div>
@@ -429,7 +441,7 @@ export default function Home() {
       {/* ══════════════════════════════════════════════════════
           游戏菜单区（唯一可滚动区域）
           ══════════════════════════════════════════════════════ */}
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, paddingTop: 2, paddingBottom: 2 }}>
         <GameMenuList />
       </div>
 

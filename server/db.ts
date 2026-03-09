@@ -1,11 +1,21 @@
-import { and, desc, eq, gte, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
+  CsAgent,
+  CsMessage,
+  CsSession,
+  InsertCsAgent,
+  InsertCsMessage,
+  InsertCsSession,
   InsertPlayer,
   InsertRollRoom,
   InsertRollRoomPrize,
   InsertUser,
   commissionLogs,
+  csAgents,
+  csMessages,
+  csQuickReplies,
+  csSessions,
   messages,
   playerItems,
   players,
@@ -469,4 +479,208 @@ export async function getPlayerInventory(playerId: number, page: number = 1, lim
     db.select({ count: sql<number>`count(*)` }).from(playerItems).where(eq(playerItems.playerId, playerId)),
   ]);
   return { list, total: Number(countResult[0]?.count ?? 0) };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 客服系统 DB 函数
+// ══════════════════════════════════════════════════════════════════
+
+// ── 坐席管理 ──────────────────────────────────────────────────────
+export async function getCsAgentList() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(csAgents).orderBy(csAgents.id);
+}
+
+export async function getCsAgentById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(csAgents).where(eq(csAgents.id, id));
+  return rows[0] ?? null;
+}
+
+export async function getCsAgentByUsername(username: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(csAgents).where(eq(csAgents.username, username));
+  return rows[0] ?? null;
+}
+
+export async function createCsAgent(data: InsertCsAgent) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(csAgents).values(data);
+  const id = (result as any).insertId;
+  const rows = await db.select().from(csAgents).where(eq(csAgents.id, id));
+  return rows[0] ?? null;
+}
+
+export async function updateCsAgentStatus(id: number, status: "online" | "busy" | "offline") {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(csAgents).set({ status }).where(eq(csAgents.id, id));
+}
+
+export async function updateCsAgent(id: number, data: Partial<CsAgent>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(csAgents).set(data).where(eq(csAgents.id, id));
+}
+
+// ── 会话管理 ──────────────────────────────────────────────────────
+export async function createCsSession(playerId: number, title: string = "") {
+  const db = await getDb();
+  if (!db) return null;
+  // 检查是否有进行中的会话
+  const existing = await db
+    .select()
+    .from(csSessions)
+    .where(and(eq(csSessions.playerId, playerId), inArray(csSessions.status, ["waiting", "active"])));
+  if (existing.length > 0) return existing[0];
+  const [result] = await db.insert(csSessions).values({ playerId, title, status: "waiting" });
+  const id = (result as any).insertId;
+  const rows = await db.select().from(csSessions).where(eq(csSessions.id, id));
+  return rows[0] ?? null;
+}
+
+export async function getCsSessionById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(csSessions).where(eq(csSessions.id, id));
+  return rows[0] ?? null;
+}
+
+export async function getCsSessionsByPlayer(playerId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(csSessions).where(eq(csSessions.playerId, playerId)).orderBy(desc(csSessions.updatedAt));
+}
+
+export async function getActiveSessionByPlayer(playerId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(csSessions)
+    .where(and(eq(csSessions.playerId, playerId), inArray(csSessions.status, ["waiting", "active"])));
+  return rows[0] ?? null;
+}
+
+export async function getAllCsSessions(status?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  if (status) {
+    return db
+      .select()
+      .from(csSessions)
+      .where(eq(csSessions.status, status as any))
+      .orderBy(desc(csSessions.updatedAt));
+  }
+  return db.select().from(csSessions).orderBy(desc(csSessions.updatedAt));
+}
+
+export async function getAgentSessions(agentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(csSessions)
+    .where(and(eq(csSessions.agentId, agentId), inArray(csSessions.status, ["active", "waiting"])))
+    .orderBy(desc(csSessions.updatedAt));
+}
+
+export async function assignSessionToAgent(sessionId: number, agentId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(csSessions).set({ agentId, status: "active" }).where(eq(csSessions.id, sessionId));
+  // 更新坐席接待数
+  await db
+    .update(csAgents)
+    .set({ activeSessionCount: sql`activeSessionCount + 1` })
+    .where(eq(csAgents.id, agentId));
+}
+
+export async function closeCsSession(sessionId: number, reason: string = "") {
+  const db = await getDb();
+  if (!db) return;
+  const session = await getCsSessionById(sessionId);
+  if (!session) return;
+  await db.update(csSessions).set({ status: "closed", closeReason: reason }).where(eq(csSessions.id, sessionId));
+  if (session.agentId) {
+    await db
+      .update(csAgents)
+      .set({ activeSessionCount: sql`GREATEST(activeSessionCount - 1, 0)` })
+      .where(eq(csAgents.id, session.agentId));
+  }
+}
+
+export async function updateSessionLastMessage(sessionId: number, content: string, agentUnreadDelta = 0, playerUnreadDelta = 0) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(csSessions)
+    .set({
+      lastMessage: content.slice(0, 100),
+      lastMessageAt: new Date(),
+      agentUnread: sql`agentUnread + ${agentUnreadDelta}`,
+      playerUnread: sql`playerUnread + ${playerUnreadDelta}`,
+    })
+    .where(eq(csSessions.id, sessionId));
+}
+
+export async function clearAgentUnread(sessionId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(csSessions).set({ agentUnread: 0 }).where(eq(csSessions.id, sessionId));
+}
+
+export async function clearPlayerUnread(sessionId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(csSessions).set({ playerUnread: 0 }).where(eq(csSessions.id, sessionId));
+}
+
+// ── 消息管理 ──────────────────────────────────────────────────────
+export async function sendCsMessage(data: InsertCsMessage) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(csMessages).values(data);
+  const id = (result as any).insertId;
+  const rows = await db.select().from(csMessages).where(eq(csMessages.id, id));
+  return rows[0] ?? null;
+}
+
+export async function getCsMessages(sessionId: number, afterId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (afterId) {
+    return db
+      .select()
+      .from(csMessages)
+      .where(and(eq(csMessages.sessionId, sessionId), gt(csMessages.id, afterId)))
+      .orderBy(csMessages.id);
+  }
+  return db.select().from(csMessages).where(eq(csMessages.sessionId, sessionId)).orderBy(csMessages.id);
+}
+
+// ── 快捷回复 ──────────────────────────────────────────────────────
+export async function getCsQuickReplies() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(csQuickReplies).where(eq(csQuickReplies.status, 1)).orderBy(csQuickReplies.sort, csQuickReplies.id);
+}
+
+export async function createCsQuickReply(data: { category: string; title: string; content: string; sort?: number }) {
+  const db = await getDb();
+  if (!db) return null;
+  const [result] = await db.insert(csQuickReplies).values(data);
+  const id = (result as any).insertId;
+  const rows = await db.select().from(csQuickReplies).where(eq(csQuickReplies.id, id));
+  return rows[0] ?? null;
+}
+
+export async function deleteCsQuickReply(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(csQuickReplies).set({ status: 0 }).where(eq(csQuickReplies.id, id));
 }

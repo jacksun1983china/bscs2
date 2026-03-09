@@ -1,12 +1,10 @@
 /**
  * GameMenuList.tsx — 游戏菜单列表组件
  *
- * 这个区域是唯一可滚动的区域，以后会加载邮件列表等其他内容。
- *
- * 关键设计：
- * - 外层大框使用 border-image 九宫格拉伸（切片 70px），四角圆角不变形，中间自由拉伸
- * - 左侧头像列 + 右侧游戏卡片列
- * - 与上方元素保持 16px 间距
+ * 布局要求：
+ * - 外层容器占满父级 flex:1 的空间（上下各20px padding由父级提供）
+ * - 游戏菜单大框：左右留边距，内容从顶部开始，不超出容器高度
+ * - 左侧头像列 + 右侧游戏卡片列，顶部对齐
  */
 import React from 'react';
 import { useLocation } from 'wouter';
@@ -63,41 +61,37 @@ export default function GameMenuList() {
   const [, navigate] = useLocation();
 
   return (
-    /* 可滚动外层容器 */
+    /* 外层：撑满父级空间，containerType 让 cqw 基于自身宽度计算 */
     <div
       style={{
         width: '100%',
-        flex: 1,
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        WebkitOverflowScrolling: 'touch' as React.CSSProperties['WebkitOverflowScrolling'],
+        height: '100%',
         containerType: 'inline-size' as React.CSSProperties['containerType'],
         background: 'transparent',
       }}
     >
       {/*
         游戏菜单外框：九宫格拉伸
-        图片尺寸 689×839px，圆角约 70px
-        border-image-slice: 70 fill → 四角各取 70px，中间 fill 填充
-        border-image-width: 对应 cqw 值（70/750*100 ≈ 9.33cqw）
+        - 左右留 29px 边距
+        - 内容从顶部开始（alignItems: flex-start）
+        - 宽度撑满（width: 100% 减去左右margin）
       */}
       <div
         style={{
-          /* 与上方元素保持合理间距，左右各留边距 */
-          margin: `${q(16)} ${q(29)} ${q(16)}`,
+          margin: `0 ${q(29)}`,
           /* 九宫格边框图 */
           borderStyle: 'solid',
           borderImageSource: `url(${LANHU.gameMenuBg})`,
           borderImageSlice: '70 70 70 70 fill',
           borderImageWidth: `${q(70)} ${q(70)} ${q(70)} ${q(70)}`,
           borderImageRepeat: 'stretch',
-          /* 内边距：内容不贴边框 */
+          /* 内边距 */
           padding: `${q(20)} ${q(20)}`,
-          /* 布局 */
+          /* 布局：横排，内容顶部对齐 */
           display: 'flex',
           flexDirection: 'row',
+          alignItems: 'flex-start',
           gap: q(12),
-          /* 确保内容在边框图层之上 */
           position: 'relative',
         }}
       >
@@ -144,7 +138,6 @@ export default function GameMenuList() {
               style={{
                 position: 'relative',
                 width: '100%',
-                /* 保持卡片比例：原始约 468×180px */
                 aspectRatio: '468 / 180',
                 backgroundImage: `url(${game.bgImage})`,
                 backgroundSize: '100% 100%',

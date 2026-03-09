@@ -6,12 +6,30 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import {
   addRollBots,
+  assignSessionToAgent,
   bindInviteCode,
+  clearAgentUnread,
+  clearPlayerUnread,
+  closeCsSession,
+  createCsAgent,
+  createCsQuickReply,
+  createCsSession,
   createPlayer,
   createRollRoom,
   createSmsCode,
+  deleteCsQuickReply,
   drawRollRoom,
+  getActiveSessionByPlayer,
   getAdminRollRoomList,
+  getAllCsSessions,
+  getAgentSessions,
+  getCsAgentById,
+  getCsAgentByUsername,
+  getCsAgentList,
+  getCsMessages,
+  getCsQuickReplies,
+  getCsSessionById,
+  getCsSessionsByPlayer,
   getDb,
   getPlayerByPhone,
   getPlayerById,
@@ -25,9 +43,13 @@ import {
   getRollRoomList,
   getRollWinners,
   getTeamStats,
+  sendCsMessage,
+  updateCsAgent,
+  updateCsAgentStatus,
   updatePlayerIdentity,
   updatePlayerLogin,
   updatePlayerStatus,
+  updateSessionLastMessage,
   verifySmsCode,
   withdrawCommission,
 } from "./db";
@@ -37,6 +59,7 @@ import { eq, desc, sql } from "drizzle-orm";
 import {
   banners,
   broadcasts,
+  csAgents,
   gameSettings,
   rechargeConfigs,
   rollRoomPrizes,
@@ -46,6 +69,19 @@ import {
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
 const PLAYER_COOKIE = "bdcs2_player_token";
+const AGENT_COOKIE = "bdcs2_agent_token";
+
+async function getAgentFromCookie(req: any): Promise<{ agentId: number; username: string } | null> {
+  try {
+    const cookieHeader = req.headers?.cookie || "";
+    const match = cookieHeader.match(new RegExp(`${AGENT_COOKIE}=([^;]+)`));
+    if (!match) return null;
+    const token = match[1];
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    if (payload.type !== "csagent") return null;
+    return { agentId: payload.agentId as number, username: payload.username as string };
+  } catch { return null; }
+}
 
 async function signPlayerToken(playerId: number, phone: string) {
   return new SignJWT({ playerId, phone, type: "player" })
@@ -769,6 +805,297 @@ export const appRouter = router({
           rows: rows.map(r => ({ id: r.id, playerId: r.playerId, betAmount: parseFloat(r.betAmount), multiplier: parseFloat(r.multiplier), isWin: r.isWin === 1, winAmount: parseFloat(r.winAmount), netAmount: parseFloat(r.netAmount), balanceAfter: parseFloat(r.balanceAfter), createdAt: r.createdAt })),
           total: Number(countRows[0]?.count ?? 0),
         };
+      }),
+  }),
+
+  // ── 客服系统 ──────────────────────────────────────────────────────
+  cs: router({
+    /** 玩家：获取或创建当前会话 */
+    getOrCreateSession: publicProcedure
+      .input(z.object({ title: z.string().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const player = await getPlayerFromCookie(ctx.req);
+        if (!player) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const session = await createCsSession(player.playerId, input.title || "");
+        if (!session) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        // 发送系统消息
+        const msgs = await getCsMessages(session.id);
+        if (msgs.length === 0) {
+          await sendCsMessage({
+            sessionId: session.id,
+            senderType: "system",
+            senderId: 0,
+            senderName: "系统",
+            content: "您好！欢迎使用在线客服。请描述您的问题，我们将尽快为您服务。",
+          });
+        }
+        return session;
+      }),
+
+    /** 玩家：获取当前活跃会话 */
+    getActiveSession: publicProcedure.query(async ({ ctx }) => {
+      const player = await getPlayerFromCookie(ctx.req);
+      if (!player) return null;
+      return getActiveSessionByPlayer(player.playerId);
+    }),
+
+    /** 玩家：获取消息列表（轮询） */
+    getMessages: publicProcedure
+      .input(z.object({ sessionId: z.number(), afterId: z.number().optional() }))
+      .query(async ({ input, ctx }) => {
+        const player = await getPlayerFromCookie(ctx.req);
+        if (!player) throw new TRPCError({ code: "UNAUTHORIZED" });
+        const session = await getCsSessionById(input.sessionId);
+        if (!session || session.playerId !== player.playerId) throw new TRPCError({ code: "FORBIDDEN" });
+        await clearPlayerUnread(input.sessionId);
+        return getCsMessages(input.sessionId, input.afterId);
+      }),
+
+    /** 玩家：发送消息 */
+    sendMessage: publicProcedure
+      .input(z.object({ sessionId: z.number(), content: z.string().min(1).max(2000), msgType: z.enum(["text", "image"]).default("text") }))
+      .mutation(async ({ input, ctx }) => {
+        const player = await getPlayerFromCookie(ctx.req);
+        if (!player) throw new TRPCError({ code: "UNAUTHORIZED" });
+        const session = await getCsSessionById(input.sessionId);
+        if (!session || session.playerId !== player.playerId) throw new TRPCError({ code: "FORBIDDEN" });
+        if (session.status === "closed") throw new TRPCError({ code: "BAD_REQUEST", message: "会话已关闭" });
+        const playerInfo = await getPlayerById(player.playerId);
+        const msg = await sendCsMessage({
+          sessionId: input.sessionId,
+          senderType: "player",
+          senderId: player.playerId,
+          senderName: playerInfo?.nickname || `用户${player.phone.slice(-4)}`,
+          senderAvatar: playerInfo?.avatar || "001",
+          content: input.content,
+          msgType: input.msgType,
+        });
+        await updateSessionLastMessage(input.sessionId, input.content, 1, 0);
+        return msg;
+      }),
+
+    /** 玩家：关闭会话 */
+    closeSession: publicProcedure
+      .input(z.object({ sessionId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const player = await getPlayerFromCookie(ctx.req);
+        if (!player) throw new TRPCError({ code: "UNAUTHORIZED" });
+        const session = await getCsSessionById(input.sessionId);
+        if (!session || session.playerId !== player.playerId) throw new TRPCError({ code: "FORBIDDEN" });
+        await closeCsSession(input.sessionId, "用户主动关闭");
+        return { success: true };
+      }),
+
+    /** 玩家：获取会话状态（轮询用） */
+    getSessionStatus: publicProcedure
+      .input(z.object({ sessionId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const player = await getPlayerFromCookie(ctx.req);
+        if (!player) return null;
+        const session = await getCsSessionById(input.sessionId);
+        if (!session || session.playerId !== player.playerId) return null;
+        return { status: session.status, agentId: session.agentId, playerUnread: session.playerUnread };
+      }),
+
+    // ── 坐席端接口 ──────────────────────────────────────────────────
+    /** 坐席登录 */
+    agentLogin: publicProcedure
+      .input(z.object({ username: z.string(), password: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const agent = await getCsAgentByUsername(input.username);
+        if (!agent || agent.password !== input.password || !agent.enabled) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "账号或密码错误" });
+        }
+        const token = await new SignJWT({ agentId: agent.id, username: agent.username, type: "csagent" })
+          .setProtectedHeader({ alg: "HS256" })
+          .setIssuedAt()
+          .setExpirationTime("8h")
+          .sign(JWT_SECRET);
+        const isSecure = (ctx.req as any).protocol === 'https' || ((ctx.req as any).headers?.['x-forwarded-proto'] || '').includes('https');
+        ctx.res.cookie("bdcs2_agent_token", token, { httpOnly: true, secure: isSecure, sameSite: isSecure ? 'none' : 'lax', maxAge: 8 * 60 * 60 * 1000, path: '/' });
+        await updateCsAgentStatus(agent.id, "online");
+        return { success: true, agent: { id: agent.id, name: agent.name, username: agent.username, avatarUrl: agent.avatarUrl, status: "online" } };
+      }),
+
+    /** 坐席登出 */
+    agentLogout: publicProcedure.mutation(async ({ ctx }) => {
+      const agent = await getAgentFromCookie(ctx.req);
+      if (agent) await updateCsAgentStatus(agent.agentId, "offline");
+      ctx.res.clearCookie("bdcs2_agent_token", { path: '/' });
+      return { success: true };
+    }),
+
+    /** 坐席：获取自己信息 */
+    agentMe: publicProcedure.query(async ({ ctx }) => {
+      const agentAuth = await getAgentFromCookie(ctx.req);
+      if (!agentAuth) return null;
+      return getCsAgentById(agentAuth.agentId);
+    }),
+
+    /** 坐席：获取所有待处理/进行中会话 */
+    agentGetSessions: publicProcedure
+      .input(z.object({ status: z.string().optional() }))
+      .query(async ({ input, ctx }) => {
+        const agentAuth = await getAgentFromCookie(ctx.req);
+        if (!agentAuth) throw new TRPCError({ code: "UNAUTHORIZED" });
+        if (input.status) {
+          return getAllCsSessions(input.status);
+        }
+        // 返回等待中和进行中的会话
+        const [waiting, active] = await Promise.all([
+          getAllCsSessions("waiting"),
+          getAgentSessions(agentAuth.agentId),
+        ]);
+        return [...waiting, ...active];
+      }),
+
+    /** 坐席：接入会话 */
+    agentAcceptSession: publicProcedure
+      .input(z.object({ sessionId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const agentAuth = await getAgentFromCookie(ctx.req);
+        if (!agentAuth) throw new TRPCError({ code: "UNAUTHORIZED" });
+        const agent = await getCsAgentById(agentAuth.agentId);
+        if (!agent) throw new TRPCError({ code: "UNAUTHORIZED" });
+        const session = await getCsSessionById(input.sessionId);
+        if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+        if (session.status !== "waiting") throw new TRPCError({ code: "BAD_REQUEST", message: "会话已被接入" });
+        await assignSessionToAgent(input.sessionId, agentAuth.agentId);
+        // 发送系统消息
+        await sendCsMessage({
+          sessionId: input.sessionId,
+          senderType: "system",
+          senderId: 0,
+          senderName: "系统",
+          content: `客服 ${agent.name} 已接入，请问有什么可以帮您？`,
+        });
+        await updateSessionLastMessage(input.sessionId, `客服 ${agent.name} 已接入`, 0, 1);
+        return { success: true };
+      }),
+
+    /** 坐席：获取消息（轮询） */
+    agentGetMessages: publicProcedure
+      .input(z.object({ sessionId: z.number(), afterId: z.number().optional() }))
+      .query(async ({ input, ctx }) => {
+        const agentAuth = await getAgentFromCookie(ctx.req);
+        if (!agentAuth) throw new TRPCError({ code: "UNAUTHORIZED" });
+        await clearAgentUnread(input.sessionId);
+        return getCsMessages(input.sessionId, input.afterId);
+      }),
+
+    /** 坐席：发送消息 */
+    agentSendMessage: publicProcedure
+      .input(z.object({ sessionId: z.number(), content: z.string().min(1).max(2000), msgType: z.enum(["text", "image"]).default("text") }))
+      .mutation(async ({ input, ctx }) => {
+        const agentAuth = await getAgentFromCookie(ctx.req);
+        if (!agentAuth) throw new TRPCError({ code: "UNAUTHORIZED" });
+        const agent = await getCsAgentById(agentAuth.agentId);
+        if (!agent) throw new TRPCError({ code: "UNAUTHORIZED" });
+        const session = await getCsSessionById(input.sessionId);
+        if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+        if (session.status === "closed") throw new TRPCError({ code: "BAD_REQUEST", message: "会话已关闭" });
+        const msg = await sendCsMessage({
+          sessionId: input.sessionId,
+          senderType: "agent",
+          senderId: agentAuth.agentId,
+          senderName: agent.name,
+          senderAvatar: agent.avatarUrl,
+          content: input.content,
+          msgType: input.msgType,
+        });
+        await updateSessionLastMessage(input.sessionId, input.content, 0, 1);
+        return msg;
+      }),
+
+    /** 坐席：关闭会话 */
+    agentCloseSession: publicProcedure
+      .input(z.object({ sessionId: z.number(), reason: z.string().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const agentAuth = await getAgentFromCookie(ctx.req);
+        if (!agentAuth) throw new TRPCError({ code: "UNAUTHORIZED" });
+        await closeCsSession(input.sessionId, input.reason || "坐席关闭");
+        await sendCsMessage({
+          sessionId: input.sessionId,
+          senderType: "system",
+          senderId: 0,
+          senderName: "系统",
+          content: "会话已结束，感谢您的使用。",
+        });
+        return { success: true };
+      }),
+
+    /** 坐席：更新状态 */
+    agentUpdateStatus: publicProcedure
+      .input(z.object({ status: z.enum(["online", "busy", "offline"]) }))
+      .mutation(async ({ input, ctx }) => {
+        const agentAuth = await getAgentFromCookie(ctx.req);
+        if (!agentAuth) throw new TRPCError({ code: "UNAUTHORIZED" });
+        await updateCsAgentStatus(agentAuth.agentId, input.status);
+        return { success: true };
+      }),
+
+    /** 获取快捷回复 */
+    getQuickReplies: publicProcedure.query(async ({ ctx }) => {
+      const agentAuth = await getAgentFromCookie(ctx.req);
+      if (!agentAuth) throw new TRPCError({ code: "UNAUTHORIZED" });
+      return getCsQuickReplies();
+    }),
+
+    // ── 管理员接口 ──────────────────────────────────────────────────
+    /** 管理员：获取坐席列表 */
+    adminGetAgents: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      return getCsAgentList();
+    }),
+
+    /** 管理员：创建坐席 */
+    adminCreateAgent: protectedProcedure
+      .input(z.object({ name: z.string().min(1), username: z.string().min(3), password: z.string().min(6), maxSessions: z.number().default(5) }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const existing = await getCsAgentByUsername(input.username);
+        if (existing) throw new TRPCError({ code: "BAD_REQUEST", message: "账号已存在" });
+        return createCsAgent({ name: input.name, username: input.username, password: input.password, maxSessions: input.maxSessions });
+      }),
+
+    /** 管理员：更新坐席 */
+    adminUpdateAgent: protectedProcedure
+      .input(z.object({ id: z.number(), name: z.string().optional(), password: z.string().optional(), maxSessions: z.number().optional(), enabled: z.boolean().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const { id, ...data } = input;
+        const updateData: any = {};
+        if (data.name) updateData.name = data.name;
+        if (data.password) updateData.password = data.password;
+        if (data.maxSessions !== undefined) updateData.maxSessions = data.maxSessions;
+        if (data.enabled !== undefined) updateData.enabled = data.enabled ? 1 : 0;
+        await updateCsAgent(id, updateData);
+        return { success: true };
+      }),
+
+    /** 管理员：获取所有会话 */
+    adminGetAllSessions: protectedProcedure
+      .input(z.object({ status: z.string().optional() }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        return getAllCsSessions(input.status);
+      }),
+
+    /** 管理员：添加快捷回复 */
+    adminAddQuickReply: protectedProcedure
+      .input(z.object({ category: z.string().default("通用"), title: z.string().min(1), content: z.string().min(1), sort: z.number().default(0) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        return createCsQuickReply(input);
+      }),
+
+    /** 管理员：删除快捷回复 */
+    adminDeleteQuickReply: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        await deleteCsQuickReply(input.id);
+        return { success: true };
       }),
   }),
 });

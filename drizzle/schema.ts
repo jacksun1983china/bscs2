@@ -432,3 +432,100 @@ export const gameSettings = mysqlTable("gameSettings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type GameSetting = typeof gameSettings.$inferSelect;
+
+// ── 客服坐席表 ──────────────────────────────────────────────────────
+export const csAgents = mysqlTable("csAgents", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 坐席名称 */
+  name: varchar("name", { length: 100 }).notNull(),
+  /** 坐席账号（用于登录） */
+  username: varchar("username", { length: 50 }).notNull().unique(),
+  /** 坐席密码 */
+  password: varchar("password", { length: 100 }).notNull(),
+  /** 头像URL */
+  avatarUrl: varchar("avatarUrl", { length: 500 }).notNull().default(""),
+  /** 状态：online/busy/offline */
+  status: mysqlEnum("status", ["online", "busy", "offline"]).notNull().default("offline"),
+  /** 当前接待会话数 */
+  activeSessionCount: int("activeSessionCount").notNull().default(0),
+  /** 最大同时接待数 */
+  maxSessions: int("maxSessions").notNull().default(5),
+  /** 是否启用 */
+  enabled: tinyint("enabled").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CsAgent = typeof csAgents.$inferSelect;
+export type InsertCsAgent = typeof csAgents.$inferInsert;
+
+// ── 客服会话表 ──────────────────────────────────────────────────────
+export const csSessions = mysqlTable("csSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 玩家ID */
+  playerId: int("playerId").notNull(),
+  /** 分配的坐席ID（null表示待分配） */
+  agentId: int("agentId"),
+  /** 会话状态：waiting=等待接入 active=进行中 closed=已关闭 */
+  status: mysqlEnum("status", ["waiting", "active", "closed"]).notNull().default("waiting"),
+  /** 会话标题/问题摘要 */
+  title: varchar("title", { length: 200 }).notNull().default(""),
+  /** 未读消息数（坐席侧） */
+  agentUnread: int("agentUnread").notNull().default(0),
+  /** 未读消息数（玩家侧） */
+  playerUnread: int("playerUnread").notNull().default(0),
+  /** 最后一条消息内容（用于列表预览） */
+  lastMessage: varchar("lastMessage", { length: 500 }).notNull().default(""),
+  /** 最后消息时间 */
+  lastMessageAt: timestamp("lastMessageAt").defaultNow(),
+  /** 关闭原因 */
+  closeReason: varchar("closeReason", { length: 200 }).notNull().default(""),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CsSession = typeof csSessions.$inferSelect;
+export type InsertCsSession = typeof csSessions.$inferInsert;
+
+// ── 客服消息表 ──────────────────────────────────────────────────────
+export const csMessages = mysqlTable("csMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 所属会话ID */
+  sessionId: int("sessionId").notNull(),
+  /** 发送方类型：player=玩家 agent=坐席 system=系统 */
+  senderType: mysqlEnum("senderType", ["player", "agent", "system"]).notNull(),
+  /** 发送方ID（player为playerId，agent为agentId，system为0） */
+  senderId: int("senderId").notNull().default(0),
+  /** 发送方昵称（快照） */
+  senderName: varchar("senderName", { length: 100 }).notNull().default(""),
+  /** 发送方头像（快照） */
+  senderAvatar: varchar("senderAvatar", { length: 500 }).notNull().default(""),
+  /** 消息类型：text=文字 image=图片 */
+  msgType: mysqlEnum("msgType", ["text", "image"]).notNull().default("text"),
+  /** 消息内容 */
+  content: text("content").notNull(),
+  /** 是否已读 */
+  isRead: tinyint("isRead").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CsMessage = typeof csMessages.$inferSelect;
+export type InsertCsMessage = typeof csMessages.$inferInsert;
+
+// ── 快捷回复模板 ──────────────────────────────────────────────────────
+export const csQuickReplies = mysqlTable("csQuickReplies", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 分类 */
+  category: varchar("category", { length: 50 }).notNull().default("通用"),
+  /** 标题 */
+  title: varchar("title", { length: 100 }).notNull(),
+  /** 内容 */
+  content: text("content").notNull(),
+  /** 排序 */
+  sort: int("sort").notNull().default(0),
+  /** 状态：1启用 0禁用 */
+  status: tinyint("status").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CsQuickReply = typeof csQuickReplies.$inferSelect;

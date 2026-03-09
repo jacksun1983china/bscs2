@@ -14,6 +14,9 @@ import Share from "./pages/Share";
 import Bag from "./pages/Bag";
 import Recharge from "./pages/Recharge";
 import RollX from "./pages/RollX";
+import CustomerService from "./pages/CustomerService";
+import AgentLogin from "./pages/AgentLogin";
+import AgentDashboard from "./pages/AgentDashboard";
 function Router() {
   return (
     <Switch>
@@ -29,6 +32,10 @@ function Router() {
       <Route path={"/share"} component={Share} />
       <Route path={"/bag"} component={Bag} />
       <Route path={"/recharge"} component={Recharge} />
+      {/* 客服系统 */}
+      <Route path={"/kefu"} component={CustomerService} />
+      <Route path={"/agent/login"} component={AgentLogin} />
+      <Route path={"/agent"} component={AgentDashboard} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
