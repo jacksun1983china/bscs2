@@ -42,11 +42,16 @@ export default function Login() {
     onError: (e) => toast.error(e.message),
   });
 
+  const utils = trpc.useUtils();
+
   // 登录 API
   const loginMutation = trpc.player.login.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast.success(data.isNew ? '注册成功，欢迎加入 BDCS2！' : '登录成功！');
-      navigate('/');
+      // 先刷新玩家信息缓存，确保 cookie 已写入再跳转
+      await utils.player.me.invalidate();
+      // 延迟一小段确保跳转后首页能读到 cookie
+      setTimeout(() => navigate('/'), 100);
     },
     onError: (e) => toast.error(e.message),
   });

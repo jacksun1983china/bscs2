@@ -86,12 +86,15 @@ export const appRouter = router({
 
         await updatePlayerLogin(player.id, (ctx.req as any).ip || "");
         const token = await signPlayerToken(player.id, player.phone);
+        // 使用与系统 session cookie 相同的配置（sameSite: none + secure）
+        const isSecure = (ctx.req as any).protocol === 'https' ||
+          ((ctx.req as any).headers?.['x-forwarded-proto'] || '').includes('https');
         (ctx.res as any).cookie(PLAYER_COOKIE, token, {
           httpOnly: true,
-          secure: (ctx.req as any).protocol === "https",
-          sameSite: "lax",
+          secure: isSecure,
+          sameSite: isSecure ? 'none' : 'lax',
           maxAge: 30 * 24 * 60 * 60 * 1000,
-          path: "/",
+          path: '/',
         });
 
         return {
@@ -130,7 +133,14 @@ export const appRouter = router({
 
     /** 退出登录 */
     logout: publicProcedure.mutation(({ ctx }) => {
-      (ctx.res as any).clearCookie(PLAYER_COOKIE, { path: "/" });
+      const isSecure = (ctx.req as any).protocol === 'https' ||
+        ((ctx.req as any).headers?.['x-forwarded-proto'] || '').includes('https');
+      (ctx.res as any).clearCookie(PLAYER_COOKIE, {
+        httpOnly: true,
+        secure: isSecure,
+        sameSite: isSecure ? 'none' : 'lax',
+        path: '/',
+      });
       return { success: true };
     }),
   }),

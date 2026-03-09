@@ -70,13 +70,37 @@ function TopNav() {
         zIndex: 10,
       }}
     >
-      {/* LOGO */}
-      <div style={{ width: 54, height: 64, position: 'relative' }}>
-        <img
-          src={ASSETS.logok}
-          alt="logo"
-          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-        />
+      {/* LOGO — 纯 CSS 霍光文字效果 */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0 }}>
+        <div
+          style={{
+            fontSize: 22,
+            fontWeight: 900,
+            letterSpacing: 3,
+            lineHeight: 1,
+            background: 'linear-gradient(135deg, #e879f9 0%, #a855f7 35%, #3b82f6 65%, #06b6d4 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            filter: 'drop-shadow(0 0 8px rgba(168,85,247,0.8)) drop-shadow(0 0 16px rgba(59,130,246,0.5))',
+            fontFamily: "'Noto Sans SC', sans-serif",
+            textTransform: 'uppercase',
+          }}
+        >
+          BDCS2
+        </div>
+        <div
+          style={{
+            fontSize: 8,
+            letterSpacing: 2,
+            color: 'rgba(168,85,247,0.6)',
+            fontWeight: 500,
+            marginTop: 1,
+            textTransform: 'uppercase',
+          }}
+        >
+          BATTLE·CYBER
+        </div>
       </div>
 
       {/* 右侧图标组 */}
@@ -474,14 +498,21 @@ function BottomNav() {
 // ──────────────────────────────────────────────
 export default function Home() {
   const [, navigate] = useLocation();
-  const { data: player, isLoading } = trpc.player.me.useQuery();
+  const { data: player, isLoading, isFetching } = trpc.player.me.useQuery(
+    undefined,
+    {
+      // 刷新页面时重新查询，确保登录后 cookie 能被读到
+      refetchOnWindowFocus: true,
+      staleTime: 0,
+    }
+  );
 
-  // 未登录跳转登录页
+  // 未登录跳转登录页（必须等加载完成且不在请求中）
   useEffect(() => {
-    if (!isLoading && !player) {
+    if (!isLoading && !isFetching && !player) {
       navigate('/login');
     }
-  }, [player, isLoading]);
+  }, [player, isLoading, isFetching]);
 
   return (
     <div
