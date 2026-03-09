@@ -3,6 +3,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ── 全局字体 ────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+
+/* ── CSS 变量（深紫赛博朋克主题） ────────────────────────────── */
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -23,155 +27,177 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --radius: 0.65rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.015 65);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.015 65);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.141 0.005 285.823);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
+  --radius: 0.625rem;
+  --background: oklch(0.08 0.02 280);
+  --foreground: oklch(0.95 0.02 280);
+  --card: oklch(0.12 0.03 280);
+  --card-foreground: oklch(0.95 0.02 280);
+  --popover: oklch(0.12 0.03 280);
+  --popover-foreground: oklch(0.95 0.02 280);
+  --primary: oklch(0.65 0.28 290);
+  --primary-foreground: oklch(0.98 0.01 280);
+  --secondary: oklch(0.18 0.04 280);
+  --secondary-foreground: oklch(0.9 0.02 280);
+  --muted: oklch(0.15 0.03 280);
+  --muted-foreground: oklch(0.6 0.05 280);
+  --accent: oklch(0.55 0.25 200);
+  --accent-foreground: oklch(0.98 0.01 200);
+  --destructive: oklch(0.55 0.22 25);
+  --border: oklch(0.25 0.06 280);
+  --input: oklch(0.2 0.05 280);
+  --ring: oklch(0.65 0.28 290);
 }
 
-.dark {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.85 0.005 65);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.85 0.005 65);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.85 0.005 65);
-  --secondary: oklch(0.24 0.006 286.033);
-  --secondary-foreground: oklch(0.7 0.005 65);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground:  oklch(0.92 0.005 65);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.85 0.005 65);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground:  oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
-}
-
+/* ── 基础样式 ────────────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    box-sizing: border-box;
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
   }
-  button:not(:disabled),
-  [role="button"]:not([aria-disabled="true"]),
-  [type="button"]:not(:disabled),
-  [type="submit"]:not(:disabled),
-  [type="reset"]:not(:disabled),
-  a[href],
-  select:not(:disabled),
-  input[type="checkbox"]:not(:disabled),
-  input[type="radio"]:not(:disabled) {
-    @apply cursor-pointer;
+  .flex {
+    min-width: 0;
+    min-height: 0;
   }
 }
 
-@layer components {
-  /**
-   * Custom container utility that centers content and adds responsive padding.
-   *
-   * This overrides Tailwind's default container behavior to:
-   * - Auto-center content (mx-auto)
-   * - Add responsive horizontal padding
-   * - Set max-width for large screens
-   *
-   * Usage: <div className="container">...</div>
-   *
-   * For custom widths, use max-w-* utilities directly:
-   * <div className="max-w-6xl mx-auto px-4">...</div>
-   */
-  .container {
-    width: 100%;
-    margin-left: auto;
-    margin-right: auto;
-    padding-left: 1rem; /* 16px - mobile padding */
-    padding-right: 1rem;
-  }
+/* ── 竖屏容器（PC居中，手机全屏） ──────────────────────────────── */
+.phone-container {
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+  background: #0d0621;
+  overflow-x: hidden;
+}
 
-  .flex {
-    min-height: 0;
-    min-width: 0;
+@media (min-width: 600px) {
+  /* PC端：居中显示竖屏容器 */
+  body {
+    background: #050210;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
   }
+  .phone-container {
+    width: 390px;
+    min-height: 100vh;
+    box-shadow: 0 0 60px rgba(120, 60, 220, 0.4), 0 0 120px rgba(60, 20, 120, 0.3);
+    position: relative;
+  }
+}
 
-  @media (min-width: 640px) {
-    .container {
-      padding-left: 1.5rem; /* 24px - tablet padding */
-      padding-right: 1.5rem;
-    }
-  }
+/* ── 游戏卡片悬停效果 ────────────────────────────────────────── */
+.game-card {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.game-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 20px rgba(120, 60, 220, 0.5) !important;
+}
+.game-card:active {
+  transform: scale(0.98);
+}
 
-  @media (min-width: 1024px) {
-    .container {
-      padding-left: 2rem; /* 32px - desktop padding */
-      padding-right: 2rem;
-      max-width: 1280px; /* Standard content width */
-    }
-  }
+/* ── 底部导航 tab 效果 ───────────────────────────────────────── */
+.tab-item {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.tab-item:active {
+  opacity: 0.7;
+}
+
+/* ── 广播动画 ────────────────────────────────────────────────── */
+@keyframes slideInBroadcast {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── 霓虹发光文字 ────────────────────────────────────────────── */
+.neon-text {
+  text-shadow:
+    0 0 10px rgba(180, 80, 255, 0.9),
+    0 0 20px rgba(180, 80, 255, 0.6),
+    0 0 40px rgba(120, 40, 200, 0.4);
+}
+
+/* ── 登录页输入框 ────────────────────────────────────────────── */
+.cyber-input {
+  background: rgba(20, 8, 50, 0.8);
+  border: 1px solid rgba(120, 60, 220, 0.5);
+  border-radius: 8px;
+  color: #fff;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.cyber-input:focus {
+  border-color: rgba(160, 80, 255, 0.8);
+  box-shadow: 0 0 0 2px rgba(120, 60, 220, 0.25), 0 0 12px rgba(120, 60, 220, 0.3);
+}
+.cyber-input::placeholder {
+  color: rgba(180, 160, 220, 0.5);
+}
+
+/* ── 霓虹按钮 ────────────────────────────────────────────────── */
+.cyber-btn {
+  background: linear-gradient(135deg, #7c3aed 0%, #4f1d96 100%);
+  border: 1px solid rgba(160, 80, 255, 0.6);
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(120, 60, 220, 0.4);
+}
+.cyber-btn:hover {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  box-shadow: 0 6px 25px rgba(120, 60, 220, 0.6);
+  transform: translateY(-1px);
+}
+.cyber-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(120, 60, 220, 0.4);
+}
+.cyber-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── 脉冲动画 ────────────────────────────────────────────────── */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(120, 60, 220, 0.4); }
+  50% { box-shadow: 0 0 30px rgba(120, 60, 220, 0.8), 0 0 60px rgba(80, 20, 160, 0.4); }
+}
+
+/* ── 滚动条样式 ──────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(20, 8, 50, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 60, 220, 0.5);
+  border-radius: 2px;
+}
+
+/* ── 管理后台全局 ────────────────────────────────────────────── */
+.admin-sidebar {
+  background: linear-gradient(180deg, #0d0621 0%, #120830 100%);
+  border-right: 1px solid rgba(120, 60, 220, 0.3);
 }
