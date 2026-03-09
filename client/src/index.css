@@ -1,10 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-
 @custom-variant dark (&:is(.dark *));
-
-/* ── 全局字体 ────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
 
 /* ── CSS 变量（深紫赛博朋克主题） ────────────────────────────── */
 @theme inline {
@@ -83,20 +79,42 @@
 }
 
 @media (min-width: 600px) {
-  /* PC端：居中显示竖屏容器 */
+  /* PC端：居中显示竖屏容器，9:16 比例自适应屏幕高度 */
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
   body {
     background: #050210;
     display: flex;
     justify-content: center;
     align-items: flex-start;
     min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
   }
   .phone-container {
-    width: 390px;
-    min-height: 100vh;
+    /* 高度 = 100vh，宽度 = 高度 × (9/16) */
+    height: 100vh;
+    width: calc(100vh * 9 / 16);
+    min-height: unset;
+    max-width: 520px; /* 超宽屏上限 */
     box-shadow: 0 0 60px rgba(120, 60, 220, 0.4), 0 0 120px rgba(60, 20, 120, 0.3);
     position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
   }
+}
+
+/* ── 管理后台全屏覆盖（强制 body 不居中） ─────────────────────── */
+body.admin-mode {
+  display: block !important;
+  background: #080418 !important;
+}
+body.admin-mode .phone-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-shadow: none !important;
 }
 
 /* ── 游戏卡片悬停效果 ────────────────────────────────────────── */

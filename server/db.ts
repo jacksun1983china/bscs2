@@ -1,43 +1,44 @@
-import { and, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertPlayer, InsertUser, players, smsCodes, users } from "../drizzle/schema";
+import {
+  InsertPlayer,
+  InsertRollRoom,
+  InsertRollRoomPrize,
+  InsertUser,
+  commissionLogs,
+  messages,
+  playerItems,
+  players,
+  rechargeConfigs,
+  rechargeOrders,
+  rollParticipants,
+  rollRoomPrizes,
+  rollRooms,
+  rollWinners,
+  smsCodes,
+  users,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = drizzle(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
+    try { _db = drizzle(process.env.DATABASE_URL); }
+    catch (error) { console.warn("[Database] Failed to connect:", error); _db = null; }
   }
   return _db;
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
-  }
-
+  if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
-  }
-
+  if (!db) { console.warn("[Database] Cannot upsert user: database not available"); return; }
   try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
+    const values: InsertUser = { openId: user.openId };
     const updateSet: Record<string, unknown> = {};
-
     const textFields = ["name", "email", "loginMethod"] as const;
     type TextField = (typeof textFields)[number];
-
     const assignNullable = (field: TextField) => {
       const value = user[field];
       if (value === undefined) return;
@@ -45,65 +46,33 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values[field] = normalized;
       updateSet[field] = normalized;
     };
-
     textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
-    throw error;
-  }
+    if (user.lastSignedIn !== undefined) { values.lastSignedIn = user.lastSignedIn; updateSet.lastSignedIn = user.lastSignedIn; }
+    if (user.role !== undefined) { values.role = user.role; updateSet.role = user.role; }
+    else if (user.openId === ENV.ownerOpenId) { values.role = 'admin'; updateSet.role = 'admin'; }
+    if (!values.lastSignedIn) values.lastSignedIn = new Date();
+    if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
+    await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+  } catch (error) { console.error("[Database] Failed to upsert user:", error); throw error; }
 }
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
+  if (!db) { console.warn("[Database] Cannot get user: database not available"); return undefined; }
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
-// ── 验证码操作 ────────────────────────────────────────────────────
-
-/** 生成并保存验证码（模拟：固定返回 123456，方便测试） */
 export async function createSmsCode(phone: string, purpose: string = "login"): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("数据库不可用");
-  const code = "123456"; // 模拟验证码，后续接短信API时替换
+  const code = "123456";
   const expireAt = new Date(Date.now() + 10 * 60 * 1000);
-  await db.update(smsCodes).set({ used: 1 })
-    .where(and(eq(smsCodes.phone, phone), eq(smsCodes.purpose, purpose), eq(smsCodes.used, 0)));
+  await db.update(smsCodes).set({ used: 1 }).where(and(eq(smsCodes.phone, phone), eq(smsCodes.purpose, purpose), eq(smsCodes.used, 0)));
   await db.insert(smsCodes).values({ phone, code, purpose, expireAt });
   return code;
 }
 
-/** 验证验证码是否有效 */
 export async function verifySmsCode(phone: string, code: string, purpose: string = "login"): Promise<boolean> {
   const db = await getDb();
   if (!db) throw new Error("数据库不可用");
@@ -118,8 +87,6 @@ export async function verifySmsCode(phone: string, code: string, purpose: string
   return true;
 }
 
-// ── 玩家操作 ────────────────────────────────────────────────────
-
 export async function getPlayerByPhone(phone: string) {
   const db = await getDb();
   if (!db) return undefined;
@@ -131,6 +98,13 @@ export async function getPlayerById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
   const result = await db.select().from(players).where(eq(players.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getPlayerByInviteCode(inviteCode: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(players).where(eq(players.inviteCode, inviteCode)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
@@ -171,4 +145,328 @@ export async function updatePlayerStatus(id: number, status: number, banReason: 
   const db = await getDb();
   if (!db) throw new Error("数据库不可用");
   await db.update(players).set({ status, banReason }).where(eq(players.id, id));
+}
+
+export async function updatePlayerIdentity(id: number, identity: "player" | "streamer" | "merchant", commissionRate?: number, commissionEnabled?: number) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库不可用");
+  const updateData: any = { identity };
+  if (commissionRate !== undefined) updateData.commissionRate = commissionRate.toFixed(2);
+  if (commissionEnabled !== undefined) updateData.commissionEnabled = commissionEnabled;
+  await db.update(players).set(updateData).where(eq(players.id, id));
+}
+
+export async function bindInviteCode(playerId: number, inviteCode: string) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库不可用");
+  const player = await getPlayerById(playerId);
+  if (!player) throw new Error("玩家不存在");
+  if (player.invitedBy) throw new Error("已绑定邀请码，不可重复绑定");
+  const inviter = await getPlayerByInviteCode(inviteCode);
+  if (!inviter) throw new Error("邀请码不存在");
+  if (inviter.id === playerId) throw new Error("不能绑定自己的邀请码");
+  await db.update(players).set({ invitedBy: inviter.id }).where(eq(players.id, playerId));
+  return inviter;
+}
+
+export async function getTeamStats(playerId: number) {
+  const db = await getDb();
+  if (!db) return { total: 0, todayCount: 0, commissionBalance: "0.00" };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [totalResult, todayResult, player] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(players).where(eq(players.invitedBy, playerId)),
+    db.select({ count: sql<number>`count(*)` }).from(players).where(and(eq(players.invitedBy, playerId), gte(players.createdAt, today))),
+    getPlayerById(playerId),
+  ]);
+  return {
+    total: Number(totalResult[0]?.count ?? 0),
+    todayCount: Number(todayResult[0]?.count ?? 0),
+    commissionBalance: player?.commissionBalance ?? "0.00",
+  };
+}
+
+export async function withdrawCommission(playerId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库不可用");
+  const player = await getPlayerById(playerId);
+  if (!player) throw new Error("玩家不存在");
+  const balance = parseFloat(player.commissionBalance as string);
+  if (balance <= 0) throw new Error("没有可提取的返佣余额");
+  await db.update(players).set({
+    commissionBalance: "0.00",
+    shopCoin: sql`shopCoin + ${balance}`,
+  }).where(eq(players.id, playerId));
+  return { amount: balance };
+}
+
+export async function createRollRoom(data: InsertRollRoom, prizes: InsertRollRoomPrize[]) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库不可用");
+  let totalValue = 0;
+  let totalPrizes = 0;
+  for (const p of prizes) {
+    totalValue += parseFloat(p.value as string) * (p.quantity ?? 1);
+    totalPrizes += p.quantity ?? 1;
+  }
+  const insertData = { ...data, totalValue: totalValue.toFixed(2), totalPrizes };
+  const result = await db.insert(rollRooms).values(insertData);
+  const roomId = (result as any)[0]?.insertId ?? 0;
+  if (prizes.length > 0) {
+    await db.insert(rollRoomPrizes).values(prizes.map(p => ({ ...p, rollRoomId: roomId })));
+  }
+  return roomId;
+}
+
+export async function getRollRoomList(opts: {
+  page: number; limit: number; status?: string; playerId?: number; filter?: string; keyword?: string;
+}) {
+  const db = await getDb();
+  if (!db) return { list: [], total: 0 };
+  const { page, limit, status, playerId, filter, keyword } = opts;
+  const offset = (page - 1) * limit;
+  const conditions: any[] = [];
+  if (status) conditions.push(eq(rollRooms.status, status as any));
+  if (keyword) conditions.push(like(rollRooms.title, `%${keyword}%`));
+  if (filter === "ended") {
+    conditions.push(eq(rollRooms.status, "ended"));
+  } else if (filter === "mine" && playerId) {
+    const myRoomIds = await db.select({ rollRoomId: rollParticipants.rollRoomId })
+      .from(rollParticipants).where(and(eq(rollParticipants.playerId, playerId), eq(rollParticipants.isBot, 0)));
+    const ids = myRoomIds.map(r => r.rollRoomId);
+    if (ids.length === 0) return { list: [], total: 0 };
+    conditions.push(sql`${rollRooms.id} IN (${ids.join(",")})`);
+  }
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const [list, countResult] = await Promise.all([
+    db.select().from(rollRooms).where(whereClause).orderBy(desc(rollRooms.createdAt)).limit(limit).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(rollRooms).where(whereClause),
+  ]);
+  return { list, total: Number(countResult[0]?.count ?? 0) };
+}
+
+export async function getRollRoomDetail(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [room] = await db.select().from(rollRooms).where(eq(rollRooms.id, id)).limit(1);
+  if (!room) return null;
+  const prizes = await db.select().from(rollRoomPrizes).where(eq(rollRoomPrizes.rollRoomId, id));
+  const participants = await db.select({
+    id: rollParticipants.id,
+    playerId: rollParticipants.playerId,
+    isBot: rollParticipants.isBot,
+    botNickname: rollParticipants.botNickname,
+    botAvatar: rollParticipants.botAvatar,
+    createdAt: rollParticipants.createdAt,
+    nickname: players.nickname,
+    avatar: players.avatar,
+  }).from(rollParticipants)
+    .leftJoin(players, eq(rollParticipants.playerId, players.id))
+    .where(eq(rollParticipants.rollRoomId, id))
+    .orderBy(rollParticipants.createdAt);
+  return { room, prizes, participants };
+}
+
+export async function joinRollRoom(roomId: number, playerId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库不可用");
+  const room = await db.select().from(rollRooms).where(eq(rollRooms.id, roomId)).limit(1);
+  if (!room[0]) throw new Error("Roll房不存在");
+  const r = room[0];
+  if (r.status === "ended") throw new Error("Roll房已结束");
+  const now = new Date();
+  if (now < r.startAt) throw new Error("Roll房还未开始");
+  if (now > r.endAt) throw new Error("Roll房已截止");
+  const existing = await db.select().from(rollParticipants).where(
+    and(eq(rollParticipants.rollRoomId, roomId), eq(rollParticipants.playerId, playerId), eq(rollParticipants.isBot, 0))
+  ).limit(1);
+  if (existing.length > 0) throw new Error("您已参与此Roll房");
+  if (r.maxParticipants > 0 && r.participantCount >= r.maxParticipants) throw new Error("Roll房人员已满");
+  const player = await getPlayerById(playerId);
+  if (!player) throw new Error("玩家不存在");
+  const threshold = parseFloat(r.threshold as string);
+  if (threshold > 0) {
+    const rechargeResult = await db.select({ total: sql<number>`COALESCE(SUM(gold), 0)` })
+      .from(rechargeOrders)
+      .where(and(eq(rechargeOrders.playerId, playerId), eq(rechargeOrders.status, 1), gte(rechargeOrders.createdAt, r.startAt)));
+    const totalRecharge = Number(rechargeResult[0]?.total ?? 0);
+    if (totalRecharge < threshold) {
+      const diff = threshold - totalRecharge;
+      throw new Error(`充值金额未满 ${threshold} 金币，还差 ${diff.toFixed(2)} 金币`);
+    }
+  }
+  await db.insert(rollParticipants).values({ rollRoomId: roomId, playerId, isBot: 0 });
+  await db.update(rollRooms).set({ participantCount: sql`participantCount + 1` }).where(eq(rollRooms.id, roomId));
+  return { success: true };
+}
+
+export async function addRollBots(roomId: number, count: number) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库不可用");
+  const botNames = ["幸运玩家", "神秘用户", "匿名大佬", "隐身高手", "暗影战士", "星际游侠", "银河猎手", "量子战士"];
+  const bots = Array.from({ length: count }, (_, i) => ({
+    rollRoomId: roomId, playerId: 0, isBot: 1,
+    botNickname: `${botNames[i % botNames.length]}${Math.floor(Math.random() * 9000) + 1000}`,
+    botAvatar: "",
+  }));
+  await db.insert(rollParticipants).values(bots);
+  await db.update(rollRooms).set({ botCount: sql`botCount + ${count}` }).where(eq(rollRooms.id, roomId));
+}
+
+export async function drawRollRoom(roomId: number, designatedWinners?: { prizeId: number; playerId: number }[]) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库不可用");
+  const room = await db.select().from(rollRooms).where(eq(rollRooms.id, roomId)).limit(1);
+  if (!room[0]) throw new Error("Roll房不存在");
+  if (room[0].status === "ended") throw new Error("Roll房已结束");
+  const prizes = await db.select().from(rollRoomPrizes).where(eq(rollRoomPrizes.rollRoomId, roomId));
+  const participants = await db.select().from(rollParticipants).where(eq(rollParticipants.rollRoomId, roomId));
+  const prizeSlots: { prizeId: number; value: number; coinType: string }[] = [];
+  for (const p of prizes) {
+    for (let i = 0; i < p.quantity; i++) {
+      prizeSlots.push({ prizeId: p.id, value: parseFloat(p.value as string), coinType: p.coinType });
+    }
+  }
+  const realPlayers = participants.filter(p => p.isBot === 0);
+  const bots = participants.filter(p => p.isBot === 1);
+  const shuffle = <T>(arr: T[]) => arr.sort(() => Math.random() - 0.5);
+  const shuffledPrizes = shuffle([...prizeSlots]);
+  const winners: { prizeId: number; playerId: number; isBot: number; nicknameSnapshot: string; isDesignated: number }[] = [];
+  const usedPlayerIds = new Set<number>();
+  let prizeIndex = 0;
+  if (designatedWinners) {
+    for (const dw of designatedWinners) {
+      const prizeSlot = shuffledPrizes.find(p => p.prizeId === dw.prizeId && !winners.some(w => w.prizeId === dw.prizeId));
+      if (prizeSlot && !usedPlayerIds.has(dw.playerId)) {
+        const player = await getPlayerById(dw.playerId);
+        winners.push({ prizeId: dw.prizeId, playerId: dw.playerId, isBot: 0, nicknameSnapshot: player?.nickname ?? "", isDesignated: 1 });
+        usedPlayerIds.add(dw.playerId);
+      }
+    }
+  }
+  const shuffledBots = shuffle([...bots]);
+  for (const bot of shuffledBots) {
+    if (prizeIndex >= shuffledPrizes.length) break;
+    const prize = shuffledPrizes[prizeIndex];
+    if (!prize || winners.some(w => w.prizeId === prize.prizeId)) { prizeIndex++; continue; }
+    winners.push({ prizeId: prize.prizeId, playerId: 0, isBot: 1, nicknameSnapshot: bot.botNickname, isDesignated: 0 });
+    prizeIndex++;
+  }
+  const shuffledReal = shuffle([...realPlayers]);
+  for (const p of shuffledReal) {
+    if (prizeIndex >= shuffledPrizes.length) break;
+    if (usedPlayerIds.has(p.playerId)) continue;
+    const prize = shuffledPrizes[prizeIndex];
+    if (!prize) break;
+    const playerInfo = await getPlayerById(p.playerId);
+    winners.push({ prizeId: prize.prizeId, playerId: p.playerId, isBot: 0, nicknameSnapshot: playerInfo?.nickname ?? "", isDesignated: 0 });
+    usedPlayerIds.add(p.playerId);
+    prizeIndex++;
+  }
+  if (winners.length > 0) {
+    await db.insert(rollWinners).values(winners.map(w => ({ ...w, rollRoomId: roomId })));
+  }
+  let actualPaidValue = 0;
+  let actualPaidCount = 0;
+  for (const w of winners) {
+    if (w.isBot || w.playerId === 0) continue;
+    const prizeInfo = prizes.find(p => p.id === w.prizeId);
+    if (!prizeInfo) continue;
+    const amount = parseFloat(prizeInfo.value as string);
+    actualPaidValue += amount;
+    actualPaidCount++;
+    if (prizeInfo.coinType === "shopCoin") {
+      await db.update(players).set({ shopCoin: sql`shopCoin + ${amount}` }).where(eq(players.id, w.playerId));
+    } else {
+      await db.update(players).set({ gold: sql`gold + ${amount}` }).where(eq(players.id, w.playerId));
+    }
+    await db.insert(messages).values({
+      playerId: w.playerId, title: "Roll房参与结果",
+      content: `恭喜您，您在ROLL房活动《${room[0].title}》获得${prizeInfo.name}，价值：${prizeInfo.value}。`,
+      type: "roll", refId: roomId,
+    });
+  }
+  for (const p of realPlayers) {
+    if (!usedPlayerIds.has(p.playerId)) {
+      await db.insert(messages).values({
+        playerId: p.playerId, title: "Roll房参与结果",
+        content: `很遗憾，您在ROLL房活动《${room[0].title}》没有获得奖品。`,
+        type: "roll", refId: roomId,
+      });
+    }
+  }
+  await db.update(rollRooms).set({ status: "ended", actualPaidValue: actualPaidValue.toFixed(2), actualPaidCount }).where(eq(rollRooms.id, roomId));
+  return { winners: winners.length, realWinners: actualPaidCount };
+}
+
+export async function getRollWinners(roomId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: rollWinners.id, playerId: rollWinners.playerId, isBot: rollWinners.isBot,
+    nicknameSnapshot: rollWinners.nicknameSnapshot, isDesignated: rollWinners.isDesignated,
+    createdAt: rollWinners.createdAt, prizeId: rollWinners.prizeId,
+    prizeName: rollRoomPrizes.name, prizeValue: rollRoomPrizes.value, prizeImageUrl: rollRoomPrizes.imageUrl,
+  }).from(rollWinners)
+    .leftJoin(rollRoomPrizes, eq(rollWinners.prizeId, rollRoomPrizes.id))
+    .where(eq(rollWinners.rollRoomId, roomId))
+    .orderBy(rollWinners.createdAt);
+}
+
+export async function getPlayerMessages(playerId: number, page: number = 1, limit: number = 20) {
+  const db = await getDb();
+  if (!db) return { list: [], total: 0 };
+  const offset = (page - 1) * limit;
+  const [list, countResult] = await Promise.all([
+    db.select().from(messages).where(eq(messages.playerId, playerId)).orderBy(desc(messages.createdAt)).limit(limit).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(messages).where(eq(messages.playerId, playerId)),
+  ]);
+  return { list, total: Number(countResult[0]?.count ?? 0) };
+}
+
+export async function getRechargeConfigs() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(rechargeConfigs).where(eq(rechargeConfigs.status, 1)).orderBy(rechargeConfigs.sort);
+}
+
+export async function getPlayerRechargeOrders(playerId: number, page: number = 1, limit: number = 20) {
+  const db = await getDb();
+  if (!db) return { list: [], total: 0 };
+  const offset = (page - 1) * limit;
+  const [list, countResult] = await Promise.all([
+    db.select().from(rechargeOrders).where(eq(rechargeOrders.playerId, playerId)).orderBy(desc(rechargeOrders.createdAt)).limit(limit).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(rechargeOrders).where(eq(rechargeOrders.playerId, playerId)),
+  ]);
+  return { list, total: Number(countResult[0]?.count ?? 0) };
+}
+
+export async function getAdminRollRoomList(opts: {
+  page: number; limit: number; keyword?: string; status?: string; ownerId?: number;
+}) {
+  const db = await getDb();
+  if (!db) return { list: [], total: 0 };
+  const { page, limit, keyword, status, ownerId } = opts;
+  const offset = (page - 1) * limit;
+  const conditions: any[] = [];
+  if (keyword) conditions.push(like(rollRooms.title, `%${keyword}%`));
+  if (status) conditions.push(eq(rollRooms.status, status as any));
+  if (ownerId) conditions.push(eq(rollRooms.ownerId, ownerId));
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const [list, countResult] = await Promise.all([
+    db.select().from(rollRooms).where(whereClause).orderBy(desc(rollRooms.createdAt)).limit(limit).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(rollRooms).where(whereClause),
+  ]);
+  return { list, total: Number(countResult[0]?.count ?? 0) };
+}
+
+export async function getPlayerInventory(playerId: number, page: number = 1, limit: number = 20) {
+  const db = await getDb();
+  if (!db) return { list: [], total: 0 };
+  const offset = (page - 1) * limit;
+  const [list, countResult] = await Promise.all([
+    db.select().from(playerItems).where(eq(playerItems.playerId, playerId)).orderBy(desc(playerItems.createdAt)).limit(limit).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(playerItems).where(eq(playerItems.playerId, playerId)),
+  ]);
+  return { list, total: Number(countResult[0]?.count ?? 0) };
 }

@@ -15,6 +15,20 @@
       "when": 1773066134056,
       "tag": "0001_glamorous_the_professor",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1773069456482,
+      "tag": "0002_chilly_hawkeye",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1773069741015,
+      "tag": "0003_tan_quentin_quire",
+      "breakpoints": true
     }
   ]
 }

@@ -75,7 +75,7 @@ export default function Login() {
     <div
       className="phone-container"
       style={{
-        minHeight: '100vh',
+        height: '100vh',
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
