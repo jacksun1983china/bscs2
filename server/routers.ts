@@ -37,9 +37,11 @@ import { eq, desc, sql } from "drizzle-orm";
 import {
   banners,
   broadcasts,
+  gameSettings,
   rechargeConfigs,
   rollRoomPrizes,
   rollRooms,
+  rollxGames,
 } from "../drizzle/schema";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
@@ -195,13 +197,33 @@ export const appRouter = router({
       return getRechargeConfigs();
     }),
 
-    /** 充值记录 */
+    /** 充値记录 */
     rechargeOrders: publicProcedure
       .input(z.object({ page: z.number().min(1).default(1), limit: z.number().default(20) }))
       .query(async ({ input, ctx }) => {
         const session = await getPlayerFromCookie(ctx.req);
         if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
         return getPlayerRechargeOrders(session.playerId, input.page, input.limit);
+      }),
+
+    /** 更新个人资料（昵称+头像ID） */
+    updateProfile: publicProcedure
+      .input(z.object({
+        nickname: z.string().min(1).max(20).optional(),
+        avatar: z.string().regex(/^0[0-9]{2}$/).optional(), // 001-016
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接失败" });
+        const { players } = await import("../drizzle/schema");
+        const updates: Record<string, string> = {};
+        if (input.nickname) updates.nickname = input.nickname;
+        if (input.avatar) updates.avatar = input.avatar;
+        if (Object.keys(updates).length === 0) return { success: true };
+        await db.update(players).set(updates).where(eq(players.id, session.playerId));
+        return { success: true };
       }),
   }),
 
@@ -611,6 +633,143 @@ export const appRouter = router({
         activeRollRooms: Number(activeRollCount[0]?.count ?? 0),
       };
     }),
+  }),
+
+  // ── ROLL-X 幸运转盘游戏 ──────────────────────────────────────────────
+  rollx: router({
+    /** 获取游戏设置（最小/最大倍率、最小/最大投注额、是否启用） */
+    getSettings: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return { rtp: 96, minBet: 1, maxBet: 10000, minMultiplier: 1.1, maxMultiplier: 30000, enabled: true };
+      const rows = await db.select().from(gameSettings).where(eq(gameSettings.gameKey, "rollx"));
+      if (!rows.length) {
+        await db.insert(gameSettings).values({ gameKey: "rollx", rtp: "96.00", minBet: "1.00", maxBet: "10000.00", minMultiplier: "1.10", maxMultiplier: "30000.00", enabled: 1 });
+        return { rtp: 96, minBet: 1, maxBet: 10000, minMultiplier: 1.1, maxMultiplier: 30000, enabled: true };
+      }
+      const s = rows[0];
+      return { rtp: parseFloat(s.rtp), minBet: parseFloat(s.minBet), maxBet: parseFloat(s.maxBet), minMultiplier: parseFloat(s.minMultiplier), maxMultiplier: parseFloat(s.maxMultiplier), enabled: s.enabled === 1 };
+    }),
+
+    /** 旋转 - 服务端决定结果，扣/加金币 */
+    spin: protectedProcedure
+      .input(z.object({ betAmount: z.number().positive(), multiplier: z.number().min(1.01) }))
+      .mutation(async ({ ctx, input }) => {
+        const playerToken = await getPlayerFromCookie(ctx.req);
+        if (!playerToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        // 获取游戏设置
+        const settingsRows = await db.select().from(gameSettings).where(eq(gameSettings.gameKey, "rollx"));
+        let rtp = 96, minBet = 1, maxBet = 10000;
+        if (settingsRows.length) {
+          rtp = parseFloat(settingsRows[0].rtp);
+          minBet = parseFloat(settingsRows[0].minBet);
+          maxBet = parseFloat(settingsRows[0].maxBet);
+          if (!settingsRows[0].enabled) throw new TRPCError({ code: "FORBIDDEN", message: "游戏暂未开放" });
+        }
+        // 验证投注参数
+        if (input.betAmount < minBet || input.betAmount > maxBet)
+          throw new TRPCError({ code: "BAD_REQUEST", message: `投注金额需在 ${minBet}~${maxBet} 之间` });
+        // 获取玩家余额
+        const { players } = await import("../drizzle/schema");
+        const playerRows = await db.select().from(players).where(eq(players.id, playerToken.playerId));
+        if (!playerRows.length) throw new TRPCError({ code: "NOT_FOUND", message: "玩家不存在" });
+        const player = playerRows[0];
+        const currentGold = parseFloat(player.gold);
+        if (currentGold < input.betAmount) throw new TRPCError({ code: "BAD_REQUEST", message: "金币不足" });
+        // 服务端决定结果（基于RTP）
+        const winProbability = (rtp / 100) / input.multiplier;
+        const isWin = Math.random() < winProbability;
+        // 计算转盘停止角度
+        const greenAngle = 360 / input.multiplier;
+        let stopAngle: number;
+        if (isWin) {
+          stopAngle = Math.random() * greenAngle * 0.85;
+        } else {
+          stopAngle = greenAngle + Math.random() * (360 - greenAngle) * 0.9;
+        }
+        // 计算金额变化
+        const winAmount = isWin ? input.betAmount * input.multiplier : 0;
+        const netAmount = isWin ? winAmount - input.betAmount : -input.betAmount;
+        const newGold = currentGold + netAmount;
+        // 更新玩家余额
+        await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
+        // 记录游戏日志
+        await db.insert(rollxGames).values({
+          playerId: playerToken.playerId,
+          betAmount: input.betAmount.toFixed(2),
+          multiplier: input.multiplier.toFixed(2),
+          isWin: isWin ? 1 : 0,
+          winAmount: winAmount.toFixed(2),
+          netAmount: netAmount.toFixed(2),
+          stopAngle: stopAngle.toFixed(4),
+          balanceAfter: newGold.toFixed(2),
+        });
+        return { isWin, winAmount, netAmount, stopAngle, balanceAfter: newGold, multiplier: input.multiplier, betAmount: input.betAmount };
+      }),
+
+    /** 获取游戏历史记录 */
+    getHistory: protectedProcedure
+      .input(z.object({ limit: z.number().default(20) }))
+      .query(async ({ ctx, input }) => {
+        const playerToken = await getPlayerFromCookie(ctx.req);
+        if (!playerToken) return [];
+        const db = await getDb();
+        if (!db) return [];
+        const rows = await db.select().from(rollxGames)
+          .where(eq(rollxGames.playerId, playerToken.playerId))
+          .orderBy(desc(rollxGames.createdAt)).limit(input.limit);
+        return rows.map(r => ({ id: r.id, betAmount: parseFloat(r.betAmount), multiplier: parseFloat(r.multiplier), isWin: r.isWin === 1, winAmount: parseFloat(r.winAmount), netAmount: parseFloat(r.netAmount), balanceAfter: parseFloat(r.balanceAfter), createdAt: r.createdAt }));
+      }),
+
+    /** 管理后台：更新游戏设置 */
+    updateSettings: protectedProcedure
+      .input(z.object({ rtp: z.number().min(1).max(99).optional(), minBet: z.number().positive().optional(), maxBet: z.number().positive().optional(), minMultiplier: z.number().min(1.01).optional(), maxMultiplier: z.number().max(100000).optional(), enabled: z.boolean().optional(), remark: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const updateData: any = {};
+        if (input.rtp !== undefined) updateData.rtp = input.rtp.toFixed(2);
+        if (input.minBet !== undefined) updateData.minBet = input.minBet.toFixed(2);
+        if (input.maxBet !== undefined) updateData.maxBet = input.maxBet.toFixed(2);
+        if (input.minMultiplier !== undefined) updateData.minMultiplier = input.minMultiplier.toFixed(2);
+        if (input.maxMultiplier !== undefined) updateData.maxMultiplier = input.maxMultiplier.toFixed(2);
+        if (input.enabled !== undefined) updateData.enabled = input.enabled ? 1 : 0;
+        if (input.remark !== undefined) updateData.remark = input.remark;
+        const existing = await db.select().from(gameSettings).where(eq(gameSettings.gameKey, "rollx"));
+        if (existing.length) {
+          await db.update(gameSettings).set(updateData).where(eq(gameSettings.gameKey, "rollx"));
+        } else {
+          await db.insert(gameSettings).values({ gameKey: "rollx", ...updateData });
+        }
+        return { success: true };
+      }),
+
+    /** 管理后台：获取所有游戏设置 */
+    adminGetAllSettings: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) return [];
+      return db.select().from(gameSettings);
+    }),
+
+    /** 管理后台：获取ROLL-X游戏记录 */
+    adminGetGames: protectedProcedure
+      .input(z.object({ limit: z.number().default(50), offset: z.number().default(0) }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) return { rows: [], total: 0 };
+        const [rows, countRows] = await Promise.all([
+          db.select().from(rollxGames).orderBy(desc(rollxGames.createdAt)).limit(input.limit).offset(input.offset),
+          db.select({ count: sql<number>`count(*)` }).from(rollxGames),
+        ]);
+        return {
+          rows: rows.map(r => ({ id: r.id, playerId: r.playerId, betAmount: parseFloat(r.betAmount), multiplier: parseFloat(r.multiplier), isWin: r.isWin === 1, winAmount: parseFloat(r.winAmount), netAmount: parseFloat(r.netAmount), balanceAfter: parseFloat(r.balanceAfter), createdAt: r.createdAt })),
+          total: Number(countRows[0]?.count ?? 0),
+        };
+      }),
   }),
 });
 

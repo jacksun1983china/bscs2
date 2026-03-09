@@ -29,7 +29,8 @@ export const players = mysqlTable("players", {
   id: int("id").autoincrement().primaryKey(),
   phone: varchar("phone", { length: 20 }).notNull().unique(),
   nickname: varchar("nickname", { length: 100 }).notNull().default(""),
-  avatar: varchar("avatar", { length: 500 }).notNull().default(""),
+  /** 系统头像ID，001-016，8男8女，默认001 */
+  avatar: varchar("avatar", { length: 10 }).notNull().default("001"),
   vipLevel: tinyint("vipLevel").notNull().default(0),
   gold: decimal("gold", { precision: 15, scale: 2 }).notNull().default("0.00"),
   /** 商城币（可兑换商品） */
@@ -386,3 +387,48 @@ export const messages = mysqlTable("messages", {
 });
 
 export type Message = typeof messages.$inferSelect;
+
+// ── ROLL-X 幸运转盘游戏记录 ──────────────────────────────────────────────────────
+export const rollxGames = mysqlTable("rollxGames", {
+  id: int("id").autoincrement().primaryKey(),
+  playerId: int("playerId").notNull(),
+  /** 投注金额（金币） */
+  betAmount: decimal("betAmount", { precision: 18, scale: 2 }).notNull(),
+  /** 倍率X（如2.00, 3.00, 10.00） */
+  multiplier: decimal("multiplier", { precision: 10, scale: 2 }).notNull(),
+  /** 是否赢 */
+  isWin: tinyint("isWin").notNull().default(0),
+  /** 赢得金额（输为0） */
+  winAmount: decimal("winAmount", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  /** 净盈亏（赢为正，输为负） */
+  netAmount: decimal("netAmount", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  /** 转盘停止角度 */
+  stopAngle: decimal("stopAngle", { precision: 10, scale: 4 }).notNull().default("0.0000"),
+  /** 玩家余额快照（游戏后） */
+  balanceAfter: decimal("balanceAfter", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type RollxGame = typeof rollxGames.$inferSelect;
+
+// ── 游戏设置（管理后台控制）──────────────────────────────────────────────────────
+export const gameSettings = mysqlTable("gameSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 游戏标识：rollx / arena 等 */
+  gameKey: varchar("gameKey", { length: 50 }).notNull().unique(),
+  /** RTP 百分比（0-100），如 96 表示 96% */
+  rtp: decimal("rtp", { precision: 5, scale: 2 }).notNull().default("96.00"),
+  /** 最小投注金额 */
+  minBet: decimal("minBet", { precision: 18, scale: 2 }).notNull().default("1.00"),
+  /** 最大投注金额 */
+  maxBet: decimal("maxBet", { precision: 18, scale: 2 }).notNull().default("10000.00"),
+  /** 最小倍率 */
+  minMultiplier: decimal("minMultiplier", { precision: 10, scale: 2 }).notNull().default("1.10"),
+  /** 最大倍率 */
+  maxMultiplier: decimal("maxMultiplier", { precision: 10, scale: 2 }).notNull().default("30000.00"),
+  /** 是否启用 */
+  enabled: tinyint("enabled").notNull().default(1),
+  /** 备注 */
+  remark: varchar("remark", { length: 255 }).notNull().default(""),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type GameSetting = typeof gameSettings.$inferSelect;

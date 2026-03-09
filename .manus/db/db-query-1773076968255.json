@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, phone, nickname, gold FROM players ORDER BY id DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT id, phone, nickname, gold FROM players ORDER BY id DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "3",
+      "phone": "18526239986",
+      "nickname": "用户9986",
+      "gold": "1000000.00"
+    },
+    {
+      "id": "2",
+      "phone": "13900139001",
+      "nickname": "用户9001",
+      "gold": "1000000.00"
+    },
+    {
+      "id": "1",
+      "phone": "18526239983",
+      "nickname": "用户9983",
+      "gold": "1000000.00"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tphone\tnickname\tgold\n3\t18526239986\t用户9986\t1000000.00\n2\t13900139001\t用户9001\t1000000.00\n1\t18526239983\t用户9983\t1000000.00\n",
+  "stderr": "",
+  "execution_time_ms": 1586
+}

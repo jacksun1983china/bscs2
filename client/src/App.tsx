@@ -13,7 +13,7 @@ import Profile from "./pages/Profile";
 import Share from "./pages/Share";
 import Bag from "./pages/Bag";
 import Recharge from "./pages/Recharge";
-
+import RollX from "./pages/RollX";
 function Router() {
   return (
     <Switch>
@@ -21,6 +21,7 @@ function Router() {
       <Route path={"/login"} component={Login} />
       <Route path={"/admin"} component={AdminDashboard} />
       {/* 游戏页面 */}
+      <Route path={"/rollx"} component={RollX} />
       <Route path={"/roll"} component={RollRoom} />
       <Route path={"/roll/:id"} component={RollRoomDetail} />
       {/* 底部导航页面 */}

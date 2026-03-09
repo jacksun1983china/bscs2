@@ -1,53 +1,19 @@
 /**
  * Profile.tsx — 我的页面
- * 个人信息、返佣、推广数据
+ * 个人信息、头像选择、返佣、推广数据
  */
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
-import { ASSETS } from '@/lib/assets';
+import { ASSETS, SYSTEM_AVATARS, getAvatarUrl } from '@/lib/assets';
 import { toast } from 'sonner';
-
-const TAB_ITEMS = [
-  { key: 'wode',     icon: ASSETS.wode,     label: '我的',   route: '/profile' },
-  { key: 'fenxiang', icon: ASSETS.fenxiang, label: '分享',   route: '/share' },
-  { key: 'dating',   icon: ASSETS.dating,   label: '大厅',   route: '/',       isCenter: true },
-  { key: 'beibao',   icon: ASSETS.beibao,   label: '背包',   route: '/bag' },
-  { key: 'chongzhi', icon: ASSETS.chongzhi, label: '充值',   route: '/recharge' },
-];
-
-function BottomNav({ active }: { active: string }) {
-  const [, navigate] = useLocation();
-  return (
-    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
-      <div style={{ position: 'relative' }}>
-        <img src={ASSETS.tucheng7} alt="" style={{ width: '100%', display: 'block', height: 56 }} />
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center' }}>
-          {TAB_ITEMS.map(tab => (
-            <div key={tab.key} onClick={() => navigate(tab.route)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, paddingBottom: tab.isCenter ? 8 : 0, cursor: 'pointer' }}>
-              {tab.isCenter ? (
-                <div style={{ marginTop: -22 }}>
-                  <img src={tab.icon} alt={tab.label} style={{ width: 60, height: 50, objectFit: 'contain' }} />
-                  <div style={{ color: active === tab.key ? '#fff' : '#aaa', fontSize: 11, textAlign: 'center', marginTop: 2 }}>{tab.label}</div>
-                </div>
-              ) : (
-                <>
-                  <img src={tab.icon} alt={tab.label} style={{ width: 26, height: 26, objectFit: 'contain' }} />
-                  <span style={{ color: active === tab.key ? '#c084fc' : '#888', fontSize: 10, fontWeight: active === tab.key ? 700 : 400 }}>{tab.label}</span>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+import BottomNav from '@/components/BottomNav';
 
 export default function Profile() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<'info' | 'commission' | 'messages'>('info');
   const [inviteInput, setInviteInput] = useState('');
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   const { data: player, refetch } = trpc.player.me.useQuery();
   const { data: teamStats } = trpc.player.teamStats.useQuery(undefined, { enabled: !!player });
@@ -67,9 +33,18 @@ export default function Profile() {
     onSuccess: () => navigate('/login'),
   });
 
+  const updateProfileMutation = trpc.player.updateProfile.useMutation({
+    onSuccess: () => {
+      toast.success('头像已更新！');
+      setShowAvatarPicker(false);
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   if (!player) {
     return (
-      <div className="phone-container" style={{ height: '100vh', background: '#0d0621', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+      <div className="phone-container" style={{ height: '100vh', background: '#0d0621', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, position: 'relative' }}>
         <div style={{ fontSize: 40 }}>👤</div>
         <div style={{ color: '#9980cc', fontSize: 14 }}>请先登录</div>
         <button onClick={() => navigate('/login')} style={{ padding: '10px 28px', borderRadius: 10, background: 'linear-gradient(135deg, #7c3aed, #c084fc)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>立即登录</button>
@@ -84,7 +59,7 @@ export default function Profile() {
     <div className="phone-container" style={{ height: '100vh', position: 'relative', background: '#0d0621', overflow: 'hidden' }}>
       <img src={ASSETS.bg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.4, pointerEvents: 'none' }} />
 
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 56, zIndex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 70, zIndex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* 顶部 */}
         <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', height: 52, flexShrink: 0, borderBottom: '1px solid rgba(120,60,220,0.2)' }}>
           <span style={{ color: '#fff', fontSize: 17, fontWeight: 700, flex: 1 }}>我的</span>
@@ -95,12 +70,14 @@ export default function Profile() {
           {/* 用户信息卡 */}
           <div style={{ margin: '10px', borderRadius: 12, background: 'linear-gradient(135deg, rgba(30,10,65,0.95) 0%, rgba(15,5,40,0.98) 100%)', border: '1.5px solid rgba(120,60,220,0.4)', padding: '14px', boxShadow: '0 0 20px rgba(100,40,200,0.3)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 60, height: 60, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(120,60,220,0.5)', background: 'rgba(50,20,100,0.5)', flexShrink: 0 }}>
-                {player.avatar ? (
-                  <img src={player.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>👤</div>
-                )}
+              {/* 头像（可点击更换） */}
+              <div
+                onClick={() => setShowAvatarPicker(true)}
+                style={{ position: 'relative', width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(120,60,220,0.6)', background: 'rgba(50,20,100,0.5)', flexShrink: 0, cursor: 'pointer' }}
+              >
+                <img src={getAvatarUrl(player.avatar)} alt="头像" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {/* 更换提示 */}
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.55)', textAlign: 'center', fontSize: 9, color: '#c084fc', padding: '2px 0' }}>更换</div>
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ color: '#fff', fontSize: 16, fontWeight: 700 }}>{player.nickname}</div>
@@ -190,7 +167,7 @@ export default function Profile() {
                 <button
                   onClick={() => withdrawMutation.mutate()}
                   disabled={parseFloat(player.commissionBalance || '0') <= 0 || withdrawMutation.isPending}
-                  style={{ width: '100%', padding: '10px', borderRadius: 8, border: 'none', background: parseFloat(player.commissionBalance || '0') > 0 ? 'linear-gradient(135deg, #7c3aed, #c084fc)' : 'rgba(80,80,80,0.3)', color: parseFloat(player.commissionBalance || '0') > 0 ? '#fff' : '#666', fontSize: 14, fontWeight: 700, cursor: parseFloat(player.commissionBalance || '0') > 0 ? 'pointer' : 'not-allowed', marginTop: 8 }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 8, border: 'none', background: parseFloat(player.commissionBalance || '0') > 0 ? 'linear-gradient(135deg, #7c3aed, #c084fc)' : 'rgba(80,80,80,0.3)', color: parseFloat(player.commissionBalance || '0') > 0 ? '#fff' : '#666', fontSize: 14, fontWeight: 700, cursor: parseFloat(player.commissionBalance || '0') > 0 ? 'pointer' : 'not-allowed' }}
                 >
                   {withdrawMutation.isPending ? '提取中...' : '提取到商城币'}
                 </button>
@@ -200,31 +177,20 @@ export default function Profile() {
               {teamStats && (
                 <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(20,8,50,0.7)', border: '1px solid rgba(120,60,220,0.25)' }}>
                   <div style={{ color: '#c084fc', fontSize: 13, fontWeight: 600, marginBottom: 10 }}>推广数据</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
                     {[
-                      { label: '直属人数', value: teamStats.total || 0, color: '#7df9ff' },
-                      { label: '今日新增', value: teamStats.todayCount || 0, color: '#c084fc' },
-                      { label: '待提返佣', value: `¥${parseFloat(teamStats.commissionBalance || '0').toFixed(0)}`, color: '#ffd700' },
-                      { label: '我的返佣', value: `¥${parseFloat(player.commissionBalance || '0').toFixed(0)}`, color: '#f97316' },
+                      { label: '今日新增', value: teamStats.todayCount },
+                      { label: '总下级', value: teamStats.total },
+                      { label: '待提返佣', value: `¥${parseFloat(teamStats.commissionBalance || '0').toFixed(2)}` },
                     ].map(item => (
-                      <div key={item.label} style={{ padding: '10px', background: 'rgba(20,8,50,0.5)', borderRadius: 8, border: '1px solid rgba(120,60,220,0.15)' }}>
-                        <div style={{ color: item.color, fontSize: 18, fontWeight: 700 }}>{item.value}</div>
+                      <div key={item.label} style={{ flex: 1, textAlign: 'center', padding: '8px 4px', background: 'rgba(20,8,50,0.5)', borderRadius: 8, border: '1px solid rgba(120,60,220,0.2)' }}>
+                        <div style={{ color: '#ffd700', fontSize: 15, fontWeight: 700 }}>{item.value}</div>
                         <div style={{ color: '#9980cc', fontSize: 11, marginTop: 2 }}>{item.label}</div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-
-              {/* 返佣说明 */}
-              <div style={{ marginTop: 10, padding: '12px', borderRadius: 10, background: 'rgba(20,8,50,0.5)', border: '1px solid rgba(120,60,220,0.15)' }}>
-                <div style={{ color: '#9980cc', fontSize: 11, lineHeight: 1.8 }}>
-                  <div>• 每日00:30自动计算前一日返佣</div>
-                  <div>• 默认返佣比例：4%（充值总额×4%）</div>
-                  <div>• 返佣提取后转入商城币，可用于兑换奖品</div>
-                  <div>• 未提取返佣累计叠加，不会清零</div>
-                </div>
-              </div>
             </div>
           )}
 
@@ -252,7 +218,71 @@ export default function Profile() {
         </div>
       </div>
 
-      <BottomNav active="wode" />
+      {/* 底部导航 */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+        <BottomNav active="wode" />
+      </div>
+
+      {/* 头像选择弹窗 */}
+      {showAvatarPicker && (
+        <div
+          style={{ position: 'absolute', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-end' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowAvatarPicker(false); }}
+        >
+          <div style={{ width: '100%', background: 'linear-gradient(180deg, #1a0840 0%, #0d0621 100%)', borderRadius: '20px 20px 0 0', padding: '16px 12px 24px', border: '1px solid rgba(120,60,220,0.4)' }}>
+            <div style={{ textAlign: 'center', color: '#c084fc', fontSize: 15, fontWeight: 700, marginBottom: 14 }}>选择头像</div>
+
+            {/* 男性头像 */}
+            <div style={{ color: '#9980cc', fontSize: 12, marginBottom: 8 }}>男性头像</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 6, marginBottom: 14 }}>
+              {SYSTEM_AVATARS.filter(a => a.gender === 'male').map(avatar => (
+                <div
+                  key={avatar.id}
+                  onClick={() => updateProfileMutation.mutate({ avatar: avatar.id })}
+                  style={{
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    border: player.avatar === avatar.id ? '2px solid #c084fc' : '2px solid rgba(120,60,220,0.3)',
+                    boxShadow: player.avatar === avatar.id ? '0 0 8px rgba(192,132,252,0.8)' : 'none',
+                    cursor: 'pointer',
+                    aspectRatio: '1',
+                  }}
+                >
+                  <img src={avatar.url} alt={avatar.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ))}
+            </div>
+
+            {/* 女性头像 */}
+            <div style={{ color: '#9980cc', fontSize: 12, marginBottom: 8 }}>女性头像</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 6, marginBottom: 16 }}>
+              {SYSTEM_AVATARS.filter(a => a.gender === 'female').map(avatar => (
+                <div
+                  key={avatar.id}
+                  onClick={() => updateProfileMutation.mutate({ avatar: avatar.id })}
+                  style={{
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    border: player.avatar === avatar.id ? '2px solid #c084fc' : '2px solid rgba(120,60,220,0.3)',
+                    boxShadow: player.avatar === avatar.id ? '0 0 8px rgba(192,132,252,0.8)' : 'none',
+                    cursor: 'pointer',
+                    aspectRatio: '1',
+                  }}
+                >
+                  <img src={avatar.url} alt={avatar.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setShowAvatarPicker(false)}
+              style={{ width: '100%', padding: '12px', borderRadius: 10, border: '1px solid rgba(120,60,220,0.4)', background: 'rgba(20,8,50,0.8)', color: '#9980cc', fontSize: 14, cursor: 'pointer' }}
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

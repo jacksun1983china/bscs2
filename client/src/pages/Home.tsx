@@ -1,20 +1,22 @@
 /**
  * Home.tsx — bdcs2 游戏平台首页
  * 设计风格：赛博朋克深紫蓝霓虹，严格还原设计稿切图
- * 布局：顶部导航 → Banner轮播 → 广播 → 用户信息 → 游戏菜单 → 底部导航
+ * 布局：顶部导航 → Banner轮播 → 广播 → 用户信息（公共组件）→ 游戏菜单 → 底部导航（公共组件）
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { ASSETS } from '@/lib/assets';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
+import PlayerInfoBar from '@/components/PlayerInfoBar';
+import BottomNav from '@/components/BottomNav';
 
 // ──────────────────────────────────────────────
 // 游戏菜单数据
 // ──────────────────────────────────────────────
 const GAMES = [
   { id: 'arena',   bg: ASSETS.jingjichangk,    label: ASSETS.jingjichang,   labelText: '竞技场',   avatar: ASSETS.touxiang1, route: null },
-  { id: 'wheel',   bg: ASSETS.xingyunzhuanpank, label: ASSETS.xingyunzhuanpan, labelText: '幸运转盘', avatar: ASSETS.touxiang2, route: null },
+  { id: 'wheel',   bg: ASSETS.xingyunzhuanpank, label: ASSETS.xingyunzhuanpan, labelText: '幸运转盘', avatar: ASSETS.touxiang2, route: '/rollx' },
   { id: 'rainbow', bg: ASSETS.caihongxuanfengk, label: null,                 labelText: '彩虹旋风', avatar: ASSETS.touxiang3, route: null },
   { id: 'roll',    bg: ASSETS.rollk,            label: ASSETS.roll,          labelText: 'ROLL房',   avatar: ASSETS.touxiang4, route: '/roll' },
 ];
@@ -45,28 +47,21 @@ function TopNav() {
 function BannerSection() {
   const { data: bannerList } = trpc.public.banners.useQuery();
   const [currentIndex, setCurrentIndex] = useState(0);
-
-  // 有真实数据时用真实数据，否则用默认图
   const banners = (bannerList && bannerList.length > 0)
     ? bannerList
     : [{ id: 0, imageUrl: ASSETS.bannerk, linkUrl: '', title: '' }];
-
   const goNext = useCallback(() => {
     setCurrentIndex(i => (i + 1) % banners.length);
   }, [banners.length]);
-
-  // 自动轮播
   useEffect(() => {
     if (banners.length <= 1) return;
     const timer = setInterval(goNext, 4000);
     return () => clearInterval(timer);
   }, [goNext, banners.length]);
-
   const handleClick = () => {
     const banner = banners[currentIndex];
     if (banner?.linkUrl) window.open(banner.linkUrl, '_blank');
   };
-
   return (
     <div style={{ padding: '0 10px', marginTop: 4 }}>
       <div
@@ -80,7 +75,6 @@ function BannerSection() {
         }}
         onClick={handleClick}
       >
-        {/* 图片轮播 */}
         <div style={{ position: 'relative', width: '100%', aspectRatio: '16/7', overflow: 'hidden' }}>
           {banners.map((b, i) => (
             <img
@@ -100,8 +94,6 @@ function BannerSection() {
             />
           ))}
         </div>
-
-        {/* 指示点 */}
         {banners.length > 1 && (
           <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 5, zIndex: 5 }}>
             {banners.map((_, i) => (
@@ -135,22 +127,18 @@ const DEFAULT_BROADCASTS = [
   '3312456 ROLL房获得限定皮肤，价值 ¥888',
   '7723190 竞技场排名第一，获得传说装备',
 ];
-
 function BroadcastBar() {
   const { data: broadcastList } = trpc.public.broadcasts.useQuery();
   const messages = (broadcastList && broadcastList.length > 0)
     ? broadcastList.map(b => b.content)
     : DEFAULT_BROADCASTS;
-
   const [msgIndex, setMsgIndex] = useState(0);
-
   useEffect(() => {
     const timer = setInterval(() => {
       setMsgIndex(i => (i + 1) % messages.length);
     }, 3500);
     return () => clearInterval(timer);
   }, [messages.length]);
-
   return (
     <div style={{ margin: '8px 10px', background: 'rgba(20,8,50,0.85)', border: '1px solid rgba(100,50,200,0.4)', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
       <img src={ASSETS.guangbo} alt="广播" style={{ width: 22, height: 22, flexShrink: 0 }} />
@@ -164,71 +152,10 @@ function BroadcastBar() {
 }
 
 // ──────────────────────────────────────────────
-// 用户信息区
-// ──────────────────────────────────────────────
-function UserInfoSection({ player }: { player: any }) {
-  const [, navigate] = useLocation();
-  const logoutMutation = trpc.player.logout.useMutation({ onSuccess: () => navigate('/login') });
-
-  if (!player) {
-    return (
-      <div
-        style={{ margin: '6px 10px', background: 'linear-gradient(135deg, rgba(30,10,65,0.95) 0%, rgba(15,5,40,0.98) 100%)', border: '1px solid rgba(120,60,220,0.35)', borderRadius: 12, padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-        onClick={() => navigate('/login')}
-      >
-        <span style={{ color: '#a78bfa', fontSize: 14, fontWeight: 600 }}>点击登录 / 注册</span>
-      </div>
-    );
-  }
-
-  const vipColors: Record<number, string> = { 0: '#888', 1: '#f5a623', 2: '#e8750a', 3: '#ff6b6b', 4: '#c084fc', 5: '#7c3aed', 6: '#06b6d4', 7: '#ffd700' };
-
-  return (
-    <div style={{ margin: '6px 10px', background: 'linear-gradient(135deg, rgba(30,10,65,0.95) 0%, rgba(15,5,40,0.98) 100%)', border: '1px solid rgba(120,60,220,0.35)', borderRadius: 12, padding: '10px 12px', boxShadow: '0 4px 20px rgba(80,20,160,0.25)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ position: 'relative', width: 56, height: 58, flexShrink: 0 }}>
-          <img src={ASSETS.touxiangk} alt="头像框" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', zIndex: 2 }} />
-          <img src={player.avatar || ASSETS.touxiang5} alt="头像" style={{ position: 'absolute', top: '8%', left: '8%', width: '84%', height: '84%', objectFit: 'cover', borderRadius: '50%', zIndex: 1 }} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#fff', fontSize: 15, fontWeight: 700 }}>{player.nickname}</span>
-            <img src={ASSETS.huizhang} alt="徽章" style={{ height: 18, objectFit: 'contain' }} />
-          </div>
-          <div style={{ color: '#9980cc', fontSize: 12, marginTop: 2 }}>ID：{player.id}</div>
-          <div style={{ display: 'inline-block', background: `linear-gradient(135deg, ${vipColors[player.vipLevel] || '#888'} 0%, rgba(0,0,0,0.3) 100%)`, borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700, color: '#fff', marginTop: 4, letterSpacing: 0.5 }}>
-            VIP{player.vipLevel}
-          </div>
-        </div>
-        <div onClick={() => logoutMutation.mutate()} style={{ width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: '1px solid rgba(120,60,220,0.4)', color: 'rgba(180,150,255,0.7)', fontSize: 10 }}>
-          退出
-        </div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(120,60,220,0.2)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <img src={ASSETS.jinbi1} alt="金币" style={{ width: 22, height: 22 }} />
-          <span style={{ color: '#ffd700', fontSize: 14, fontWeight: 600 }}>{parseFloat(player.gold || '0').toFixed(0)}</span>
-        </div>
-        <img src={ASSETS.gengduo} alt=">" style={{ width: 8, opacity: 0.6 }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <img src={ASSETS.jinbi2} alt="钻石" style={{ width: 22, height: 22 }} />
-          <span style={{ color: '#7df9ff', fontSize: 14, fontWeight: 600 }}>{parseFloat(player.diamond || '0').toFixed(0)}</span>
-        </div>
-        <img src={ASSETS.gengduo} alt=">" style={{ width: 8, opacity: 0.6 }} />
-        <span style={{ color: 'rgba(160,140,200,0.6)', fontSize: 11, marginLeft: 'auto' }}>
-          {player.phone?.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// ──────────────────────────────────────────────
 // 游戏菜单区
 // ──────────────────────────────────────────────
 function GameMenuSection() {
   const [, navigate] = useLocation();
-
   const handleGameClick = (game: typeof GAMES[0]) => {
     if (game.route) {
       navigate(game.route);
@@ -236,22 +163,48 @@ function GameMenuSection() {
       toast.info(`${game.labelText} 即将上线，敬请期待！`);
     }
   };
-
   return (
-    <div style={{ margin: '8px 10px', flex: 1, minHeight: 0, position: 'relative', borderRadius: 16, overflow: 'hidden', border: '1.5px solid rgba(120,60,220,0.45)', boxShadow: '0 0 30px rgba(80,20,160,0.3)' }}>
-      <img src={ASSETS.k4} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }} />
+    <div
+      style={{
+        margin: '8px 10px',
+        flex: 1,
+        minHeight: 0,
+        position: 'relative',
+        borderRadius: 16,
+        overflow: 'hidden',
+        border: '1.5px solid rgba(120,60,220,0.45)',
+        boxShadow: '0 0 30px rgba(80,20,160,0.3)',
+      }}
+    >
+      {/* 大背景框 */}
+      <img
+        src={ASSETS.k4}
+        alt=""
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
+      />
+      {/* 内容层 */}
       <div style={{ position: 'relative', zIndex: 1, padding: '12px 10px 12px 8px', height: '100%', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', gap: 8, flex: 1, minHeight: 0 }}>
           {/* 左侧头像列 */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 46, flexShrink: 0 }}>
             {GAMES.map(g => (
-              <div key={g.id} style={{ flex: 1, minHeight: 0, borderRadius: 10, overflow: 'hidden', border: '1.5px solid rgba(120,60,220,0.5)', boxShadow: '0 0 8px rgba(100,40,200,0.4)' }}>
+              <div
+                key={g.id}
+                style={{
+                  flex: 1,
+                  minHeight: 0,
+                  borderRadius: 10,
+                  overflow: 'hidden',
+                  border: '1.5px solid rgba(120,60,220,0.5)',
+                  boxShadow: '0 0 8px rgba(100,40,200,0.4)',
+                }}
+              >
                 <img src={g.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
             ))}
           </div>
           {/* 右侧游戏卡片列 */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {GAMES.map(g => (
               <div
                 key={g.id}
@@ -278,58 +231,6 @@ function GameMenuSection() {
 }
 
 // ──────────────────────────────────────────────
-// 底部导航
-// ──────────────────────────────────────────────
-const TAB_ITEMS = [
-  { key: 'wode',     icon: ASSETS.wode,     label: '我的',   route: '/profile' },
-  { key: 'fenxiang', icon: ASSETS.fenxiang, label: '分享',   route: '/share' },
-  { key: 'dating',   icon: ASSETS.dating,   label: '大厅',   route: '/',       isCenter: true },
-  { key: 'beibao',   icon: ASSETS.beibao,   label: '背包',   route: '/bag' },
-  { key: 'chongzhi', icon: ASSETS.chongzhi, label: '充值',   route: '/recharge' },
-];
-
-function BottomNav({ active }: { active: string }) {
-  const [, navigate] = useLocation();
-
-  const handleTabClick = (tab: typeof TAB_ITEMS[0]) => {
-    navigate(tab.route);
-  };
-
-  return (
-    <div style={{ position: 'sticky', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
-      <div style={{ position: 'relative' }}>
-        <img src={ASSETS.tucheng7} alt="" style={{ width: '100%', display: 'block', height: 56 }} />
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center' }}>
-          {TAB_ITEMS.map(tab => (
-            <div
-              key={tab.key}
-              onClick={() => handleTabClick(tab)}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, paddingBottom: tab.isCenter ? 8 : 0, cursor: 'pointer' }}
-            >
-              {tab.isCenter ? (
-                <div style={{ marginTop: -22 }}>
-                  <img src={tab.icon} alt={tab.label} style={{ width: 60, height: 50, objectFit: 'contain' }} />
-                  <div style={{ color: active === tab.key ? '#fff' : '#aaa', fontSize: 11, textAlign: 'center', marginTop: 2, fontWeight: active === tab.key ? 700 : 400 }}>
-                    {tab.label}
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <img src={tab.icon} alt={tab.label} style={{ width: 26, height: 26, objectFit: 'contain' }} />
-                  <span style={{ color: active === tab.key ? '#c084fc' : '#888', fontSize: 10, fontWeight: active === tab.key ? 700 : 400 }}>
-                    {tab.label}
-                  </span>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ──────────────────────────────────────────────
 // 首页主体
 // ──────────────────────────────────────────────
 export default function Home() {
@@ -344,19 +245,25 @@ export default function Home() {
 
   return (
     <div className="phone-container" style={{ height: '100vh', position: 'relative', background: '#0d0621', overflow: 'hidden' }}>
+      {/* 全局背景图 */}
       <img src={ASSETS.bg} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.55, pointerEvents: 'none' }} />
+
       {/* 内容区：flex布局，GameMenuSection自动填充剩余空间 */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 56, zIndex: 1, display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 70, zIndex: 1, display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
         <TopNav />
         <BannerSection />
         <BroadcastBar />
-        <UserInfoSection player={player} />
+        {/* 用户信息区：公共组件，首页显示退出按钮 */}
+        <PlayerInfoBar showLogout={true} />
         <GameMenuSection />
       </div>
-      {/* 底部导航：固定在底部 */}
+
+      {/* 底部导航：公共组件，固定在底部，大厅高亮 */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 2 }}>
         <BottomNav active="dating" />
       </div>
+
+      {/* 广播动画 */}
       <style>{`
         @keyframes slideInBroadcast {
           from { opacity: 0; transform: translateY(8px); }
