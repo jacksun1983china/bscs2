@@ -1,0 +1,97 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'players' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'players' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "phone"
+    },
+    {
+      "COLUMN_NAME": "nickname"
+    },
+    {
+      "COLUMN_NAME": "avatar"
+    },
+    {
+      "COLUMN_NAME": "vipLevel"
+    },
+    {
+      "COLUMN_NAME": "gold"
+    },
+    {
+      "COLUMN_NAME": "diamond"
+    },
+    {
+      "COLUMN_NAME": "totalRecharge"
+    },
+    {
+      "COLUMN_NAME": "totalWin"
+    },
+    {
+      "COLUMN_NAME": "status"
+    },
+    {
+      "COLUMN_NAME": "banReason"
+    },
+    {
+      "COLUMN_NAME": "registerIp"
+    },
+    {
+      "COLUMN_NAME": "lastLogin"
+    },
+    {
+      "COLUMN_NAME": "lastIp"
+    },
+    {
+      "COLUMN_NAME": "device"
+    },
+    {
+      "COLUMN_NAME": "inviteCode"
+    },
+    {
+      "COLUMN_NAME": "invitedBy"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "points"
+    },
+    {
+      "COLUMN_NAME": "steamAccount"
+    },
+    {
+      "COLUMN_NAME": "safePassword"
+    },
+    {
+      "COLUMN_NAME": "realName"
+    },
+    {
+      "COLUMN_NAME": "idCard"
+    },
+    {
+      "COLUMN_NAME": "shopCoin"
+    },
+    {
+      "COLUMN_NAME": "identity"
+    },
+    {
+      "COLUMN_NAME": "commissionRate"
+    },
+    {
+      "COLUMN_NAME": "commissionEnabled"
+    },
+    {
+      "COLUMN_NAME": "commissionBalance"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nphone\nnickname\navatar\nvipLevel\ngold\ndiamond\ntotalRecharge\ntotalWin\nstatus\nbanReason\nregisterIp\nlastLogin\nlastIp\ndevice\ninviteCode\ninvitedBy\ncreatedAt\nupdatedAt\npoints\nsteamAccount\nsafePassword\nrealName\nidCard\nshopCoin\nidentity\ncommissionRate\ncommissionEnabled\ncommissionBalance\n",
+  "stderr": "",
+  "execution_time_ms": 1663
+}

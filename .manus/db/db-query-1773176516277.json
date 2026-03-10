@@ -1,0 +1,242 @@
+{
+  "query": "DESCRIBE players;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute DESCRIBE players;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "phone",
+      "Type": "varchar(20)",
+      "Null": "NO",
+      "Key": "UNI",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "nickname",
+      "Type": "varchar(100)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "",
+      "Extra": ""
+    },
+    {
+      "Field": "avatar",
+      "Type": "varchar(10)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "001",
+      "Extra": ""
+    },
+    {
+      "Field": "vipLevel",
+      "Type": "tinyint",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "gold",
+      "Type": "decimal(15,2)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0.00",
+      "Extra": ""
+    },
+    {
+      "Field": "diamond",
+      "Type": "decimal(15,2)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0.00",
+      "Extra": ""
+    },
+    {
+      "Field": "totalRecharge",
+      "Type": "decimal(15,2)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0.00",
+      "Extra": ""
+    },
+    {
+      "Field": "totalWin",
+      "Type": "decimal(15,2)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0.00",
+      "Extra": ""
+    },
+    {
+      "Field": "status",
+      "Type": "tinyint",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "banReason",
+      "Type": "varchar(255)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "",
+      "Extra": ""
+    },
+    {
+      "Field": "registerIp",
+      "Type": "varchar(50)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "",
+      "Extra": ""
+    },
+    {
+      "Field": "lastLogin",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "lastIp",
+      "Type": "varchar(50)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "",
+      "Extra": ""
+    },
+    {
+      "Field": "device",
+      "Type": "varchar(200)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "",
+      "Extra": ""
+    },
+    {
+      "Field": "inviteCode",
+      "Type": "varchar(20)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "",
+      "Extra": ""
+    },
+    {
+      "Field": "invitedBy",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "Field": "points",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "steamAccount",
+      "Type": "varchar(100)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "",
+      "Extra": ""
+    },
+    {
+      "Field": "safePassword",
+      "Type": "varchar(100)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "",
+      "Extra": ""
+    },
+    {
+      "Field": "realName",
+      "Type": "varchar(50)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "",
+      "Extra": ""
+    },
+    {
+      "Field": "idCard",
+      "Type": "varchar(20)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "",
+      "Extra": ""
+    },
+    {
+      "Field": "shopCoin",
+      "Type": "decimal(15,2)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0.00",
+      "Extra": ""
+    },
+    {
+      "Field": "identity",
+      "Type": "enum('player','streamer','merchant')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "player",
+      "Extra": ""
+    },
+    {
+      "Field": "commissionRate",
+      "Type": "decimal(5,2)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "4.00",
+      "Extra": ""
+    },
+    {
+      "Field": "commissionEnabled",
+      "Type": "tinyint",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "commissionBalance",
+      "Type": "decimal(15,2)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0.00",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\nphone\tvarchar(20)\tNO\tUNI\tNULL\t\nnickname\tvarchar(100)\tNO\t\t\t\navatar\tvarchar(10)\tNO\t\t001\t\nvipLevel\ttinyint\tNO\t\t0\t\ngold\tdecimal(15,2)\tNO\t\t0.00\t\ndiamond\tdecimal(15,2)\tNO\t\t0.00\t\ntotalRecharge\tdecimal(15,2)\tNO\t\t0.00\t\ntotalWin\tdecimal(15,2)\tNO\t\t0.00\t\nstatus\ttinyint\tNO\t\t1\t\nbanReason\tvarchar(255)\tNO\t\t\t\nregisterIp\tvarchar(50)\tNO\t\t\t\nlastLogin\ttimestamp\tYES\t\tCURRENT_TIMESTAMP\t\nlastIp\tvarchar(50)\tNO\t\t\t\ndevice\tvarchar(200)\tNO\t\t\t\ninviteCode\tvarchar(20)\tNO\t\t\t\ninvitedBy\tint\tYES\t\tNULL\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\npoints\tint\tNO\t\t0\t\nsteamAccount\tvarchar(100)\tNO\t\t\t\nsafePassword\tvarchar(100)\tNO\t\t\t\nrealName\tvarchar(50)\tNO\t\t\t\nidCard\tvarchar(20)\tNO\t\t\t\nshopCoin\tdecimal(15,2)\tNO\t\t0.00\t\nidentity\tenum('player','streamer','merchant')\tNO\t\tplayer\t\ncommissionRate\tdecimal(5,2)\tNO\t\t4.00\t\ncommissionEnabled\ttinyint\tNO\t\t0\t\ncommissionBalance\tdecimal(15,2)\tNO\t\t0.00\t\n",
+  "stderr": "",
+  "execution_time_ms": 1575
+}

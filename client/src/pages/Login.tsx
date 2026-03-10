@@ -179,6 +179,7 @@ export default function Login() {
       <div style={{
         position: 'relative', zIndex: 4, flex: 1,
         display: 'flex', flexDirection: 'column', width: '100%',
+        minHeight: 0,
       }}>
         {/* LOGO 区域（左上角） */}
         <div style={{
@@ -205,12 +206,13 @@ export default function Login() {
           </p>
         </div>
 
-        {/* 弹性空间 */}
-        <div style={{ flex: 1 }} />
-
-        {/* ── 登录卡片（上移：减少底部padding） ── */}
+        {/* ── 登录卡片（黄金分割位置：上边在页面高38%处） ── */}
         <div style={{
-          padding: '0 16px 16px 16px',
+          position: 'absolute',
+          top: '38%',
+          left: 0,
+          right: 0,
+          padding: '0 16px',
           opacity: formVisible ? 1 : 0,
           transform: formVisible ? 'translateY(0)' : 'translateY(30px)',
           transition: 'opacity 0.5s ease, transform 0.5s ease',

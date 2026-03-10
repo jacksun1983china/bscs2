@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, openId, name, role FROM users LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT id, openId, name, role FROM users LIMIT 20;",
+  "rows": [
+    {
+      "id": "1",
+      "openId": "aaMKN6GCdFoabE8uWNWing",
+      "name": "Jinbao li",
+      "role": "admin"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\trole\n1\taaMKN6GCdFoabE8uWNWing\tJinbao li\tadmin\n",
+  "stderr": "",
+  "execution_time_ms": 1592
+}
