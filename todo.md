@@ -256,3 +256,9 @@
 - [x] 修复AdminRollRooms.tsx字段名映射（title/startAt/endAt/participantCount/totalValue/actualPaidValue/actualPaidCount）
 - [x] 修复getRollRoomList返回奖品预览数据（prizes字段）
 - [x] 数据库插入10个Roll房间初始数据（每房间10种奖品）
+
+## UI修复（2026-03-10 第二轮）
+- [ ] 修复Roll房列表页卡片文字错位（金币图标和文字重叠）
+- [ ] 修复Roll房内页返回按钮图标（当前显示紫色加号，应为返回箭头）
+- [ ] Roll房内页顶部个人中心区域固定在顶部不可拖动
+- [ ] Roll房列表页顶部区域固定在顶部不可拖动

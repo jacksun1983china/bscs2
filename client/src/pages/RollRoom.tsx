@@ -42,18 +42,9 @@ const R = {
   divider: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/dc7dd5c45a9df592bb8584799f57b0cd_2a813d9c.png',
   peopleIcon1: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/2f37a686e4a75d6fcc74fdf5f1a8989a_a3536553.png',
   peopleIcon2: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/31b9222f96713fbeba7454db2cbf3197_6db410e4.png',
-  backBtn: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/b40b369c064b23e0e2882a9d1656d992_544384e9.png',
+  backBtn: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/ef4db60601dc5cfa7fb8cdf6ef9dfe19_7ecff073.png',
   filterBar: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/6861b8159caed1c37eed49876cb37153_775f7b18.png',
   searchBox: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/0aa8eef3d299c97eac07e50d805ccdae_0ff43e63.png',
-  bottomNavBg: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/056aba70d7ecd46af0ccc935b5958466_ae89e0e4.png',
-  navWode: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/6036749b7ef0d0e15d62d535c24cb067_29e5f1df.png',
-  navFenxiang: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/a76861fc5755fe6cab2794f8202987e1_6c7aa2a0.png',
-  navBeibao: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/08a70db80b30ed00ccfba7b8ef5d9410_380ea30b.png',
-  navChongzhi: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/f82d0089f7e7cbe7038744c6687bf14e_3809f591.png',
-  navDating: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/cc6a4e0101f19d3e5d2749cb06a2b333_1d5b1383.png',
-  navWodeBg: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/215fd9796802aae0e9486abda6e748a1_53c7f5a7.png',
-  navFenxiangBg: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/b1b123b66ded7d8dee6a1cbbb53487f7_ff7c9710.png',
-  navChongzhiBg: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/21d1f5243763d60c7ae65f9da234f7f8_62317a05.png',
   prizeImgs: [
     'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/a18e6e9f5096c00fcc4d2e25652515f7_42d2cc1c.png',
     'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/c20c0396ebdf9ed79fa4a898ad425b67_689420ec.png',
@@ -65,7 +56,6 @@ const R = {
 };
 
 // ── 筛选标签 ──────────────────────────────────────────────────────
-// （内联 BottomNav 已删除，使用公共组件 @/components/BottomNav）
 const FILTERS = [
   { key: 'all',      label: '全部' },
   { key: 'joinable', label: '可参与' },
@@ -156,9 +146,16 @@ function RollCard({ room, index, onClick }: { room: any; index: number; onClick:
           </div>
         </div>
 
-        {/* 右侧信息区 */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', padding: `${q(11)} ${q(18)} 0 ${q(18)}` }}>
-          {/* 房间名称 */}
+        {/* 右侧信息区（flex column，内部分3行：名称、时间+人数/门槛） */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
+          padding: `${q(11)} ${q(18)} 0 ${q(18)}`,
+          overflow: 'hidden',
+        }}>
+          {/* 第1行：房间名称 */}
           <span style={{
             color: 'rgba(255,255,255,1)',
             fontSize: q(26),
@@ -168,21 +165,28 @@ function RollCard({ room, index, onClick }: { room: any; index: number; onClick:
             textOverflow: 'ellipsis',
             lineHeight: q(34),
             display: 'block',
-            maxWidth: q(352),
           }}>{room.title}</span>
-          {/* 开奖时间（下方，margin-top: 48px） */}
+
+          {/* 第2行：开奖时间（margin-top: 11px） */}
           <span style={{
             color: 'rgba(255,255,255,1)',
             fontSize: q(20),
             fontFamily: 'Alibaba-PuHuiTi-R, sans-serif',
             whiteSpace: 'nowrap',
             lineHeight: q(34),
-            marginTop: q(48),
+            marginTop: q(11),
             display: 'block',
           }}>{endTimeStr}</span>
-          {/* 参与人数 + 门槛（与时间同行，margin-top: -34px） */}
-          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: q(-34), gap: q(8) }}>
-            {/* 参与人数气泡 */}
+
+          {/* 第3行：参与人数气泡 + 门槛标签（同一行，margin-top: 4px） */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginTop: q(4),
+            gap: q(8),
+          }}>
+            {/* 参与人数气泡（深色背景 + 左侧绝对定位图标） */}
             <div style={{
               backgroundColor: 'rgba(13,3,56,1)',
               height: q(24),
@@ -192,6 +196,7 @@ function RollCard({ room, index, onClick }: { room: any; index: number; onClick:
               alignItems: 'center',
               paddingLeft: q(22),
               paddingRight: q(8),
+              flexShrink: 0,
             }}>
               <span style={{
                 color: 'rgba(255,246,13,1)',
@@ -209,11 +214,21 @@ function RollCard({ room, index, onClick }: { room: any; index: number; onClick:
             </div>
             {/* 门槛标签 */}
             {isFree ? (
-              <img src={tagFreeImg} alt="无门槛" style={{ height: q(35), objectFit: 'contain' }} />
+              <img src={tagFreeImg} alt="无门槛" style={{ height: q(35), objectFit: 'contain', flexShrink: 0 }} />
             ) : (
-              <span style={{ color: 'rgba(80,225,255,1)', fontSize: q(20), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                充值满{parseFloat(room.threshold).toFixed(0)}金币
-              </span>
+              <div style={{
+                backgroundColor: 'rgba(36,10,113,0.68)',
+                border: '1px solid rgba(80,225,255,1)',
+                height: q(24),
+                display: 'flex',
+                alignItems: 'center',
+                padding: `0 ${q(8)}`,
+                flexShrink: 0,
+              }}>
+                <span style={{ color: 'rgba(80,225,255,1)', fontSize: q(18), fontFamily: 'Alibaba-PuHuiTi-R, sans-serif', whiteSpace: 'nowrap' }}>
+                  充值满{parseFloat(room.threshold).toFixed(0)}金币
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -305,6 +320,7 @@ export default function RollRoom() {
       style={{
         display: 'flex',
         flexDirection: 'column',
+        /* 全局背景图铺满整个容器（包括底部导航区域），避免接缝 */
         backgroundImage: `url(${R.bgSection1})`,
         backgroundSize: 'cover',
         backgroundRepeat: 'no-repeat',
@@ -316,7 +332,7 @@ export default function RollRoom() {
       {/* 内容层（flex: 1，内部分为顶部导航（不滚动）+ 可滚动内容区） */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
-        {/* 顶部导航区（750×146px，不滚动） */}
+        {/* 顶部固定区（不滚动）：导航栏 + 用户信息卡 */}
         <div style={{ position: 'relative', width: '100%', flexShrink: 0 }}>
           <div style={{ height: q(31) }} />
           {/* 导航栏（703×58px, margin: 53px 0 0 24px） */}
@@ -338,6 +354,8 @@ export default function RollRoom() {
             />
             <div style={{ flex: 1 }} />
           </div>
+          {/* 用户信息卡（固定置顶，不随内容滚动） */}
+          <PlayerInfoCard style={{ marginTop: q(18), marginLeft: q(38) }} />
         </div>
 
         {/* 内容背景区（flex:1，可滚动） */}
@@ -348,13 +366,12 @@ export default function RollRoom() {
           minHeight: 0,
           overflowY: 'auto',
           overflowX: 'hidden',
+          /* 内容区背景叠加，不遮挡全局背景 */
           backgroundImage: `url(${R.bgBox2})`,
           backgroundPosition: 'center top',
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
         }}>
-          {/* 用户信息卡（公共组件 PlayerInfoCard） */}
-          <PlayerInfoCard style={{ marginTop: q(18), marginLeft: q(38) }} />
           {/* 列表区（margin-top: 71px） */}
           <div style={{
             position: 'relative',
@@ -378,43 +395,53 @@ export default function RollRoom() {
               alignItems: 'center',
               padding: `${q(9)} ${q(8)}`,
               gap: q(4),
+              overflow: 'hidden',  /* 防止搜索框超出边界 */
             }}>
-              {/* 筛选标签组 */}
-              <div style={{ display: 'flex', flexDirection: 'row', height: q(50), marginTop: q(3) }}>
-                {FILTERS.map((f, i) => (
-                  <div
-                    key={f.key}
-                    onClick={() => setFilter(f.key)}
-                    style={{
-                      width: q(104),
-                      height: q(50),
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      backgroundImage: filter === f.key
-                        ? 'linear-gradient(180deg, rgba(62,4,111,1) 0%, rgba(95,14,146,1) 100%)'
-                        : 'none',
-                      backgroundColor: filter === f.key ? 'transparent' : 'rgba(13,4,92,1)',
-                      border: '2px solid rgba(105,51,0,1)',
-                      marginLeft: i === 0 ? q(-2) : q(4),
-                      marginTop: q(-2),
-                    }}
-                  >
-                    <span style={{
-                      WebkitTextStroke: filter === f.key ? '2px rgba(105,51,0,1)' : 'none',
-                      color: 'rgba(255,255,255,1)',
-                      fontSize: q(26),
-                      fontFamily: filter === f.key ? 'Alibaba-PuHuiTi-M, sans-serif' : 'Alibaba-PuHuiTi-R, sans-serif',
-                      fontWeight: filter === f.key ? 500 : 400,
-                      whiteSpace: 'nowrap',
-                    }}>{f.label}</span>
-                  </div>
-                ))}
+              {/* 筛选标签组（固定宽度，不伸缩） */}
+              <div style={{ display: 'flex', flexDirection: 'row', height: q(50), marginTop: q(3), flexShrink: 0 }}>
+                {FILTERS.map((f, i) => {
+                  const isActive = filter === f.key;
+                  return (
+                    <div
+                      key={f.key}
+                      onClick={() => setFilter(f.key)}
+                      style={{
+                        width: q(104),
+                        height: q(50),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        /* 选中：渐变紫色背景；未选中：深蓝背景 */
+                        backgroundImage: isActive
+                          ? 'linear-gradient(180deg, rgba(62,4,111,1) 0%, rgba(95,14,146,1) 100%)'
+                          : 'none',
+                        backgroundColor: isActive ? 'transparent' : 'rgba(13,4,92,1)',
+                        border: '2px solid rgba(105,51,0,1)',
+                        marginLeft: i === 0 ? q(-2) : q(4),
+                        marginTop: q(-2),
+                      }}
+                    >
+                      <span style={{
+                        /* 选中：白色文字 + 金色描边（蓝湖设计稿 text_31 样式） */
+                        /* 未选中：白色文字，无描边（text_32-34 样式） */
+                        WebkitTextStroke: isActive ? '2px rgba(105,51,0,1)' : 'none',
+                        color: 'rgba(255,255,255,1)',
+                        fontSize: q(26),
+                        fontFamily: isActive ? 'Alibaba-PuHuiTi-M, sans-serif' : 'Alibaba-PuHuiTi-R, sans-serif',
+                        fontWeight: isActive ? 500 : 400,
+                        whiteSpace: 'nowrap',
+                        /* 确保描边不遮盖文字本身 */
+                        paintOrder: 'stroke fill',
+                      } as React.CSSProperties}>{f.label}</span>
+                    </div>
+                  );
+                })}
               </div>
-              {/* 搜索框 */}
+              {/* 搜索框（蓝湖：width:233px，限制不超出容器） */}
               <div style={{
-                flex: 1,
+                width: q(233),
+                flexShrink: 0,
                 height: q(48),
                 backgroundImage: `url(${R.searchBox})`,
                 backgroundSize: '100% 100%',
@@ -424,6 +451,7 @@ export default function RollRoom() {
                 marginTop: q(11),
                 marginLeft: q(10),
                 marginRight: q(6),
+                overflow: 'hidden',
               }}>
                 <input
                   value={searchInput}
@@ -431,7 +459,7 @@ export default function RollRoom() {
                   onKeyDown={e => e.key === 'Enter' && handleSearch()}
                   placeholder="请输入关键词搜索"
                   style={{
-                    flex: 1,
+                    width: '100%',
                     background: 'none',
                     border: 'none',
                     outline: 'none',
@@ -491,7 +519,7 @@ export default function RollRoom() {
 
       </div>
 
-      {/* 底部导航 - 永远沉底（flexShrink: 0） */}
+      {/* 底部导航 - 永远沉底（flexShrink: 0），背景与全局背景无缝衔接 */}
       <BottomNav active="" />
     </div>
   );
