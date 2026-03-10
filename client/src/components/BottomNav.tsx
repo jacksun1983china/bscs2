@@ -2,7 +2,8 @@
  * BottomNav — 公共底部导航组件（最终版，与首页完全一致）
  * 所有游戏页面共用，1:1 还原蓝湖设计稿
  * 基准：750px 宽，使用 cqw 响应式单位
- * 永远沉底（position: fixed / sticky 由父容器控制）
+ * 永远沉底（父容器为 phone-container flex column，本组件 flexShrink:0 沉底）
+ * 注意：不在自身设置 containerType，依赖父容器（phone-container 内的 flex 容器）的 containerType: inline-size
  */
 import { useLocation } from 'wouter';
 import { LANHU } from '@/lib/assets';
@@ -32,7 +33,7 @@ export default function BottomNav({ active: _active }: BottomNavProps) {
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
-        containerType: 'inline-size',
+        /* 不设置 containerType，依赖父容器的 containerType: inline-size 来计算 cqw */
       }}
     >
       {/* 我的 */}

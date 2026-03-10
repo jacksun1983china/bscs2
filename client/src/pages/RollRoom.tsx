@@ -102,7 +102,6 @@ function RollCard({ room, index, onClick }: { room: any; index: number; onClick:
         marginBottom: q(14),
         cursor: 'pointer',
         opacity: isEnded ? 0.7 : 1,
-        containerType: 'inline-size',
       }}
     >
       {/* 卡片主体（704×159px） */}
@@ -302,37 +301,23 @@ export default function RollRoom() {
 
   return (
     <div
+      className="phone-container"
       style={{
-        width: '100%',
-        maxWidth: 480,
-        margin: '0 auto',
-        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundImage: `url(${R.bgSection1})`,
+        backgroundSize: 'cover',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'top center',
         position: 'relative',
-        overflow: 'hidden',
         containerType: 'inline-size',
       }}
     >
-      {/* 固定背景 */}
-      <div style={{
-        position: 'fixed',
-        top: 0, left: '50%',
-        transform: 'translateX(-50%)',
-        width: '100%',
-        maxWidth: 480,
-        height: '100vh',
-        backgroundImage: `url(${R.bgSection1})`,
-        backgroundPosition: 'center top',
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        zIndex: 0,
-        pointerEvents: 'none',
-      }} />
+      {/* 内容层（flex: 1，内部分为顶部导航（不滚动）+ 可滚动内容区） */}
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
-      {/* 内容层 */}
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-
-        {/* 顶部导航区（750×146px） */}
-        <div style={{ position: 'relative', width: '100%', containerType: 'inline-size', flexShrink: 0 }}>
+        {/* 顶部导航区（750×146px，不滚动） */}
+        <div style={{ position: 'relative', width: '100%', flexShrink: 0 }}>
           <div style={{ height: q(31) }} />
           {/* 导航栏（703×58px, margin: 53px 0 0 24px） */}
           <div style={{
@@ -355,16 +340,18 @@ export default function RollRoom() {
           </div>
         </div>
 
-        {/* 内容背景区 */}
+        {/* 内容背景区（flex:1，可滚动） */}
         <div style={{
           position: 'relative',
           width: '100%',
           flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden',
           backgroundImage: `url(${R.bgBox2})`,
           backgroundPosition: 'center top',
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
-          containerType: 'inline-size',
         }}>
           {/* 用户信息卡（公共组件 PlayerInfoCard） */}
           <PlayerInfoCard style={{ marginTop: q(18), marginLeft: q(38) }} />
@@ -377,7 +364,6 @@ export default function RollRoom() {
             backgroundSize: '100% 100%',
             backgroundRepeat: 'no-repeat',
             paddingBottom: q(125),
-            containerType: 'inline-size',
           }}>
             {/* 筛选栏（702×84px, margin-left: 24px） */}
             <div style={{
@@ -503,11 +489,10 @@ export default function RollRoom() {
           </div>
         </div>
 
-        {/* 底部导航 */}
-        <div style={{ position: 'sticky', bottom: 0, zIndex: 100, width: '100%' }}>
-          <BottomNav active="" />
-        </div>
       </div>
+
+      {/* 底部导航 - 永远沉底（flexShrink: 0） */}
+      <BottomNav active="" />
     </div>
   );
 }

@@ -265,39 +265,23 @@ export default function RollRoomDetail() {
 
   return (
     <div
+      className="phone-container"
       style={{
-        width: '100%',
-        maxWidth: 480,
-        margin: '0 auto',
-        minHeight: '100vh',
-        position: 'relative',
-        overflow: 'hidden',
-        containerType: 'inline-size',
         display: 'flex',
         flexDirection: 'column',
-      }}
-    >
-      {/* 固定背景 */}
-      <div style={{
-        position: 'fixed',
-        top: 0, left: '50%',
-        transform: 'translateX(-50%)',
-        width: '100%',
-        maxWidth: 480,
-        height: '100vh',
         backgroundImage: `url(${D.bgSection1})`,
-        backgroundPosition: 'center top',
         backgroundSize: 'cover',
         backgroundRepeat: 'no-repeat',
-        zIndex: 0,
-        pointerEvents: 'none',
-      }} />
-
-      {/* 内容层 */}
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', paddingBottom: q(125) }}>
+        backgroundPosition: 'top center',
+        position: 'relative',
+        containerType: 'inline-size',
+      }}
+    >
+      {/* 内容层（flex:1，可滚动） */}
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto', paddingBottom: q(125) }}>
 
         {/* ── section_1：顶部区域（包含用户信息卡 + 房间信息区）── */}
-        <div style={{ position: 'relative', width: '100%', containerType: 'inline-size', flexShrink: 0 }}>
+        <div style={{ position: 'relative', width: '100%', flexShrink: 0 }}>
 
           {/* 顶部导航栏（703×58px, margin: 84px 0 0 24px） */}
           <div style={{
@@ -320,7 +304,7 @@ export default function RollRoomDetail() {
           </div>
 
           {/* box_1：用户信息卡 + 房间信息区（750×655px） */}
-          <div style={{ position: 'relative', width: '100%', containerType: 'inline-size' }}>
+          <div style={{ position: 'relative', width: '100%', }}>
 
             {/* 用户信息卡（公共组件 PlayerInfoCard） */}
             <PlayerInfoCard style={{ marginTop: q(18), marginLeft: q(38) }} />
@@ -344,7 +328,7 @@ export default function RollRoomDetail() {
               backgroundImage: `url(${D.roomInfoBg})`,
               backgroundSize: '100% 100%',
               backgroundRepeat: 'no-repeat',
-              containerType: 'inline-size',
+             
             }}>
               {/* block_3：房间头部信息（664×122px, margin: 41px 0 0 47px） */}
               <div style={{
@@ -583,7 +567,7 @@ export default function RollRoomDetail() {
         }} />
 
         {/* group_10：Tab切换区 */}
-        <div style={{ width: '100%', containerType: 'inline-size', flexShrink: 0 }}>
+        <div style={{ width: '100%', flexShrink: 0 }}>
           {/* section_2：Tab标签（750×62px） */}
           <div style={{
             width: '100%',
@@ -649,7 +633,7 @@ export default function RollRoomDetail() {
           backgroundPosition: 'center top',
           backgroundSize: '100% auto',
           backgroundRepeat: 'no-repeat',
-          containerType: 'inline-size',
+         
           paddingBottom: q(20),
         }}>
           {/* 奖池物品（2列网格） */}
@@ -720,7 +704,7 @@ export default function RollRoomDetail() {
             flexDirection: 'row',
             gap: q(27),
             flexWrap: 'wrap',
-            containerType: 'inline-size',
+           
           }}>
             {/* 左侧参与按钮（340×62px） */}
             <div style={{
@@ -805,10 +789,8 @@ export default function RollRoomDetail() {
         )}
       </div>
 
-      {/* 底部导航（sticky） */}
-      <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, zIndex: 100 }}>
-        <BottomNav />
-      </div>
+      {/* 底部导航 - 永远沉底（flexShrink: 0） */}
+      <BottomNav />
     </div>
   );
 }
