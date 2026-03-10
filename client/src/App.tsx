@@ -12,6 +12,7 @@ import RollRoomDetail from "./pages/RollRoomDetail";
 import Profile from "./pages/Profile";
 import Share from "./pages/Share";
 import Bag from "./pages/Bag";
+import Backpack from "./pages/Backpack";
 import Recharge from "./pages/Recharge";
 import RollX from "./pages/RollX";
 import CustomerService from "./pages/CustomerService";
@@ -31,6 +32,7 @@ function Router() {
       <Route path={"/profile"} component={Profile} />
       <Route path={"/share"} component={Share} />
       <Route path={"/bag"} component={Bag} />
+      <Route path={"/backpack"} component={Backpack} />
       <Route path={"/recharge"} component={Recharge} />
       {/* 客服系统 */}
       <Route path={"/kefu"} component={CustomerService} />

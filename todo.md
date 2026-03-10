@@ -262,3 +262,9 @@
 - [ ] 修复Roll房内页返回按钮图标（当前显示紫色加号，应为返回箭头）
 - [ ] Roll房内页顶部个人中心区域固定在顶部不可拖动
 - [ ] Roll房列表页顶部区域固定在顶部不可拖动
+
+## 充值/背包/分享页面开发（2026-03-10）
+- [x] 修复 Deposit.tsx TypeScript 错误，连接正确 API（trpc.player.me, trpc.player.rechargeConfigs）
+- [x] 创建 Backpack.tsx 背包页面（严格还原蓝湖设计稿，物品列表+排序+详情弹窗+回收功能）
+- [x] 注册 /backpack 路由到 App.tsx
+- [x] 更新 Share.tsx 分享页面（蓝湖设计稿风格，邀请码+推广数据+佣金提取+周期数据表格）
