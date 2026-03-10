@@ -501,12 +501,57 @@ export default function Shop() {
                 正在加载商品...
               </div>
             ) : error ? (
-              <div style={{ textAlign: 'center', color: '#ff6b6b', padding: q(80), fontSize: q(26) }}>
-                <div style={{ fontSize: q(48), marginBottom: q(16) }}>⚠️</div>
-                <div>加载失败，请稍后重试</div>
-                <div style={{ color: '#9980cc', fontSize: q(22), marginTop: q(8) }}>
-                  {error.message}
-                </div>
+              <div style={{ textAlign: 'center', padding: q(80), fontSize: q(26) }}>
+                {error.message?.includes('RATE_LIMITED') ? (
+                  <>
+                    <div style={{ fontSize: q(56), marginBottom: q(16) }}>🕐</div>
+                    <div style={{ color: '#e0d0ff', fontWeight: 700, fontSize: q(28), marginBottom: q(12) }}>
+                      商城正在繁忙，请稍后重试
+                    </div>
+                    <div style={{ color: '#9980cc', fontSize: q(22), marginBottom: q(24) }}>
+                      服务器请求频率限制，约1分钟后自动恢复
+                    </div>
+                    <button
+                      onClick={() => window.location.reload()}
+                      style={{
+                        background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                        border: 'none',
+                        borderRadius: q(12),
+                        color: '#fff',
+                        fontSize: q(26),
+                        fontWeight: 700,
+                        padding: `${q(14)} ${q(40)}`,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      点击重试
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: q(48), marginBottom: q(16) }}>⚠️</div>
+                    <div style={{ color: '#ff6b6b' }}>加载失败，请稍后重试</div>
+                    <div style={{ color: '#9980cc', fontSize: q(22), marginTop: q(8) }}>
+                      {error.message}
+                    </div>
+                    <button
+                      onClick={() => window.location.reload()}
+                      style={{
+                        marginTop: q(20),
+                        background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                        border: 'none',
+                        borderRadius: q(12),
+                        color: '#fff',
+                        fontSize: q(26),
+                        fontWeight: 700,
+                        padding: `${q(14)} ${q(40)}`,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      点击重试
+                    </button>
+                  </>
+                )}
               </div>
             ) : items.length === 0 ? (
               <div style={{ textAlign: 'center', color: '#9980cc', padding: q(80), fontSize: q(28) }}>

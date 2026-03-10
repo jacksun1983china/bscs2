@@ -137,6 +137,26 @@ export default function Backpack() {
 
   const hasSelected = selectedIds.size > 0;
 
+  const handleDecompose = useCallback(() => {
+    if (!hasSelected) return;
+    alert(`确认分解 ${selectedIds.size} 件物品？（功能开发中）`);
+  }, [hasSelected, selectedIds]);
+
+  const handlePickup = useCallback(() => {
+    if (!hasSelected) return;
+    alert(`确认提货 ${selectedIds.size} 件物品？（功能开发中）`);
+  }, [hasSelected, selectedIds]);
+
+  const handleProtect = useCallback(() => {
+    if (!hasSelected) return;
+    alert(`确认开启提货保护？（功能开发中）`);
+  }, [hasSelected, selectedIds]);
+
+  const handleGift = useCallback(() => {
+    if (!hasSelected) return;
+    alert(`确认赠送 ${selectedIds.size} 件物品？（功能开发中）`);
+  }, [hasSelected, selectedIds]);
+
   return (
     <div
       className="phone-container"
@@ -211,6 +231,7 @@ export default function Backpack() {
         >
           {/* 分解按钮 */}
           <div
+            onClick={handleDecompose}
             style={{
               width: q(220),
               height: q(81),
@@ -221,9 +242,11 @@ export default function Backpack() {
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'pointer',
+              cursor: hasSelected ? 'pointer' : 'not-allowed',
               gap: q(8),
               opacity: hasSelected ? 1 : 0.6,
+              position: 'relative',
+              zIndex: 30,
             }}
           >
             <img src={hasSelected ? B.decomposeIconOn : B.decomposeIconOff} alt="" style={{ width: q(40), height: q(40) }} />
@@ -234,6 +257,7 @@ export default function Backpack() {
 
           {/* 提货按钮 */}
           <div
+            onClick={handlePickup}
             style={{
               width: q(220),
               height: q(81),
@@ -244,9 +268,11 @@ export default function Backpack() {
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'pointer',
+              cursor: hasSelected ? 'pointer' : 'not-allowed',
               gap: q(8),
               opacity: hasSelected ? 1 : 0.6,
+              position: 'relative',
+              zIndex: 30,
             }}
           >
             <img src={hasSelected ? B.pickupIconOn : B.pickupIconOff} alt="" style={{ width: q(40), height: q(40) }} />
@@ -257,6 +283,7 @@ export default function Backpack() {
 
           {/* 提货保护按钮 */}
           <div
+            onClick={handleProtect}
             style={{
               width: q(220),
               height: q(81),
@@ -267,9 +294,11 @@ export default function Backpack() {
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'pointer',
+              cursor: hasSelected ? 'pointer' : 'not-allowed',
               gap: q(8),
               opacity: hasSelected ? 1 : 0.6,
+              position: 'relative',
+              zIndex: 30,
             }}
           >
             <img src={hasSelected ? B.protectIconOn : B.protectIconOff} alt="" style={{ width: q(40), height: q(40) }} />
@@ -283,6 +312,7 @@ export default function Backpack() {
         <div
           style={{
             position: 'relative',
+            zIndex: 5,
             width: q(750),
             backgroundImage: `url(${B.listAreaBg})`,
             backgroundSize: '100% 100%',
@@ -665,6 +695,7 @@ export default function Backpack() {
 
             {/* 赠送按钮 */}
             <div
+              onClick={handleGift}
               style={{
                 height: q(62),
                 backgroundImage: `url(${B.giftBtnBg})`,
@@ -675,7 +706,7 @@ export default function Backpack() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: 'pointer',
+                cursor: hasSelected ? 'pointer' : 'not-allowed',
               }}
             >
               <span
@@ -694,6 +725,7 @@ export default function Backpack() {
 
             {/* 分解按钮 */}
             <div
+              onClick={handleDecompose}
               style={{
                 height: q(62),
                 backgroundImage: `url(${B.decomposeBtnBg})`,
@@ -704,7 +736,7 @@ export default function Backpack() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: 'pointer',
+                cursor: hasSelected ? 'pointer' : 'not-allowed',
               }}
             >
               <span

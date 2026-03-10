@@ -17,6 +17,7 @@ import { AdminFinance } from './admin/AdminFinance';
 import { AdminSettings } from './admin/AdminSettings';
 import { AdminRechargeConfigs } from './admin/AdminRechargeConfigs';
 import AdminShop from './admin/AdminShop';
+import { AdminArena } from './admin/AdminArena';
 
 // ── 国际化文本 ──────────────────────────────────────────────────
 const I18N = {
@@ -82,7 +83,8 @@ const I18N = {
     records: '条记录',
     shop: '商城管理',
     // Roll房
-    rollRooms: 'Roll房管理',
+     rollRooms: '竹战房管理',
+    arena: '竞技场管理',
     createRollRoom: '创建Roll房',
     roomName: '房间名称',
     roomAvatar: '房间头像',
@@ -193,6 +195,7 @@ const I18N = {
     records: 'records',
     shop: 'Shop Mgmt',
     rollRooms: 'Roll Rooms',
+    arena: 'Arena Mgmt',
     createRollRoom: 'Create Roll Room',
     roomName: 'Room Name',
     roomAvatar: 'Room Avatar',
@@ -497,9 +500,9 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
 }
 
 // ── 主仪表盘 ────────────────────────────────────────────────────
-const MENU_KEYS = ['players', 'games', 'rollRooms', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'settings'] as const;
+const MENU_KEYS = ['players', 'games', 'rollRooms', 'arena', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'settings'] as const;
 const MENU_ICONS: Record<string, string> = {
-  players: '👥', games: '🎮', rollRooms: '🎲', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', settings: '⚙️',
+  players: '👥', games: '🎮', rollRooms: '🎲', arena: '🏟️', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', settings: '⚙️',
 };
 
 export default function AdminDashboard() {
@@ -629,7 +632,7 @@ export default function AdminDashboard() {
                 key={key}
                 onClick={() => {
                   setActiveMenu(key);
-                  if (!['players', 'games', 'rollRooms', 'banners', 'rebate', 'categories', 'boxes', 'rechargeConfigs', 'finance', 'settings'].includes(key)) toast.info(t.featureSoon);
+                  if (!['players', 'games', 'rollRooms', 'arena', 'banners', 'rebate', 'categories', 'boxes', 'rechargeConfigs', 'finance', 'settings'].includes(key)) toast.info(t.featureSoon);
                 }}
                 title={!sidebarOpen ? label : undefined}
                 style={{
@@ -740,6 +743,9 @@ export default function AdminDashboard() {
 
           {/* Roll房管理 */}
           {activeMenu === 'rollRooms' && <AdminRollRooms lang={lang} t={t} />}
+
+          {/* 竞技场管理 */}
+          {activeMenu === 'arena' && <AdminArena lang={lang} />}
 
           {/* Banner管理 */}
           {activeMenu === 'banners' && <AdminBanners lang={lang} t={t} />}

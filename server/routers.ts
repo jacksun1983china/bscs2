@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { arenaRouter } from "./arenaRouter";
 import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -117,6 +118,7 @@ function setCookieOptions(req: any) {
 
 export const appRouter = router({
   system: systemRouter,
+  arena: arenaRouter,
 
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -1590,3 +1592,7 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
+
+// 竞技场路由已在 appRouter 中注册
+// 通过 arenaRouter 导出以便类型推断
+export { arenaRouter };

@@ -20,6 +20,8 @@ import CustomerService from "./pages/CustomerService";
 import AgentLogin from "./pages/AgentLogin";
 import AgentDashboard from "./pages/AgentDashboard";
 import Shop from "./pages/Shop";
+import Arena from "./pages/Arena";
+import ArenaRoom from "./pages/ArenaRoom";
 function Router() {
   return (
     <Switch>
@@ -27,6 +29,8 @@ function Router() {
       <Route path={"/login"} component={Login} />
       <Route path={"/admin"} component={AdminDashboard} />
       {/* 游戏页面 */}
+      <Route path={"/arena"} component={Arena} />
+      <Route path={"/arena/:id"} component={ArenaRoom} />
       <Route path={"/rollx"} component={RollX} />
       <Route path={"/roll"} component={RollRoom} />
       <Route path={"/roll/:id"} component={RollRoomDetail} />

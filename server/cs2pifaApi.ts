@@ -46,6 +46,28 @@ const PRIVATE_KEY_PEM = formatPrivateKey(PRIVATE_KEY_RAW);
 
 const BASE_URL = "https://open.cs2pifa.com/v1/api";
 
+// ── 内存缓存（5分钟TTL，减少频率限制触发）────────────────────────────────────────
+interface CacheEntry<T> {
+  data: T;
+  expireAt: number;
+}
+const cache = new Map<string, CacheEntry<unknown>>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5分钟
+
+function getCached<T>(key: string): T | null {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expireAt) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+function setCached<T>(key: string, data: T): void {
+  cache.set(key, { data, expireAt: Date.now() + CACHE_TTL_MS });
+}
+
 // ── 签名工具 ──────────────────────────────────────────────────────────────────
 
 /**
@@ -137,6 +159,10 @@ async function apiPost<T = unknown>(endpoint: string, extra: Record<string, unkn
 
   const json = (await res.json()) as { code: number; msg?: string; message?: string; data?: unknown };
   if (json.code !== 0) {
+    // code 900: 频率限制，给出友好提示
+    if (json.code === 900) {
+      throw new Error('RATE_LIMITED');
+    }
     throw new Error(`cs2pifa API error: ${json.msg || json.message || JSON.stringify(json)}`);
   }
 
@@ -182,8 +208,14 @@ export interface Cs2ProductListResult {
  * 获取商品分类列表（templateQuery 接口）
  */
 export async function getCategories(): Promise<Cs2Category[]> {
+  const cacheKey = 'categories';
+  const cached = getCached<Cs2Category[]>(cacheKey);
+  if (cached) return cached;
+
   const data = await apiPost<{ templateTypeResponseList: Cs2Category[] }>("templateQuery");
-  return data?.templateTypeResponseList ?? [];
+  const result = data?.templateTypeResponseList ?? [];
+  setCached(cacheKey, result);
+  return result;
 }
 
 /**
@@ -198,6 +230,20 @@ export async function getProductsByCategory(params: {
   pageSize?: number;
   sortDesc?: boolean;
 }): Promise<Cs2ProductListResult> {
+  // 缓存key（不含客户端过滤参数，只含API参数）
+  const cacheKey = `products:${params.typeId ?? 'all'}:${params.keyword ?? ''}:${params.pageNum ?? 1}:${params.pageSize ?? 20}`;
+  const cached = getCached<Cs2ProductListResult>(cacheKey);
+  if (cached) {
+    // 对缓存数据重新应用客户端过滤和排序
+    let list = [...(cached.saleTemplateByCategoryResponseList ?? [])];
+    if (params.minPrice !== undefined) list = list.filter((p) => p.referencePrice >= params.minPrice!);
+    if (params.maxPrice !== undefined) list = list.filter((p) => p.referencePrice <= params.maxPrice!);
+    list = params.sortDesc
+      ? list.sort((a, b) => b.referencePrice - a.referencePrice)
+      : list.sort((a, b) => a.referencePrice - b.referencePrice);
+    return { ...cached, saleTemplateByCategoryResponseList: list };
+  }
+
   const extra: Record<string, unknown> = {
     pageNum: String(params.pageNum ?? 1),
     pageSize: String(params.pageSize ?? 20),
@@ -224,10 +270,16 @@ export async function getProductsByCategory(params: {
     list = list.sort((a, b) => a.referencePrice - b.referencePrice);
   }
 
-  return {
+  const result = {
     ...data,
     saleTemplateByCategoryResponseList: list,
   };
+  // 缓存原始数据（未过滤）
+  setCached(cacheKey, {
+    ...data,
+    saleTemplateByCategoryResponseList: data?.saleTemplateByCategoryResponseList ?? [],
+  });
+  return result;
 }
 
 /**

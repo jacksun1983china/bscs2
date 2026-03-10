@@ -741,3 +741,83 @@ export const shopOrders = mysqlTable("shopOrders", {
 });
 export type ShopOrder = typeof shopOrders.$inferSelect;
 export type InsertShopOrder = typeof shopOrders.$inferInsert;
+
+// ── 竞技场房间表 ──────────────────────────────────────────────────────
+export const arenaRooms = mysqlTable("arenaRooms", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 房间号（6位随机数字） */
+  roomNo: varchar("roomNo", { length: 20 }).notNull().unique(),
+  /** 创建者玩家ID */
+  creatorId: int("creatorId").notNull(),
+  /** 创建者昵称（快照） */
+  creatorNickname: varchar("creatorNickname", { length: 100 }).notNull().default(""),
+  /** 创建者头像（快照） */
+  creatorAvatar: varchar("creatorAvatar", { length: 10 }).notNull().default("001"),
+  /** 最大玩家数：2或3 */
+  maxPlayers: tinyint("maxPlayers").notNull().default(2),
+  /** 当前玩家数 */
+  currentPlayers: tinyint("currentPlayers").notNull().default(1),
+  /** 轮数（选择的宝箱数量，每箱一轮） */
+  rounds: tinyint("rounds").notNull().default(1),
+  /** 每轮入场费（金币，等于所选宝箱价格之和） */
+  entryFee: decimal("entryFee", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  /** 选择的宝箱ID列表（JSON数组，如 [1,2,3]） */
+  boxIds: text("boxIds").notNull().default("[]"),
+  /** 房间状态：waiting=等待加入 playing=游戏中 finished=已结束 cancelled=已取消 */
+  status: mysqlEnum("status", ["waiting", "playing", "finished", "cancelled"]).notNull().default("waiting"),
+  /** 胜者玩家ID（0=平局） */
+  winnerId: int("winnerId").notNull().default(0),
+  /** 当前进行到第几轮（1开始） */
+  currentRound: tinyint("currentRound").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ArenaRoom = typeof arenaRooms.$inferSelect;
+export type InsertArenaRoom = typeof arenaRooms.$inferInsert;
+
+// ── 竞技场房间参与者表 ──────────────────────────────────────────────────────
+export const arenaRoomPlayers = mysqlTable("arenaRoomPlayers", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("roomId").notNull(),
+  playerId: int("playerId").notNull(),
+  /** 玩家昵称（快照） */
+  nickname: varchar("nickname", { length: 100 }).notNull().default(""),
+  /** 玩家头像（快照） */
+  avatar: varchar("avatar", { length: 10 }).notNull().default("001"),
+  /** 座位号（1/2/3） */
+  seatNo: tinyint("seatNo").notNull().default(1),
+  /** 该玩家所有轮次获得物品总价值 */
+  totalValue: decimal("totalValue", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  /** 是否赢家 */
+  isWinner: tinyint("isWinner").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ArenaRoomPlayer = typeof arenaRoomPlayers.$inferSelect;
+export type InsertArenaRoomPlayer = typeof arenaRoomPlayers.$inferInsert;
+
+// ── 竞技场每轮开箱结果表 ──────────────────────────────────────────────────────
+export const arenaRoundResults = mysqlTable("arenaRoundResults", {
+  id: int("id").autoincrement().primaryKey(),
+  roomId: int("roomId").notNull(),
+  /** 第几轮（1开始） */
+  roundNo: tinyint("roundNo").notNull(),
+  /** 玩家ID */
+  playerId: int("playerId").notNull(),
+  /** 使用的宝箱ID */
+  boxId: int("boxId").notNull(),
+  /** 宝箱名称（快照） */
+  boxName: varchar("boxName", { length: 100 }).notNull().default(""),
+  /** 开出的 boxGoods.id */
+  goodsId: int("goodsId").notNull(),
+  /** 物品名称（快照） */
+  goodsName: varchar("goodsName", { length: 200 }).notNull().default(""),
+  /** 物品图片（快照） */
+  goodsImage: varchar("goodsImage", { length: 500 }).notNull().default(""),
+  /** 物品品质：1=传说 2=稀有 3=普通 4=回收 */
+  goodsLevel: tinyint("goodsLevel").notNull().default(3),
+  /** 物品价值（快照） */
+  goodsValue: decimal("goodsValue", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ArenaRoundResult = typeof arenaRoundResults.$inferSelect;
+export type InsertArenaRoundResult = typeof arenaRoundResults.$inferInsert;

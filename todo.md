@@ -347,6 +347,33 @@
 - [x] 重写 Shop.tsx：接入实时商品数据，分类Tab+搜索+价格筛选+购买弹窗
 
 ## 商城API错误处理修复（2026-03-11）
-- [ ] 后端 cs2pifaApi.ts 加入内存缓存（5分钟TTL），减少频率限制触发
-- [ ] 后端 shop 路由将 code 900 转为友好错误信息
-- [ ] 前端 Shop.tsx 展示友好的错误状态（非红色报错，而是提示稍后重试）
+- [x] 后端 cs2pifaApi.ts 加入内存缓存（5分钟TTL），减少频率限制触发
+- [x] 后端 shop 路由将 code 900 转为友好错误信息
+- [x] 前端 Shop.tsx 展示友好的错误状态（非红色报错，而是提示稍后重试）
+
+## 三项功能开发（2026-03-11）
+- [x] 修复背包页面「分解/提货/提货保护」按钮被遮挡的层级问题
+- [x] 商城页面cs2pifa API限流友好错误提示（code 900改为友好提示+重试按钮），服务端加5分钟内存缓存
+- [ ] 竞技场功能开发：房间列表、创建对战、箱子选择、胜负判定逻辑
+
+## 竞技场功能开发（2026-03-11）
+- [ ] 数据库：arenaRooms（房间）、arenaRoomPlayers（参与玩家）、arenaRoundResults（每轮开箱结果）
+- [ ] 后端路由：arena.getRooms（房间列表）、arena.createRoom（创建房间，选箱子）、arena.joinRoom（加入房间）、arena.spinRound（开箱，服务端决定物品）、arena.getRoomDetail（房间详情）
+- [ ] 前端：Arena.tsx（房间列表+创建房间入口）
+- [ ] 前端：ArenaRoom.tsx（游戏房间+老虎机滚动动画+多轮开箱+胜负展示）
+- [ ] 后台：AdminArena.tsx（宝箱类别/宝箱/物品管理，复用已有boxes/boxGoods表）
+- [ ] App.tsx 注册 /arena 和 /arena/:id 路由
+- [ ] 首页大厅「竞技场」按钮跳转到 /arena
+
+## 竞技场 WebSocket 实时功能（2026-03-11）
+- [x] 数据库：arenaRooms（房间）、arenaRoomPlayers（参与玩家）、arenaRoundResults（每轮开笱结果）
+- [x] 安装 ws 库，在 Express 服务器挂载 WebSocket
+- [x] 定义 WS 消息协议（room_list_update / room_joined / round_result / game_over）
+- [x] 后端 tRPC 路由：arena.getRooms / createRoom / joinRoom / spinRound / getRoomDetail
+- [x] 后端 WS 广播：房间状态变化实时推送给订阅客户端
+- [x] 前端 useArenaWS hook：建立/断开连接，订阅消息
+- [x] 前端：Arena.tsx（房间列表，WebSocket实时刷新）
+- [x] 前端：ArenaRoom.tsx（游戏房间，老虎机滚动动画+多轮开笱+胜负展示）
+- [x] 后台：AdminArena.tsx（竞技场房间记录查看）
+- [x] App.tsx 注册 /arena 和 /arena/:id 路由
+- [x] 首页大厅「竞技场」按鈕跳转到 /arena（GameMenuList 已配置）
