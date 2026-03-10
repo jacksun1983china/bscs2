@@ -221,8 +221,15 @@ body.admin-mode .phone-container {
   background: rgba(120, 60, 220, 0.5);
   border-radius: 2px;
 }
-
-/* ── 管理后台全局 ────────────────────────────────────────────── */
+/* ── 隐藏滚动条类 ──────────────────────────────────────────────── */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+/* ── 管理后台全局 ──────────────────────────────────────────────── */
 .admin-sidebar {
   background: linear-gradient(180deg, #0d0621 0%, #120830 100%);
   border-right: 1px solid rgba(120, 60, 220, 0.3);

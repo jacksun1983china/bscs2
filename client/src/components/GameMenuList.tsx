@@ -2,9 +2,10 @@
  * GameMenuList.tsx — 游戏菜单列表组件
  *
  * 布局要求：
- * - 外层容器占满父级 flex:1 的空间（上下各20px padding由父级提供）
- * - 游戏菜单大框：左右留边距，内容从顶部开始，不超出容器高度
+ * - 外层容器占满父级 flex:1 的空间，支持上下滚动
+ * - 支持任意数量游戏卡片（4个、7个、8个均可）
  * - 左侧头像列 + 右侧游戏卡片列，顶部对齐
+ * - 隐藏滚动条但保留滚动功能
  */
 import React from 'react';
 import { useLocation } from 'wouter';
@@ -61,24 +62,33 @@ export default function GameMenuList() {
   const [, navigate] = useLocation();
 
   return (
-    /* 外层：撑满父级空间，containerType 让 cqw 基于自身宽度计算 */
+    /*
+      外层：撑满父级空间，containerType 让 cqw 基于自身宽度计算
+      overflowY: auto 允许上下滚动，隐藏滚动条保持视觉干净
+    */
     <div
       style={{
         width: '100%',
         height: '100%',
         containerType: 'inline-size' as React.CSSProperties['containerType'],
         background: 'transparent',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        /* 隐藏滚动条（Firefox） */
+        scrollbarWidth: 'none' as React.CSSProperties['scrollbarWidth'],
       }}
+      /* 隐藏滚动条（WebKit/Chrome） */
+      className="hide-scrollbar"
     >
       {/*
         游戏菜单外框：九宫格拉伸
         - 左右留 29px 边距
-        - 内容从顶部开始（alignItems: flex-start）
-        - 宽度撑满（width: 100% 减去左右margin）
+        - 高度自适应内容（不设固定高度），内容多时自然撑开
+        - 底部留 8px 间距，避免最后一张卡片贴边
       */}
       <div
         style={{
-          margin: `0 ${q(29)}`,
+          margin: `0 ${q(29)} ${q(8)} ${q(29)}`,
           /* 九宫格边框图 */
           borderStyle: 'solid',
           borderImageSource: `url(${LANHU.gameMenuBg})`,
@@ -145,6 +155,7 @@ export default function GameMenuList() {
                 cursor: game.route ? 'pointer' : 'default',
                 borderRadius: q(10),
                 overflow: 'hidden',
+                flexShrink: 0,
               }}
               onClick={() => game.route && navigate(game.route)}
             >
