@@ -415,19 +415,19 @@ export default function ArenaRoom() {
 
   if (!room) {
     return (
-      <div style={{ background: '#0d0621', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="phone-container" style={{ display: 'flex', flexDirection: 'column', containerType: 'inline-size', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: '#9ca3af', fontSize: q(28) }}>加载中...</div>
       </div>
     );
   }
 
   return (
-    <div className="phone-container" style={{ background: '#0d0621', minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+    <div className="phone-container" style={{ display: 'flex', flexDirection: 'column', containerType: 'inline-size', position: 'relative' }}>
       {/* 背景 */}
       <img
         src="https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/bg_98756154.png"
         alt=""
-        style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.4, pointerEvents: 'none' }}
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.4, pointerEvents: 'none' }}
       />
 
       {/* 顶部导航 */}
