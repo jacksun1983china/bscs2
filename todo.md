@@ -345,3 +345,8 @@
 - [x] 新增 shop.getProducts tRPC路由：实时从cs2pifa API获取商品列表（分类/关键词/价格/排序/分页）
 - [x] 新增 shop.buyProduct tRPC路由：玩家购买商品，扣除shopCoin，写入shopOrders
 - [x] 重写 Shop.tsx：接入实时商品数据，分类Tab+搜索+价格筛选+购买弹窗
+
+## 商城API错误处理修复（2026-03-11）
+- [ ] 后端 cs2pifaApi.ts 加入内存缓存（5分钟TTL），减少频率限制触发
+- [ ] 后端 shop 路由将 code 900 转为友好错误信息
+- [ ] 前端 Shop.tsx 展示友好的错误状态（非红色报错，而是提示稍后重试）

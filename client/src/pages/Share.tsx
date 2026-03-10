@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import TopNav from '@/components/TopNav';
 import BottomNav from '@/components/BottomNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
+import SettingsModal from '@/components/SettingsModal';
 
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -47,6 +48,7 @@ const IMG = {
 
 export default function Share() {
   const [activePeriod, setActivePeriod] = useState<'current' | 'last'>('current');
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   const { data: player } = trpc.player.me.useQuery(undefined, { retry: false });
   const { data: teamStats } = trpc.player.teamStats.useQuery(undefined, { enabled: !!player, retry: false });
@@ -114,7 +116,7 @@ export default function Share() {
           ══════════════════════════════════════════════════════ */}
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 2, width: '100%' }}>
         {/* 公共顶部导航 */}
-        <TopNav showLogo={false} />
+        <TopNav showLogo={false} onSettingsOpen={() => setSettingsVisible(true)} />
         {/* 公共个人信息卡（与首页/Roll房完全一致） */}
         <PlayerInfoCard style={{ marginTop: q(8) }} />
 
@@ -398,6 +400,7 @@ export default function Share() {
 
       {/* ── 公共底部导航（永远沉底） ── */}
       <BottomNav active="fenxiang" />
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
   );
 }
