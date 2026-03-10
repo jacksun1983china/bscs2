@@ -194,7 +194,7 @@ export const ASSETS = {
   cz_btn: '/img/btn_chongzhi.png',
 
   // BDCS2 LOGO（新版科幻赛博朋克风格，透明背景PNG）
-  bdcs2Logo: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/bdcs2_logo_v2-MhvaC3hgHxAdXAgCwR8jJ6.png',
+  bdcs2Logo: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/bdcs2_logo_v2-Qg6WgqByAMxL2Q4Sg2NBXM.png',
 
   // 登录页背景
   loginBg: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/login-bg_5ca371bd.png',

@@ -1,0 +1,37 @@
+{
+  "query": "\n-- 先清空现有banner数据\nDELETE FROM banners;\n\n-- 插入3张Banner\nINSERT INTO banners (imageUrl, linkUrl, title, sort, status) VALUES\n('https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/banner2-K2GZnNpXSnUzhEuC2WFyyi.webp', '', 'BATTLE ARENA', 1, 1),\n('/img/banner.png', '', '赛博枪战', 2, 1),\n('https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/banner3-MPWGvGeMQ6fGGL2DM6ZJSm.webp', '', 'LUCKY DRAW', 3, 1);\n\nSELECT * FROM banners;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute \n-- 先清空现有banner数据\nDELETE FROM banners;\n\n-- 插入3张Banner\nINSERT INTO banners (imageUrl, linkUrl, title, sort, status) VALUES\n('https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/banner2-K2GZnNpXSnUzhEuC2WFyyi.webp', '', 'BATTLE ARENA', 1, 1),\n('/img/banner.png', '', '赛博枪战', 2, 1),\n('https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/banner3-MPWGvGeMQ6fGGL2DM6ZJSm.webp', '', 'LUCKY DRAW', 3, 1);\n\nSELECT * FROM banners;\n",
+  "rows": [
+    {
+      "id": "1",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/banner2-K2GZnNpXSnUzhEuC2WFyyi.webp",
+      "linkUrl": "",
+      "title": "BATTLE ARENA",
+      "sort": "1",
+      "status": "1",
+      "createdAt": "2026-03-10 06:04:02"
+    },
+    {
+      "id": "2",
+      "imageUrl": "/img/banner.png",
+      "linkUrl": "",
+      "title": "赛博枪战",
+      "sort": "2",
+      "status": "1",
+      "createdAt": "2026-03-10 06:04:02"
+    },
+    {
+      "id": "3",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/banner3-MPWGvGeMQ6fGGL2DM6ZJSm.webp",
+      "linkUrl": "",
+      "title": "LUCKY DRAW",
+      "sort": "3",
+      "status": "1",
+      "createdAt": "2026-03-10 06:04:02"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\timageUrl\tlinkUrl\ttitle\tsort\tstatus\tcreatedAt\n1\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/banner2-K2GZnNpXSnUzhEuC2WFyyi.webp\t\tBATTLE ARENA\t1\t1\t2026-03-10 06:04:02\n2\t/img/banner.png\t\t赛博枪战\t2\t1\t2026-03-10 06:04:02\n3\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/banner3-MPWGvGeMQ6fGGL2DM6ZJSm.webp\t\tLUCKY DRAW\t3\t1\t2026-03-10 06:04:02\n",
+  "stderr": "",
+  "execution_time_ms": 2174
+}
