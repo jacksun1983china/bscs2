@@ -232,37 +232,20 @@ export default function CustomerService() {
 
   return (
     <div
+      className="phone-container"
       style={{
-        minHeight: '100vh',
-        position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         background: '#0d0621',
-        maxWidth: 480,
-        margin: '0 auto',
+        backgroundImage: `url(${ASSETS.bg})`,
+        backgroundSize: 'cover',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+        containerType: 'inline-size',
       }}
     >
-      {/* 全局背景图 */}
-      <img
-        src={ASSETS.bg}
-        alt=""
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: 480,
-          height: '100%',
-          objectFit: 'cover',
-          zIndex: 0,
-          opacity: 0.45,
-          pointerEvents: 'none',
-        }}
-      />
-
       {/* 内容层 */}
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
         {/* ── 顶部标题栏 ── */}
         <div
@@ -336,7 +319,7 @@ export default function CustomerService() {
         </div>
 
         {/* ── 用户信息栏 ── */}
-        <div style={{ flexShrink: 0, containerType: 'inline-size', width: '100%' }}>
+        <div style={{ flexShrink: 0, width: '100%' }}>
           <PlayerInfoCard style={{ marginTop: 8 }} />
         </div>
 
@@ -496,10 +479,10 @@ export default function CustomerService() {
         </div>
 
         {/* ── 底部导航 ── */}
-        <div style={{ flexShrink: 0 }}>
-          <BottomNav />
-        </div>
       </div>
+
+      {/* 底部导航 - 永远沉底（flexShrink: 0） */}
+      <BottomNav />
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
