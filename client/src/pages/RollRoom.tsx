@@ -320,15 +320,18 @@ export default function RollRoom() {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        /* 全局背景图铺满整个容器（包括底部导航区域），避免接缝 */
-        backgroundImage: `url(${R.bgSection1})`,
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'top center',
         position: 'relative',
         containerType: 'inline-size',
       }}
     >
+      {/* 全局背景层：bgSection1 + bgBox2 叠加，absolute 铺满整个 phone-container（含底部导航区域） */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
+        {/* 底层：bgSection1（顶部天空/渐变） */}
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: `url(${R.bgSection1})`, backgroundSize: 'cover', backgroundRepeat: 'no-repeat', backgroundPosition: 'top center' }} />
+        {/* 上层：bgBox2（内容区紫色背景），从顶部导航下方开始铺满到底 */}
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: `url(${R.bgBox2})`, backgroundSize: 'cover', backgroundRepeat: 'no-repeat', backgroundPosition: 'center top' }} />
+      </div>
+
       {/* 内容层（flex: 1，内部分为顶部导航（不滚动）+ 可滚动内容区） */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
@@ -358,7 +361,7 @@ export default function RollRoom() {
           <PlayerInfoCard style={{ marginTop: q(18), marginLeft: q(38) }} />
         </div>
 
-        {/* 内容背景区（flex:1，可滚动） */}
+        {/* 内容背景区（flex:1，可滚动），背景透明，由外层absolute背景层提供 */}
         <div style={{
           position: 'relative',
           width: '100%',
@@ -366,11 +369,6 @@ export default function RollRoom() {
           minHeight: 0,
           overflowY: 'auto',
           overflowX: 'hidden',
-          /* 内容区背景叠加，不遮挡全局背景 */
-          backgroundImage: `url(${R.bgBox2})`,
-          backgroundPosition: 'center top',
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
         }}>
           {/* 列表区（margin-top: 71px） */}
           <div style={{
