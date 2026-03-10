@@ -132,8 +132,8 @@ export const LANHU = {
 // ─────────────────────────────────────────────
 export const ASSETS = {
   // 背景
-  bg: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/bg_fb029be7.png',
-  k4: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/k4_d774f1b4.png',
+  bg: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/bg_98756154.png',
+  k4: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/k4_958fae5c.png',
 
   // 顶部导航
   logok: '/img/logok.png',
@@ -188,7 +188,7 @@ export const ASSETS = {
   cz_k1: '/img/k1.png',
   cz_k2: '/img/k2.png',
   cz_k3: '/img/k3.png',
-  cz_k4: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/k4_d774f1b4.png',
+  cz_k4: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/k4_958fae5c.png',
   cz_icon1: '/img/icon1.png',
   cz_icon2: '/img/icon2.png',
   cz_zhifubao: '/img/zhifubao.png',
@@ -196,8 +196,8 @@ export const ASSETS = {
   cz_btn: '/img/btn_chongzhi.png',
 
   // BDCS2 LOGO（新版科幻赛博朋克风格，透明背景PNG）
-  bdcs2Logo: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/logobdcs2_97ff6844.png',
+  bdcs2Logo: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/logobdcs2_transparent_f36b2cd6.png',
 
   // 登录页背景
-  loginBg: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/login-bg_5ca371bd.png',
+  loginBg: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/login-bg_499c0190.png',
 } as const;

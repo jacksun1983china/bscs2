@@ -360,7 +360,7 @@ export default function Backpack() {
                 backgroundImage: `url(${B.searchInputBg})`,
                 backgroundSize: '100% 100%',
                 backgroundRepeat: 'no-repeat',
-                width: q(370),
+                width: q(310),
                 margin: `${q(19)} 0 0 ${q(16)}`,
                 display: 'flex',
                 alignItems: 'center',
@@ -395,8 +395,8 @@ export default function Backpack() {
                 opacity: sortBy === 'price' ? 1 : 0.55,
               }}
             >
-              <img src={B.sortPriceIcon} alt="" style={{ width: q(24), height: q(26) }} />
-              <span style={{ color: '#fff', fontSize: q(24) }}>价格</span>
+              <img src={B.sortPriceIcon} alt="" style={{ width: q(24), height: q(26), flexShrink: 0 }} />
+              <span style={{ color: '#fff', fontSize: q(24), whiteSpace: 'nowrap' }}>价格</span>
             </div>
             {/* 时间排序 */}
             <div
@@ -411,8 +411,8 @@ export default function Backpack() {
                 opacity: sortBy === 'time' ? 1 : 0.55,
               }}
             >
-              <img src={B.sortTimeIcon} alt="" style={{ width: q(36), height: q(36) }} />
-              <span style={{ color: '#fff', fontSize: q(24) }}>时间</span>
+              <img src={B.sortTimeIcon} alt="" style={{ width: q(36), height: q(36), flexShrink: 0 }} />
+              <span style={{ color: '#fff', fontSize: q(24), whiteSpace: 'nowrap' }}>时间</span>
             </div>
           </div>
 

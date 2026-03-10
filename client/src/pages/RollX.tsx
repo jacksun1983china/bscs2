@@ -9,6 +9,7 @@
  * - 前端只负责动画展示
  *
  * 布局：phone-container + cqw 响应式单位（基准 750px）
+ * 配色：赛博朋克深紫蓝霓虹风格
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { trpc } from '@/lib/trpc';
@@ -19,6 +20,45 @@ import { useLocation } from 'wouter';
 
 // ── px → cqw 转换（基准 750px）──────────────────────────────────
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
+
+// ── 赛博朋克配色常量 ─────────────────────────────────────────────
+const CYBER = {
+  bg: '#0d0621',                          // 深紫黑背景
+  bgCard: 'rgba(20,8,50,0.92)',           // 卡片背景
+  bgCardLight: 'rgba(30,12,70,0.85)',     // 浅卡片背景
+  border: 'rgba(120,60,220,0.45)',        // 紫色边框
+  borderGlow: 'rgba(160,80,255,0.7)',     // 发光边框
+  accent: '#c084fc',                      // 主紫色
+  accentCyan: '#22d3ee',                  // 青色强调
+  accentPink: '#f472b6',                  // 粉色强调
+  win: '#00f5a0',                         // 霓虹绿（胜利）
+  winDark: '#00b36e',                     // 深霓虹绿
+  winGlow: 'rgba(0,245,160,0.5)',         // 绿色发光
+  lose: '#ff4d6d',                        // 霓虹红（失败）
+  loseDark: '#cc1a38',                    // 深霓虹红
+  loseGlow: 'rgba(255,77,109,0.5)',       // 红色发光
+  textPrimary: '#f0e6ff',                 // 主文字
+  textSecondary: '#9980cc',              // 次要文字
+  textMuted: '#5a4a7a',                   // 淡化文字
+  sliderTrack: 'rgba(80,40,160,0.5)',     // 滑轨背景
+  sliderFill: 'linear-gradient(90deg, #7c3aed 0%, #c084fc 100%)', // 滑轨填充
+  sliderThumb: '#c084fc',                 // 滑块颜色
+  wheelBorder: '#6d28d9',                 // 转盘边框
+  wheelCenter: 'radial-gradient(circle, #1e0a4a 0%, #0d0621 100%)', // 中心圆
+  wheelCenterBorder: '#7c3aed',           // 中心圆边框
+  wheelDark: '#0a0418',                   // 转盘黑色扇区
+  wheelLine: 'rgba(160,80,255,0.12)',     // 转盘线条
+  pointer: '#c084fc',                     // 指针颜色
+  pointerGlow: 'rgba(192,132,252,0.9)',   // 指针发光
+  spinBtn: 'linear-gradient(180deg, #9333ea 0%, #7c3aed 50%, #5b21b6 100%)', // SPIN按钮
+  spinBtnGlow: 'rgba(124,58,237,0.6)',    // SPIN按钮发光
+  historyBg: 'rgba(30,10,65,0.7)',        // 历史记录背景
+  historyBorder: 'rgba(80,40,160,0.3)',   // 历史记录边框
+  winBorder: '#00f5a0',                   // 胜利边框
+  loseBorder: '#ff4d6d',                  // 失败边框
+  popupWinBg: 'linear-gradient(135deg, #0a2a1a 0%, #0d1a2e 100%)',
+  popupLoseBg: 'linear-gradient(135deg, #2a0a14 0%, #1a0d2e 100%)',
+};
 
 // ── 原版倍率档位（从小到大，对应滑动条 0~21）──────────────────
 const BOARD_X_VALUES = [1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30];
@@ -57,41 +97,32 @@ export default function RollX() {
   const { showAlert } = useGameAlert();
 
   // 滑动条索引（0~21）
-  const [coeffIndex, setCoeffIndex] = useState(7); // 默认 1.4x（index 3 in BOARD_X_VALUES）
-  const [betIndex, setBetIndex] = useState(1);      // 默认 0.2
+  const [coeffIndex, setCoeffIndex] = useState(7);
+  const [betIndex, setBetIndex] = useState(1);
 
   const multiplier = BOARD_X_VALUES[coeffIndex];
-  const betAmountDisplay = BET_VALUES[betIndex]; // 前端显示金额
-  const betAmount = betAmountDisplay * 100;       // 实际发送后端的金额
+  const betAmountDisplay = BET_VALUES[betIndex];
+  const betAmount = betAmountDisplay * 100;
 
   const [isSpinning, setIsSpinning] = useState(false);
   const [result, setResult] = useState<{ isWin: boolean; winAmount: number; netAmount: number; balanceAfter: number; multiplier: number; betAmount: number } | null>(null);
   const [showResult, setShowResult] = useState(false);
 
-  // 转盘旋转角度（CSS transform rotate）
   const [wheelRotation, setWheelRotation] = useState(0);
   const lastSpinDegRef = useRef(0);
   const wheelRotationRef = useRef(0);
-
-  // 绿色扇形 clip-path 旋转角度（跟随转盘）
   const [greenContainerRotation, setGreenContainerRotation] = useState(0);
 
-  // 获取游戏设置
   const { data: settings } = trpc.rollx.getSettings.useQuery();
-  // 获取玩家信息（余额）
   const { data: player, refetch: refetchPlayer } = trpc.player.me.useQuery();
-  // 获取历史记录
   const { data: history, refetch: refetchHistory } = trpc.rollx.getHistory.useQuery({ limit: 10 });
 
-  // 旋转 mutation
   const spinMutation = trpc.rollx.spin.useMutation();
 
-  // RTP（从服务端获取，默认96）
   const rtp = settings?.rtp ?? 96;
   const greenDegree = getGreenDegree(multiplier, rtp);
   const greenPercent = 100 / (360 / greenDegree);
 
-  // 转盘尺寸（响应式）
   const [wheelSize, setWheelSize] = useState(300);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -107,29 +138,17 @@ export default function RollX() {
   }, []);
 
   const wheelRadius = wheelSize / 2;
-
-  // 绿色扇形 clip-path
   const greenClipPath = getGreenClipPath(greenPercent, wheelRadius);
 
-  // 执行旋转动画
-  // 转盘坐标系：绿色扇区从 3点方向（0度）开始顺时针
-  // 指针固定在顶部，对应转盘的 270度位置
-  // 要让指针停在 stopAngle 处：转盘需要旋转到 (270 - stopAngle) mod 360
   const animateSpin = useCallback((isWin: boolean, stopAngle: number, onComplete: () => void) => {
     const targetOffset = (270 - stopAngle + 360) % 360;
     const totalSpin = lastSpinDegRef.current + 1800 + targetOffset;
-
     lastSpinDegRef.current = Math.ceil(totalSpin / 360) * 360;
-
     setWheelRotation(totalSpin);
     setGreenContainerRotation(totalSpin);
-
-    setTimeout(() => {
-      onComplete();
-    }, 3200);
+    setTimeout(() => { onComplete(); }, 3200);
   }, []);
 
-  // 点击旋转
   const handleSpin = async () => {
     if (isSpinning) return;
     if (!player) { navigate('/login'); return; }
@@ -167,10 +186,21 @@ export default function RollX() {
         flexDirection: 'column',
         containerType: 'inline-size',
         position: 'relative',
-        background: '#282828',
+        background: CYBER.bg,
         minHeight: '100vh',
       }}
     >
+      {/* 全局背景光晕 */}
+      <div style={{
+        position: 'fixed',
+        top: 0, left: '50%',
+        transform: 'translateX(-50%)',
+        width: '100%', height: '100%',
+        background: 'radial-gradient(ellipse at 50% 20%, rgba(120,40,220,0.18) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(0,200,255,0.08) 0%, transparent 50%)',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }} />
+
       {/* ── 顶部导航 ── */}
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 2, width: '100%' }}>
         <TopNav showLogo={false} onBackClick={() => navigate('/')} />
@@ -186,6 +216,8 @@ export default function RollX() {
           flexDirection: 'column',
           alignItems: 'center',
           paddingBottom: q(20),
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         {/* Online 人数 */}
@@ -195,12 +227,12 @@ export default function RollX() {
             display: 'flex',
             justifyContent: 'flex-end',
             padding: `${q(8)} ${q(20)} 0`,
-            color: '#aaa',
+            color: CYBER.textSecondary,
             fontSize: q(22),
           }}
         >
           <span>Online: </span>
-          <span style={{ color: '#fff', marginLeft: 4 }}>165</span>
+          <span style={{ color: CYBER.accentCyan, marginLeft: 4, textShadow: `0 0 8px ${CYBER.accentCyan}` }}>165</span>
         </div>
 
         {/* ── 转盘区域 ── */}
@@ -225,18 +257,32 @@ export default function RollX() {
               height: 0,
               borderLeft: `${wheelSize * 0.025}px solid transparent`,
               borderRight: `${wheelSize * 0.025}px solid transparent`,
-              borderTop: `${wheelSize * 0.065}px solid #ff4444`,
-              filter: 'drop-shadow(0 0 6px rgba(255,68,68,0.8))',
+              borderTop: `${wheelSize * 0.065}px solid ${CYBER.pointer}`,
+              filter: `drop-shadow(0 0 8px ${CYBER.pointerGlow})`,
             }}
           />
 
-          {/* 转盘外圈（灰色边框）*/}
+          {/* 转盘外圈发光环 */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: -3,
+              borderRadius: '50%',
+              background: 'transparent',
+              border: `2px solid ${CYBER.borderGlow}`,
+              boxShadow: `0 0 20px rgba(120,60,220,0.6), 0 0 40px rgba(120,60,220,0.3), inset 0 0 20px rgba(120,60,220,0.1)`,
+              zIndex: 4,
+              pointerEvents: 'none',
+            }}
+          />
+
+          {/* 转盘外圈边框 */}
           <div
             style={{
               position: 'absolute',
               inset: 0,
               borderRadius: '50%',
-              border: `${wheelSize * 0.015}px solid #555`,
+              border: `${wheelSize * 0.015}px solid ${CYBER.wheelBorder}`,
               zIndex: 3,
               pointerEvents: 'none',
             }}
@@ -248,13 +294,13 @@ export default function RollX() {
               position: 'absolute',
               inset: 0,
               borderRadius: '50%',
-              background: '#1a1a1a',
+              background: CYBER.wheelDark,
               transform: `rotate(${wheelRotation}deg)`,
               transition: isSpinning ? 'transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
               zIndex: 1,
             }}
           >
-            {/* 黑色扇区纹理线条 */}
+            {/* 扇区纹理线条（紫色调） */}
             {Array.from({ length: 16 }).map((_, i) => (
               <div
                 key={i}
@@ -264,7 +310,7 @@ export default function RollX() {
                   left: '50%',
                   width: '50%',
                   height: 1,
-                  background: 'rgba(255,255,255,0.06)',
+                  background: CYBER.wheelLine,
                   transformOrigin: '0 0',
                   transform: `rotate(${(360 / 16) * i}deg)`,
                 }}
@@ -272,7 +318,7 @@ export default function RollX() {
             ))}
           </div>
 
-          {/* 绿色扇形（旋转，用 clip-path 裁剪）*/}
+          {/* 霓虹绿扇形（旋转，用 clip-path 裁剪）*/}
           <div
             style={{
               position: 'absolute',
@@ -287,9 +333,9 @@ export default function RollX() {
                 position: 'absolute',
                 inset: 0,
                 borderRadius: `${wheelRadius}px`,
-                background: 'radial-gradient(circle at 60% 60%, #5dde5d 0%, #2db82d 40%, #1a8a1a 100%)',
+                background: `radial-gradient(circle at 60% 60%, ${CYBER.win} 0%, ${CYBER.winDark} 40%, #006644 100%)`,
                 clipPath: greenClipPath,
-                boxShadow: 'inset 0 0 20px rgba(0,255,0,0.3)',
+                boxShadow: `inset 0 0 20px ${CYBER.winGlow}`,
               }}
             />
           </div>
@@ -304,31 +350,31 @@ export default function RollX() {
               width: wheelSize * 0.32,
               height: wheelSize * 0.32,
               borderRadius: '50%',
-              background: 'radial-gradient(circle, #3a3a3a 0%, #222 100%)',
-              border: '3px solid #555',
+              background: CYBER.wheelCenter,
+              border: `3px solid ${CYBER.wheelCenterBorder}`,
+              boxShadow: `0 0 15px rgba(124,58,237,0.5), inset 0 0 15px rgba(80,20,160,0.3)`,
               zIndex: 4,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 0 20px rgba(0,0,0,0.8), inset 0 0 15px rgba(0,0,0,0.5)',
+              justifyContent: 'center'
             }}
           >
             {showResult && result ? (
               <>
-                <div style={{ color: result.isWin ? '#5dde5d' : '#ff4444', fontSize: wheelSize * 0.06, fontWeight: 700, lineHeight: 1.1 }}>
+                <div style={{ color: result.isWin ? CYBER.win : CYBER.lose, fontSize: wheelSize * 0.06, fontWeight: 700, lineHeight: 1.1, textShadow: result.isWin ? `0 0 10px ${CYBER.winGlow}` : `0 0 10px ${CYBER.loseGlow}` }}>
                   {result.isWin ? 'WIN' : 'LOSE'}
                 </div>
-                <div style={{ color: '#fff', fontSize: wheelSize * 0.055, fontWeight: 700 }}>
+                <div style={{ color: CYBER.textPrimary, fontSize: wheelSize * 0.055, fontWeight: 700 }}>
                   {result.isWin ? result.winAmount.toFixed(2) : (-result.netAmount).toFixed(2)}
                 </div>
               </>
             ) : (
               <>
-                <div style={{ color: '#5dde5d', fontSize: wheelSize * 0.06, fontWeight: 700, lineHeight: 1.1 }}>
+                <div style={{ color: CYBER.win, fontSize: wheelSize * 0.06, fontWeight: 700, lineHeight: 1.1, textShadow: `0 0 10px ${CYBER.winGlow}` }}>
                   WIN
                 </div>
-                <div style={{ color: '#fff', fontSize: wheelSize * 0.055, fontWeight: 700 }}>
+                <div style={{ color: CYBER.textPrimary, fontSize: wheelSize * 0.055, fontWeight: 700 }}>
                   {potentialWin}
                 </div>
               </>
@@ -349,8 +395,8 @@ export default function RollX() {
           {/* 倍率滑动条 */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: q(8) }}>
-              <span style={{ color: '#aaa', fontSize: q(24) }}>MULTIPLIER</span>
-              <span style={{ color: '#fff', fontSize: q(30), fontWeight: 700 }}>{multiplier}x</span>
+              <span style={{ color: CYBER.textSecondary, fontSize: q(24), letterSpacing: 1 }}>MULTIPLIER</span>
+              <span style={{ color: CYBER.accent, fontSize: q(30), fontWeight: 700, textShadow: `0 0 8px rgba(192,132,252,0.6)` }}>{multiplier}x</span>
             </div>
             <div style={{ position: 'relative', height: q(14) }}>
               {/* 轨道背景 */}
@@ -363,18 +409,20 @@ export default function RollX() {
                   height: q(10),
                   transform: 'translateY(-50%)',
                   borderRadius: q(50),
-                  background: '#444',
+                  background: CYBER.sliderTrack,
                   overflow: 'hidden',
+                  border: `1px solid rgba(120,60,220,0.3)`,
                 }}
               >
-                {/* 已选择部分（橙红渐变）*/}
+                {/* 已选择部分（紫色渐变）*/}
                 <div
                   style={{
                     height: '100%',
                     width: `${(coeffIndex / (BOARD_X_VALUES.length - 1)) * 100}%`,
-                    background: 'linear-gradient(90deg, #ff6b35 0%, #ff4500 100%)',
+                    background: CYBER.sliderFill,
                     borderRadius: q(50),
                     transition: 'width 0.1s',
+                    boxShadow: `0 0 8px rgba(192,132,252,0.4)`,
                   }}
                 />
               </div>
@@ -407,24 +455,24 @@ export default function RollX() {
                   width: q(28),
                   height: q(28),
                   borderRadius: '50%',
-                  background: '#fff',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+                  background: CYBER.sliderThumb,
+                  boxShadow: `0 0 10px rgba(192,132,252,0.8), 0 2px 6px rgba(0,0,0,0.5)`,
                   pointerEvents: 'none',
                   transition: 'left 0.1s',
                 }}
               />
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: q(4) }}>
-              <span style={{ color: '#666', fontSize: q(20) }}>1.1x</span>
-              <span style={{ color: '#666', fontSize: q(20) }}>30x</span>
+              <span style={{ color: CYBER.textMuted, fontSize: q(20) }}>1.1x</span>
+              <span style={{ color: CYBER.textMuted, fontSize: q(20) }}>30x</span>
             </div>
           </div>
 
           {/* 投注金额滑动条 */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: q(8) }}>
-              <span style={{ color: '#aaa', fontSize: q(24) }}>BET AMOUNT</span>
-              <span style={{ color: '#fff', fontSize: q(30), fontWeight: 700 }}>{betAmountDisplay.toFixed(2)}</span>
+              <span style={{ color: CYBER.textSecondary, fontSize: q(24), letterSpacing: 1 }}>BET AMOUNT</span>
+              <span style={{ color: CYBER.accent, fontSize: q(30), fontWeight: 700, textShadow: `0 0 8px rgba(192,132,252,0.6)` }}>{betAmountDisplay.toFixed(2)}</span>
             </div>
             <div style={{ position: 'relative', height: q(14) }}>
               <div
@@ -436,17 +484,19 @@ export default function RollX() {
                   height: q(10),
                   transform: 'translateY(-50%)',
                   borderRadius: q(50),
-                  background: '#444',
+                  background: CYBER.sliderTrack,
                   overflow: 'hidden',
+                  border: `1px solid rgba(120,60,220,0.3)`,
                 }}
               >
                 <div
                   style={{
                     height: '100%',
                     width: `${(betIndex / (BET_VALUES.length - 1)) * 100}%`,
-                    background: 'linear-gradient(90deg, #ff6b35 0%, #ff4500 100%)',
+                    background: CYBER.sliderFill,
                     borderRadius: q(50),
                     transition: 'width 0.1s',
+                    boxShadow: `0 0 8px rgba(192,132,252,0.4)`,
                   }}
                 />
               </div>
@@ -478,16 +528,16 @@ export default function RollX() {
                   width: q(28),
                   height: q(28),
                   borderRadius: '50%',
-                  background: '#fff',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+                  background: CYBER.sliderThumb,
+                  boxShadow: `0 0 10px rgba(192,132,252,0.8), 0 2px 6px rgba(0,0,0,0.5)`,
                   pointerEvents: 'none',
                   transition: 'left 0.1s',
                 }}
               />
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: q(4) }}>
-              <span style={{ color: '#666', fontSize: q(20) }}>1.00</span>
-              <span style={{ color: '#666', fontSize: q(20) }}>10000</span>
+              <span style={{ color: CYBER.textMuted, fontSize: q(20) }}>1.00</span>
+              <span style={{ color: CYBER.textMuted, fontSize: q(20) }}>10000</span>
             </div>
           </div>
 
@@ -500,17 +550,17 @@ export default function RollX() {
               alignSelf: 'center',
               padding: `${q(22)} 0`,
               borderRadius: q(60),
-              border: 'none',
+              border: `1px solid ${isSpinning ? 'transparent' : CYBER.borderGlow}`,
               background: isSpinning
-                ? '#555'
-                : 'linear-gradient(180deg, #5dde5d 0%, #2db82d 50%, #1a8a1a 100%)',
-              color: '#fff',
+                ? 'rgba(80,40,160,0.3)'
+                : CYBER.spinBtn,
+              color: isSpinning ? CYBER.textMuted : '#fff',
               fontSize: q(32),
               fontWeight: 700,
               cursor: isSpinning ? 'not-allowed' : 'pointer',
-              boxShadow: isSpinning ? 'none' : '0 4px 20px rgba(45,184,45,0.5)',
+              boxShadow: isSpinning ? 'none' : `0 4px 24px ${CYBER.spinBtnGlow}, 0 0 40px rgba(124,58,237,0.3)`,
               letterSpacing: 3,
-              textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+              textShadow: isSpinning ? 'none' : '0 0 12px rgba(255,255,255,0.5)',
               transition: 'all 0.2s',
             }}
           >
@@ -521,13 +571,13 @@ export default function RollX() {
           <div
             style={{
               textAlign: 'center',
-              color: '#aaa',
+              color: CYBER.textSecondary,
               fontSize: q(24),
               paddingBottom: q(8),
             }}
           >
             BALANCE:{' '}
-            <span style={{ color: '#fff', fontWeight: 600 }}>
+            <span style={{ color: CYBER.accentCyan, fontWeight: 600, textShadow: `0 0 8px rgba(34,211,238,0.5)` }}>
               {gold.toFixed(2)}
             </span>
           </div>
@@ -535,7 +585,7 @@ export default function RollX() {
           {/* 历史记录（简洁版）*/}
           {history && history.length > 0 && (
             <div style={{ marginTop: q(8) }}>
-              <div style={{ color: '#666', fontSize: q(22), marginBottom: q(10), textAlign: 'center' }}>
+              <div style={{ color: CYBER.textMuted, fontSize: q(22), marginBottom: q(10), textAlign: 'center', letterSpacing: 2 }}>
                 RECENT BETS
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: q(6) }}>
@@ -547,15 +597,19 @@ export default function RollX() {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: `${q(10)} ${q(16)}`,
-                      background: 'rgba(255,255,255,0.04)',
+                      background: CYBER.historyBg,
                       borderRadius: q(8),
                       fontSize: q(22),
-                      borderLeft: `3px solid ${h.isWin ? '#2db82d' : '#cc3333'}`,
+                      border: `1px solid ${CYBER.historyBorder}`,
+                      borderLeft: `3px solid ${h.isWin ? CYBER.win : CYBER.lose}`,
+                      boxShadow: h.isWin
+                        ? `inset 0 0 10px rgba(0,245,160,0.05)`
+                        : `inset 0 0 10px rgba(255,77,109,0.05)`,
                     }}
                   >
-                    <span style={{ color: '#888' }}>{h.multiplier}x</span>
-                    <span style={{ color: '#888' }}>{(h.betAmount / 100).toFixed(2)}</span>
-                    <span style={{ color: h.isWin ? '#5dde5d' : '#ff5555', fontWeight: 700 }}>
+                    <span style={{ color: CYBER.textSecondary }}>{h.multiplier}x</span>
+                    <span style={{ color: CYBER.textSecondary }}>{(h.betAmount / 100).toFixed(2)}</span>
+                    <span style={{ color: h.isWin ? CYBER.win : CYBER.lose, fontWeight: 700, textShadow: h.isWin ? `0 0 6px ${CYBER.winGlow}` : `0 0 6px ${CYBER.loseGlow}` }}>
                       {h.isWin ? `+${(h.winAmount / 100).toFixed(2)}` : `-${(h.betAmount / 100).toFixed(2)}`}
                     </span>
                   </div>
@@ -575,24 +629,25 @@ export default function RollX() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.75)',
+            background: 'rgba(5,2,20,0.85)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
+            backdropFilter: 'blur(4px)',
           }}
           onClick={() => setShowResult(false)}
         >
           <div
             style={{
-              background: result.isWin ? '#1a3a1a' : '#3a1a1a',
-              border: `2px solid ${result.isWin ? '#2db82d' : '#cc3333'}`,
+              background: result.isWin ? CYBER.popupWinBg : CYBER.popupLoseBg,
+              border: `2px solid ${result.isWin ? CYBER.win : CYBER.lose}`,
               borderRadius: 16,
               padding: '32px 48px',
               textAlign: 'center',
               boxShadow: result.isWin
-                ? '0 0 40px rgba(45,184,45,0.5)'
-                : '0 0 40px rgba(204,51,51,0.5)',
+                ? `0 0 40px ${CYBER.winGlow}, 0 0 80px rgba(0,245,160,0.2)`
+                : `0 0 40px ${CYBER.loseGlow}, 0 0 80px rgba(255,77,109,0.2)`,
               minWidth: 220,
             }}
             onClick={e => e.stopPropagation()}
@@ -600,17 +655,19 @@ export default function RollX() {
             <div style={{
               fontSize: 36,
               fontWeight: 900,
-              color: result.isWin ? '#5dde5d' : '#ff5555',
+              color: result.isWin ? CYBER.win : CYBER.lose,
               marginBottom: 12,
+              textShadow: result.isWin ? `0 0 20px ${CYBER.winGlow}` : `0 0 20px ${CYBER.loseGlow}`,
+              letterSpacing: 2,
             }}>
               {result.isWin ? 'YOU WIN!' : 'YOU LOSE'}
             </div>
-            <div style={{ color: '#fff', fontSize: 22, marginBottom: 6 }}>
+            <div style={{ color: CYBER.textPrimary, fontSize: 22, marginBottom: 6 }}>
               {result.isWin
                 ? `+${(result.winAmount / 100).toFixed(2)}`
                 : `-${(Math.abs(result.netAmount) / 100).toFixed(2)}`}
             </div>
-            <div style={{ color: '#888', fontSize: 14, marginBottom: 20 }}>
+            <div style={{ color: CYBER.textSecondary, fontSize: 14, marginBottom: 20 }}>
               Balance: {(result.balanceAfter / 100).toFixed(2)}
             </div>
             <button
@@ -618,12 +675,16 @@ export default function RollX() {
               style={{
                 padding: '10px 32px',
                 borderRadius: 30,
-                border: 'none',
-                background: result.isWin ? '#2db82d' : '#cc3333',
+                border: `1px solid ${result.isWin ? CYBER.win : CYBER.lose}`,
+                background: result.isWin
+                  ? 'linear-gradient(135deg, #006644 0%, #00b36e 100%)'
+                  : 'linear-gradient(135deg, #7c1a2e 0%, #cc1a38 100%)',
                 color: '#fff',
                 fontSize: 16,
                 fontWeight: 700,
                 cursor: 'pointer',
+                boxShadow: result.isWin ? `0 0 15px ${CYBER.winGlow}` : `0 0 15px ${CYBER.loseGlow}`,
+                letterSpacing: 1,
               }}
             >
               CONTINUE
