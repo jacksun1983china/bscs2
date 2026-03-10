@@ -1,0 +1,9 @@
+{
+  "query": "SELECT id, title, status, participantCount, totalPrizes, startAt, endAt FROM rollRooms ORDER BY id LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT id, title, status, participantCount, totalPrizes, startAt, endAt FROM rollRooms ORDER BY id LIMIT 20;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1611
+}

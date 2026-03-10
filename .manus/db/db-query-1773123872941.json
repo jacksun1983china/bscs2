@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE rollRooms r\nSET totalPrizes = (SELECT COUNT(*) FROM rollRoomPrizes p WHERE p.rollRoomId = r.id),\n    totalValue = (SELECT COALESCE(SUM(p.value * p.quantity), 0) FROM rollRoomPrizes p WHERE p.rollRoomId = r.id)\nWHERE r.id IN (SELECT id FROM (SELECT id FROM rollRooms ORDER BY id ASC LIMIT 10) AS sub);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute UPDATE rollRooms r\nSET totalPrizes = (SELECT COUNT(*) FROM rollRoomPrizes p WHERE p.rollRoomId = r.id),\n    totalValue = (SELECT COALESCE(SUM(p.value * p.quantity), 0) FROM rollRoomPrizes p WHERE p.rollRoomId = r.id)\nWHERE r.id IN (SELECT id FROM (SELECT id FROM rollRooms ORDER BY id ASC LIMIT 10) AS sub);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1617
+}

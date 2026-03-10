@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO rollRoomPrizes (rollRoomId, name, imageUrl, value, quantity, coinType, createdAt)\nSELECT r.id, p.name, '', p.value, p.quantity, 'shopCoin', NOW()\nFROM rollRooms r\nCROSS JOIN (\n  SELECT '赤火传说皮肤' AS name, 500.00 AS value, 1 AS quantity UNION ALL\n  SELECT '龙炎武器箱', 300.00, 2 UNION ALL\n  SELECT '冰封手套', 200.00, 3 UNION ALL\n  SELECT '战意头盔', 150.00, 2 UNION ALL\n  SELECT '幸运金币x1000', 100.00, 5 UNION ALL\n  SELECT '神秘礼包', 80.00, 3 UNION ALL\n  SELECT '稀有皮肤碎片', 50.00, 10 UNION ALL\n  SELECT '普通武器箱', 30.00, 5 UNION ALL\n  SELECT '经验加成卡', 20.00, 8 UNION ALL\n  SELECT '金币x100', 10.00, 20\n) p\nWHERE r.id IN (SELECT id FROM rollRooms ORDER BY id ASC LIMIT 10);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute INSERT INTO rollRoomPrizes (rollRoomId, name, imageUrl, value, quantity, coinType, createdAt)\nSELECT r.id, p.name, '', p.value, p.quantity, 'shopCoin', NOW()\nFROM rollRooms r\nCROSS JOIN (\n  SELECT '赤火传说皮肤' AS name, 500.00 AS value, 1 AS quantity UNION ALL\n  SELECT '龙炎武器箱', 300.00, 2 UNION ALL\n  SELECT '冰封手套', 200.00, 3 UNION ALL\n  SELECT '战意头盔', 150.00, 2 UNION ALL\n  SELECT '幸运金币x1000', 100.00, 5 UNION ALL\n  SELECT '神秘礼包', 80.00, 3 UNION ALL\n  SELECT '稀有皮肤碎片', 50.00, 10 UNION ALL\n  SELECT '普通武器箱', 30.00, 5 UNION ALL\n  SELECT '经验加成卡', 20.00, 8 UNION ALL\n  SELECT '金币x100', 10.00, 20\n) p\nWHERE r.id IN (SELECT id FROM rollRooms ORDER BY id ASC LIMIT 10);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1617
+}

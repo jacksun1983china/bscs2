@@ -1,0 +1,14 @@
+{
+  "query": "-- 获取实际ID范围\nSET @min_id = (SELECT MIN(id) FROM rollRooms);\nSET @max_id = (SELECT MAX(id) FROM rollRooms);\nSELECT @min_id, @max_id;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute -- 获取实际ID范围\nSET @min_id = (SELECT MIN(id) FROM rollRooms);\nSET @max_id = (SELECT MAX(id) FROM rollRooms);\nSELECT @min_id, @max_id;",
+  "rows": [
+    {
+      "@min_id": "1",
+      "@max_id": "10"
+    }
+  ],
+  "messages": [],
+  "stdout": "@min_id\t@max_id\n1\t10\n",
+  "stderr": "",
+  "execution_time_ms": 2046
+}

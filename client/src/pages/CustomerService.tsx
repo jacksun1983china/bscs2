@@ -8,7 +8,7 @@ import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { ASSETS, getAvatarUrl } from '@/lib/assets';
 import BottomNav from '@/components/BottomNav';
-import PlayerInfoBar from '@/components/PlayerInfoBar';
+import PlayerInfoCard from '@/components/PlayerInfoCard';
 
 // ── 消息气泡 ──────────────────────────────────────────────────────
 interface MsgBubbleProps {
@@ -336,8 +336,8 @@ export default function CustomerService() {
         </div>
 
         {/* ── 用户信息栏 ── */}
-        <div style={{ flexShrink: 0 }}>
-          <PlayerInfoBar />
+        <div style={{ flexShrink: 0, containerType: 'inline-size', width: '100%' }}>
+          <PlayerInfoCard style={{ marginTop: 8 }} />
         </div>
 
         {/* ── 聊天区域 ── */}

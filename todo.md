@@ -241,3 +241,18 @@
 
 ## 游戏卡片文字标签调整（2026-03-10）
 - [x] 游戏卡片文字标签缩小并居中显示
+
+## PlayerInfoCard 公共组件（2026-03-10）
+- [ ] 从首页提取用户信息区为公共组件 PlayerInfoCard
+- [ ] 在线客服页面顶部替换为 PlayerInfoCard 公共组件
+
+## PlayerInfoCard 公共组件 + Roll房间功能（2026-03-10）
+- [x] 从首页提取用户信息卡为 PlayerInfoCard 公共组件
+- [x] 在线客服页面顶部替换为 PlayerInfoCard
+- [x] 数据库：rollRooms表、rollParticipants表、rollPrizes表
+- [x] 后端tRPC：Roll房间CRUD、参与、列表、详情
+- [x] 客户端Roll房列表页面（首页入口+房间详情）
+- [x] 管理后台Roll房管理页面，创建10个房间数据
+- [x] 修复AdminRollRooms.tsx字段名映射（title/startAt/endAt/participantCount/totalValue/actualPaidValue/actualPaidCount）
+- [x] 修复getRollRoomList返回奖品预览数据（prizes字段）
+- [x] 数据库插入10个Roll房间初始数据（每房间10种奖品）

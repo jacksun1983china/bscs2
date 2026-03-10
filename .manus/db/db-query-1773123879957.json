@@ -1,0 +1,100 @@
+{
+  "query": "SELECT r.id, r.title, r.status, r.totalPrizes, r.totalValue, r.participantCount,\n       COUNT(p.id) AS prizeCount\nFROM rollRooms r\nLEFT JOIN rollRoomPrizes p ON p.rollRoomId = r.id\nGROUP BY r.id, r.title, r.status, r.totalPrizes, r.totalValue, r.participantCount\nORDER BY r.id ASC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT r.id, r.title, r.status, r.totalPrizes, r.totalValue, r.participantCount,\n       COUNT(p.id) AS prizeCount\nFROM rollRooms r\nLEFT JOIN rollRoomPrizes p ON p.rollRoomId = r.id\nGROUP BY r.id, r.title, r.status, r.totalPrizes, r.totalValue, r.participantCount\nORDER BY r.id ASC;",
+  "rows": [
+    {
+      "id": "1",
+      "title": "【限时】赤火传说ROLL房",
+      "status": "pending",
+      "totalPrizes": "10",
+      "totalValue": "3750.00",
+      "participantCount": "0",
+      "prizeCount": "10"
+    },
+    {
+      "id": "2",
+      "title": "龙炎精英ROLL房",
+      "status": "pending",
+      "totalPrizes": "10",
+      "totalValue": "3750.00",
+      "participantCount": "0",
+      "prizeCount": "10"
+    },
+    {
+      "id": "3",
+      "title": "冰封至尊ROLL房",
+      "status": "pending",
+      "totalPrizes": "10",
+      "totalValue": "3750.00",
+      "participantCount": "0",
+      "prizeCount": "10"
+    },
+    {
+      "id": "4",
+      "title": "战意荣耀ROLL房",
+      "status": "pending",
+      "totalPrizes": "10",
+      "totalValue": "3750.00",
+      "participantCount": "0",
+      "prizeCount": "10"
+    },
+    {
+      "id": "5",
+      "title": "新手福利ROLL房",
+      "status": "pending",
+      "totalPrizes": "10",
+      "totalValue": "3750.00",
+      "participantCount": "0",
+      "prizeCount": "10"
+    },
+    {
+      "id": "6",
+      "title": "VIP专属ROLL房",
+      "status": "pending",
+      "totalPrizes": "10",
+      "totalValue": "3750.00",
+      "participantCount": "0",
+      "prizeCount": "10"
+    },
+    {
+      "id": "7",
+      "title": "每日签到ROLL房",
+      "status": "pending",
+      "totalPrizes": "10",
+      "totalValue": "3750.00",
+      "participantCount": "0",
+      "prizeCount": "10"
+    },
+    {
+      "id": "8",
+      "title": "周末狂欢ROLL房",
+      "status": "pending",
+      "totalPrizes": "10",
+      "totalValue": "3750.00",
+      "participantCount": "0",
+      "prizeCount": "10"
+    },
+    {
+      "id": "9",
+      "title": "传说武器ROLL房",
+      "status": "pending",
+      "totalPrizes": "10",
+      "totalValue": "3750.00",
+      "participantCount": "0",
+      "prizeCount": "10"
+    },
+    {
+      "id": "10",
+      "title": "稀有皮肤ROLL房",
+      "status": "pending",
+      "totalPrizes": "10",
+      "totalValue": "3750.00",
+      "participantCount": "0",
+      "prizeCount": "10"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttitle\tstatus\ttotalPrizes\ttotalValue\tparticipantCount\tprizeCount\n1\t【限时】赤火传说ROLL房\tpending\t10\t3750.00\t0\t10\n2\t龙炎精英ROLL房\tpending\t10\t3750.00\t0\t10\n3\t冰封至尊ROLL房\tpending\t10\t3750.00\t0\t10\n4\t战意荣耀ROLL房\tpending\t10\t3750.00\t0\t10\n5\t新手福利ROLL房\tpending\t10\t3750.00\t0\t10\n6\tVIP专属ROLL房\tpending\t10\t3750.00\t0\t10\n7\t每日签到ROLL房\tpending\t10\t3750.00\t0\t10\n8\t周末狂欢ROLL房\tpending\t10\t3750.00\t0\t10\n9\t传说武器ROLL房\tpending\t10\t3750.00\t0\t10\n10\t稀有皮肤ROLL房\tpending\t10\t3750.00\t0\t10\n",
+  "stderr": "",
+  "execution_time_ms": 1593
+}

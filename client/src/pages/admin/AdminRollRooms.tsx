@@ -337,26 +337,26 @@ export function AdminRollRooms({ lang, t }: { lang: 'zh' | 'en'; t: I18nT }) {
                   <td style={{ padding: '10px 14px', color: '#fff', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {room.avatarUrl && <img src={room.avatarUrl} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover' }} />}
-                      {room.name}
+                      {room.title}
                     </div>
                   </td>
                   <td style={{ padding: '10px 14px', color: 'rgba(180,150,255,0.5)', fontSize: 11, whiteSpace: 'nowrap' }}>
-                    <div>{room.startTime ? new Date(room.startTime).toLocaleString() : '-'}</div>
-                    <div>{room.endTime ? new Date(room.endTime).toLocaleString() : '-'}</div>
+                    <div>{room.startAt ? new Date(room.startAt).toLocaleString() : '-'}</div>
+                    <div>{room.endAt ? new Date(room.endAt).toLocaleString() : '-'}</div>
                   </td>
                   <td style={{ padding: '10px 14px' }}>
                     <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: `${statusColor(room.status)}22`, color: statusColor(room.status), border: `1px solid ${statusColor(room.status)}44` }}>
                       {statusLabel(room.status)}
                     </span>
                   </td>
-                  <td style={{ padding: '10px 14px', color: 'rgba(180,150,255,0.5)', fontSize: 12 }}>{room.parentId ?? '-'}</td>
-                  <td style={{ padding: '10px 14px', color: '#7df9ff', fontSize: 13 }}>{room.actualParticipants ?? 0}</td>
+                  <td style={{ padding: '10px 14px', color: 'rgba(180,150,255,0.5)', fontSize: 12 }}>{room.ownerId ?? '-'}</td>
+                  <td style={{ padding: '10px 14px', color: '#7df9ff', fontSize: 13 }}>{room.participantCount ?? 0}</td>
                   <td style={{ padding: '10px 14px', color: 'rgba(180,150,255,0.5)', fontSize: 12 }}>{room.botCount ?? 0}</td>
-                  <td style={{ padding: '10px 14px', color: '#ffd700', fontSize: 13 }}>¥{parseFloat(room.totalAmount ?? '0').toFixed(2)}</td>
-                  <td style={{ padding: '10px 14px', color: '#a78bfa', fontSize: 12 }}>{room.prizeCount ?? 0}</td>
+                  <td style={{ padding: '10px 14px', color: '#ffd700', fontSize: 13 }}>¥{parseFloat(room.totalValue ?? '0').toFixed(2)}</td>
+                  <td style={{ padding: '10px 14px', color: '#a78bfa', fontSize: 12 }}>{room.totalPrizes ?? 0}</td>
                   <td style={{ padding: '10px 14px', color: '#f59e0b', fontSize: 13 }}>¥{parseFloat(room.threshold ?? '0').toFixed(2)}</td>
-                  <td style={{ padding: '10px 14px', color: '#10b981', fontSize: 13 }}>¥{parseFloat(room.actualPrizeAmount ?? '0').toFixed(2)}</td>
-                  <td style={{ padding: '10px 14px', color: '#06b6d4', fontSize: 12 }}>{room.actualPrizeCount ?? 0}</td>
+                  <td style={{ padding: '10px 14px', color: '#10b981', fontSize: 13 }}>¥{parseFloat(room.actualPaidValue ?? '0').toFixed(2)}</td>
+                  <td style={{ padding: '10px 14px', color: '#06b6d4', fontSize: 12 }}>{room.actualPaidCount ?? 0}</td>
                   <td style={{ padding: '10px 14px' }}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <button onClick={() => setShowWinners(room.id)} style={{ padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', background: 'rgba(6,182,212,0.15)', color: '#06b6d4', border: '1px solid rgba(6,182,212,0.3)' }}>

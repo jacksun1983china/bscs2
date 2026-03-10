@@ -1,0 +1,50 @@
+{
+  "query": "-- 先获取刚插入的房间ID\nSELECT id, title FROM rollRooms ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute -- 先获取刚插入的房间ID\nSELECT id, title FROM rollRooms ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "10",
+      "title": "稀有皮肤ROLL房"
+    },
+    {
+      "id": "9",
+      "title": "传说武器ROLL房"
+    },
+    {
+      "id": "8",
+      "title": "周末狂欢ROLL房"
+    },
+    {
+      "id": "7",
+      "title": "每日签到ROLL房"
+    },
+    {
+      "id": "6",
+      "title": "VIP专属ROLL房"
+    },
+    {
+      "id": "5",
+      "title": "新手福利ROLL房"
+    },
+    {
+      "id": "4",
+      "title": "战意荣耀ROLL房"
+    },
+    {
+      "id": "3",
+      "title": "冰封至尊ROLL房"
+    },
+    {
+      "id": "2",
+      "title": "龙炎精英ROLL房"
+    },
+    {
+      "id": "1",
+      "title": "【限时】赤火传说ROLL房"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttitle\n10\t稀有皮肤ROLL房\n9\t传说武器ROLL房\n8\t周末狂欢ROLL房\n7\t每日签到ROLL房\n6\tVIP专属ROLL房\n5\t新手福利ROLL房\n4\t战意荣耀ROLL房\n3\t冰封至尊ROLL房\n2\t龙炎精英ROLL房\n1\t【限时】赤火传说ROLL房\n",
+  "stderr": "",
+  "execution_time_ms": 1592
+}

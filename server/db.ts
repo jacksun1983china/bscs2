@@ -252,7 +252,14 @@ export async function getRollRoomList(opts: {
     db.select().from(rollRooms).where(whereClause).orderBy(desc(rollRooms.createdAt)).limit(limit).offset(offset),
     db.select({ count: sql<number>`count(*)` }).from(rollRooms).where(whereClause),
   ]);
-  return { list, total: Number(countResult[0]?.count ?? 0) };
+  // 为每个房间附加奖品预览（最多6个）
+  const listWithPrizes = await Promise.all(list.map(async (room) => {
+    const prizes = await db.select().from(rollRoomPrizes)
+      .where(eq(rollRoomPrizes.rollRoomId, room.id))
+      .limit(6);
+    return { ...room, prizes, prizeCount: room.totalPrizes };
+  }));
+  return { list: listWithPrizes, total: Number(countResult[0]?.count ?? 0) };
 }
 
 export async function getRollRoomDetail(id: number) {
