@@ -651,3 +651,27 @@ export const gameConfigs = mysqlTable("gameConfigs", {
 });
 export type GameConfig = typeof gameConfigs.$inferSelect;
 export type InsertGameConfig = typeof gameConfigs.$inferInsert;
+
+// ── 周期返佣统计表 ──────────────────────────────────────────────────────
+// 每周按邀请人汇总：团队总人数、单日推广人数、充值总额、总流水、返佣比例
+export const weeklyCommissionStats = mysqlTable('weeklyCommissionStats', {
+  id: int('id').autoincrement().primaryKey(),
+  /** 邀请人（上级）玩家ID */
+  inviterId: int('inviterId').notNull(),
+  /** 周期开始日期（YYYY-MM-DD） */
+  weekStart: varchar('weekStart', { length: 12 }).notNull(),
+  /** 返佣比例（百分比，如 4.00 表示 4%） */
+  commissionRate: decimal('commissionRate', { precision: 5, scale: 2 }).notNull().default('4.00'),
+  /** 团队总人数（累计邀请人数） */
+  totalMembers: int('totalMembers').notNull().default(0),
+  /** 单日推广人数（本周期新增） */
+  newMembers: int('newMembers').notNull().default(0),
+  /** 团队充值总金额（本周期） */
+  totalRecharge: decimal('totalRecharge', { precision: 15, scale: 2 }).notNull().default('0.00'),
+  /** 团队充值总流水（本周期） */
+  totalFlow: decimal('totalFlow', { precision: 15, scale: 2 }).notNull().default('0.00'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().onUpdateNow().notNull(),
+});
+export type WeeklyCommissionStat = typeof weeklyCommissionStats.$inferSelect;
+export type InsertWeeklyCommissionStat = typeof weeklyCommissionStats.$inferInsert;

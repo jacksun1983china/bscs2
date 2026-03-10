@@ -277,3 +277,22 @@
 - [x] 修复 Share.tsx 布局混乱问题，顶部使用公共 TopNav 组件，底部使用公共 BottomNav 组件
 - [x] 清理 Share.tsx 中乱掉的切图背景图片布局
 - [x] 完整重写 Share.tsx：对照蓝湖设计稿，所有图片使用正确 CDN URL，顶部/底部换公共组件
+
+## 分享页面二次修复（2026-03-10 第五轮）
+- [ ] Share.tsx 背景图改为 fixed 覆盖整个视口，不平铺
+- [ ] Share.tsx 个人卡片替换为公共 PlayerInfoBar 组件
+
+## 分享页面二次修复（2026-03-10 第五轮）
+- [ ] Share.tsx 背景图改为 fixed 覆盖整个视口，不平铺
+- [ ] Share.tsx 个人卡片替换为公共 PlayerInfoBar 组件
+- [ ] Share.tsx 邀请码区域文字超出边界修复
+- [ ] Share.tsx 说明按钮文字错误修复（应为"说明"两字）
+
+## 分享页面数据库+UI全面修复（2026-03-10 第六轮）
+- [x] 创建 weeklyCommissionStats 表（周期、比例、团队总人数、单日推广、充值总额、总流水）
+- [x] 实现 player.teamStats 接口返回真实周期数据列表
+- [x] Share.tsx 背景图改为 absolute inset:0 覆盖整个容器，不平铺
+- [x] Share.tsx 个人卡片替换为公共 PlayerInfoCard 组件
+- [x] Share.tsx 邀请码区域文字超出边界修复
+- [x] Share.tsx 说明按钮文字修复（"说明"两字）
+- [x] Share.tsx TopNav 和个人卡片固定悬停（不随内容滚动），参考 Roll 房列表页

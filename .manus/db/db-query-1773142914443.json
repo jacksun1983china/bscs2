@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `weeklyCommissionStats` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `inviterId` int NOT NULL,\n  `weekStart` varchar(12) NOT NULL,\n  `commissionRate` decimal(5,2) NOT NULL DEFAULT '4.00',\n  `totalMembers` int NOT NULL DEFAULT 0,\n  `newMembers` int NOT NULL DEFAULT 0,\n  `totalRecharge` decimal(15,2) NOT NULL DEFAULT '0.00',\n  `totalFlow` decimal(15,2) NOT NULL DEFAULT '0.00',\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `weeklyCommissionStats_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute CREATE TABLE IF NOT EXISTS `weeklyCommissionStats` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `inviterId` int NOT NULL,\n  `weekStart` varchar(12) NOT NULL,\n  `commissionRate` decimal(5,2) NOT NULL DEFAULT '4.00',\n  `totalMembers` int NOT NULL DEFAULT 0,\n  `newMembers` int NOT NULL DEFAULT 0,\n  `totalRecharge` decimal(15,2) NOT NULL DEFAULT '0.00',\n  `totalFlow` decimal(15,2) NOT NULL DEFAULT '0.00',\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `weeklyCommissionStats_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1745
+}
