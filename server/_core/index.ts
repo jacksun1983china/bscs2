@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { initArenaWs } from "../arenaWs";
+import { startBotLoop } from "../arenaBot";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -60,6 +61,9 @@ async function startServer() {
 
   // 挂载竞技场 WebSocket 服务
   initArenaWs(server);
+
+  // 启动竞技场机器人自动填充服务
+  startBotLoop();
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);

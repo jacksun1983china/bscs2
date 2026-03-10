@@ -365,24 +365,38 @@ export default function Arena() {
 
       {/* 内容区 */}
       <div style={{ flex: 1, overflowY: 'auto', padding: `${q(12)} ${q(20)}`, paddingBottom: q(80), position: 'relative', zIndex: 1 }}>
-        {/* 页面标题 + 创建按钮 */}
+        {/* 页面标题 + 创建按鈕 */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: q(16) }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: q(12) }}>
             <img src="/img/jingjichangk.png" alt="" style={{ width: q(40), height: q(40), objectFit: 'contain' }} />
             <span style={{ color: '#c084fc', fontSize: q(36), fontWeight: 800, textShadow: '0 0 12px rgba(192,132,252,0.6)' }}>竞技场</span>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            style={{
-              padding: `${q(12)} ${q(28)}`,
-              background: 'linear-gradient(135deg,#7c3aed,#c084fc)',
-              border: 'none', borderRadius: q(20),
-              color: '#fff', fontSize: q(26), fontWeight: 700, cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(124,58,237,0.5)',
-            }}
-          >
-            + 创建房间
-          </button>
+          <div style={{ display: 'flex', gap: q(10) }}>
+            <button
+              onClick={() => navigate('/arena-history')}
+              style={{
+                padding: `${q(10)} ${q(20)}`,
+                background: 'rgba(120,60,220,0.2)',
+                border: '1.5px solid rgba(120,60,220,0.4)',
+                borderRadius: q(16), color: '#c084fc',
+                fontSize: q(22), fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              🏆 我的记录
+            </button>
+            <button
+              onClick={() => setShowCreate(true)}
+              style={{
+                padding: `${q(10)} ${q(24)}`,
+                background: 'linear-gradient(135deg,#7c3aed,#c084fc)',
+                border: 'none', borderRadius: q(16),
+                color: '#fff', fontSize: q(24), fontWeight: 700, cursor: 'pointer',
+                boxShadow: '0 4px 16px rgba(124,58,237,0.5)',
+              }}
+            >
+              + 创建
+            </button>
+          </div>
         </div>
 
         {/* Tab切换 */}

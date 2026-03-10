@@ -377,3 +377,13 @@
 - [x] 后台：AdminArena.tsx（竞技场房间记录查看）
 - [x] App.tsx 注册 /arena 和 /arena/:id 路由
 - [x] 首页大厅「竞技场」按鈕跳转到 /arena（GameMenuList 已配置）
+
+## 竞技场增强功能（2026-03-11）
+- [x] 后端：机器人账号数据，定时检测等待房间自动填充机器人
+- [x] 后端：机器人开笱结果（随机物品，正常概率）
+- [x] 前端：开笱动画稀有度光效强化（传说金光/稀有紫光/普通蓝光 CSS 动画）
+- [x] 前端：开笱音效（Web Audio API 合成音效，无需外部文件）
+- [x] 后端：arena.getMyRecords tRPC 接口（玩家历史对战记录）
+- [x] 前端：ArenaHistory.tsx 历史记录页（胜负/开笱总价值/金币盈亏）
+- [x] App.tsx 注册 /arena-history 路由
+- [x] 竞技场页面添加「我的记录」入口按鈕

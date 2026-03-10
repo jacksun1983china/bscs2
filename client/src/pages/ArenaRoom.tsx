@@ -3,6 +3,7 @@
  * 布局：顶部导航 → 房间信息 → 玩家座位 → 老虎机滚动区域 → 轮次结果 → 最终胜负
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { playSlotTick, playSlotStop, playWinFanfare, playLoseTone } from '@/lib/arenaSound';
 import { useLocation, useParams } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import TopNav from '@/components/TopNav';
@@ -59,27 +60,45 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%' }: SlotMachin
   const PLACEHOLDER_NAMES = ['传说武器', '稀有装备', '普通道具', '回收物品', '神秘宝箱', '限定皮肤', '稀有配件', '普通材料'];
   const [rollingIdx, setRollingIdx] = useState(0);
 
+  // 音效滴答计数器
+  const tickCountRef = useRef(0);
+
   useEffect(() => {
     if (spinning && finalItem) {
       setIsRolling(true);
       setShowFinal(false);
+      tickCountRef.current = 0;
       let idx = 0;
-      intervalRef.current = setInterval(() => {
-        idx = (idx + 1) % PLACEHOLDER_NAMES.length;
-        setRollingIdx(idx);
-      }, 80);
+      // 动态加速：前期快，后期慢下来
+      let interval = 60;
+      const scheduleNext = () => {
+        intervalRef.current = setTimeout(() => {
+          idx = (idx + 1) % PLACEHOLDER_NAMES.length;
+          setRollingIdx(idx);
+          tickCountRef.current++;
+          // 每隔两帧播放滚动音
+          if (tickCountRef.current % 2 === 0) playSlotTick();
+          // 后期动画慢下来（最后0.8秒）
+          const elapsed = tickCountRef.current * interval;
+          if (elapsed > 1700) interval = Math.min(interval + 15, 200);
+          if (elapsed < 2500) scheduleNext();
+        }, interval) as unknown as ReturnType<typeof setInterval>;
+      };
+      scheduleNext();
       // 2.5秒后停止
       timerRef.current = setTimeout(() => {
-        if (intervalRef.current) clearInterval(intervalRef.current);
+        if (intervalRef.current) clearTimeout(intervalRef.current as unknown as ReturnType<typeof setTimeout>);
         setIsRolling(false);
         setShowFinal(true);
         setDisplayItem(finalItem);
+        // 根据品质播放不同音效
+        playSlotStop(finalItem.goodsLevel);
         onDone?.();
       }, 2500);
     }
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) clearTimeout(intervalRef.current as unknown as ReturnType<typeof setTimeout>);
     };
   }, [spinning, finalItem]);
 
@@ -88,8 +107,16 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%' }: SlotMachin
   const currentImage = isRolling ? '' : (displayItem?.goodsImage ?? '');
   const currentValue = isRolling ? '' : (displayItem?.goodsValue ?? '');
 
+  // 传说级动画类名
+  const glowAnimClass = showFinal && currentLevel === 1
+    ? 'arena-legendary-glow'
+    : showFinal && currentLevel === 2
+      ? 'arena-rare-pulse'
+      : '';
+
   return (
     <div
+      className={glowAnimClass}
       style={{
         width,
         background: isRolling
@@ -100,12 +127,35 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%' }: SlotMachin
         padding: q(12),
         textAlign: 'center',
         transition: 'background 0.3s, border-color 0.3s',
-        boxShadow: showFinal ? `0 0 20px ${LEVEL_GLOW[currentLevel]}` : 'none',
+        boxShadow: showFinal
+          ? currentLevel === 1
+            ? `0 0 30px rgba(245,200,66,0.8), 0 0 60px rgba(245,200,66,0.4), inset 0 0 20px rgba(245,200,66,0.1)`
+            : currentLevel === 2
+              ? `0 0 25px rgba(192,132,252,0.8), 0 0 50px rgba(192,132,252,0.4)`
+              : `0 0 15px ${LEVEL_GLOW[currentLevel]}`
+          : 'none',
         minHeight: q(160),
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         overflow: 'hidden',
+        position: 'relative',
       }}
     >
+      {/* 传说级金色射线粒子 */}
+      {showFinal && currentLevel === 1 && (
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'radial-gradient(ellipse at 50% 30%, rgba(245,200,66,0.25) 0%, transparent 70%)',
+          animation: 'arenaPulse 1.2s ease-in-out infinite',
+        }} />
+      )}
+      {/* 稀有级紫色光晕 */}
+      {showFinal && currentLevel === 2 && (
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'radial-gradient(ellipse at 50% 30%, rgba(192,132,252,0.2) 0%, transparent 70%)',
+          animation: 'arenaPulse 1.5s ease-in-out infinite',
+        }} />
+      )}
       {/* 物品图片 */}
       <div style={{ width: q(100), height: q(100), marginBottom: q(8), position: 'relative' }}>
         {currentImage ? (
@@ -322,14 +372,24 @@ export default function ArenaRoom() {
         setSpinDoneCount(0);
         break;
       }
-      case 'game_over':
-        setGameOverData({
+      case 'game_over': {
+        const overData = {
           winnerId: msg.winnerId as number,
           players: msg.players as any[],
-        });
+        };
+        setGameOverData(overData);
         setGameStatus('finished');
         refetchRoom();
+        // 播放胜负音效（延迟0.5s等动画结束）
+        setTimeout(() => {
+          if (overData.players.some((p) => p.isWinner)) {
+            playWinFanfare();
+          } else {
+            playLoseTone();
+          }
+        }, 500);
         break;
+      }
       case 'room_cancelled':
         alert('房间已被取消');
         navigate('/arena');
@@ -677,8 +737,7 @@ export default function ArenaRoom() {
 
       {/* 设置弹窗 */}
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
-
-      {/* 老虎机动画CSS */}
+      {/* 老虎机动画 CSS */}
       <style>{`
         @keyframes slotSpin {
           0% { transform: translateY(0); }
@@ -693,6 +752,35 @@ export default function ArenaRoom() {
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
+        }
+        @keyframes arenaPulse {
+          0%, 100% { opacity: 0.6; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.05); }
+        }
+        @keyframes arenaLegendaryShine {
+          0% { box-shadow: 0 0 30px rgba(245,200,66,0.8), 0 0 60px rgba(245,200,66,0.4); }
+          50% { box-shadow: 0 0 50px rgba(245,200,66,1), 0 0 100px rgba(245,200,66,0.6), 0 0 140px rgba(245,200,66,0.2); }
+          100% { box-shadow: 0 0 30px rgba(245,200,66,0.8), 0 0 60px rgba(245,200,66,0.4); }
+        }
+        .arena-legendary-glow {
+          animation: arenaLegendaryShine 1.2s ease-in-out infinite !important;
+        }
+        @keyframes arenaRarePulse {
+          0% { box-shadow: 0 0 25px rgba(192,132,252,0.8), 0 0 50px rgba(192,132,252,0.4); }
+          50% { box-shadow: 0 0 40px rgba(192,132,252,1), 0 0 80px rgba(192,132,252,0.6); }
+          100% { box-shadow: 0 0 25px rgba(192,132,252,0.8), 0 0 50px rgba(192,132,252,0.4); }
+        }
+        .arena-rare-pulse {
+          animation: arenaRarePulse 1.5s ease-in-out infinite !important;
+        }
+        @keyframes arenaWinnerGlow {
+          0%, 100% { box-shadow: 0 0 20px rgba(245,200,66,0.5); }
+          50% { box-shadow: 0 0 40px rgba(245,200,66,0.9), 0 0 80px rgba(245,200,66,0.4); }
+        }
+        @keyframes arenaWinnerBounce {
+          0%, 100% { transform: translateY(0); }
+          25% { transform: translateY(-6px); }
+          75% { transform: translateY(-3px); }
         }
       `}</style>
     </div>

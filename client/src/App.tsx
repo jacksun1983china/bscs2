@@ -22,6 +22,7 @@ import AgentDashboard from "./pages/AgentDashboard";
 import Shop from "./pages/Shop";
 import Arena from "./pages/Arena";
 import ArenaRoom from "./pages/ArenaRoom";
+import ArenaHistory from "./pages/ArenaHistory";
 function Router() {
   return (
     <Switch>
@@ -31,6 +32,7 @@ function Router() {
       {/* 游戏页面 */}
       <Route path={"/arena"} component={Arena} />
       <Route path={"/arena/:id"} component={ArenaRoom} />
+      <Route path={"/arena-history"} component={ArenaHistory} />
       <Route path={"/rollx"} component={RollX} />
       <Route path={"/roll"} component={RollRoom} />
       <Route path={"/roll/:id"} component={RollRoomDetail} />
