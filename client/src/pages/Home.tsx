@@ -274,7 +274,7 @@ export default function Home() {
         </div>
 
         {/* 背包（跳过大厅中心位置） */}
-        <div onClick={() => navigate('/bag')}
+        <div onClick={() => navigate('/backpack')}
           style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: q(60), marginLeft: q(244), cursor: 'pointer', flexShrink: 0, gap: q(4) }}>
           <img src={LANHU.bagIcon} alt="背包" style={{ width: q(60), height: q(60), objectFit: 'contain' }} />
           <span style={{ textShadow: '0px 1px 5px rgba(33,0,80,0.67)', color: 'rgba(217,148,255,1)', fontSize: q(22), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500, whiteSpace: 'nowrap', lineHeight: 1 }}>背包</span>
