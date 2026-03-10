@@ -10,6 +10,7 @@ import { ASSETS } from '@/lib/assets';
 import { toast } from 'sonner';
 import PlayerInfoBar from '@/components/PlayerInfoBar';
 import BottomNav from '@/components/BottomNav';
+import TopNavComponent from '@/components/TopNav';
 
 type PayMethod = 'alipay' | 'wechat';
 
@@ -52,21 +53,10 @@ export default function Recharge() {
       <img src={ASSETS.bg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.4, pointerEvents: 'none' }} />
 
       {/* 主内容区 */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 70, zIndex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 70, zIndex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden', containerType: 'inline-size' }}>
 
-        {/* ── 顶部导航 ── */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', height: 52, flexShrink: 0 }}>
-          <div onClick={() => navigate('/')} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginRight: 8 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M15 18l-6-6 6-6" stroke="#c084fc" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <span style={{ flex: 1, textAlign: 'center', color: '#fff', fontSize: 17, fontWeight: 700, letterSpacing: 1 }}>Deposit</span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <img src={ASSETS.kefu} alt="客服" style={{ width: 36, height: 36, objectFit: 'contain', cursor: 'pointer' }} onClick={() => toast.info('客服功能即将上线')} />
-            <img src={ASSETS.vip} alt="VIP" style={{ width: 36, height: 36, objectFit: 'contain', cursor: 'pointer' }} onClick={() => toast.info('VIP功能即将上线')} />
-          </div>
-        </div>
+        {/* ── 顶部导航（公共组件） ── */}
+        <TopNavComponent showLogo={false} onBackClick={() => navigate('/')} />
 
         {/* ── 用户信息区（公共组件）── */}
         <PlayerInfoBar />

@@ -9,6 +9,7 @@ import { trpc } from '@/lib/trpc';
 
 import BottomNav from '@/components/BottomNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
+import TopNav from '@/components/TopNav';
 
 // ── px → cqw 转换（基准 750px）──────────────────────────────────
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -294,26 +295,7 @@ export default function RollRoom() {
 
         {/* 顶部固定区（不滚动）：导航栏 + 用户信息卡 */}
         <div style={{ position: 'relative', width: '100%', flexShrink: 0 }}>
-          <div style={{ height: q(31) }} />
-          {/* 导航栏（703×58px, margin: 0 0 0 24px） */}
-          <div style={{
-            width: q(703),
-            height: q(58),
-            marginTop: 0,
-            marginLeft: q(24),
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-          }}>
-            {/* 返回按钮 */}
-            <img
-              src={R.backBtn}
-              alt="返回"
-              onClick={() => navigate('/')}
-              style={{ width: q(58), height: q(49), objectFit: 'contain', cursor: 'pointer', marginTop: q(4) }}
-            />
-            <div style={{ flex: 1 }} />
-          </div>
+          <TopNav showLogo={false} onBackClick={() => navigate('/')} />
           {/* 用户信息卡（固定置顶，不随内容滚动） */}
           <PlayerInfoCard style={{ marginTop: q(18) }} />
         </div>

@@ -9,6 +9,7 @@ import { trpc } from '@/lib/trpc';
 import { ASSETS, getAvatarUrl } from '@/lib/assets';
 import BottomNav from '@/components/BottomNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
+import TopNav from '@/components/TopNav';
 
 // ── 消息气泡 ──────────────────────────────────────────────────────
 interface MsgBubbleProps {
@@ -247,76 +248,8 @@ export default function CustomerService() {
       {/* 内容层 */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
-        {/* ── 顶部标题栏 ── */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '12px 14px 8px',
-            gap: 10,
-            background: 'linear-gradient(180deg, rgba(20,8,50,0.98) 0%, rgba(10,4,30,0.9) 100%)',
-            borderBottom: '1px solid rgba(120,60,220,0.3)',
-            flexShrink: 0,
-          }}
-        >
-          {/* 返回按钮 */}
-          <div
-            onClick={() => navigate('/')}
-            style={{
-              width: 36,
-              height: 36,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              borderRadius: 8,
-              background: 'rgba(80,40,160,0.3)',
-              border: '1px solid rgba(120,60,220,0.4)',
-              flexShrink: 0,
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3L5 8L10 13" stroke="#c084fc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-
-          {/* 标题 */}
-          <div style={{ flex: 1, textAlign: 'center' }}>
-            <div style={{ color: '#fff', fontSize: 16, fontWeight: 700, letterSpacing: 1 }}>在线客服</div>
-            <div
-              style={{
-                fontSize: 11,
-                marginTop: 2,
-                color: sessionStatus === 'active' ? '#4ade80' : sessionStatus === 'closed' ? '#888' : '#f59e0b',
-              }}
-            >
-              {sessionStatus === 'active' ? '● 客服已接入' : sessionStatus === 'closed' ? '会话已结束' : '● 等待客服接入...'}
-            </div>
-          </div>
-
-          {/* 关闭会话按钮 */}
-          {sessionStatus !== 'closed' && sessionId && (
-            <div
-              onClick={() => closeMutation.mutate({ sessionId })}
-              style={{
-                width: 36,
-                height: 36,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                borderRadius: 8,
-                background: 'rgba(220,38,38,0.2)',
-                border: '1px solid rgba(220,38,38,0.4)',
-                flexShrink: 0,
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M2 2L12 12M12 2L2 12" stroke="#f87171" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </div>
-          )}
-        </div>
+        {/* ── 顶部导航（公共组件） ── */}
+        <TopNav showLogo={false} onBackClick={() => navigate('/')} />
 
         {/* ── 用户信息栏 ── */}
         <div style={{ flexShrink: 0, width: '100%' }}>

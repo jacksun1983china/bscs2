@@ -123,6 +123,8 @@ export const LANHU = {
   diamondArrow: '/img/f2512d2a3e6780e32f91e549a835ae0c.png',
   // 头像框
   avatarFrame: '/img/feee4e3a86c6906e2cf07d44764cbf1e.png',
+  // 公共返回按钮（蓝紫色菱形箭头，所有页面统一使用）
+  backBtn: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/ef4db60601dc5cfa7fb8cdf6ef9dfe19_7ecff073.png',
 } as const;
 
 // ─────────────────────────────────────────────
@@ -194,7 +196,7 @@ export const ASSETS = {
   cz_btn: '/img/btn_chongzhi.png',
 
   // BDCS2 LOGO（新版科幻赛博朋克风格，透明背景PNG）
-  bdcs2Logo: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/bdcs2_logo_v2-Qg6WgqByAMxL2Q4Sg2NBXM.png',
+  bdcs2Logo: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/logobdcs2_97ff6844.png',
 
   // 登录页背景
   loginBg: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/login-bg_5ca371bd.png',

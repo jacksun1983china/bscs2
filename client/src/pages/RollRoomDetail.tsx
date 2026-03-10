@@ -9,6 +9,7 @@ import { trpc } from '@/lib/trpc';
 import { LANHU, getAvatarUrl } from '@/lib/assets';
 import BottomNav from '@/components/BottomNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
+import TopNav from '@/components/TopNav';
 import { toast } from 'sonner';
 
 // ── px → cqw 转换（基准 750px）──────────────────────────────────
@@ -280,25 +281,7 @@ export default function RollRoomDetail() {
     >
       {/* 顶部固定区（不滚动）：导航栏 + 用户信息卡 */}
       <div style={{ position: 'relative', zIndex: 2, flexShrink: 0 }}>
-        {/* 顶部导航栏（703×58px, margin: 20px 0 0 24px） */}
-        <div style={{
-          width: q(703),
-          height: q(58),
-          marginTop: q(20),
-          marginLeft: q(24),
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-        }}>
-          {/* 返回按钮 */}
-          <img
-            src={D.navBack}
-            alt="返回"
-            onClick={() => navigate('/roll')}
-            style={{ width: q(58), height: q(49), objectFit: 'contain', cursor: 'pointer' }}
-          />
-          <div style={{ flex: 1 }} />
-        </div>
+        <TopNav showLogo={false} onBackClick={() => navigate('/roll')} />
         {/* 用户信息卡 */}
         <PlayerInfoCard style={{ marginTop: q(18) }} />
       </div>
@@ -348,24 +331,12 @@ export default function RollRoomDetail() {
                   flexDirection: 'row',
                   alignItems: 'center',
                 }}>
-                  {/* 房间logo背景（122×122px） */}
-                  <div style={{
-                    width: q(122),
-                    height: q(122),
-                    backgroundImage: `url(${D.roomLogoBg})`,
-                    backgroundSize: '100% 100%',
-                    backgroundRepeat: 'no-repeat',
-                    flexShrink: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <img
-                      src={room.avatarUrl || D.roomLogo}
-                      alt=""
-                      style={{ width: q(114), height: q(114), margin: `${q(4)} 0 0 ${q(4)}`, objectFit: 'cover', borderRadius: q(4) }}
-                    />
-                  </div>
+                  {/* 房间logo（无背景框，放大显示） */}
+                  <img
+                    src={room.avatarUrl || D.roomLogo}
+                    alt=""
+                    style={{ width: q(160), height: q(160), objectFit: 'contain', flexShrink: 0 }}
+                  />
                   {/* 房间名称 + 开奖时间（352×112px, margin-top:10） */}
                   <div style={{ width: q(352), marginTop: q(10), marginLeft: q(0) }}>
                     <span style={{

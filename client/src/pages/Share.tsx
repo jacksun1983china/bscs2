@@ -5,6 +5,8 @@ import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { ASSETS } from '@/lib/assets';
 import { toast } from 'sonner';
+import TopNavComponent from '@/components/TopNav';
+import BottomNavComponent from '@/components/BottomNav';
 
 const TAB_ITEMS = [
   { key: 'wode',     icon: ASSETS.wode,     label: '我的',   route: '/profile' },
@@ -43,6 +45,7 @@ function BottomNav({ active }: { active: string }) {
 }
 
 export default function Share() {
+  const [, navigate] = useLocation();
   const { data: player } = trpc.player.me.useQuery();
   const { data: teamStats } = trpc.player.teamStats.useQuery(undefined, { enabled: !!player });
 
@@ -66,11 +69,9 @@ export default function Share() {
     <div className="phone-container" style={{ height: '100vh', position: 'relative', background: '#0d0621', overflow: 'hidden' }}>
       <img src={ASSETS.bg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.4, pointerEvents: 'none' }} />
 
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 56, zIndex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* 顶部 */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', height: 52, flexShrink: 0, borderBottom: '1px solid rgba(120,60,220,0.2)' }}>
-          <span style={{ color: '#fff', fontSize: 17, fontWeight: 700 }}>分享推广</span>
-        </div>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 56, zIndex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', containerType: 'inline-size' }}>
+        {/* 顶部导航（公共组件） */}
+        <TopNavComponent showLogo={false} onBackClick={() => navigate('/')} />
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
           {/* 邀请码卡片 */}

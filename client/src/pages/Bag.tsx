@@ -4,6 +4,8 @@
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { ASSETS } from '@/lib/assets';
+import TopNavComponent from '@/components/TopNav';
+import BottomNavShared from '@/components/BottomNav';
 
 const TAB_ITEMS = [
   { key: 'wode',     icon: ASSETS.wode,     label: '我的',   route: '/profile' },
@@ -64,12 +66,9 @@ export default function Bag() {
     <div className="phone-container" style={{ height: '100vh', position: 'relative', background: '#0d0621', overflow: 'hidden' }}>
       <img src={ASSETS.bg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.4, pointerEvents: 'none' }} />
 
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 56, zIndex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* 顶部 */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', height: 52, flexShrink: 0, borderBottom: '1px solid rgba(120,60,220,0.2)' }}>
-          <span style={{ color: '#fff', fontSize: 17, fontWeight: 700, flex: 1 }}>背包</span>
-          <span style={{ color: '#9980cc', fontSize: 12 }}>共 {data?.total || 0} 件</span>
-        </div>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 56, zIndex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', containerType: 'inline-size' }}>
+        {/* 顶部导航（公共组件） */}
+        <TopNavComponent showLogo={false} onBackClick={() => navigate('/')} />
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
           {isLoading ? (

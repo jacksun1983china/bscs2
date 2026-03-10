@@ -8,6 +8,7 @@ import { trpc } from '@/lib/trpc';
 import { ASSETS, SYSTEM_AVATARS, getAvatarUrl } from '@/lib/assets';
 import { toast } from 'sonner';
 import BottomNav from '@/components/BottomNav';
+import TopNav from '@/components/TopNav';
 
 export default function Profile() {
   const [, navigate] = useLocation();
@@ -59,12 +60,9 @@ export default function Profile() {
     <div className="phone-container" style={{ height: '100vh', position: 'relative', background: '#0d0621', overflow: 'hidden' }}>
       <img src={ASSETS.bg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.4, pointerEvents: 'none' }} />
 
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 70, zIndex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* 顶部 */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', height: 52, flexShrink: 0, borderBottom: '1px solid rgba(120,60,220,0.2)' }}>
-          <span style={{ color: '#fff', fontSize: 17, fontWeight: 700, flex: 1 }}>我的</span>
-          <button onClick={() => logoutMutation.mutate()} style={{ background: 'none', border: '1px solid rgba(120,60,220,0.4)', color: '#9980cc', fontSize: 12, padding: '4px 12px', borderRadius: 6, cursor: 'pointer' }}>退出</button>
-        </div>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 70, zIndex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', containerType: 'inline-size' }}>
+        {/* 顶部导航（公共组件） */}
+        <TopNav showLogo={false} onBackClick={() => navigate('/')} />
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {/* 用户信息卡 */}

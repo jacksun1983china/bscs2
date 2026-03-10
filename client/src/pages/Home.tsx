@@ -22,6 +22,7 @@ import { LANHU, ASSETS } from '@/lib/assets';
 import { trpc } from '@/lib/trpc';
 import GameMenuList from '@/components/GameMenuList';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
+import TopNav from '@/components/TopNav';
 
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -118,53 +119,8 @@ export default function Home() {
           ══════════════════════════════════════════════════════ */}
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 1, width: '100%' }}>
 
-        {/* ── section_1: 顶部导航 702×122px, margin: 13px 0 0 26px ── */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'flex-start',
-            width: q(702),
-            height: q(122),
-            marginTop: q(13),
-            marginLeft: q(26),
-          }}
-        >
-          {/* LOGO背景框 103×122px */}
-          <div
-            style={{
-              width: q(103),
-              height: q(122),
-              backgroundImage: `url(${LANHU.logoBg})`,
-              backgroundSize: '100% 100%',
-              backgroundRepeat: 'no-repeat',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <img
-              src={ASSETS.bdcs2Logo}
-              alt="LOGO"
-              style={{ width: '80%', height: '80%', objectFit: 'contain' }}
-            />
-          </div>
-
-          {/* 客服 79×80px */}
-          <img src={LANHU.kefuIcon} alt="客服"
-            onClick={() => navigate('/kefu')}
-            style={{ width: q(79), height: q(80), marginTop: q(22), marginLeft: q(326), cursor: 'pointer', flexShrink: 0, objectFit: 'contain' }}
-          />
-          {/* VIP图标 79×80px */}
-          <img src={LANHU.vipIcon} alt="VIP"
-            style={{ width: q(79), height: q(80), marginTop: q(22), marginLeft: q(18), cursor: 'pointer', flexShrink: 0, objectFit: 'contain' }}
-          />
-          {/* 全部图标 79×80px */}
-          <img src={LANHU.allGamesIcon} alt="全部"
-            style={{ width: q(79), height: q(80), marginTop: q(22), marginLeft: q(18), cursor: 'pointer', flexShrink: 0, objectFit: 'contain' }}
-          />
-        </div>
+        {/* ── section_1: 顶部导航（公共组件） ── */}
+        <TopNav showLogo={true} />
 
         {/* ── Banner 750×340px, margin-top: 1px ── */}
         <div
