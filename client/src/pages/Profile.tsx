@@ -1,286 +1,363 @@
 /**
- * Profile.tsx — 我的页面
- * 个人信息、头像选择、返佣、推广数据
+ * Profile.tsx — 「我的」页面
+ * 严格还原蓝湖 lanhu_wode 设计稿
+ * 布局：TopNav → PlayerInfoCard → VIP卡片 → 分享招募行 → 功能菜单列表 → 实名认证 → 音乐音效 → 退出登录 → BottomNav
  */
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
-import { ASSETS, SYSTEM_AVATARS, getAvatarUrl } from '@/lib/assets';
-import { toast } from 'sonner';
-import BottomNav from '@/components/BottomNav';
 import TopNav from '@/components/TopNav';
+import BottomNav from '@/components/BottomNav';
+import PlayerInfoCard from '@/components/PlayerInfoCard';
+
+const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
+
+// 我的页面专用切图
+const WD = {
+  // 页面背景（深紫色渐变）
+  pageBg: CDN + '74d18b69057e89f0807e0d0ca7575514_57d00e7e.png',
+  // 分享招募行背景
+  shareRowBg: CDN + 'a61d46d78194157d311c32389d39cc3f_42336295.png',
+  // 分享招募图标
+  shareIcon: CDN + '600229944aa9c04afae9c035a316a6fe_c4f9020a.png',
+  // 箭头
+  arrowRight: CDN + 'e0603ba4213d69b29db5d8db9a605a18_c4f9020a.png',
+  // 菜单行背景1（我的记录）
+  menuBg0: CDN + '659da56cf73308bfb4208365e6a2f88b_614cd7ce.png',
+  // 菜单行背景2（STEAM）
+  menuBg1: CDN + 'c71a92adbb8c056890154d48e83c0453_6c640253.png',
+  // 菜单行背景3（安全密码）
+  menuBg2: CDN + 'ae227e4a7db0fcf751dd2f770c69d4d9_f620672e.png',
+  // 菜单图标1（我的记录）
+  menuIcon0: CDN + '7f10c3bf7f42170b236350c03d14ce63_c6f293b5.png',
+  // 菜单图标2（STEAM）
+  menuIcon1: CDN + 'eb9ac6eabb1be862754eb31989971610_c0bb2029.png',
+  // 菜单图标3（安全密码）
+  menuIcon2: CDN + '26e359d4a3780056f0401f0b6aacdf7b_daa2766d.png',
+  // 实名认证行背景
+  realNameBg: CDN + '62dd1bc1b4fe3b2408cd114ae3166526_*.png',
+  // 音乐音效行背景
+  musicBg: CDN + 'f922b7b76b2da590622724e36208846c_4cdc7d0a.png',
+  // 音乐图标
+  musicIcon: CDN + 'dbbea9d72fb9c298e2ab017e7cb1247e_435ef4d7.png',
+  // 音乐开关-开
+  musicOn: CDN + 'cd980fd99599a03db61ebff862b15d73_65db3b8c.png',
+  // 音乐开关-关
+  musicOff: CDN + '1608392f7755887cc5fec3c7e9f6f52a_*.png',
+  // 退出登录左装饰
+  logoutLeft: CDN + 'dc610d9243ec14bd0142f1a11ef46d9b_25331e88.png',
+  // 退出登录右装饰
+  logoutRight: CDN + '57d2b35cf93f3bbc485d643558f35d3b_*.png',
+  // VIP进度图
+  vipProgress: CDN + 'd18c3f329695c8e72ef4bb3a42a92dce_0e011fd6.png',
+  // 推荐人信息背景
+  referrerBg: CDN + 'b3202758ce3be964ef044a6b0d7e249d_0646f668.png',
+};
+
+const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 
 export default function Profile() {
   const [, navigate] = useLocation();
-  const [activeTab, setActiveTab] = useState<'info' | 'commission' | 'messages'>('info');
-  const [inviteInput, setInviteInput] = useState('');
-  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [musicOn, setMusicOn] = useState(true);
+  const [sfxOn, setSfxOn] = useState(true);
 
-  const { data: player, refetch } = trpc.player.me.useQuery();
-  const { data: teamStats } = trpc.player.teamStats.useQuery(undefined, { enabled: !!player });
-  const { data: messages } = trpc.player.messages.useQuery({ page: 1, limit: 20 }, { enabled: activeTab === 'messages' });
-
-  const bindMutation = trpc.player.bindInviteCode.useMutation({
-    onSuccess: (d) => { toast.success(`成功绑定上级：${d.inviterNickname}`); refetch(); },
-    onError: (e) => toast.error(e.message),
-  });
-
-  const withdrawMutation = trpc.player.withdrawCommission.useMutation({
-    onSuccess: () => { toast.success('返佣已提取到商城币！'); refetch(); },
-    onError: (e) => toast.error(e.message),
-  });
-
+  const { data: player } = trpc.player.me.useQuery();
   const logoutMutation = trpc.player.logout.useMutation({
     onSuccess: () => navigate('/login'),
   });
 
-  const updateProfileMutation = trpc.player.updateProfile.useMutation({
-    onSuccess: () => {
-      toast.success('头像已更新！');
-      setShowAvatarPicker(false);
-      refetch();
-    },
-    onError: (e) => toast.error(e.message),
-  });
-
-  if (!player) {
-    return (
-      <div className="phone-container" style={{ height: '100vh', background: '#0d0621', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, position: 'relative' }}>
-        <div style={{ fontSize: 40 }}>👤</div>
-        <div style={{ color: '#9980cc', fontSize: 14 }}>请先登录</div>
-        <button onClick={() => navigate('/login')} style={{ padding: '10px 28px', borderRadius: 10, background: 'linear-gradient(135deg, #7c3aed, #c084fc)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>立即登录</button>
-        <BottomNav active="wode" />
-      </div>
-    );
-  }
-
-  const identityMap: Record<string, string> = { player: '玩家', streamer: '主播', merchant: '招商' };
+  const menuItems = [
+    { icon: WD.menuIcon0, bg: WD.menuBg0, label: '我的记录', sub: '资产明细', onClick: () => {} },
+    { icon: WD.menuIcon1, bg: WD.menuBg1, label: 'STEAM', sub: '已绑定', onClick: () => {} },
+    { icon: WD.menuIcon2, bg: WD.menuBg2, label: '安全密码', sub: '已设置', onClick: () => {} },
+  ];
 
   return (
-    <div className="phone-container" style={{ height: '100vh', position: 'relative', background: '#0d0621', overflow: 'hidden' }}>
-      <img src={ASSETS.bg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.4, pointerEvents: 'none' }} />
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        containerType: 'inline-size',
+      }}
+    >
+      {/* 背景 */}
+      <img
+        src={WD.pageBg}
+        alt=""
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      />
 
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 70, zIndex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', containerType: 'inline-size' }}>
-        {/* 顶部导航（公共组件） */}
-        <TopNav showLogo={false} onBackClick={() => navigate('/')} />
+      {/* 内容层 */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          paddingBottom: q(120),
+        }}
+      >
+        {/* 顶部导航 */}
+        <TopNav showLogo={false} />
 
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          {/* 用户信息卡 */}
-          <div style={{ margin: '10px', borderRadius: 12, background: 'linear-gradient(135deg, rgba(30,10,65,0.95) 0%, rgba(15,5,40,0.98) 100%)', border: '1.5px solid rgba(120,60,220,0.4)', padding: '14px', boxShadow: '0 0 20px rgba(100,40,200,0.3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {/* 头像（可点击更换） */}
-              <div
-                onClick={() => setShowAvatarPicker(true)}
-                style={{ position: 'relative', width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(120,60,220,0.6)', background: 'rgba(50,20,100,0.5)', flexShrink: 0, cursor: 'pointer' }}
-              >
-                <img src={getAvatarUrl(player.avatar)} alt="头像" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                {/* 更换提示 */}
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.55)', textAlign: 'center', fontSize: 9, color: '#c084fc', padding: '2px 0' }}>更换</div>
+        {/* 页面标题 */}
+        <div style={{ textAlign: 'center', color: '#fff', fontSize: q(34), fontWeight: 500, marginTop: q(-10), marginBottom: q(8) }}>
+          我的
+        </div>
+
+        {/* 玩家信息卡 */}
+        <div style={{ padding: `0 ${q(30)}`, marginTop: q(10) }}>
+          <PlayerInfoCard />
+        </div>
+
+        {/* 推荐人信息 */}
+        {player?.invitedByNickname && (
+          <div
+            style={{
+              margin: `${q(8)} ${q(30)} 0`,
+              padding: `${q(16)} ${q(24)}`,
+              background: 'rgba(5,4,18,0.6)',
+              borderRadius: q(16),
+              border: '1px solid rgba(120,60,220,0.3)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: q(8),
+            }}
+          >
+            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: q(22) }}>
+              推荐人：{player.invitedByNickname}
+            </span>
+          </div>
+        )}
+
+        {/* VIP 进度卡片 */}
+        <div
+          style={{
+            margin: `${q(16)} ${q(30)} 0`,
+            background: 'rgba(5,4,18,0.85)',
+            borderRadius: q(44),
+            border: '1px solid rgba(0,0,0,0.8)',
+            padding: `${q(28)} ${q(30)}`,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div>
+            {/* VIP 大字 */}
+            <div style={{ position: 'relative', height: q(73), marginBottom: q(10) }}>
+              <span style={{
+                position: 'absolute',
+                left: 0, top: 0,
+                color: 'rgba(0,45,96,1)',
+                fontSize: q(105),
+                fontWeight: 700,
+                lineHeight: q(34),
+                WebkitTextStroke: `1px rgba(130,0,238,1)`,
+              }}>
+                VIP{player?.vipLevel ?? 0}
+              </span>
+              <span style={{
+                position: 'absolute',
+                left: 0, top: 0,
+                color: 'rgba(248,254,255,1)',
+                fontSize: q(105),
+                fontWeight: 700,
+                lineHeight: q(34),
+                WebkitTextStroke: `2px rgba(9,254,255,1)`,
+              }}>
+                VIP{player?.vipLevel ?? 0}
+              </span>
+            </div>
+            <span style={{ color: 'rgba(58,255,255,1)', fontSize: q(20), fontWeight: 500, display: 'block', marginTop: q(50) }}>
+              距VIP{(player?.vipLevel ?? 0) + 1}还差200积分
+            </span>
+          </div>
+          <img src={WD.vipProgress} alt="VIP进度" style={{ width: q(173), height: q(171), objectFit: 'contain' }} />
+        </div>
+
+        {/* 分享招募行 */}
+        <div
+          style={{
+            margin: `${q(12)} ${q(30)} 0`,
+            position: 'relative',
+            height: q(100),
+            cursor: 'pointer',
+          }}
+          onClick={() => navigate('/share')}
+        >
+          <img src={WD.shareRowBg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'row', alignItems: 'center', height: '100%', padding: `0 ${q(25)}` }}>
+            <img src={WD.shareIcon} alt="分享" style={{ width: q(72), height: q(72), objectFit: 'contain' }} />
+            <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500, marginLeft: q(20) }}>分享招募</span>
+            <span style={{ color: 'rgba(249,178,255,1)', fontSize: q(24), marginLeft: 'auto' }}>
+              收益：0
+            </span>
+            <img src={WD.arrowRight} alt=">" style={{ width: q(10), height: q(19), marginLeft: q(39), objectFit: 'contain' }} />
+          </div>
+        </div>
+
+        {/* 功能菜单列表 */}
+        <div style={{ margin: `${q(11)} ${q(30)} 0`, display: 'flex', flexDirection: 'column', gap: q(11) }}>
+          {menuItems.map((item, idx) => (
+            <div
+              key={idx}
+              style={{ position: 'relative', height: q(100), cursor: 'pointer', borderRadius: q(20), overflow: 'hidden' }}
+              onClick={item.onClick}
+            >
+              <img src={item.bg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
+              <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'row', alignItems: 'center', height: '100%', padding: `0 ${q(25)}` }}>
+                <img src={item.icon} alt={item.label} style={{ width: q(72), height: q(72), objectFit: 'contain' }} />
+                <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500, marginLeft: q(20) }}>{item.label}</span>
+                <span style={{ color: 'rgba(249,178,255,1)', fontSize: q(24), marginLeft: 'auto' }}>{item.sub}</span>
+                <img src={WD.arrowRight} alt=">" style={{ width: q(10), height: q(19), marginLeft: q(31), objectFit: 'contain' }} />
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ color: '#fff', fontSize: 16, fontWeight: 700 }}>{player.nickname}</div>
-                <div style={{ color: '#9980cc', fontSize: 12, marginTop: 2 }}>ID：{player.id}</div>
-                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                  <span style={{ background: 'linear-gradient(135deg, #f5a623, #e8750a)', borderRadius: 4, padding: '1px 7px', fontSize: 11, fontWeight: 700, color: '#fff' }}>VIP{player.vipLevel}</span>
-                  <span style={{ background: 'rgba(120,60,220,0.3)', borderRadius: 4, padding: '1px 7px', fontSize: 11, color: '#c084fc', border: '1px solid rgba(120,60,220,0.4)' }}>{identityMap[player.identity || 'player']}</span>
-                </div>
-              </div>
             </div>
+          ))}
+        </div>
 
-            {/* 资产 */}
-            <div style={{ display: 'flex', gap: 8, marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(120,60,220,0.2)' }}>
-              {[
-                { label: '金币', value: parseFloat(player.gold || '0').toFixed(0), color: '#ffd700' },
-                { label: '钻石', value: parseFloat(player.diamond || '0').toFixed(0), color: '#7df9ff' },
-                { label: '商城币', value: parseFloat(player.shopCoin || '0').toFixed(0), color: '#c084fc' },
-              ].map(item => (
-                <div key={item.label} style={{ flex: 1, textAlign: 'center', padding: '8px 4px', background: 'rgba(20,8,50,0.5)', borderRadius: 8, border: '1px solid rgba(120,60,220,0.2)' }}>
-                  <div style={{ color: item.color, fontSize: 16, fontWeight: 700 }}>{item.value}</div>
-                  <div style={{ color: '#9980cc', fontSize: 11, marginTop: 2 }}>{item.label}</div>
-                </div>
-              ))}
-            </div>
+        {/* 实名认证行 */}
+        <div
+          style={{
+            margin: `${q(11)} ${q(30)} 0`,
+            height: q(100),
+            background: 'rgba(5,4,18,0.85)',
+            borderRadius: q(20),
+            border: '1px solid rgba(80,40,160,0.3)',
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: `0 ${q(25)}`,
+            cursor: 'pointer',
+          }}
+        >
+          <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500 }}>实名认证</span>
+          <span style={{ color: 'rgba(249,178,255,1)', fontSize: q(22), marginLeft: q(20), flex: 1 }}>
+            {player?.phone ? `${player.phone.slice(0, 3)}****${player.phone.slice(-4)}` : '未认证'}
+          </span>
+          <img src={WD.arrowRight} alt=">" style={{ width: q(10), height: q(19), objectFit: 'contain' }} />
+        </div>
 
-            {/* 手机号 */}
-            <div style={{ marginTop: 10, color: '#666', fontSize: 12, textAlign: 'right' }}>
-              {player.phone?.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')}
-            </div>
+        {/* 音乐音效行 */}
+        <div
+          style={{
+            margin: `${q(11)} ${q(30)} 0`,
+            position: 'relative',
+            height: q(100),
+            background: 'rgba(5,4,18,0.85)',
+            borderRadius: q(20),
+            border: '1px solid rgba(80,40,160,0.3)',
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            padding: `0 ${q(25)}`,
+          }}
+        >
+          <img src={WD.musicIcon} alt="音乐" style={{ width: q(50), height: q(50), objectFit: 'contain' }} />
+          <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500, marginLeft: q(16) }}>音乐</span>
+          {/* 音乐开关 */}
+          <div
+            onClick={() => setMusicOn(v => !v)}
+            style={{
+              marginLeft: q(20),
+              width: q(80),
+              height: q(40),
+              borderRadius: q(20),
+              background: musicOn ? 'linear-gradient(90deg, #7c3aed, #06b6d4)' : 'rgba(80,80,80,0.6)',
+              position: 'relative',
+              cursor: 'pointer',
+              transition: 'background 0.3s',
+              flexShrink: 0,
+            }}
+          >
+            <div style={{
+              position: 'absolute',
+              top: q(4),
+              left: musicOn ? q(44) : q(4),
+              width: q(32),
+              height: q(32),
+              borderRadius: '50%',
+              background: '#fff',
+              transition: 'left 0.3s',
+            }} />
           </div>
 
-          {/* Tab切换 */}
-          <div style={{ display: 'flex', margin: '0 10px 8px', background: 'rgba(20,8,50,0.6)', borderRadius: 10, padding: 3, border: '1px solid rgba(120,60,220,0.2)' }}>
-            {[
-              { key: 'info', label: '账号信息' },
-              { key: 'commission', label: '返佣推广' },
-              { key: 'messages', label: '站内信' },
-            ].map(tab => (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key as any)} style={{ flex: 1, padding: '7px 0', borderRadius: 8, border: 'none', background: activeTab === tab.key ? 'rgba(120,60,220,0.5)' : 'transparent', color: activeTab === tab.key ? '#fff' : '#9980cc', fontSize: 12, fontWeight: activeTab === tab.key ? 700 : 400, cursor: 'pointer' }}>{tab.label}</button>
-            ))}
+          {/* 音效 */}
+          <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500, marginLeft: q(30) }}>音效</span>
+          <div
+            onClick={() => setSfxOn(v => !v)}
+            style={{
+              marginLeft: q(20),
+              width: q(80),
+              height: q(40),
+              borderRadius: q(20),
+              background: sfxOn ? 'linear-gradient(90deg, #7c3aed, #06b6d4)' : 'rgba(80,80,80,0.6)',
+              position: 'relative',
+              cursor: 'pointer',
+              transition: 'background 0.3s',
+              flexShrink: 0,
+            }}
+          >
+            <div style={{
+              position: 'absolute',
+              top: q(4),
+              left: sfxOn ? q(44) : q(4),
+              width: q(32),
+              height: q(32),
+              borderRadius: '50%',
+              background: '#fff',
+              transition: 'left 0.3s',
+            }} />
           </div>
+        </div>
 
-          {/* 账号信息 */}
-          {activeTab === 'info' && (
-            <div style={{ padding: '0 10px' }}>
-              {/* 绑定上级 */}
-              {!player.invitedBy && (
-                <div style={{ marginBottom: 10, padding: '12px', borderRadius: 10, background: 'rgba(20,8,50,0.7)', border: '1px solid rgba(120,60,220,0.25)' }}>
-                  <div style={{ color: '#c084fc', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>绑定上级邀请码</div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input value={inviteInput} onChange={e => setInviteInput(e.target.value)} placeholder="输入邀请码" style={{ flex: 1, background: 'rgba(20,8,50,0.8)', border: '1px solid rgba(120,60,220,0.3)', borderRadius: 6, padding: '7px 10px', color: '#e0d0ff', fontSize: 13, outline: 'none' }} />
-                    <button onClick={() => bindMutation.mutate({ inviteCode: inviteInput })} disabled={!inviteInput || bindMutation.isPending} style={{ padding: '7px 14px', borderRadius: 6, background: 'rgba(120,60,220,0.4)', border: '1px solid rgba(120,60,220,0.5)', color: '#c084fc', fontSize: 13, cursor: 'pointer' }}>绑定</button>
-                  </div>
-                </div>
-              )}
-
-              {/* 我的邀请码 */}
-              <div style={{ marginBottom: 10, padding: '12px', borderRadius: 10, background: 'rgba(20,8,50,0.7)', border: '1px solid rgba(120,60,220,0.25)' }}>
-                <div style={{ color: '#9980cc', fontSize: 12, marginBottom: 6 }}>我的邀请码</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ color: '#ffd700', fontSize: 20, fontWeight: 700, letterSpacing: 2 }}>{player.inviteCode}</span>
-                  <button onClick={() => { navigator.clipboard.writeText(player.inviteCode || ''); toast.success('邀请码已复制'); }} style={{ padding: '4px 12px', borderRadius: 6, background: 'rgba(120,60,220,0.3)', border: '1px solid rgba(120,60,220,0.4)', color: '#c084fc', fontSize: 12, cursor: 'pointer' }}>复制</button>
-                </div>
-              </div>
-
-              {/* 充值记录入口 */}
-              <div onClick={() => navigate('/recharge')} style={{ marginBottom: 10, padding: '12px', borderRadius: 10, background: 'rgba(20,8,50,0.7)', border: '1px solid rgba(120,60,220,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
-                <span style={{ color: '#e0d0ff', fontSize: 13 }}>充值记录</span>
-                <span style={{ color: '#9980cc', fontSize: 16 }}>›</span>
-              </div>
-
-              {/* 总充值 */}
-              <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(20,8,50,0.7)', border: '1px solid rgba(120,60,220,0.25)' }}>
-                <div style={{ color: '#9980cc', fontSize: 12 }}>累计充值</div>
-                <div style={{ color: '#ffd700', fontSize: 18, fontWeight: 700, marginTop: 4 }}>¥{parseFloat(player.totalRecharge || '0').toFixed(2)}</div>
-              </div>
-            </div>
-          )}
-
-          {/* 返佣推广 */}
-          {activeTab === 'commission' && (
-            <div style={{ padding: '0 10px' }}>
-              {/* 返佣余额 */}
-              <div style={{ marginBottom: 10, padding: '14px', borderRadius: 10, background: 'linear-gradient(135deg, rgba(30,10,65,0.95), rgba(15,5,40,0.98))', border: '1.5px solid rgba(120,60,220,0.4)' }}>
-                <div style={{ color: '#9980cc', fontSize: 12 }}>待提取返佣</div>
-                <div style={{ color: '#ffd700', fontSize: 24, fontWeight: 700, margin: '6px 0' }}>¥{parseFloat(player.commissionBalance || '0').toFixed(2)}</div>
-                <button
-                  onClick={() => withdrawMutation.mutate()}
-                  disabled={parseFloat(player.commissionBalance || '0') <= 0 || withdrawMutation.isPending}
-                  style={{ width: '100%', padding: '10px', borderRadius: 8, border: 'none', background: parseFloat(player.commissionBalance || '0') > 0 ? 'linear-gradient(135deg, #7c3aed, #c084fc)' : 'rgba(80,80,80,0.3)', color: parseFloat(player.commissionBalance || '0') > 0 ? '#fff' : '#666', fontSize: 14, fontWeight: 700, cursor: parseFloat(player.commissionBalance || '0') > 0 ? 'pointer' : 'not-allowed' }}
-                >
-                  {withdrawMutation.isPending ? '提取中...' : '提取到商城币'}
-                </button>
-              </div>
-
-              {/* 推广数据 */}
-              {teamStats && (
-                <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(20,8,50,0.7)', border: '1px solid rgba(120,60,220,0.25)' }}>
-                  <div style={{ color: '#c084fc', fontSize: 13, fontWeight: 600, marginBottom: 10 }}>推广数据</div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {[
-                      { label: '今日新增', value: teamStats.todayCount },
-                      { label: '总下级', value: teamStats.total },
-                      { label: '待提返佣', value: `¥${parseFloat(teamStats.commissionBalance || '0').toFixed(2)}` },
-                    ].map(item => (
-                      <div key={item.label} style={{ flex: 1, textAlign: 'center', padding: '8px 4px', background: 'rgba(20,8,50,0.5)', borderRadius: 8, border: '1px solid rgba(120,60,220,0.2)' }}>
-                        <div style={{ color: '#ffd700', fontSize: 15, fontWeight: 700 }}>{item.value}</div>
-                        <div style={{ color: '#9980cc', fontSize: 11, marginTop: 2 }}>{item.label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 站内信 */}
-          {activeTab === 'messages' && (
-            <div style={{ padding: '0 10px' }}>
-              {!messages?.list?.length ? (
-                <div style={{ textAlign: 'center', color: '#666', fontSize: 13, padding: '40px 0' }}>暂无消息</div>
-              ) : (
-                messages.list.map((msg: any) => (
-                  <div key={msg.id} style={{ marginBottom: 8, padding: '12px', borderRadius: 10, background: msg.isRead ? 'rgba(20,8,50,0.5)' : 'rgba(30,10,65,0.8)', border: `1px solid ${msg.isRead ? 'rgba(120,60,220,0.15)' : 'rgba(120,60,220,0.4)'}` }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ color: msg.isRead ? '#9980cc' : '#c084fc', fontSize: 13, fontWeight: msg.isRead ? 400 : 700 }}>{msg.title}</span>
-                      {!msg.isRead && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#c084fc', flexShrink: 0, marginTop: 4 }} />}
-                    </div>
-                    <div style={{ color: '#aaa', fontSize: 12, lineHeight: 1.5 }}>{msg.content}</div>
-                    <div style={{ color: '#555', fontSize: 11, marginTop: 4 }}>{new Date(msg.createdAt).toLocaleString('zh-CN')}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
-          <div style={{ height: 16 }} />
+        {/* 退出登录 */}
+        <div
+          style={{
+            margin: `${q(20)} ${q(30)} 0`,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+          }}
+          onClick={() => logoutMutation.mutate()}
+        >
+          <img src={WD.logoutLeft} alt="" style={{ height: q(2), flex: 1, objectFit: 'fill', opacity: 0.6 }} />
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(120,40,200,0.8), rgba(200,40,120,0.8))',
+              borderRadius: q(50),
+              padding: `${q(20)} ${q(60)}`,
+              margin: `0 ${q(20)}`,
+            }}
+          >
+            <span style={{ color: '#fff', fontSize: q(28), fontWeight: 700, letterSpacing: 2 }}>退出登录</span>
+          </div>
+          <img src={WD.logoutLeft} alt="" style={{ height: q(2), flex: 1, objectFit: 'fill', opacity: 0.6, transform: 'scaleX(-1)' }} />
         </div>
       </div>
 
       {/* 底部导航 */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+      <div style={{ position: 'relative', zIndex: 10, flexShrink: 0 }}>
         <BottomNav active="wode" />
       </div>
-
-      {/* 头像选择弹窗 */}
-      {showAvatarPicker && (
-        <div
-          style={{ position: 'absolute', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-end' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowAvatarPicker(false); }}
-        >
-          <div style={{ width: '100%', background: 'linear-gradient(180deg, #1a0840 0%, #0d0621 100%)', borderRadius: '20px 20px 0 0', padding: '16px 12px 24px', border: '1px solid rgba(120,60,220,0.4)' }}>
-            <div style={{ textAlign: 'center', color: '#c084fc', fontSize: 15, fontWeight: 700, marginBottom: 14 }}>选择头像</div>
-
-            {/* 男性头像 */}
-            <div style={{ color: '#9980cc', fontSize: 12, marginBottom: 8 }}>男性头像</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 6, marginBottom: 14 }}>
-              {SYSTEM_AVATARS.filter(a => a.gender === 'male').map(avatar => (
-                <div
-                  key={avatar.id}
-                  onClick={() => updateProfileMutation.mutate({ avatar: avatar.id })}
-                  style={{
-                    borderRadius: '50%',
-                    overflow: 'hidden',
-                    border: player.avatar === avatar.id ? '2px solid #c084fc' : '2px solid rgba(120,60,220,0.3)',
-                    boxShadow: player.avatar === avatar.id ? '0 0 8px rgba(192,132,252,0.8)' : 'none',
-                    cursor: 'pointer',
-                    aspectRatio: '1',
-                  }}
-                >
-                  <img src={avatar.url} alt={avatar.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-              ))}
-            </div>
-
-            {/* 女性头像 */}
-            <div style={{ color: '#9980cc', fontSize: 12, marginBottom: 8 }}>女性头像</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 6, marginBottom: 16 }}>
-              {SYSTEM_AVATARS.filter(a => a.gender === 'female').map(avatar => (
-                <div
-                  key={avatar.id}
-                  onClick={() => updateProfileMutation.mutate({ avatar: avatar.id })}
-                  style={{
-                    borderRadius: '50%',
-                    overflow: 'hidden',
-                    border: player.avatar === avatar.id ? '2px solid #c084fc' : '2px solid rgba(120,60,220,0.3)',
-                    boxShadow: player.avatar === avatar.id ? '0 0 8px rgba(192,132,252,0.8)' : 'none',
-                    cursor: 'pointer',
-                    aspectRatio: '1',
-                  }}
-                >
-                  <img src={avatar.url} alt={avatar.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setShowAvatarPicker(false)}
-              style={{ width: '100%', padding: '12px', borderRadius: 10, border: '1px solid rgba(120,60,220,0.4)', background: 'rgba(20,8,50,0.8)', color: '#9980cc', fontSize: 14, cursor: 'pointer' }}
-            >
-              取消
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

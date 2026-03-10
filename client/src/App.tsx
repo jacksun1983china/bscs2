@@ -14,6 +14,7 @@ import Share from "./pages/Share";
 import Bag from "./pages/Bag";
 import Backpack from "./pages/Backpack";
 import Recharge from "./pages/Recharge";
+import Deposit from "./pages/Deposit";
 import RollX from "./pages/RollX";
 import CustomerService from "./pages/CustomerService";
 import AgentLogin from "./pages/AgentLogin";
@@ -33,7 +34,7 @@ function Router() {
       <Route path={"/share"} component={Share} />
       <Route path={"/bag"} component={Bag} />
       <Route path={"/backpack"} component={Backpack} />
-      <Route path={"/recharge"} component={Recharge} />
+      <Route path={"/recharge"} component={Deposit} />
       {/* 客服系统 */}
       <Route path={"/kefu"} component={CustomerService} />
       <Route path={"/agent/login"} component={AgentLogin} />

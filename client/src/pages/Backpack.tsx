@@ -1,511 +1,507 @@
 /**
  * Backpack.tsx — 背包页面
- * 严格还原蓝湖设计稿，使用 CDN 图片资源
+ * 严格还原蓝湖 lanhu_beibao 设计稿
+ * 布局：TopNav → PlayerInfoCard → 操作按钮行 → 筛选排序行 → 道具列表 → BottomNav
  */
 import { useState } from 'react';
-import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
-import { toast } from 'sonner';
+import TopNav from '@/components/TopNav';
+import BottomNav from '@/components/BottomNav';
+import PlayerInfoCard from '@/components/PlayerInfoCard';
 
-const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym';
+const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
 
-const IMG = {
-  bg: `${CDN}/66f8df24a63936b3d70aa867242db21b_4067f007.png`,
-  userCardBg: `${CDN}/5b14973f8ab73f386b1182a2fc979e40_f3843b19.png`,
-  goldBg: `${CDN}/fb10ef5bd83b2e1a7864cf24bb44a18c_70f1a944.png`,
-  diamondBg: `${CDN}/cff71f0728fc2e0bff99983813acbb1f_315dc086.png`,
-  giftCountBg: `${CDN}/366cc5965045f9551088d199b166e628_61a36078.png`,
-  paginationBg: `${CDN}/097f9471937fdb90867e6497e283bdfd_e3a968ab.png`,
-  priceSortIcon: `${CDN}/1b8ac55424ce8ab7ad80daf188f581b2_809096c5.png`,
-  timeSortIcon: `${CDN}/33a88881278b4762a2a00c211315bb2a_7048c409.png`,
-  priceTag: `${CDN}/55e32b342c543fe583d1f65de5e8f4fc_f30ce7fb.png`,
-  priceIcon: `${CDN}/e3896d873cf738587ae50f74b2720a8b_086c3e61.png`,
-  itemDetailBg: `${CDN}/5dac4a0abd2e4838b1aba8fa4d9a21d7_mergeImage_6a236096.png`,
-  sendBtn: `${CDN}/56eab3ad79c143fc808aac18771961e2_mergeImage_1f4ed5ad.png`,
-  itemCardBg: `${CDN}/5688d32a86417448b55164d4cb14fd9e_9db9b294.png`,
-  itemCardBgSelected: `${CDN}/9a1ced6e492a0c8a9d8db2e2be0e921a_201d9a08.png`,
-  // Sample item images
-  item1: `${CDN}/e0c8e2812ccd231c8ec0d8ab6943e2c8_4060c0ad.png`,
-  item2: `${CDN}/d00316c512a6f938b2a058ba1a46f653_8f86ea8b.png`,
-  item3: `${CDN}/1e3be3fe75fa0c0adbe07e1bffaab34d_b2fca442.png`,
-  item4: `${CDN}/df439a558f645fbe12c17b4f785e20aa_34f3f4e7.png`,
-  // Top bar
-  topBar: `${CDN}/941e19f2d0d635d58281e1f6cdad8f99_f0a6b9d2.png`,
-  backArrow: `${CDN}/e33f16ef82fdededf3b2fe5e4890e46f_d2a3b4c5.png`,
-  // Bottom nav
-  bottomNavBg: `${CDN}/6e427840d43f612398e50388b82970c6_cda12438.png`,
-  navWode: `${CDN}/3122f1229eddce45807b2d5fba849c8b_ae9637dd.png`,
-  navFenxiang: `${CDN}/3fa18b2e3e2c283312bd26e1c624ec1e_e5b6087e.png`,
-  navBeibao: `${CDN}/cdc98d58eea0f82317280d74789b0d89_67afd33b.png`,
-  navChongzhi: `${CDN}/b4926f25ec6fdfc64ee5d1799d704fcc_36022a62.png`,
-  navDatingCenter: `${CDN}/8e38cd263fceb711564aca38e5ad1bac_ac9e64aa.png`,
-  // Avatar frame
-  avatarFrame: `${CDN}/516e03effb9223801a6c3cd9bbf28cba_f5ce9b8d.png`,
-  goldLabel: `${CDN}/671e04db9fa27be8982806a5ebc36cde_c9d0e1f2.png`,
-  diamondLabel: `${CDN}/a4be45afba0fb4443a881cf262fbba8d_f5a6b7c8.png`,
+const BB = {
+  // 页面背景
+  pageBg: CDN + '865881086c8e42fdb565ab88ac0ef070_*.png',
+  // 背包标题图
+  titleImg: CDN + 'ccf4cb97381efacab90c9d344feb1496_c632e754.png',
+  // 关闭/返回按钮
+  closeBtn: CDN + '20ff4689b6231b9ac2323b9564f688df_*.png',
+  // 标签栏背景（全部/枪械/饰品）
+  tabBg: CDN + '009e8d412a7d3bff55bd0a9e7711ce02_*.png',
+  // 分解按钮
+  decomposeIcon: CDN + 'b400f59987e35b6feab1e589f258d441_d52bf2e6.png',
+  // 提货保护图标
+  protectIcon: CDN + '97de6f517430fe6063bab8e92561260d_*.png',
+  // 提货按钮
+  deliverBtn: CDN + '426e41da3ba763c4a3dedee2d8088c21_*.png',
+  // 价格排序图标
+  priceSort: CDN + '1b8ac55424ce8ab7ad80daf188f581b2_*.png',
+  // 时间排序图标
+  timeSort: CDN + '33a88881278b4762a2a00c211315bb2a_*.png',
+  // 道具卡片背景（大）
+  itemCardBig: CDN + 'e0c8e2812ccd231c8ec0d8ab6943e2c8_c6692eb4.png',
+  // 道具卡片背景（小）
+  itemCardSmall1: CDN + '1e3be3fe75fa0c0adbe07e1bffaab34d_*.png',
+  itemCardSmall2: CDN + 'df439a558f645fbe12c17b4f785e20aa_c882b199.png',
+  // 道具图片（示例枪械）
+  itemGun1: CDN + 'd00316c512a6f938b2a058ba1a46f653_08213462.png',
+  itemGun2: CDN + 'e0c8e2812ccd231c8ec0d8ab6943e2c8_c6692eb4.png',
+  itemGun3: CDN + '1e3be3fe75fa0c0adbe07e1bffaab34d_*.png',
+  itemGun4: CDN + 'df439a558f645fbe12c17b4f785e20aa_c882b199.png',
+  // 金币图标
+  coinIcon: CDN + 'e3896d873cf738587ae50f74b2720a8b_1d38293a.png',
+  coinIcon2: CDN + 'f2ccd58cecc1e8ae1b16202fab94fd4f_c3913bf0.png',
+  // 加载更多按钮
+  loadMore: CDN + '097f9471937fdb90867e6497e283bdfd_*.png',
+  // 背包大图（顶部装饰）
+  headerBg: CDN + '865881086c8e42fdb565ab88ac0ef070_*.png',
 };
 
-interface InventoryItem {
+const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
+
+// 道具数据类型
+interface BackpackItem {
   id: number;
-  playerId: number;
-  itemId: number;
-  source: string;
-  status: number;
-  extractedAt: Date | null;
-  recycleGold: string;
-  createdAt: Date;
-  // 以下为 join 后的 item 字段（可能为 undefined）
-  name?: string;
-  imageUrl?: string;
-  price?: number;
-  quality?: string;
+  name: string;
+  quality: string;
+  price: number;
+  image: string;
 }
 
+// 模拟道具数据
+const MOCK_ITEMS: BackpackItem[] = [
+  { id: 1, name: 'M4A1 消音型 | 氧化处理', quality: '崭新出厂', price: 123.08, image: CDN + 'd00316c512a6f938b2a058ba1a46f653_08213462.png' },
+  { id: 2, name: 'M4A1 消音型 | 氧化处理', quality: '崭新出厂', price: 123.08, image: CDN + 'e0c8e2812ccd231c8ec0d8ab6943e2c8_c6692eb4.png' },
+  { id: 3, name: 'M4A1 消音型 | 氧化处理', quality: '崭新出厂', price: 123.08, image: CDN + 'd00316c512a6f938b2a058ba1a46f653_08213462.png' },
+  { id: 4, name: 'M4A1 消音型 | 氧化处理', quality: '崭新出厂', price: 123.08, image: CDN + 'e0c8e2812ccd231c8ec0d8ab6943e2c8_c6692eb4.png' },
+  { id: 5, name: 'M4A1 消音型 | 氧化处理', quality: '崭新出厂', price: 123.08, image: CDN + 'd00316c512a6f938b2a058ba1a46f653_08213462.png' },
+];
+
+type SortType = 'price' | 'time';
+type TabType = 'all' | 'gun' | 'skin';
+
 export default function Backpack() {
-  const [, navigate] = useLocation();
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-  const [sortBy, setSortBy] = useState<'price' | 'time'>('time');
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [page, setPage] = useState(1);
+  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [sortBy, setSortBy] = useState<SortType>('price');
+  const [searchText, setSearchText] = useState('');
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
 
-  // 查询用户信息
-  const { data: userInfo } = trpc.player.me.useQuery(undefined, { retry: false });
+  const { data: player } = trpc.player.me.useQuery();
+  const { data: backpackData } = trpc.player.inventory.useQuery({ page: 1, limit: 50 });
+  const items: BackpackItem[] = (backpackData as any)?.items ?? MOCK_ITEMS;
 
-  // 查询背包物品
-  const { data: inventoryData, isLoading } = trpc.player.inventory.useQuery(
-    { page, limit: 20 },
-    { retry: false }
-  );
-
-  const items: InventoryItem[] = (inventoryData?.list ?? []) as unknown as InventoryItem[];
-  const total = inventoryData?.total ?? 0;
-
-  // 过滤和排序
-  const filteredItems = items
-    .filter(item => !searchKeyword || item.name?.toLowerCase().includes(searchKeyword.toLowerCase()))
-    .sort((a, b) => {
-      if (sortBy === 'price') return (b.price ?? 0) - (a.price ?? 0);
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  const toggleSelect = (id: number) => {
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
-
-  const handleSendItem = () => {
-    toast.info('赠送功能即将上线，敬请期待');
   };
+
+  const tabs = [
+    { key: 'all' as TabType, label: '全部' },
+    { key: 'gun' as TabType, label: '枪械' },
+    { key: 'skin' as TabType, label: '饰品' },
+  ];
 
   return (
     <div
       style={{
+        position: 'relative',
         width: '100%',
-        minHeight: '100vh',
-        background: '#0d0621',
+        height: '100%',
         display: 'flex',
-        justifyContent: 'center',
-        overflowX: 'hidden',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        containerType: 'inline-size',
+        background: '#0d0621',
       }}
     >
+      {/* 内容层 */}
       <div
         style={{
-          width: '100%',
-          maxWidth: 750,
           position: 'relative',
-          background: `url(${IMG.bg}) -675px -64px no-repeat`,
-          backgroundSize: '1875px 3468px',
-          minHeight: '100vh',
+          zIndex: 1,
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          paddingBottom: q(120),
         }}
       >
-        {/* 顶部装饰条 */}
-        <img
-          src={IMG.topBar}
-          alt=""
-          style={{ width: '87.6%', height: 'auto', margin: '31px 0 0 8.4%', display: 'block' }}
-        />
-
         {/* 顶部导航 */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '52px 8.5% 0', height: 57 }}>
-          <img
-            src={IMG.backArrow}
-            alt="返回"
-            style={{ width: 18, height: 16, cursor: 'pointer', marginTop: 21 }}
-            onClick={() => navigate('/')}
-          />
-          <span style={{
-            color: '#fff',
-            fontSize: 30,
-            fontWeight: 500,
-            fontFamily: 'Alibaba-PuHuiTi-M, PingFang SC, sans-serif',
-            flex: 1,
-            textAlign: 'center',
-          }}>
-            背包
-          </span>
-        </div>
+        <TopNav showLogo={false} />
 
-        {/* 用户信息卡 */}
-        <div style={{ margin: '54px 8.5% 0', position: 'relative' }}>
-          <div style={{
-            background: `url(${IMG.userCardBg}) 0px 0px no-repeat`,
-            backgroundSize: '626px 119px',
-            width: '100%',
-            maxWidth: 625,
-            height: 119,
-            position: 'relative',
-          }}>
-            {/* 金币 */}
-            <div style={{
-              background: `url(${IMG.goldBg}) 100% no-repeat`,
-              backgroundSize: '100% 100%',
-              width: 133,
-              height: 34,
-              position: 'absolute',
-              top: 20,
-              right: 155,
-              display: 'flex',
-              alignItems: 'center',
-            }}>
-              <span style={{ color: '#fff', fontSize: 26, fontWeight: 500, marginLeft: 40 }}>
-                {userInfo?.gold ?? 0}
-              </span>
-              <img src={`${CDN}/13987d2edf7fad42c5fd4db5eadd7563_b7c8d9e0.png`} alt="" style={{ width: 10, height: 19, margin: '0 12px 0 10px' }} />
-              <img src={IMG.goldLabel} alt="" style={{ position: 'absolute', left: -13, top: -2, width: 41, height: 37 }} />
-            </div>
-            {/* 钻石 */}
-            <div style={{
-              background: `url(${IMG.diamondBg}) 100% no-repeat`,
-              backgroundSize: '100% 100%',
-              width: 133,
-              height: 34,
-              position: 'absolute',
-              top: 20,
-              right: 12,
-              display: 'flex',
-              alignItems: 'center',
-            }}>
-              <span style={{ color: '#fff', fontSize: 26, fontWeight: 700, marginLeft: 38 }}>
-                {userInfo?.diamond ?? 0}
-              </span>
-              <img src={`${CDN}/8b31528f16c7cf8020e105129284d8f5_e3f4a5b6.png`} alt="" style={{ width: 10, height: 19, margin: '0 15px 0 10px' }} />
-              <img src={IMG.diamondLabel} alt="" style={{ position: 'absolute', left: -20, top: -3, width: 40, height: 40 }} />
-            </div>
-
-            {/* 头像框 */}
-            <div style={{
-              position: 'absolute',
-              left: -38,
-              top: -57,
-              width: 160,
-              height: 179,
-              background: `url(${IMG.avatarFrame}) -11px 0px no-repeat`,
-              backgroundSize: '171px 179px',
-            }}>
-              <div style={{
-                background: 'rgba(46,30,98,1)',
-                borderRadius: '50%',
-                width: 117,
-                height: 117,
-                border: '2px solid rgba(0,0,0,1)',
-                margin: '20px 0 0 28px',
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                {userInfo?.avatar ? (
-                  <img src={userInfo.avatar} alt="头像" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <span style={{ color: '#9980cc', fontSize: 40 }}>👤</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 赠送次数提示 */}
-        <div style={{
-          background: `url(${IMG.giftCountBg}) 100% no-repeat`,
-          backgroundSize: '100% 100%',
-          width: 625,
-          height: 42,
-          margin: '12px 0 0 62px',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 20px',
-        }}>
-          <span style={{ color: '#fff', fontSize: 22 }}>
-            当前VIP{userInfo?.vipLevel ?? 1}，今日可赠送
-          </span>
-          <span style={{ color: 'rgba(255,246,13,1)', fontSize: 22, fontWeight: 700, margin: '0 4px' }}>0</span>
-          <span style={{ color: '#fff', fontSize: 22 }}>次</span>
-        </div>
-
-        {/* 选中物品详情 */}
-        {selectedItem && (
-          <div style={{
-            background: `url(${IMG.itemDetailBg}) 100% no-repeat`,
-            backgroundSize: '100% 100%',
-            width: 625,
-            height: 212,
-            margin: '12px 0 0 62px',
+        {/* 标题行：背包 + 两个图标 */}
+        <div
+          style={{
             display: 'flex',
+            flexDirection: 'row',
             alignItems: 'center',
-            padding: '0 20px',
-            gap: 20,
-          }}>
-                <img src={selectedItem.imageUrl || IMG.item1} alt={selectedItem.name ?? '物品'} style={{ width: 160, height: 160, objectFit: 'contain' }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ color: '#fff', fontSize: 26, fontWeight: 500 }}>{selectedItem.name ?? `物品#${selectedItem.itemId}`}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
-                <img src={IMG.priceIcon} alt="价格" style={{ width: 30, height: 30 }} />
-                <span style={{ color: 'rgba(255,246,13,1)', fontSize: 28, fontWeight: 700 }}>{selectedItem.price?.toFixed(2) ?? selectedItem.recycleGold}</span>
-              </div>
-              <div style={{ color: 'rgba(249,178,255,1)', fontSize: 22, marginTop: 8 }}>{selectedItem.quality ?? '普通'}</div>
+            padding: `${q(10)} ${q(30)} 0`,
+            gap: q(16),
+          }}
+        >
+          <span style={{ color: '#fff', fontSize: q(34), fontWeight: 700, letterSpacing: 1 }}>背包</span>
+          <img src={BB.titleImg} alt="背包" style={{ height: q(36), objectFit: 'contain' }} />
+          <img src={BB.closeBtn} alt="关闭" style={{ width: q(36), height: q(36), objectFit: 'contain', marginLeft: 'auto', cursor: 'pointer' }} />
+        </div>
+
+        {/* 玩家信息卡 */}
+        <div style={{ padding: `${q(10)} ${q(30)} 0` }}>
+          <PlayerInfoCard />
+        </div>
+
+        {/* 操作按钮行：分解 + 提货保护 + 提货 + VIP1 */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            padding: `${q(16)} ${q(30)} 0`,
+            gap: q(16),
+          }}
+        >
+          {/* 分解 */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: q(8),
+              background: 'rgba(80,40,160,0.4)',
+              borderRadius: q(20),
+              padding: `${q(10)} ${q(20)}`,
+              cursor: 'pointer',
+              border: '1px solid rgba(120,60,220,0.4)',
+            }}
+          >
+            <img src={BB.decomposeIcon} alt="分解" style={{ width: q(36), height: q(36), objectFit: 'contain' }} />
+            <span style={{ color: '#fff', fontSize: q(24), fontWeight: 500 }}>分解</span>
+          </div>
+
+          {/* 提货保护 */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: q(8),
+              background: 'rgba(80,40,160,0.4)',
+              borderRadius: q(20),
+              padding: `${q(10)} ${q(20)}`,
+              cursor: 'pointer',
+              border: '1px solid rgba(120,60,220,0.4)',
+            }}
+          >
+            <img src={BB.protectIcon} alt="提货保护" style={{ width: q(36), height: q(36), objectFit: 'contain' }} />
+            <span style={{ color: '#fff', fontSize: q(24), fontWeight: 500 }}>提货保护</span>
+          </div>
+
+          {/* 用户信息小卡 */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              background: 'rgba(5,4,18,0.7)',
+              borderRadius: q(16),
+              padding: `${q(10)} ${q(20)}`,
+              border: '1px solid rgba(120,60,220,0.3)',
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: q(8) }}>
+              <span style={{ color: '#fff', fontSize: q(22), fontWeight: 500 }}>
+                {player?.nickname ?? '天启时时川'}
+              </span>
             </div>
-            {/* 赠送按钮 */}
+            <span style={{ color: 'rgba(153,128,204,1)', fontSize: q(20), marginTop: q(4) }}>
+              ID：{player?.id ?? '5456415'}
+            </span>
+            {/* 提货按钮 */}
             <div
-              onClick={handleSendItem}
               style={{
-                background: `url(${IMG.sendBtn}) 100% no-repeat`,
-                backgroundSize: '100% 100%',
-                width: 120,
-                height: 48,
-                cursor: 'pointer',
                 display: 'flex',
+                flexDirection: 'row',
                 alignItems: 'center',
-                justifyContent: 'center',
+                gap: q(8),
+                marginTop: q(8),
+                cursor: 'pointer',
               }}
             >
-              <span style={{ color: '#fff', fontSize: 22, fontWeight: 700 }}>赠送</span>
+              <img src={BB.deliverBtn} alt="提货" style={{ width: q(36), height: q(36), objectFit: 'contain' }} />
+              <span style={{ color: '#fff', fontSize: q(22) }}>提货</span>
             </div>
           </div>
-        )}
 
-        {/* 搜索和排序栏 */}
-        <div style={{
-          width: 625,
-          margin: '12px 0 0 62px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-        }}>
-          <span style={{ color: '#fff', fontSize: 22, flexShrink: 0 }}>共{total}件</span>
-          <div style={{
-            flex: 1,
-            height: 52,
-            background: 'rgba(20,8,50,0.7)',
-            border: '1px solid rgba(120,60,220,0.3)',
-            borderRadius: 8,
+          {/* VIP标签 */}
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #f5a623 0%, #e8750a 100%)',
+              borderRadius: q(8),
+              padding: `${q(4)} ${q(16)}`,
+              flexShrink: 0,
+            }}
+          >
+            <span style={{ color: '#fff', fontSize: q(22), fontWeight: 700 }}>
+              VIP{player?.vipLevel ?? 1}
+            </span>
+          </div>
+        </div>
+
+        {/* 今日可赠送提示 */}
+        <div
+          style={{
+            margin: `${q(12)} ${q(30)} 0`,
             display: 'flex',
+            flexDirection: 'row',
             alignItems: 'center',
-            padding: '0 12px',
-          }}>
+            gap: q(8),
+          }}
+        >
+          <span style={{ color: '#fff', fontSize: q(22) }}>
+            当前VIP{player?.vipLevel ?? 1},今日可赠送
+          </span>
+          <span style={{ color: 'rgba(58,255,255,1)', fontSize: q(26), fontWeight: 700 }}>0</span>
+          <span style={{ color: '#fff', fontSize: q(22) }}>次</span>
+        </div>
+
+        {/* 标签栏 */}
+        <div
+          style={{
+            margin: `${q(16)} ${q(30)} 0`,
+            display: 'flex',
+            flexDirection: 'row',
+            gap: q(8),
+          }}
+        >
+          {tabs.map(tab => (
+            <div
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: `${q(12)} ${q(28)}`,
+                borderRadius: q(20),
+                background: activeTab === tab.key
+                  ? 'linear-gradient(135deg, rgba(120,40,200,0.9), rgba(60,20,120,0.9))'
+                  : 'rgba(5,4,18,0.7)',
+                border: activeTab === tab.key
+                  ? '1px solid rgba(180,80,255,0.6)'
+                  : '1px solid rgba(80,40,160,0.3)',
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ color: '#fff', fontSize: q(24), fontWeight: activeTab === tab.key ? 700 : 400 }}>
+                {tab.label}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* 筛选排序行 */}
+        <div
+          style={{
+            margin: `${q(12)} ${q(30)} 0`,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: q(16),
+          }}
+        >
+          {/* 共N件 */}
+          <span style={{ color: '#fff', fontSize: q(24), flexShrink: 0 }}>共{items.length}件</span>
+
+          {/* 搜索框 */}
+          <div
+            style={{
+              flex: 1,
+              background: 'rgba(5,4,18,0.7)',
+              borderRadius: q(20),
+              border: '1px solid rgba(80,40,160,0.4)',
+              padding: `${q(10)} ${q(20)}`,
+            }}
+          >
             <input
-              type="text"
-              value={searchKeyword}
-              onChange={e => setSearchKeyword(e.target.value)}
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
               placeholder="请输入关键词搜索"
               style={{
+                width: '100%',
                 background: 'transparent',
                 border: 'none',
                 outline: 'none',
                 color: '#fff',
-                fontSize: 22,
-                width: '100%',
+                fontSize: q(22),
               }}
             />
           </div>
+
+          {/* 价格排序 */}
           <div
             onClick={() => setSortBy('price')}
             style={{
               display: 'flex',
+              flexDirection: 'row',
               alignItems: 'center',
-              gap: 6,
+              gap: q(6),
               cursor: 'pointer',
               opacity: sortBy === 'price' ? 1 : 0.6,
             }}
           >
-            <img src={IMG.priceSortIcon} alt="价格" style={{ width: 30, height: 30 }} />
-            <span style={{ color: sortBy === 'price' ? 'rgba(255,246,13,1)' : '#fff', fontSize: 22 }}>价格</span>
+            <img src={BB.priceSort} alt="价格" style={{ width: q(28), height: q(28), objectFit: 'contain' }} />
+            <span style={{ color: '#fff', fontSize: q(22) }}>价格</span>
           </div>
+
+          {/* 时间排序 */}
           <div
             onClick={() => setSortBy('time')}
             style={{
               display: 'flex',
+              flexDirection: 'row',
               alignItems: 'center',
-              gap: 6,
+              gap: q(6),
               cursor: 'pointer',
               opacity: sortBy === 'time' ? 1 : 0.6,
             }}
           >
-            <img src={IMG.timeSortIcon} alt="时间" style={{ width: 30, height: 30 }} />
-            <span style={{ color: sortBy === 'time' ? 'rgba(255,246,13,1)' : '#fff', fontSize: 22 }}>时间</span>
+            <img src={BB.timeSort} alt="时间" style={{ width: q(28), height: q(28), objectFit: 'contain' }} />
+            <span style={{ color: '#fff', fontSize: q(22) }}>时间</span>
           </div>
         </div>
 
-        {/* 物品网格 */}
-        <div style={{
-          width: 625,
-          margin: '12px 0 0 62px',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 10,
-        }}>
-          {isLoading ? (
-            <div style={{ gridColumn: '1/-1', textAlign: 'center', color: '#9980cc', padding: '40px 0', fontSize: 22 }}>
-              加载中...
-            </div>
-          ) : filteredItems.length === 0 ? (
-            <div style={{ gridColumn: '1/-1', textAlign: 'center', color: '#9980cc', padding: '40px 0', fontSize: 22 }}>
+        {/* 道具列表：第一行大卡+小卡，后续两列小卡 */}
+        <div style={{ padding: `${q(12)} ${q(30)} 0` }}>
+          {items.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: q(26), padding: `${q(60)} 0` }}>
               背包空空如也
             </div>
           ) : (
-            filteredItems.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => setSelectedItem(selectedItem?.id === item.id ? null : item)}
-                style={{
-                  background: `url(${selectedItem?.id === item.id ? IMG.itemCardBgSelected : IMG.itemCardBg}) 100% no-repeat`,
-                  backgroundSize: '100% 100%',
-                  height: 200,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '8px',
-                  borderRadius: 8,
-                }}
-              >
-                <img
-                  src={item.imageUrl || IMG.item1}
-                  alt={item.name ?? '物品'}
-                  style={{ width: '80%', height: 120, objectFit: 'contain' }}
-                />
-                <div style={{
-                  color: '#fff',
-                  fontSize: 18,
-                  textAlign: 'center',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  width: '100%',
-                  padding: '0 4px',
-                  marginTop: 4,
-                }}>
-                  {item.name ?? `物品#${item.itemId}`}
+            <>
+              {/* 第一行：1大 + 1小（竖排） */}
+              {items.length >= 1 && (
+                <div style={{ display: 'flex', flexDirection: 'row', gap: q(14), marginBottom: q(14) }}>
+                  {/* 大卡 */}
+                  <ItemCard item={items[0]} isSelected={selectedItems.has(items[0].id)} onToggle={toggleSelect} size="big" />
+                  {/* 右侧小卡列 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: q(14), flex: 1 }}>
+                    {items.slice(1, 3).map(item => (
+                      <ItemCard key={item.id} item={item} isSelected={selectedItems.has(item.id)} onToggle={toggleSelect} size="small" />
+                    ))}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                  <img src={IMG.priceIcon} alt="" style={{ width: 20, height: 20 }} />
-                  <span style={{ color: 'rgba(255,246,13,1)', fontSize: 20, fontWeight: 700 }}>
-                    {item.price?.toFixed(2) ?? item.recycleGold}
-                  </span>
-                </div>
+              )}
+              {/* 后续行：两列小卡 */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: q(14) }}>
+                {items.slice(3).map(item => (
+                  <ItemCard key={item.id} item={item} isSelected={selectedItems.has(item.id)} onToggle={toggleSelect} size="small" />
+                ))}
               </div>
-            ))
+            </>
           )}
         </div>
 
-        {/* 分页 */}
-        {total > 20 && (
-          <div style={{
-            background: `url(${IMG.paginationBg}) 100% no-repeat`,
-            backgroundSize: '100% 100%',
-            width: 625,
-            height: 52,
-            margin: '12px 0 0 62px',
+        {/* 加载更多 */}
+        {items.length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: `${q(24)} 0` }}>
+            <div
+              style={{
+                background: 'rgba(80,40,160,0.4)',
+                borderRadius: q(30),
+                padding: `${q(16)} ${q(60)}`,
+                border: '1px solid rgba(120,60,220,0.4)',
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ color: '#fff', fontSize: q(24) }}>加载更多</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 底部导航 */}
+      <div style={{ position: 'relative', zIndex: 10, flexShrink: 0 }}>
+        <BottomNav active="beibao" />
+      </div>
+    </div>
+  );
+}
+
+// 道具卡片子组件
+function ItemCard({ item, isSelected, onToggle, size }: {
+  item: BackpackItem;
+  isSelected: boolean;
+  onToggle: (id: number) => void;
+  size: 'big' | 'small';
+}) {
+  const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
+  const coinIcon = CDN + 'e3896d873cf738587ae50f74b2720a8b_1d38293a.png';
+  const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
+
+  return (
+    <div
+      onClick={() => onToggle(item.id)}
+      style={{
+        position: 'relative',
+        background: isSelected
+          ? 'linear-gradient(135deg, rgba(120,40,200,0.6), rgba(40,10,80,0.9))'
+          : 'rgba(5,4,18,0.85)',
+        borderRadius: q(16),
+        border: isSelected ? '1.5px solid rgba(180,80,255,0.8)' : '1px solid rgba(80,40,160,0.3)',
+        overflow: 'hidden',
+        cursor: 'pointer',
+        flex: size === 'big' ? '0 0 55%' : undefined,
+      }}
+    >
+      {/* 道具图片 */}
+      <div style={{ padding: q(12), paddingBottom: 0 }}>
+        <img
+          src={item.image}
+          alt={item.name}
+          style={{
+            width: '100%',
+            aspectRatio: '1',
+            objectFit: 'contain',
+            display: 'block',
+          }}
+        />
+      </div>
+      {/* 道具名称 */}
+      <div style={{ padding: `${q(8)} ${q(12)}` }}>
+        <div style={{ color: '#fff', fontSize: q(20), fontWeight: 500, lineHeight: 1.3, marginBottom: q(6) }}>
+          {item.name}
+        </div>
+        {/* 品质标签 */}
+        <div
+          style={{
+            display: 'inline-block',
+            background: 'rgba(58,255,255,0.15)',
+            borderRadius: q(6),
+            padding: `${q(2)} ${q(10)}`,
+            marginBottom: q(6),
+          }}
+        >
+          <span style={{ color: 'rgba(58,255,255,1)', fontSize: q(18) }}>{item.quality}</span>
+        </div>
+        {/* 价格行 */}
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: q(6) }}>
+          <img src={coinIcon} alt="金币" style={{ width: q(24), height: q(24), objectFit: 'contain' }} />
+          <span style={{ color: 'rgba(255,246,13,1)', fontSize: q(22), fontWeight: 700 }}>{item.price}</span>
+        </div>
+      </div>
+      {/* 选中角标 */}
+      {isSelected && (
+        <div
+          style={{
+            position: 'absolute',
+            top: q(8),
+            right: q(8),
+            width: q(28),
+            height: q(28),
+            borderRadius: '50%',
+            background: 'rgba(120,40,200,1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 20,
-          }}>
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              style={{ background: 'transparent', border: 'none', color: page === 1 ? '#555' : '#fff', fontSize: 22, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
-            >
-              ‹
-            </button>
-            <span style={{ color: '#fff', fontSize: 22 }}>
-              {page} / {Math.ceil(total / 20)}
-            </span>
-            <button
-              onClick={() => setPage(p => p + 1)}
-              disabled={page >= Math.ceil(total / 20)}
-              style={{ background: 'transparent', border: 'none', color: page >= Math.ceil(total / 20) ? '#555' : '#fff', fontSize: 22, cursor: page >= Math.ceil(total / 20) ? 'not-allowed' : 'pointer' }}
-            >
-              ›
-            </button>
-          </div>
-        )}
-
-        {/* 底部导航 */}
-        <div style={{
-          width: '100%',
-          height: 125,
-          background: `url(${IMG.bottomNavBg}) -52px 0px no-repeat`,
-          backgroundSize: '854px 126px',
-          marginTop: 32,
-          display: 'flex',
-          alignItems: 'center',
-        }}>
-          {/* 我的 */}
-          <div
-            onClick={() => navigate('/profile')}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', width: 49, height: 80, margin: '37px 0 0 70px', cursor: 'pointer' }}
-          >
-            <div style={{
-              width: 47, height: 48,
-              background: `url(${IMG.navWode}) 100% no-repeat`,
-              backgroundSize: '100% 100%',
-              marginLeft: 1,
-            }} />
-            <span style={{ color: 'rgba(217,148,255,1)', fontSize: 26, fontWeight: 500, textShadow: '0px 1px 5px rgba(33,0,80,0.67)' }}>我的</span>
-          </div>
-
-          {/* 分享 */}
-          <div
-            onClick={() => navigate('/share')}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', width: 55, height: 81, margin: '36px 0 0 82px', cursor: 'pointer' }}
-          >
-            <div style={{
-              width: 51, height: 51,
-              background: `url(${IMG.navFenxiang}) 100% no-repeat`,
-              backgroundSize: '100% 100%',
-              marginLeft: 4,
-            }} />
-            <span style={{ color: 'rgba(217,148,255,1)', fontSize: 26, fontWeight: 500, textShadow: '0px 1px 5px rgba(33,0,80,0.67)' }}>分享</span>
-          </div>
-
-          {/* 大厅（中间） */}
-          <div
-            onClick={() => navigate('/')}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 80, margin: '0 0 0 70px', cursor: 'pointer', marginTop: -20 }}
-          >
-            <img src={IMG.navDatingCenter} alt="大厅" style={{ width: 80, height: 67 }} />
-            <span style={{ color: 'rgba(217,148,255,1)', fontSize: 26, fontWeight: 500, textShadow: '0px 1px 5px rgba(33,0,80,0.67)' }}>大厅</span>
-          </div>
-
-          {/* 背包（激活） */}
-          <div
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', width: 57, height: 82, margin: '35px 0 0 70px', cursor: 'pointer' }}
-          >
-            <img src={IMG.navBeibao} alt="背包" style={{ width: 57, height: 51 }} />
-            <span style={{ color: 'rgba(250,107,209,1)', fontSize: 26, fontWeight: 700, textShadow: '0px 1px 5px rgba(33,0,80,0.67)', marginLeft: 3 }}>背包</span>
-          </div>
-
-          {/* 充值 */}
-          <div
-            onClick={() => navigate('/deposit')}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', width: 51, height: 83, margin: '35px 61px 0 40px', cursor: 'pointer' }}
-          >
-            <div style={{
-              width: 48, height: 51,
-              background: `url(${IMG.navChongzhi}) 100% no-repeat`,
-              backgroundSize: '100% 100%',
-              marginLeft: 2,
-            }} />
-            <span style={{ color: 'rgba(217,148,255,1)', fontSize: 26, fontWeight: 500, textShadow: '0px 1px 5px rgba(33,0,80,0.67)', marginTop: 7 }}>充值</span>
-          </div>
+          }}
+        >
+          <span style={{ color: '#fff', fontSize: q(18), fontWeight: 700 }}>✓</span>
         </div>
-      </div>
+      )}
     </div>
   );
 }

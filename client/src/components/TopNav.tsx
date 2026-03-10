@@ -9,8 +9,10 @@
  * 基准：750px 宽，使用 cqw 响应式单位
  * 依赖父容器的 containerType: inline-size 来计算 cqw
  */
+import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { LANHU, ASSETS } from '@/lib/assets';
+import SettingsModal from '@/components/SettingsModal';
 
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -26,6 +28,7 @@ interface TopNavProps {
 
 export default function TopNav({ showLogo = false, onBackClick, style }: TopNavProps) {
   const [, navigate] = useLocation();
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   const handleBack = () => {
     if (onBackClick) {
@@ -36,6 +39,7 @@ export default function TopNav({ showLogo = false, onBackClick, style }: TopNavP
   };
 
   return (
+    <>
     <div
       style={{
         display: 'flex',
@@ -81,12 +85,36 @@ export default function TopNav({ showLogo = false, onBackClick, style }: TopNavP
           alt="VIP"
           style={{ width: q(79), height: q(80), cursor: 'pointer', objectFit: 'contain' }}
         />
-        <img
-          src={LANHU.allGamesIcon}
-          alt="全部"
-          style={{ width: q(79), height: q(80), cursor: 'pointer', objectFit: 'contain' }}
-        />
+          {/* 全部按钮 → 点击弹出设置面板 */}
+          <div
+            onClick={() => setSettingsVisible(true)}
+            style={{ position: 'relative', cursor: 'pointer' }}
+          >
+            <img
+              src={LANHU.allGamesIcon}
+              alt="全部"
+              style={{ width: q(79), height: q(80), objectFit: 'contain', display: 'block' }}
+            />
+            {settingsVisible && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: -4,
+                  borderRadius: '50%',
+                  boxShadow: '0 0 12px rgba(180,80,255,0.8)',
+                  pointerEvents: 'none',
+                }}
+              />
+            )}
+          </div>
       </div>
     </div>
+
+      {/* 设置弹窗 */}
+      <SettingsModal
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+      />
+    </>
   );
 }
