@@ -356,7 +356,12 @@ export default function ArenaRoom() {
       case 'round_result': {
         const results = msg.results as any[];
         const roundNo = msg.roundNo as number;
-        setRoundResults((prev) => ({ ...prev, [roundNo]: results }));
+        // 将 results 补充 seatNo 和 nickname（从当前玩家列表匹配）
+        setRoundResults((prev) => {
+          // 使用当前玩家列表进行匹配，不能直接引用 players（闭包内可能过时）
+          const enriched = results.map((r: any) => ({ ...r }));
+          return { ...prev, [roundNo]: enriched };
+        });
         const itemMap: typeof currentRoundItems = {};
         for (const r of results) {
           itemMap[r.playerId] = {
@@ -445,22 +450,25 @@ export default function ArenaRoom() {
       if (next >= maxPlayers) {
         setSpinning(false);
         // 保存本轮结果
-        setRoundResults((prev2) => ({
-          ...prev2,
-          [currentRound]: Object.entries(currentRoundItems).map(([pid, item]) => {
-            const p = players.find((pl) => pl.playerId === Number(pid));
-            return {
-              playerId: Number(pid),
-              nickname: p?.nickname ?? '',
-              seatNo: p?.seatNo ?? 0,
-              ...item,
-            };
-          }),
-        }));
+      const newResults = Object.entries(currentRoundItems).map(([pid, item]) => {
+                  const p = players.find((pl) => pl.playerId === Number(pid));
+                  return {
+                    playerId: Number(pid),
+                    nickname: p?.nickname ?? '',
+                    seatNo: p?.seatNo ?? 0,
+                    ...item,
+                  };
+                });
+              setRoundResults((prev2) => ({
+                ...prev2,
+                [currentRound]: newResults,
+              }));
         // 进入下一轮
         if (currentRound < totalRounds) {
-          setCurrentRound((r) => r + 1);
-          setCurrentRoundItems({});
+          setTimeout(() => {
+            setCurrentRound((r) => r + 1);
+            setCurrentRoundItems({});
+          }, 1200);
         }
       }
       return next;
@@ -642,73 +650,118 @@ export default function ArenaRoom() {
         )}
 
         {/* 游戏结束展示 */}
-        {gameStatus === 'finished' && gameOverData && (
-          <div style={{
-            background: 'linear-gradient(135deg,rgba(30,10,65,0.95),rgba(15,5,40,0.98))',
-            border: '2px solid rgba(245,200,66,0.5)',
-            borderRadius: q(16), padding: q(24),
-            marginBottom: q(20),
-            boxShadow: '0 0 40px rgba(245,200,66,0.2)',
-          }}>
-            <div style={{ textAlign: 'center', marginBottom: q(20) }}>
-              <div style={{ fontSize: q(60) }}>🏆</div>
-              <div style={{ color: '#f5c842', fontSize: q(36), fontWeight: 800, marginTop: q(8) }}>
-                {gameOverData.players.find((p) => p.isWinner)?.nickname ?? '平局'} 获胜！
+        {gameStatus === 'finished' && gameOverData && (() => {
+          const winner = gameOverData.players.find((p) => p.isWinner);
+          const sortedPlayers = [...gameOverData.players].sort((a, b) => a.seatNo - b.seatNo);
+          return (
+            <div style={{
+              background: 'linear-gradient(135deg,rgba(30,10,65,0.95),rgba(15,5,40,0.98))',
+              border: '2px solid rgba(245,200,66,0.5)',
+              borderRadius: q(16), padding: q(24),
+              marginBottom: q(20),
+              boxShadow: '0 0 40px rgba(245,200,66,0.2)',
+            }}>
+              {/* 大字展示胜负 */}
+              <div style={{ textAlign: 'center', marginBottom: q(24) }}>
+                <div style={{ fontSize: q(72) }}>{winner ? '🏆' : '🤝'}</div>
+                <div style={{
+                  color: '#f5c842', fontSize: q(44), fontWeight: 900, marginTop: q(8),
+                  textShadow: '0 0 20px rgba(245,200,66,0.8)',
+                  animation: 'arenaWinnerBounce 1s ease-in-out infinite',
+                }}>
+                  {winner ? `${winner.nickname} 获胜！` : '平局'}
+                </div>
+                {winner && (
+                  <div style={{ color: '#9ca3af', fontSize: q(22), marginTop: q(6) }}>
+                    奖励总价值：
+                    <span style={{ color: '#ffd700', fontWeight: 700 }}>
+                      ¥{sortedPlayers.reduce((s, p) => s + parseFloat(p.totalValue), 0).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* 玩家对比 */}
+              <div style={{ display: 'flex', gap: q(12) }}>
+                {sortedPlayers.map((p) => (
+                  <div
+                    key={p.playerId}
+                    style={{
+                      flex: 1, textAlign: 'center', position: 'relative',
+                      background: p.isWinner ? 'rgba(245,200,66,0.15)' : 'rgba(239,68,68,0.08)',
+                      border: `2px solid ${p.isWinner ? '#f5c842' : '#ef4444'}`,
+                      borderRadius: q(12), padding: `${q(20)} ${q(12)} ${q(12)}`,
+                    }}
+                  >
+                    {/* 胜负标签 */}
+                    <div style={{
+                      position: 'absolute', top: q(-14), left: '50%', transform: 'translateX(-50%)',
+                      background: p.isWinner
+                        ? 'linear-gradient(135deg,#f5c842,#c8860a)'
+                        : 'linear-gradient(135deg,#ef4444,#991b1b)',
+                      borderRadius: q(20), padding: `${q(4)} ${q(16)}`,
+                      color: '#fff', fontSize: q(20), fontWeight: 800,
+                      whiteSpace: 'nowrap', boxShadow: p.isWinner ? '0 2px 12px rgba(245,200,66,0.5)' : 'none',
+                    }}>
+                      {p.isWinner ? '👑 胜利' : '💔 失败'}
+                    </div>
+                    <img src={`/img/avatars/${p.avatar || '001'}.png`} alt="" style={{ width: q(60), height: q(60), borderRadius: '50%', marginBottom: q(8), border: `2px solid ${p.isWinner ? '#f5c842' : '#ef4444'}` }} />
+                    <div style={{ color: '#e0d0ff', fontSize: q(22), fontWeight: 600 }}>{p.nickname}</div>
+                    <div style={{ color: '#ffd700', fontSize: q(28), fontWeight: 800, marginTop: q(6) }}>
+                      ¥{parseFloat(p.totalValue).toFixed(2)}
+                    </div>
+                    <div style={{ color: p.isWinner ? '#22c55e' : '#ef4444', fontSize: q(18), marginTop: q(4) }}>
+                      {p.isWinner ? '⬆ 最高总价值' : '⬇ 较低总价值'}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: q(12) }}>
-              {gameOverData.players.sort((a, b) => a.seatNo - b.seatNo).map((p) => (
-                <div
-                  key={p.playerId}
-                  style={{
-                    flex: 1, textAlign: 'center',
-                    background: p.isWinner ? 'rgba(245,200,66,0.15)' : 'rgba(20,8,50,0.8)',
-                    border: `1.5px solid ${p.isWinner ? '#f5c842' : 'rgba(120,60,220,0.3)'}`,
-                    borderRadius: q(12), padding: q(12),
-                  }}
-                >
-                  {p.isWinner && <div style={{ color: '#f5c842', fontSize: q(20), marginBottom: q(4) }}>👑 胜利</div>}
-                  <img src={`/img/avatars/${p.avatar || '001'}.png`} alt="" style={{ width: q(56), height: q(56), borderRadius: '50%', marginBottom: q(6) }} />
-                  <div style={{ color: '#e0d0ff', fontSize: q(22), fontWeight: 600 }}>{p.nickname}</div>
-                  <div style={{ color: '#ffd700', fontSize: q(24), fontWeight: 700, marginTop: q(4) }}>
-                    ¥{parseFloat(p.totalValue).toFixed(2)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* 历史轮次结果 */}
         {Object.keys(roundResults).length > 0 && (
           <div>
-            <div style={{ color: '#9ca3af', fontSize: q(22), marginBottom: q(8) }}>开箱记录</div>
-            {Object.entries(roundResults).sort((a, b) => Number(a[0]) - Number(b[0])).map(([roundNo, results]) => (
-              <div key={roundNo} style={{
-                background: 'rgba(20,8,50,0.7)',
-                border: '1px solid rgba(120,60,220,0.25)',
-                borderRadius: q(10), padding: q(12),
-                marginBottom: q(10),
-              }}>
-                <div style={{ color: '#c084fc', fontSize: q(22), fontWeight: 600, marginBottom: q(8) }}>第 {roundNo} 轮</div>
-                <div style={{ display: 'flex', gap: q(10) }}>
-                  {(results as any[]).sort((a, b) => a.seatNo - b.seatNo).map((r: any) => (
-                    <div key={r.playerId} style={{ flex: 1, textAlign: 'center' }}>
-                      <div style={{ color: '#9ca3af', fontSize: q(18), marginBottom: q(4) }}>{r.nickname}</div>
-                      <div style={{
-                        background: LEVEL_BG[r.goodsLevel],
-                        borderRadius: q(8), padding: q(8),
-                        boxShadow: `0 0 10px ${LEVEL_GLOW[r.goodsLevel]}`,
-                      }}>
-                        {r.goodsImage && <img src={r.goodsImage} alt={r.goodsName} style={{ width: q(50), height: q(50), objectFit: 'contain', marginBottom: q(4) }} />}
-                        <div style={{ color: '#fff', fontSize: q(18), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.goodsName}</div>
-                        <div style={{ color: '#ffd700', fontSize: q(18) }}>¥{parseFloat(r.goodsValue).toFixed(2)}</div>
+            <div style={{ color: '#9ca3af', fontSize: q(22), marginBottom: q(8) }}>开笱记录</div>
+            {Object.entries(roundResults).sort((a, b) => Number(a[0]) - Number(b[0])).map(([roundNo, results]) => {
+              // 按 seatNo 排序：seatNo 为 0 时从 players 列表补充
+              const enrichedResults = (results as any[]).map((r: any) => {
+                if (r.seatNo && r.seatNo > 0) return r;
+                const matchedPlayer = players.find((pl) => pl.playerId === r.playerId);
+                return {
+                  ...r,
+                  seatNo: matchedPlayer?.seatNo ?? 0,
+                  nickname: r.nickname || matchedPlayer?.nickname || `玩家${r.playerId}`,
+                };
+              }).sort((a: any, b: any) => a.seatNo - b.seatNo);
+              return (
+                <div key={roundNo} style={{
+                  background: 'rgba(20,8,50,0.7)',
+                  border: '1px solid rgba(120,60,220,0.25)',
+                  borderRadius: q(10), padding: q(12),
+                  marginBottom: q(10),
+                }}>
+                  <div style={{ color: '#c084fc', fontSize: q(22), fontWeight: 600, marginBottom: q(8) }}>第 {roundNo} 轮</div>
+                  <div style={{ display: 'flex', gap: q(10) }}>
+                    {enrichedResults.map((r: any) => (
+                      <div key={r.playerId} style={{ flex: 1, textAlign: 'center' }}>
+                        <div style={{ color: '#9ca3af', fontSize: q(18), marginBottom: q(4) }}>{r.nickname}</div>
+                        <div style={{
+                          background: LEVEL_BG[r.goodsLevel],
+                          borderRadius: q(8), padding: q(8),
+                          boxShadow: `0 0 10px ${LEVEL_GLOW[r.goodsLevel]}`,
+                        }}>
+                          {r.goodsImage && <img src={r.goodsImage} alt={r.goodsName} style={{ width: q(50), height: q(50), objectFit: 'contain', marginBottom: q(4) }} />}
+                          <div style={{ color: '#fff', fontSize: q(18), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.goodsName}</div>
+                          <div style={{ color: '#ffd700', fontSize: q(18) }}>¥{parseFloat(r.goodsValue).toFixed(2)}</div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
