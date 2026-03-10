@@ -1,0 +1,9 @@
+{
+  "query": "\nINSERT INTO `gameConfigs` (`gameKey`, `name`, `nameEn`, `path`, `rtp`, `enabled`, `minBet`, `maxBet`, `sort`, `remark`)\nVALUES \n  ('rollx', 'RollX 转盘', 'RollX', '/rollx', 96, 1, 100, 1000000, 1, '幸运转盘游戏，支持 1.1x~30x 倍率'),\n  ('arena', '竞技场', 'Arena', '/arena', 96, 1, 100, 1000000, 2, '竞技场游戏'),\n  ('wheel', '幸运转盘', 'Lucky Wheel', '/wheel', 96, 1, 100, 1000000, 3, '幸运转盘'),\n  ('rainbow', '彩虹旋风', 'Rainbow Spin', '/rainbow', 96, 1, 100, 1000000, 4, '彩虹旋风游戏'),\n  ('roll', 'ROLL房', 'Roll Room', '/roll', 96, 1, 100, 1000000, 5, 'ROLL房游戏')\nON DUPLICATE KEY UPDATE `updatedAt` = NOW();\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute \nINSERT INTO `gameConfigs` (`gameKey`, `name`, `nameEn`, `path`, `rtp`, `enabled`, `minBet`, `maxBet`, `sort`, `remark`)\nVALUES \n  ('rollx', 'RollX 转盘', 'RollX', '/rollx', 96, 1, 100, 1000000, 1, '幸运转盘游戏，支持 1.1x~30x 倍率'),\n  ('arena', '竞技场', 'Arena', '/arena', 96, 1, 100, 1000000, 2, '竞技场游戏'),\n  ('wheel', '幸运转盘', 'Lucky Wheel', '/wheel', 96, 1, 100, 1000000, 3, '幸运转盘'),\n  ('rainbow', '彩虹旋风', 'Rainbow Spin', '/rainbow', 96, 1, 100, 1000000, 4, '彩虹旋风游戏'),\n  ('roll', 'ROLL房', 'Roll Room', '/roll', 96, 1, 100, 1000000, 5, 'ROLL房游戏')\nON DUPLICATE KEY UPDATE `updatedAt` = NOW();\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1504
+}

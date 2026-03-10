@@ -12,6 +12,9 @@ import { AdminBanners } from './admin/AdminBanners';
 import { AdminRebate } from './admin/AdminRebate';
 import { AdminCategories } from './admin/AdminCategories';
 import { AdminBoxes } from './admin/AdminBoxes';
+import { AdminGames } from './admin/AdminGames';
+import { AdminFinance } from './admin/AdminFinance';
+import { AdminSettings } from './admin/AdminSettings';
 
 // ── 国际化文本 ──────────────────────────────────────────────────
 const I18N = {
@@ -28,9 +31,10 @@ const I18N = {
     loggingIn: '登录中...',
     logout: '退出登录',
     players: '玩家管理',
+    games: '游戏管理',
     orders: '订单管理',
     categories: '分类管理',
-    boxes: '宝笱管理',
+    boxes: '宝箱管理',
     finance: '财务统计',
     settings: '系统设置',
     totalPlayers: '总玩家数',
@@ -136,6 +140,7 @@ const I18N = {
     loggingIn: 'Logging in...',
     logout: 'Logout',
     players: 'Players',
+    games: 'Game Mgmt',
     orders: 'Orders',
     categories: 'Categories',
     boxes: 'Box Config',
@@ -496,9 +501,9 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
 }
 
 // ── 主仪表盘 ────────────────────────────────────────────────────
-const MENU_KEYS = ['players', 'rollRooms', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'finance', 'settings'] as const;
+const MENU_KEYS = ['players', 'games', 'rollRooms', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'finance', 'settings'] as const;
 const MENU_ICONS: Record<string, string> = {
-  players: '👥', rollRooms: '🎲', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', finance: '💰', settings: '⚙️',
+  players: '👥', games: '🎮', rollRooms: '🎲', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', finance: '💰', settings: '⚙️',
 };
 
 export default function AdminDashboard() {
@@ -579,16 +584,18 @@ export default function AdminDashboard() {
 
   return (
     <div style={{
-      minHeight: '100vh', width: '100%',
+      height: '100vh', width: '100%',
       background: '#080418',
       display: 'flex',
+      overflow: 'hidden',
       fontFamily: "'Noto Sans SC', sans-serif",
     }}>
 
       {/* ── 侧边栏 ── */}
       <div style={{
         width: sidebarOpen ? 220 : 64,
-        minHeight: '100vh',
+        height: '100%',
+        overflowY: 'auto',
         background: 'linear-gradient(180deg, #0d0621 0%, #120830 100%)',
         borderRight: '1px solid rgba(120,60,220,0.2)',
         display: 'flex', flexDirection: 'column',
@@ -626,7 +633,7 @@ export default function AdminDashboard() {
                 key={key}
                 onClick={() => {
                   setActiveMenu(key);
-                  if (!['players', 'rollRooms', 'banners', 'rebate', 'categories', 'boxes'].includes(key)) toast.info(t.featureSoon);
+                  if (!['players', 'games', 'rollRooms', 'banners', 'rebate', 'categories', 'boxes', 'finance', 'settings'].includes(key)) toast.info(t.featureSoon);
                 }}
                 title={!sidebarOpen ? label : undefined}
                 style={{
@@ -732,6 +739,9 @@ export default function AdminDashboard() {
         {/* 内容区 */}
         <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
 
+          {/* 游戏管理 */}
+          {activeMenu === 'games' && <AdminGames lang={lang} />}
+
           {/* Roll房管理 */}
           {activeMenu === 'rollRooms' && <AdminRollRooms lang={lang} t={t} />}
 
@@ -744,6 +754,10 @@ export default function AdminDashboard() {
           {activeMenu === 'categories' && <AdminCategories lang={lang} t={t} />}
           {/* 宝箱管理 */}
           {activeMenu === 'boxes' && <AdminBoxes lang={lang} t={t} />}
+          {/* 财务统计 */}
+          {activeMenu === 'finance' && <AdminFinance lang={lang} />}
+          {/* 系统设置 */}
+          {activeMenu === 'settings' && <AdminSettings lang={lang} t={t} />}
           {/* 玩家管理（默认） */}
           {activeMenu === 'players' && <>
 

@@ -1,0 +1,9 @@
+{
+  "query": "\nCREATE TABLE IF NOT EXISTS `gameConfigs` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `gameKey` varchar(50) NOT NULL,\n  `name` varchar(100) NOT NULL,\n  `nameEn` varchar(100) NOT NULL DEFAULT '',\n  `coverUrl` varchar(500) NOT NULL DEFAULT '',\n  `path` varchar(100) NOT NULL DEFAULT '',\n  `rtp` int NOT NULL DEFAULT 96,\n  `enabled` tinyint NOT NULL DEFAULT 1,\n  `minBet` int NOT NULL DEFAULT 100,\n  `maxBet` int NOT NULL DEFAULT 1000000,\n  `sort` int NOT NULL DEFAULT 0,\n  `remark` varchar(255) NOT NULL DEFAULT '',\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `gameConfigs_id` PRIMARY KEY(`id`),\n  CONSTRAINT `gameConfigs_gameKey_unique` UNIQUE(`gameKey`)\n);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute \nCREATE TABLE IF NOT EXISTS `gameConfigs` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `gameKey` varchar(50) NOT NULL,\n  `name` varchar(100) NOT NULL,\n  `nameEn` varchar(100) NOT NULL DEFAULT '',\n  `coverUrl` varchar(500) NOT NULL DEFAULT '',\n  `path` varchar(100) NOT NULL DEFAULT '',\n  `rtp` int NOT NULL DEFAULT 96,\n  `enabled` tinyint NOT NULL DEFAULT 1,\n  `minBet` int NOT NULL DEFAULT 100,\n  `maxBet` int NOT NULL DEFAULT 1000000,\n  `sort` int NOT NULL DEFAULT 0,\n  `remark` varchar(255) NOT NULL DEFAULT '',\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `gameConfigs_id` PRIMARY KEY(`id`),\n  CONSTRAINT `gameConfigs_gameKey_unique` UNIQUE(`gameKey`)\n);\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1648
+}

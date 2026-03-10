@@ -655,6 +655,80 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    // ── 游戏配置管理 ──
+    gameList: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) return [];
+      const { gameConfigs } = await import("../drizzle/schema");
+      const list = await db.select().from(gameConfigs).orderBy(gameConfigs.sort);
+      return list;
+    }),
+
+    updateGame: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        rtp: z.number().min(1).max(200).optional(),
+        enabled: z.number().min(0).max(1).optional(),
+        minBet: z.number().min(1).optional(),
+        maxBet: z.number().min(1).optional(),
+        remark: z.string().optional(),
+        name: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { gameConfigs } = await import("../drizzle/schema");
+        const { id, ...updates } = input;
+        await db.update(gameConfigs).set(updates).where(eq(gameConfigs.id, id));
+        return { success: true };
+      }),
+
+    updateAllRtp: protectedProcedure
+      .input(z.object({ rtp: z.number().min(1).max(200) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { gameConfigs } = await import("../drizzle/schema");
+        await db.update(gameConfigs).set({ rtp: input.rtp });
+        // 同步更新 gameSettings 表中的 rollx RTP
+        await db.update(gameSettings).set({ rtp: String(input.rtp) }).where(eq(gameSettings.gameKey, "rollx"));
+        return { success: true };
+      }),
+
+    deleteGame: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { gameConfigs } = await import("../drizzle/schema");
+        await db.delete(gameConfigs).where(eq(gameConfigs.id, input.id));
+        return { success: true };
+      }),
+
+    reorderGame: protectedProcedure
+      .input(z.object({ id: z.number(), direction: z.enum(["up", "down"]) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { gameConfigs } = await import("../drizzle/schema");
+        const { asc } = await import("drizzle-orm");
+        const list = await db.select().from(gameConfigs).orderBy(asc(gameConfigs.sort));
+        const idx = list.findIndex(g => g.id === input.id);
+        if (idx === -1) throw new TRPCError({ code: "NOT_FOUND" });
+        const swapIdx = input.direction === "up" ? idx - 1 : idx + 1;
+        if (swapIdx < 0 || swapIdx >= list.length) return { success: true };
+        const current = list[idx];
+        const swap = list[swapIdx];
+        await db.update(gameConfigs).set({ sort: swap.sort }).where(eq(gameConfigs.id, current.id));
+        await db.update(gameConfigs).set({ sort: current.sort }).where(eq(gameConfigs.id, swap.id));
+        return { success: true };
+      }),
+
     // 统计数据
     stats: protectedProcedure.query(async ({ ctx }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -672,6 +746,99 @@ export const appRouter = router({
         activeRollRooms: Number(activeRollCount[0]?.count ?? 0),
       };
     }),
+    // ── 财务统计 ──
+    financeStats: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) return { totalRecharge: 0, todayRecharge: 0, totalOrders: 0, todayOrders: 0, topPlayers: [] };
+      const { rechargeOrders, players } = await import("../drizzle/schema");
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const [totalRechargeRes, todayRechargeRes, totalOrdersRes, todayOrdersRes, topPlayersRes] = await Promise.all([
+        db.select({ total: sql<string>`COALESCE(SUM(amount), 0)` }).from(rechargeOrders).where(eq(rechargeOrders.status, 1)),
+        db.select({ total: sql<string>`COALESCE(SUM(amount), 0)` }).from(rechargeOrders).where(sql`status = 1 AND createdAt >= ${todayStart}`),
+        db.select({ count: sql<number>`count(*)` }).from(rechargeOrders).where(eq(rechargeOrders.status, 1)),
+        db.select({ count: sql<number>`count(*)` }).from(rechargeOrders).where(sql`status = 1 AND createdAt >= ${todayStart}`),
+        db.select({ id: players.id, nickname: players.nickname, phone: players.phone, totalRecharge: players.totalRecharge, vipLevel: players.vipLevel })
+          .from(players).orderBy(desc(players.totalRecharge)).limit(10),
+      ]);
+      return {
+        totalRecharge: parseFloat(String(totalRechargeRes[0]?.total ?? "0")),
+        todayRecharge: parseFloat(String(todayRechargeRes[0]?.total ?? "0")),
+        totalOrders: Number(totalOrdersRes[0]?.count ?? 0),
+        todayOrders: Number(todayOrdersRes[0]?.count ?? 0),
+        topPlayers: topPlayersRes.map(p => ({ ...p, totalRecharge: parseFloat(String(p.totalRecharge ?? "0")) })),
+      };
+    }),
+    financeOrders: protectedProcedure
+      .input(z.object({
+        page: z.number().min(1).default(1),
+        limit: z.number().default(15),
+        status: z.number().optional(),
+        keyword: z.string().optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) return { list: [], total: 0 };
+        const { rechargeOrders, players } = await import("../drizzle/schema");
+        const { and, like, or } = await import("drizzle-orm");
+        const conditions: any[] = [];
+        if (input.status !== undefined) conditions.push(eq(rechargeOrders.status, input.status));
+        if (input.keyword) conditions.push(like(rechargeOrders.orderNo, `%${input.keyword}%`));
+        const where = conditions.length > 0 ? and(...conditions) : undefined;
+        const offset = (input.page - 1) * input.limit;
+        const [list, countRes] = await Promise.all([
+          db.select({
+            id: rechargeOrders.id,
+            orderNo: rechargeOrders.orderNo,
+            playerId: rechargeOrders.playerId,
+            amount: rechargeOrders.amount,
+            gold: rechargeOrders.gold,
+            bonusDiamond: rechargeOrders.bonusDiamond,
+            payMethod: rechargeOrders.payMethod,
+            status: rechargeOrders.status,
+            remark: rechargeOrders.remark,
+            createdAt: rechargeOrders.createdAt,
+            playerNickname: players.nickname,
+            playerPhone: players.phone,
+          })
+            .from(rechargeOrders)
+            .leftJoin(players, eq(rechargeOrders.playerId, players.id))
+            .where(where)
+            .orderBy(desc(rechargeOrders.createdAt))
+            .limit(input.limit)
+            .offset(offset),
+          db.select({ count: sql<number>`count(*)` }).from(rechargeOrders).where(where),
+        ]);
+        return {
+          list: list.map(o => ({ ...o, amount: parseFloat(String(o.amount ?? "0")), gold: parseFloat(String(o.gold ?? "0")), bonusDiamond: parseFloat(String(o.bonusDiamond ?? "0")) })),
+          total: Number(countRes[0]?.count ?? 0),
+        };
+      }),
+    // ── 系统设置 ──
+    getSiteSettings: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) return [];
+      const { siteSettings } = await import("../drizzle/schema");
+      return db.select().from(siteSettings).orderBy(siteSettings.settingKey);
+    }),
+    updateSiteSetting: protectedProcedure
+      .input(z.object({ key: z.string(), value: z.string(), description: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { siteSettings } = await import("../drizzle/schema");
+        const existing = await db.select().from(siteSettings).where(eq(siteSettings.settingKey, input.key));
+        if (existing.length > 0) {
+          await db.update(siteSettings).set({ value: input.value, description: input.description ?? existing[0].description }).where(eq(siteSettings.settingKey, input.key));
+        } else {
+          await db.insert(siteSettings).values({ settingKey: input.key, value: input.value, description: input.description ?? "" });
+        }
+        return { success: true };
+      }),
   }),
 
   // ── ROLL-X 幸运转盘游戏 ──────────────────────────────────────────────

@@ -64,6 +64,13 @@
       "when": 1773116562959,
       "tag": "0008_fine_scorpion",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1773135511122,
+      "tag": "0009_late_jigsaw",
+      "breakpoints": true
     }
   ]
 }

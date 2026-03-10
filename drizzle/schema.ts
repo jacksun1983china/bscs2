@@ -620,3 +620,34 @@ export const siteSettings = mysqlTable("siteSettings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type SiteSetting = typeof siteSettings.$inferSelect;
+
+// ── 游戏配置表 ──────────────────────────────────────────────────────
+export const gameConfigs = mysqlTable("gameConfigs", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 游戏唯一标识，如 rollx / arena / wheel / rainbow / roll */
+  gameKey: varchar("gameKey", { length: 50 }).notNull().unique(),
+  /** 游戏名称（中文） */
+  name: varchar("name", { length: 100 }).notNull(),
+  /** 游戏名称（英文） */
+  nameEn: varchar("nameEn", { length: 100 }).notNull().default(""),
+  /** 游戏封面图 URL */
+  coverUrl: varchar("coverUrl", { length: 500 }).notNull().default(""),
+  /** 游戏路由路径，如 /rollx */
+  path: varchar("path", { length: 100 }).notNull().default(""),
+  /** RTP 值（百分比，如 96 表示 96%） */
+  rtp: int("rtp").notNull().default(96),
+  /** 是否启用：1启用 0禁用 */
+  enabled: tinyint("enabled").notNull().default(1),
+  /** 最小投注金额（×100 单位，如 100 = 前端显示 1.00） */
+  minBet: int("minBet").notNull().default(100),
+  /** 最大投注金额（×100 单位） */
+  maxBet: int("maxBet").notNull().default(1000000),
+  /** 排序 */
+  sort: int("sort").notNull().default(0),
+  /** 备注 */
+  remark: varchar("remark", { length: 255 }).notNull().default(""),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type GameConfig = typeof gameConfigs.$inferSelect;
+export type InsertGameConfig = typeof gameConfigs.$inferInsert;

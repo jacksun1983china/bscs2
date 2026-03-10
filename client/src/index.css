@@ -115,9 +115,15 @@
 }
 
 /* ── 管理后台全屏覆盖（强制 body 不居中） ─────────────────────── */
-body.admin-mode {
+body.admin-mode,
+html body.admin-mode {
   display: block !important;
   background: #080418 !important;
+  overflow: auto !important;
+  height: auto !important;
+  min-height: 100vh !important;
+  align-items: unset !important;
+  justify-content: unset !important;
 }
 body.admin-mode .phone-container {
   width: 100% !important;

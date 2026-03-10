@@ -1,162 +1,80 @@
 /**
- * RollX.tsx — 幸运转盘游戏（赛博朋克风格）
- * 玩法：玩家设置倍率X，绿色扇区占比=1/X，停在绿色赢X倍，停在黑色输
- * 服务端决定结果，客户端只负责动画展示
+ * RollX.tsx — 幸运转盘游戏
+ * 1:1 复刻原版 SSG RollX 玩法和美术风格
+ *
+ * 核心玩法：
+ * - 转盘分绿色（WIN）和黑色（LOSE）两个扇区
+ * - 绿色扇区角度 = 360 × (1/multiplier × RTP/100)
+ * - 服务端决定胜负，返回 isWin + stopAngle
+ * - 前端只负责动画展示
  *
  * 布局：phone-container + cqw 响应式单位（基准 750px）
- * 结构：TopNav（不滚动）→ 内容区（可滚动）→ BottomNav（沉底）
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { trpc } from '@/lib/trpc';
 import BottomNav from '@/components/BottomNav';
 import TopNav from '@/components/TopNav';
+import { useGameAlert } from '@/components/GameAlert';
 import { useLocation } from 'wouter';
-import { LANHU } from '@/lib/assets';
 
 // ── px → cqw 转换（基准 750px）──────────────────────────────────
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 
-// ── 常量 ──────────────────────────────────────────────────────
-const SPIN_DURATION = 3000; // 转盘动画时长 ms
-const EXTRA_ROTATIONS = 5;  // 额外旋转圈数
+// ── 原版倍率档位（从小到大，对应滑动条 0~21）──────────────────
+const BOARD_X_VALUES = [1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30];
 
-// ── 绘制转盘（canvas 尺寸由外部传入）──────────────────────────
-function drawWheel(
-  ctx: CanvasRenderingContext2D,
-  size: number,
-  multiplier: number,
-  currentAngle: number = 0
-) {
-  const center = size / 2;
-  const radius = center - size * 0.04;
+// ── 投注档位（前端显示值，实际发送后端时 ×100）───────────────
+const BET_VALUES = [1, 2, 5, 10, 20, 30, 50, 70, 100, 150, 200, 300, 400, 500, 700, 1000, 2000, 3000, 4000, 5000, 8000, 10000];
 
-  const greenAngle = (Math.PI * 2) / multiplier;
-  const blackAngle = Math.PI * 2 - greenAngle;
+// ── 计算绿色扇区角度 ──────────────────────────────────────────
+function getGreenDegree(multiplier: number, rtp: number): number {
+  const winProbability = (rtp / 100) / multiplier;
+  return 360 * winProbability;
+}
 
-  ctx.clearRect(0, 0, size, size);
+// ── 计算绿色扇形 clip-path（与原版 drawCircle 完全一致）────────
+function getGreenClipPath(circlePercent: number, radius: number): string {
+  const angle = 360 * circlePercent / 100;
+  const x = radius + radius * Math.cos(angle * Math.PI / 180);
+  const y = radius + radius * Math.sin(angle * Math.PI / 180);
 
-  ctx.save();
-  ctx.translate(center, center);
-  ctx.rotate(currentAngle);
+  let clipPathMiddle = `${2 * radius}px ${2 * radius}px,`;
+  if (angle > 90) clipPathMiddle += `${0}px ${2 * radius}px,`;
+  if (angle > 180) clipPathMiddle += `${0}px ${0}px,`;
+  if (angle > 270) clipPathMiddle += `${2 * radius}px ${0}px,`;
 
-  // 黑色扇区
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.arc(0, 0, radius, 0, blackAngle);
-  ctx.closePath();
-  const blackGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-  blackGrad.addColorStop(0, '#1a0a2e');
-  blackGrad.addColorStop(0.6, '#0d0621');
-  blackGrad.addColorStop(1, '#1a0a2e');
-  ctx.fillStyle = blackGrad;
-  ctx.fill();
-
-  // 黑色扇区纹理线条
-  ctx.strokeStyle = 'rgba(139, 92, 246, 0.15)';
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 12; i++) {
-    const angle = (blackAngle / 12) * i;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
-    ctx.stroke();
-  }
-
-  // 绿色扇区（赢区）
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.arc(0, 0, radius, blackAngle, Math.PI * 2);
-  ctx.closePath();
-  const greenGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-  greenGrad.addColorStop(0, '#00ff88');
-  greenGrad.addColorStop(0.5, '#00cc66');
-  greenGrad.addColorStop(1, '#009944');
-  ctx.fillStyle = greenGrad;
-  ctx.fill();
-
-  // 绿色扇区发光边缘
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.arc(0, 0, radius, blackAngle, Math.PI * 2);
-  ctx.closePath();
-  ctx.strokeStyle = 'rgba(0, 255, 136, 0.6)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // 中心圆
-  const cr = size * 0.06;
-  ctx.beginPath();
-  ctx.arc(0, 0, cr, 0, Math.PI * 2);
-  const centerGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, cr);
-  centerGrad.addColorStop(0, '#c084fc');
-  centerGrad.addColorStop(1, '#7c3aed');
-  ctx.fillStyle = centerGrad;
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(192, 132, 252, 0.8)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // 中心X标志
-  ctx.fillStyle = '#fff';
-  ctx.font = `bold ${size * 0.045}px Arial`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('X', 0, 0);
-
-  ctx.restore();
-
-  // 外圈装饰
-  ctx.beginPath();
-  ctx.arc(center, center, radius + 3, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(139, 92, 246, 0.5)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // 外圈光点
-  for (let i = 0; i < 24; i++) {
-    const angle = (Math.PI * 2 / 24) * i + currentAngle;
-    const x = center + Math.cos(angle) * (radius + size * 0.03);
-    const y = center + Math.sin(angle) * (radius + size * 0.03);
-    ctx.beginPath();
-    ctx.arc(x, y, size * 0.007, 0, Math.PI * 2);
-    ctx.fillStyle = i % 3 === 0 ? 'rgba(0, 255, 136, 0.8)' : 'rgba(139, 92, 246, 0.4)';
-    ctx.fill();
-  }
-
-  // 指针（顶部三角，尖端朝下指向转盘）
-  const pw = size * 0.03;
-  const ph = size * 0.06;
-  ctx.save();
-  ctx.translate(center, 0);
-  ctx.beginPath();
-  ctx.moveTo(0, ph);
-  ctx.lineTo(-pw, ph * 0.2);
-  ctx.lineTo(pw, ph * 0.2);
-  ctx.closePath();
-  ctx.fillStyle = '#ff4444';
-  ctx.fill();
-  ctx.strokeStyle = '#ff8888';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.restore();
+  return `polygon(
+    ${radius}px ${radius}px,
+    ${2 * radius}px ${radius}px,
+    ${clipPathMiddle}
+    ${x}px ${y}px
+  )`;
 }
 
 // ── 主组件 ──────────────────────────────────────────────────────
 export default function RollX() {
   const [, navigate] = useLocation();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const animFrameRef = useRef<number>(0);
+  const { showAlert } = useGameAlert();
 
-  const [multiplier, setMultiplier] = useState(2);
-  const [betAmount, setBetAmount] = useState(10);
+  // 滑动条索引（0~21）
+  const [coeffIndex, setCoeffIndex] = useState(7); // 默认 1.4x（index 3 in BOARD_X_VALUES）
+  const [betIndex, setBetIndex] = useState(1);      // 默认 0.2
+
+  const multiplier = BOARD_X_VALUES[coeffIndex];
+  const betAmountDisplay = BET_VALUES[betIndex]; // 前端显示金额
+  const betAmount = betAmountDisplay * 100;       // 实际发送后端的金额
+
   const [isSpinning, setIsSpinning] = useState(false);
-  const [result, setResult] = useState<{ isWin: boolean; winAmount: number; netAmount: number; balanceAfter: number } | null>(null);
+  const [result, setResult] = useState<{ isWin: boolean; winAmount: number; netAmount: number; balanceAfter: number; multiplier: number; betAmount: number } | null>(null);
   const [showResult, setShowResult] = useState(false);
-  const currentAngleRef = useRef(0);
 
-  // canvas 实际像素尺寸（由容器宽度决定）
-  const [canvasSize, setCanvasSize] = useState(280);
+  // 转盘旋转角度（CSS transform rotate）
+  const [wheelRotation, setWheelRotation] = useState(0);
+  const lastSpinDegRef = useRef(0);
+  const wheelRotationRef = useRef(0);
+
+  // 绿色扇形 clip-path 旋转角度（跟随转盘）
+  const [greenContainerRotation, setGreenContainerRotation] = useState(0);
 
   // 获取游戏设置
   const { data: settings } = trpc.rollx.getSettings.useQuery();
@@ -168,69 +86,55 @@ export default function RollX() {
   // 旋转 mutation
   const spinMutation = trpc.rollx.spin.useMutation();
 
-  // 监听容器宽度，动态调整 canvas 尺寸
+  // RTP（从服务端获取，默认96）
+  const rtp = settings?.rtp ?? 96;
+  const greenDegree = getGreenDegree(multiplier, rtp);
+  const greenPercent = 100 / (360 / greenDegree);
+
+  // 转盘尺寸（响应式）
+  const [wheelSize, setWheelSize] = useState(300);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const obs = new ResizeObserver(entries => {
       const w = entries[0].contentRect.width;
-      // canvas 占容器宽度的 75%，但最大 400px
-      const size = Math.min(Math.round(w * 0.75), 400);
-      setCanvasSize(size);
+      setWheelSize(Math.min(Math.round(w * 0.78), 360));
     });
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
 
-  // 初始化/重绘转盘
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    drawWheel(ctx, canvasSize, multiplier, currentAngleRef.current);
-  }, [multiplier, canvasSize]);
+  const wheelRadius = wheelSize / 2;
+
+  // 绿色扇形 clip-path
+  const greenClipPath = getGreenClipPath(greenPercent, wheelRadius);
 
   // 执行旋转动画
-  const animateSpin = useCallback((targetStopAngle: number, onComplete: () => void) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  // 转盘坐标系：绿色扇区从 3点方向（0度）开始顺时针
+  // 指针固定在顶部，对应转盘的 270度位置
+  // 要让指针停在 stopAngle 处：转盘需要旋转到 (270 - stopAngle) mod 360
+  const animateSpin = useCallback((isWin: boolean, stopAngle: number, onComplete: () => void) => {
+    const targetOffset = (270 - stopAngle + 360) % 360;
+    const totalSpin = lastSpinDegRef.current + 1800 + targetOffset;
 
-    const startAngle = currentAngleRef.current;
-    const targetRotation = startAngle + EXTRA_ROTATIONS * Math.PI * 2 + (Math.PI * 2 - targetStopAngle * Math.PI / 180);
-    const startTime = performance.now();
+    lastSpinDegRef.current = Math.ceil(totalSpin / 360) * 360;
 
-    function easeOut(t: number): number {
-      return 1 - Math.pow(1 - t, 4);
-    }
+    setWheelRotation(totalSpin);
+    setGreenContainerRotation(totalSpin);
 
-    function frame(now: number) {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / SPIN_DURATION, 1);
-      const angle = startAngle + (targetRotation - startAngle) * easeOut(progress);
-
-      currentAngleRef.current = angle;
-      drawWheel(ctx!, canvasSize, multiplier, angle);
-
-      if (progress < 1) {
-        animFrameRef.current = requestAnimationFrame(frame);
-      } else {
-        currentAngleRef.current = targetRotation % (Math.PI * 2);
-        onComplete();
-      }
-    }
-
-    animFrameRef.current = requestAnimationFrame(frame);
-  }, [multiplier, canvasSize]);
+    setTimeout(() => {
+      onComplete();
+    }, 3200);
+  }, []);
 
   // 点击旋转
   const handleSpin = async () => {
     if (isSpinning) return;
     if (!player) { navigate('/login'); return; }
     const gold = parseFloat(player.gold);
-    if (gold < betAmount) { alert('金币不足！'); return; }
+    if (gold < betAmount) { showAlert('金币不足，请先充值！', { type: 'error', title: '余额不足' }); return; }
 
     setIsSpinning(true);
     setShowResult(false);
@@ -238,8 +142,8 @@ export default function RollX() {
 
     try {
       const res = await spinMutation.mutateAsync({ betAmount, multiplier });
-      animateSpin(res.stopAngle, () => {
-        setResult(res);
+      animateSpin(res.isWin, res.stopAngle, () => {
+        setResult({ ...res });
         setShowResult(true);
         setIsSpinning(false);
         refetchPlayer();
@@ -247,351 +151,431 @@ export default function RollX() {
       });
     } catch (err: any) {
       setIsSpinning(false);
-      alert(err.message || '旋转失败，请重试');
+      showAlert(err.message || '旋转失败，请重试', { type: 'error', title: '错误' });
     }
   };
 
-  // 清理动画帧
-  useEffect(() => {
-    return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
-  }, []);
-
   const gold = player ? parseFloat(player.gold) : 0;
-  const winChance = settings ? ((settings.rtp / 100) / multiplier * 100).toFixed(1) : '0';
+  const potentialWin = (betAmountDisplay * multiplier).toFixed(2);
 
   return (
     <div
       className="phone-container"
+      ref={containerRef}
       style={{
         display: 'flex',
         flexDirection: 'column',
         containerType: 'inline-size',
         position: 'relative',
-        background: '#0d0621',
+        background: '#282828',
+        minHeight: '100vh',
       }}
-      ref={containerRef}
     >
-      {/* 全局背景 */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: `url(${LANHU.pageBg})`,
-          backgroundSize: 'cover',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'top center',
-          zIndex: 0,
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* ── 顶部导航（不滚动）── */}
+      {/* ── 顶部导航 ── */}
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 2, width: '100%' }}>
         <TopNav showLogo={false} onBackClick={() => navigate('/')} />
       </div>
 
-      {/* ── 内容区（可滚动）── */}
+      {/* ── 内容区 ── */}
       <div
         style={{
           flex: 1,
           overflowY: 'auto',
           overflowX: 'hidden',
-          position: 'relative',
-          zIndex: 1,
           display: 'flex',
           flexDirection: 'column',
+          alignItems: 'center',
+          paddingBottom: q(20),
         }}
       >
-        {/* 页面标题 */}
+        {/* Online 人数 */}
         <div
           style={{
-            textAlign: 'center',
-            padding: `${q(12)} 0 ${q(4)}`,
-            color: '#fff',
-            fontSize: q(36),
-            fontWeight: 700,
-            textShadow: '0 0 16px rgba(139,92,246,0.8)',
-            letterSpacing: 2,
-            flexShrink: 0,
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            padding: `${q(8)} ${q(20)} 0`,
+            color: '#aaa',
+            fontSize: q(22),
           }}
         >
-          幸运转盘 ROLL-X
+          <span>Online: </span>
+          <span style={{ color: '#fff', marginLeft: 4 }}>165</span>
         </div>
 
-        {/* 登录提示 */}
-        {!player && (
-          <div
-            onClick={() => navigate('/login')}
-            style={{
-              margin: `${q(8)} ${q(24)}`,
-              padding: `${q(16)} ${q(24)}`,
-              background: 'rgba(139,92,246,0.15)',
-              border: '1px solid rgba(139,92,246,0.4)',
-              borderRadius: q(16),
-              color: '#c084fc',
-              fontSize: q(26),
-              textAlign: 'center',
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
-          >
-            点击登录 / 注册
-          </div>
-        )}
-
-        {/* 胜率信息 */}
+        {/* ── 转盘区域 ── */}
         <div
           style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: q(40),
-            padding: `${q(8)} 0`,
-            fontSize: q(24),
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ color: '#9ca3af' }}>
-            胜率: <span style={{ color: '#00ff88', fontWeight: 700 }}>{winChance}%</span>
-          </div>
-          <div style={{ color: '#9ca3af' }}>
-            赔率: <span style={{ color: '#fde047', fontWeight: 700 }}>{multiplier.toFixed(2)}x</span>
-          </div>
-          <div style={{ color: '#9ca3af' }}>
-            余额: <span style={{ color: '#c084fc', fontWeight: 700 }}>{gold.toFixed(2)}</span>
-          </div>
-        </div>
-
-        {/* 转盘区域 */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: `${q(16)} 0`,
-            flexShrink: 0,
             position: 'relative',
+            width: wheelSize,
+            height: wheelSize,
+            margin: `${q(16)} auto`,
+            flexShrink: 0,
           }}
         >
-          {/* 外圈光晕 */}
+          {/* 指针（顶部，固定不动）*/}
           <div
             style={{
               position: 'absolute',
-              width: canvasSize + 40,
-              height: canvasSize + 40,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)',
-              animation: isSpinning ? 'rollx-pulse 1s ease-in-out infinite' : 'none',
+              top: -wheelSize * 0.04,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 10,
+              width: 0,
+              height: 0,
+              borderLeft: `${wheelSize * 0.025}px solid transparent`,
+              borderRight: `${wheelSize * 0.025}px solid transparent`,
+              borderTop: `${wheelSize * 0.065}px solid #ff4444`,
+              filter: 'drop-shadow(0 0 6px rgba(255,68,68,0.8))',
             }}
           />
-          <canvas
-            ref={canvasRef}
-            width={canvasSize}
-            height={canvasSize}
+
+          {/* 转盘外圈（灰色边框）*/}
+          <div
             style={{
+              position: 'absolute',
+              inset: 0,
               borderRadius: '50%',
-              boxShadow: '0 0 30px rgba(139,92,246,0.4), 0 0 60px rgba(139,92,246,0.2)',
-              display: 'block',
+              border: `${wheelSize * 0.015}px solid #555`,
+              zIndex: 3,
+              pointerEvents: 'none',
             }}
           />
-        </div>
 
-        {/* 倍率选择 */}
-        <div
-          style={{
-            margin: `0 ${q(24)} ${q(16)}`,
-            background: 'rgba(20,8,50,0.9)',
-            border: '1px solid rgba(139,92,246,0.3)',
-            borderRadius: q(20),
-            padding: q(24),
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: q(10) }}>
-            <span style={{ color: '#9ca3af', fontSize: q(24) }}>倍率 X</span>
-            <span style={{ color: '#00ff88', fontSize: q(32), fontWeight: 700 }}>{multiplier.toFixed(2)}x</span>
-          </div>
-          {/* 倍率滑动条 */}
-          <input
-            type="range"
-            min={1.01}
-            max={Math.log10(settings?.maxMultiplier ?? 30000)}
-            step={0.01}
-            value={Math.log10(Math.max(multiplier, 1.01))}
-            disabled={isSpinning}
-            onChange={e => {
-              const logVal = parseFloat(e.target.value);
-              setMultiplier(parseFloat(Math.pow(10, logVal).toFixed(2)));
+          {/* 黑色底盘（旋转）*/}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              background: '#1a1a1a',
+              transform: `rotate(${wheelRotation}deg)`,
+              transition: isSpinning ? 'transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
+              zIndex: 1,
             }}
-            style={{ width: '100%', accentColor: '#00ff88', cursor: isSpinning ? 'not-allowed' : 'pointer', height: 6 }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', margin: `${q(6)} 0 ${q(12)}` }}>
-            <span style={{ color: '#6b7280', fontSize: q(20) }}>1.01x</span>
-            <span style={{ color: '#6b7280', fontSize: q(20) }}>{(settings?.maxMultiplier ?? 30000).toLocaleString()}x</span>
-          </div>
-          {/* 快捷倍率按钮 */}
-          <div style={{ display: 'flex', gap: q(8), flexWrap: 'wrap' }}>
-            {[1.5, 2, 3, 5, 10, 25, 50, 100, 1000].map(m => (
-              <button
-                key={m}
-                onClick={() => !isSpinning && setMultiplier(m)}
-                style={{
-                  padding: `${q(8)} ${q(14)}`,
-                  borderRadius: q(10),
-                  border: `1px solid ${Math.abs(multiplier - m) < 0.01 ? 'rgba(0,255,136,0.8)' : 'rgba(139,92,246,0.3)'}`,
-                  background: Math.abs(multiplier - m) < 0.01 ? 'rgba(0,255,136,0.15)' : 'rgba(139,92,246,0.08)',
-                  color: Math.abs(multiplier - m) < 0.01 ? '#00ff88' : '#c084fc',
-                  cursor: isSpinning ? 'not-allowed' : 'pointer',
-                  fontSize: q(22),
-                  fontWeight: Math.abs(multiplier - m) < 0.01 ? 700 : 400,
-                }}
-              >
-                {m}x
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 投注金额 */}
-        <div
-          style={{
-            margin: `0 ${q(24)} ${q(24)}`,
-            background: 'rgba(20,8,50,0.9)',
-            border: '1px solid rgba(139,92,246,0.3)',
-            borderRadius: q(20),
-            padding: q(24),
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: q(10) }}>
-            <span style={{ color: '#9ca3af', fontSize: q(24) }}>投注金额</span>
-            <span style={{ color: '#fde047', fontSize: q(32), fontWeight: 700 }}>{betAmount.toLocaleString()}</span>
-          </div>
-          {/* 投注金额滑动条 */}
-          <input
-            type="range"
-            min={1}
-            max={Math.max(1, Math.min(Math.floor(gold), settings?.maxBet ?? 100000))}
-            step={1}
-            value={betAmount}
-            disabled={isSpinning || gold < 1}
-            onChange={e => setBetAmount(parseInt(e.target.value))}
-            style={{ width: '100%', accentColor: '#fde047', cursor: isSpinning ? 'not-allowed' : 'pointer', height: 6 }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', margin: `${q(6)} 0 ${q(12)}` }}>
-            <span style={{ color: '#6b7280', fontSize: q(20) }}>1</span>
-            <span style={{ color: '#6b7280', fontSize: q(20) }}>{Math.max(1, Math.min(Math.floor(gold), settings?.maxBet ?? 100000)).toLocaleString()}</span>
-          </div>
-          {/* 快捷金额按钮 */}
-          <div style={{ display: 'flex', gap: q(8), marginBottom: q(12) }}>
-            {[1, 10, 100, '1K', '10K'].map((label, i) => {
-              const amt = [1, 10, 100, 1000, 10000][i];
-              return (
-                <button
-                  key={label}
-                  onClick={() => !isSpinning && setBetAmount(Math.min(amt, Math.floor(gold)))}
-                  style={{
-                    flex: 1,
-                    padding: `${q(10)} 0`,
-                    borderRadius: q(10),
-                    border: `1px solid ${betAmount === amt ? 'rgba(253,224,71,0.8)' : 'rgba(139,92,246,0.3)'}`,
-                    background: betAmount === amt ? 'rgba(253,224,71,0.15)' : 'rgba(139,92,246,0.08)',
-                    color: betAmount === amt ? '#fde047' : '#c084fc',
-                    cursor: isSpinning ? 'not-allowed' : 'pointer',
-                    fontSize: q(22),
-                    fontWeight: betAmount === amt ? 700 : 400,
-                  }}
-                >
-                  {label}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => !isSpinning && setBetAmount(Math.max(1, Math.floor(gold / 2)))}
-              style={{ flex: 1, padding: `${q(10)} 0`, borderRadius: q(10), border: '1px solid rgba(139,92,246,0.3)', background: 'rgba(139,92,246,0.08)', color: '#c084fc', cursor: 'pointer', fontSize: q(22) }}
-            >
-              1/2
-            </button>
-            <button
-              onClick={() => !isSpinning && setBetAmount(Math.max(1, Math.floor(gold)))}
-              style={{ flex: 1, padding: `${q(10)} 0`, borderRadius: q(10), border: '1px solid rgba(139,92,246,0.3)', background: 'rgba(139,92,246,0.08)', color: '#c084fc', cursor: 'pointer', fontSize: q(22) }}
-            >
-              全押
-            </button>
-          </div>
-          <div style={{ color: '#6b7280', fontSize: q(22) }}>
-            预期赢得: <span style={{ color: '#00ff88', fontWeight: 600 }}>{(betAmount * multiplier).toFixed(2)}</span> 金币
-          </div>
-        </div>
-
-        {/* 旋转按钮 */}
-        <button
-          onClick={handleSpin}
-          disabled={isSpinning}
-          style={{
-            margin: `0 ${q(24)} ${q(24)}`,
-            padding: `${q(28)} 0`,
-            borderRadius: q(20),
-            border: 'none',
-            background: isSpinning
-              ? 'rgba(139,92,246,0.3)'
-              : 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #7c3aed 100%)',
-            color: '#fff',
-            fontSize: q(32),
-            fontWeight: 700,
-            cursor: isSpinning ? 'not-allowed' : 'pointer',
-            boxShadow: isSpinning ? 'none' : '0 0 20px rgba(139,92,246,0.6)',
-            letterSpacing: 2,
-            transition: 'all 0.3s',
-            textShadow: '0 0 10px rgba(255,255,255,0.5)',
-            flexShrink: 0,
-          }}
-        >
-          {isSpinning ? '旋转中...' : '🎰 旋 转'}
-        </button>
-
-        {/* 历史记录 */}
-        <div style={{ padding: `0 ${q(24)} ${q(24)}`, flexShrink: 0 }}>
-          <div style={{ color: '#9ca3af', fontSize: q(24), marginBottom: q(12) }}>最近记录</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: q(8) }}>
-            {(history || []).slice(0, 8).map(h => (
+          >
+            {/* 黑色扇区纹理线条 */}
+            {Array.from({ length: 16 }).map((_, i) => (
               <div
-                key={h.id}
+                key={i}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: `${q(12)} ${q(16)}`,
-                  background: 'rgba(20,8,50,0.6)',
-                  border: `1px solid ${h.isWin ? 'rgba(0,255,136,0.2)' : 'rgba(255,68,68,0.2)'}`,
-                  borderRadius: q(10),
-                  fontSize: q(22),
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  width: '50%',
+                  height: 1,
+                  background: 'rgba(255,255,255,0.06)',
+                  transformOrigin: '0 0',
+                  transform: `rotate(${(360 / 16) * i}deg)`,
                 }}
-              >
-                <span style={{ color: '#9ca3af' }}>{h.multiplier}x</span>
-                <span style={{ color: '#9ca3af' }}>投注 {h.betAmount}</span>
-                <span style={{ color: h.isWin ? '#00ff88' : '#ff4444', fontWeight: 700 }}>
-                  {h.isWin ? `+${h.winAmount.toFixed(2)}` : `-${h.betAmount.toFixed(2)}`}
-                </span>
-                <span style={{ color: '#6b7280' }}>{new Date(h.createdAt).toLocaleTimeString()}</span>
-              </div>
+              />
             ))}
-            {(!history || history.length === 0) && (
-              <div style={{ color: '#6b7280', fontSize: q(22), textAlign: 'center', padding: q(32) }}>暂无记录</div>
+          </div>
+
+          {/* 绿色扇形（旋转，用 clip-path 裁剪）*/}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              transform: `rotate(${greenContainerRotation}deg)`,
+              transition: isSpinning ? 'transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
+              zIndex: 2,
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: `${wheelRadius}px`,
+                background: 'radial-gradient(circle at 60% 60%, #5dde5d 0%, #2db82d 40%, #1a8a1a 100%)',
+                clipPath: greenClipPath,
+                boxShadow: 'inset 0 0 20px rgba(0,255,0,0.3)',
+              }}
+            />
+          </div>
+
+          {/* 中心圆（WIN / 金额显示）*/}
+          <div
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: wheelSize * 0.32,
+              height: wheelSize * 0.32,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, #3a3a3a 0%, #222 100%)',
+              border: '3px solid #555',
+              zIndex: 4,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 0 20px rgba(0,0,0,0.8), inset 0 0 15px rgba(0,0,0,0.5)',
+            }}
+          >
+            {showResult && result ? (
+              <>
+                <div style={{ color: result.isWin ? '#5dde5d' : '#ff4444', fontSize: wheelSize * 0.06, fontWeight: 700, lineHeight: 1.1 }}>
+                  {result.isWin ? 'WIN' : 'LOSE'}
+                </div>
+                <div style={{ color: '#fff', fontSize: wheelSize * 0.055, fontWeight: 700 }}>
+                  {result.isWin ? result.winAmount.toFixed(2) : (-result.netAmount).toFixed(2)}
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ color: '#5dde5d', fontSize: wheelSize * 0.06, fontWeight: 700, lineHeight: 1.1 }}>
+                  WIN
+                </div>
+                <div style={{ color: '#fff', fontSize: wheelSize * 0.055, fontWeight: 700 }}>
+                  {potentialWin}
+                </div>
+              </>
             )}
           </div>
         </div>
+
+        {/* ── 控制区域 ── */}
+        <div
+          style={{
+            width: '100%',
+            padding: `0 ${q(30)}`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: q(20),
+          }}
+        >
+          {/* 倍率滑动条 */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: q(8) }}>
+              <span style={{ color: '#aaa', fontSize: q(24) }}>MULTIPLIER</span>
+              <span style={{ color: '#fff', fontSize: q(30), fontWeight: 700 }}>{multiplier}x</span>
+            </div>
+            <div style={{ position: 'relative', height: q(14) }}>
+              {/* 轨道背景 */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: 0,
+                  right: 0,
+                  height: q(10),
+                  transform: 'translateY(-50%)',
+                  borderRadius: q(50),
+                  background: '#444',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* 已选择部分（橙红渐变）*/}
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${(coeffIndex / (BOARD_X_VALUES.length - 1)) * 100}%`,
+                    background: 'linear-gradient(90deg, #ff6b35 0%, #ff4500 100%)',
+                    borderRadius: q(50),
+                    transition: 'width 0.1s',
+                  }}
+                />
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={BOARD_X_VALUES.length - 1}
+                step={1}
+                value={coeffIndex}
+                disabled={isSpinning}
+                onChange={e => setCoeffIndex(parseInt(e.target.value))}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0,
+                  cursor: isSpinning ? 'not-allowed' : 'pointer',
+                  margin: 0,
+                }}
+              />
+              {/* 滑块 */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: `calc(${(coeffIndex / (BOARD_X_VALUES.length - 1)) * 100}% - ${q(14)})`,
+                  transform: 'translateY(-50%)',
+                  width: q(28),
+                  height: q(28),
+                  borderRadius: '50%',
+                  background: '#fff',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+                  pointerEvents: 'none',
+                  transition: 'left 0.1s',
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: q(4) }}>
+              <span style={{ color: '#666', fontSize: q(20) }}>1.1x</span>
+              <span style={{ color: '#666', fontSize: q(20) }}>30x</span>
+            </div>
+          </div>
+
+          {/* 投注金额滑动条 */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: q(8) }}>
+              <span style={{ color: '#aaa', fontSize: q(24) }}>BET AMOUNT</span>
+              <span style={{ color: '#fff', fontSize: q(30), fontWeight: 700 }}>{betAmountDisplay.toFixed(2)}</span>
+            </div>
+            <div style={{ position: 'relative', height: q(14) }}>
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: 0,
+                  right: 0,
+                  height: q(10),
+                  transform: 'translateY(-50%)',
+                  borderRadius: q(50),
+                  background: '#444',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${(betIndex / (BET_VALUES.length - 1)) * 100}%`,
+                    background: 'linear-gradient(90deg, #ff6b35 0%, #ff4500 100%)',
+                    borderRadius: q(50),
+                    transition: 'width 0.1s',
+                  }}
+                />
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={BET_VALUES.length - 1}
+                step={1}
+                value={betIndex}
+                disabled={isSpinning}
+                onChange={e => setBetIndex(parseInt(e.target.value))}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  opacity: 0,
+                  cursor: isSpinning ? 'not-allowed' : 'pointer',
+                  margin: 0,
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: `calc(${(betIndex / (BET_VALUES.length - 1)) * 100}% - ${q(14)})`,
+                  transform: 'translateY(-50%)',
+                  width: q(28),
+                  height: q(28),
+                  borderRadius: '50%',
+                  background: '#fff',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+                  pointerEvents: 'none',
+                  transition: 'left 0.1s',
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: q(4) }}>
+              <span style={{ color: '#666', fontSize: q(20) }}>1.00</span>
+              <span style={{ color: '#666', fontSize: q(20) }}>10000</span>
+            </div>
+          </div>
+
+          {/* SPIN 按钮 */}
+          <button
+            onClick={handleSpin}
+            disabled={isSpinning}
+            style={{
+              width: '60%',
+              alignSelf: 'center',
+              padding: `${q(22)} 0`,
+              borderRadius: q(60),
+              border: 'none',
+              background: isSpinning
+                ? '#555'
+                : 'linear-gradient(180deg, #5dde5d 0%, #2db82d 50%, #1a8a1a 100%)',
+              color: '#fff',
+              fontSize: q(32),
+              fontWeight: 700,
+              cursor: isSpinning ? 'not-allowed' : 'pointer',
+              boxShadow: isSpinning ? 'none' : '0 4px 20px rgba(45,184,45,0.5)',
+              letterSpacing: 3,
+              textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+              transition: 'all 0.2s',
+            }}
+          >
+            {isSpinning ? '...' : 'SPIN'}
+          </button>
+
+          {/* 余额显示 */}
+          <div
+            style={{
+              textAlign: 'center',
+              color: '#aaa',
+              fontSize: q(24),
+              paddingBottom: q(8),
+            }}
+          >
+            BALANCE:{' '}
+            <span style={{ color: '#fff', fontWeight: 600 }}>
+              {gold.toFixed(2)}
+            </span>
+          </div>
+
+          {/* 历史记录（简洁版）*/}
+          {history && history.length > 0 && (
+            <div style={{ marginTop: q(8) }}>
+              <div style={{ color: '#666', fontSize: q(22), marginBottom: q(10), textAlign: 'center' }}>
+                RECENT BETS
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: q(6) }}>
+                {history.slice(0, 6).map(h => (
+                  <div
+                    key={h.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: `${q(10)} ${q(16)}`,
+                      background: 'rgba(255,255,255,0.04)',
+                      borderRadius: q(8),
+                      fontSize: q(22),
+                      borderLeft: `3px solid ${h.isWin ? '#2db82d' : '#cc3333'}`,
+                    }}
+                  >
+                    <span style={{ color: '#888' }}>{h.multiplier}x</span>
+                    <span style={{ color: '#888' }}>{(h.betAmount / 100).toFixed(2)}</span>
+                    <span style={{ color: h.isWin ? '#5dde5d' : '#ff5555', fontWeight: 700 }}>
+                      {h.isWin ? `+${(h.winAmount / 100).toFixed(2)}` : `-${(h.betAmount / 100).toFixed(2)}`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ── 底部导航（沉底）── */}
+      {/* ── 底部导航 ── */}
       <BottomNav />
 
-      {/* 结果弹窗 */}
+      {/* ── 结果弹窗 ── */}
       {showResult && result && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.7)',
+            background: 'rgba(0,0,0,0.75)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -601,65 +585,52 @@ export default function RollX() {
         >
           <div
             style={{
-              background: result.isWin
-                ? 'linear-gradient(135deg, rgba(0,100,50,0.95) 0%, rgba(0,50,25,0.98) 100%)'
-                : 'linear-gradient(135deg, rgba(80,0,0,0.95) 0%, rgba(40,0,0,0.98) 100%)',
-              border: `2px solid ${result.isWin ? 'rgba(0,255,136,0.6)' : 'rgba(255,68,68,0.6)'}`,
-              borderRadius: 20,
-              padding: '32px 40px',
+              background: result.isWin ? '#1a3a1a' : '#3a1a1a',
+              border: `2px solid ${result.isWin ? '#2db82d' : '#cc3333'}`,
+              borderRadius: 16,
+              padding: '32px 48px',
               textAlign: 'center',
               boxShadow: result.isWin
-                ? '0 0 40px rgba(0,255,136,0.4)'
-                : '0 0 40px rgba(255,68,68,0.4)',
-              minWidth: 240,
+                ? '0 0 40px rgba(45,184,45,0.5)'
+                : '0 0 40px rgba(204,51,51,0.5)',
+              minWidth: 220,
             }}
             onClick={e => e.stopPropagation()}
           >
-            <div style={{ fontSize: 48, marginBottom: 8 }}>
-              {result.isWin ? '🎉' : '💀'}
-            </div>
             <div style={{
-              fontSize: 28,
+              fontSize: 36,
               fontWeight: 900,
-              color: result.isWin ? '#00ff88' : '#ff4444',
-              textShadow: result.isWin ? '0 0 20px rgba(0,255,136,0.8)' : '0 0 20px rgba(255,68,68,0.8)',
-              marginBottom: 8,
+              color: result.isWin ? '#5dde5d' : '#ff5555',
+              marginBottom: 12,
             }}>
-              {result.isWin ? '恭喜获胜！' : '很遗憾...'}
+              {result.isWin ? 'YOU WIN!' : 'YOU LOSE'}
             </div>
-            <div style={{ color: '#fff', fontSize: 18, marginBottom: 4 }}>
+            <div style={{ color: '#fff', fontSize: 22, marginBottom: 6 }}>
               {result.isWin
-                ? `赢得 ${result.winAmount.toFixed(2)} 金币`
-                : `损失 ${(-result.netAmount).toFixed(2)} 金币`}
+                ? `+${(result.winAmount / 100).toFixed(2)}`
+                : `-${(Math.abs(result.netAmount) / 100).toFixed(2)}`}
             </div>
-            <div style={{ color: '#9ca3af', fontSize: 14, marginBottom: 20 }}>
-              余额: {result.balanceAfter.toFixed(2)}
+            <div style={{ color: '#888', fontSize: 14, marginBottom: 20 }}>
+              Balance: {(result.balanceAfter / 100).toFixed(2)}
             </div>
             <button
               onClick={() => setShowResult(false)}
               style={{
                 padding: '10px 32px',
-                borderRadius: 10,
+                borderRadius: 30,
                 border: 'none',
-                background: result.isWin ? 'rgba(0,255,136,0.3)' : 'rgba(255,68,68,0.3)',
+                background: result.isWin ? '#2db82d' : '#cc3333',
                 color: '#fff',
                 fontSize: 16,
                 fontWeight: 700,
                 cursor: 'pointer',
               }}
             >
-              继续游戏
+              CONTINUE
             </button>
           </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes rollx-pulse {
-          0%, 100% { opacity: 0.6; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.05); }
-        }
-      `}</style>
     </div>
   );
 }
