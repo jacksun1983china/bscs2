@@ -70,7 +70,7 @@ export default function BottomNav({ active: _active }: BottomNavProps) {
 
       {/* 背包（跳过大厅中心位置） */}
       <div
-        onClick={() => navigate('/bag')}
+        onClick={() => navigate('/backpack')}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           width: q(60), marginLeft: q(244), cursor: 'pointer', flexShrink: 0, gap: q(4),

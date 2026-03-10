@@ -171,15 +171,12 @@ export default function Backpack() {
 
   return (
     <div
+      className="phone-container"
       style={{
-        position: 'relative',
-        width: '100%',
-        minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        background: '#0d0621',
         containerType: 'inline-size',
-        overflow: 'hidden',
+        position: 'relative',
       }}
     >
       {/* 全局背景 */}
