@@ -153,31 +153,14 @@ export default function Home() {
           }}
           onClick={handleBannerClick}
         >
-          {/* 底层：霏虹边框图（701b6ae6...png）作为底框装饰 */}
-          <img
-            src="/img/701b6ae6376947b76d1b867bdd8e2d0d.png"
-            alt=""
-            style={{
-              position: 'absolute',
-              width: '100%',
-              height: '100%',
-              top: 0,
-              left: 0,
-              objectFit: 'fill',
-              zIndex: 0,
-              pointerEvents: 'none',
-            }}
-          />
-
-          {/* 中间层：Banner图片，用蒙版PNG裁剪成圆角，显示在边框内部 */}
+          {/* 底层：Banner图片，用蒙版PNG裁剪成圆角，全尺寸充满 */}
           <div
             style={{
               position: 'absolute',
-              // 内缩一小圈，让边框图的外框能显示出来
-              top: '6%',
-              left: '2.5%',
-              width: '95%',
-              height: '88%',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
               // 使用蒙版图的Alpha通道裁剪内容
               WebkitMaskImage: `url(/img/banner-mask.png)`,
               WebkitMaskSize: '100% 100%',

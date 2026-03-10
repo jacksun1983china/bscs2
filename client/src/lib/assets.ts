@@ -203,8 +203,8 @@ export const ASSETS = {
   cz_weixin: '/img/weixin.png',
   cz_btn: '/img/btn_chongzhi.png',
 
-  // BDCS2 LOGO（新版科幻赛博朋克风格，透明背景PNG）
-  bdcs2Logo: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/logobdcs2_transparent_f36b2cd6.png',
+  // BDCS2 LOGO（2026新版，金属赛博朋克风格，透明背景PNG）
+  bdcs2Logo: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/bdcs2logo2026_753f0156.png',
 
   // 登录页背景
   loginBg: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/login-bg_499c0190.png',

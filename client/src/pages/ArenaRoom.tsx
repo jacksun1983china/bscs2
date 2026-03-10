@@ -153,6 +153,8 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
       : '';
 
   const itemH = q(REEL_ITEM_PX);
+  // 可见窗口高度 = 3行
+  const windowH = q(REEL_ITEM_PX * 3);
 
   return (
     <div
@@ -179,7 +181,8 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
           : '0 0 8px rgba(80,20,160,0.4)',
         position: 'relative',
         overflow: 'hidden',
-        minHeight: q(REEL_ITEM_PX + 60),
+        height: showFinal ? 'auto' : windowH,
+        minHeight: showFinal ? q(REEL_ITEM_PX + 60) : windowH,
       }}
     >
       {/* 卷轴滚动区域（spinning时显示） */}
@@ -506,7 +509,17 @@ export default function ArenaRoom() {
 
   const [currentRoundItems, setCurrentRoundItems] = useState<Record<number, {
     goodsId: number; goodsName: string; goodsImage: string; goodsLevel: number; goodsValue: string;
-  }>>({});
+  }>>({})
+
+  // 开奖展示覆盖层
+  const [showRoundReveal, setShowRoundReveal] = useState(false);
+  const [revealItems, setRevealItems] = useState<Array<{
+    nickname: string;
+    goodsName: string;
+    goodsImage: string;
+    goodsLevel: number;
+    goodsValue: string;
+  }>>([]);;
 
   const spinRound = trpc.arena.spinRound.useMutation({
     onSuccess: (data) => {
@@ -780,7 +793,6 @@ export default function ArenaRoom() {
         if (isReplaying && roomDetail?.roundResults) {
           const allRoundNos = Array.from(new Set(roomDetail.roundResults.map((r) => r.roundNo))).sort((a, b) => a - b);
           const totalReplayRounds = allRoundNos.length;
-          // 使用ref获取最新轮次，避免闭包捕获旧值导致第二轮卡死
           const currentReplayRound = replayRoundRef.current;
           const roundNo = allRoundNos[currentReplayRound - 1];
           const resultsForRound = roomDetail.roundResults.filter((r) => r.roundNo === roundNo);
@@ -789,8 +801,6 @@ export default function ArenaRoom() {
             return { ...r, nickname: p?.nickname ?? '', seatNo: p?.seatNo ?? 0 };
           });
           setRoundResults((prev2) => ({ ...prev2, [currentReplayRound]: newResults }));
-
-          // 更新实时累计价值
           setLiveValues((prev2) => {
             const next2 = { ...prev2 };
             for (const r of resultsForRound) {
@@ -799,16 +809,23 @@ export default function ArenaRoom() {
             return next2;
           });
 
-          if (currentReplayRound < totalReplayRounds) {
-            setTimeout(() => {
+          // 开奖展示覆盖层
+          const revealData = resultsForRound.map((r) => {
+            const p = players.find((pl) => pl.playerId === r.playerId);
+            return { nickname: p?.nickname ?? `玩家${r.playerId}`, goodsName: r.goodsName, goodsImage: r.goodsImage, goodsLevel: r.goodsLevel, goodsValue: r.goodsValue };
+          });
+          setRevealItems(revealData);
+          setShowRoundReveal(true);
+
+          setTimeout(() => {
+            setShowRoundReveal(false);
+            if (currentReplayRound < totalReplayRounds) {
               const nextRound = currentReplayRound + 1;
               replayRoundRef.current = nextRound;
               setReplayRound(nextRound);
               setCurrentRound((r) => r + 1);
               setCurrentRoundItems({});
-            }, 1200);
-          } else {
-            setTimeout(() => {
+            } else {
               const playerTotals: Record<number, number> = {};
               for (const r of roomDetail.roundResults) {
                 playerTotals[r.playerId] = (playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue);
@@ -828,10 +845,10 @@ export default function ArenaRoom() {
               setIsReplaying(false);
               if (winner?.playerId === myPlayerId) playWinFanfare();
               else playLoseTone();
-            }, 1200);
-          }
+            }
+          }, 2200);
         } else {
-          // 正常模式：保存本轮结果并更新累计价值
+          // 正常模式
           const newResults = Object.entries(currentRoundItems).map(([pid, item]) => {
             const p = players.find((pl) => pl.playerId === Number(pid));
             return { playerId: Number(pid), nickname: p?.nickname ?? '', seatNo: p?.seatNo ?? 0, ...item };
@@ -844,12 +861,22 @@ export default function ArenaRoom() {
             }
             return next2;
           });
-          if (currentRound < totalRounds) {
-            setTimeout(() => {
+
+          // 开奖展示覆盖层
+          const revealData = Object.entries(currentRoundItems).map(([pid, item]) => {
+            const p = players.find((pl) => pl.playerId === Number(pid));
+            return { nickname: p?.nickname ?? `玩家${pid}`, goodsName: item.goodsName, goodsImage: item.goodsImage, goodsLevel: item.goodsLevel, goodsValue: item.goodsValue };
+          });
+          setRevealItems(revealData);
+          setShowRoundReveal(true);
+
+          setTimeout(() => {
+            setShowRoundReveal(false);
+            if (currentRound < totalRounds) {
               setCurrentRound((r) => r + 1);
               setCurrentRoundItems({});
-            }, 1200);
-          }
+            }
+          }, 2200);
         }
       }
       return next;
@@ -889,6 +916,79 @@ export default function ArenaRoom() {
         alt=""
         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.4, pointerEvents: 'none' }}
       />
+
+      {/* ── 开奖展示覆盖层 ── */}
+      {showRoundReveal && revealItems.length > 0 && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(8,2,22,0.88)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          animation: 'fadeInReveal 0.3s ease',
+          containerType: 'inline-size',
+        }}>
+          <style>{`
+            @keyframes fadeInReveal { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
+            @keyframes revealGlow { 0%,100%{box-shadow:0 0 30px rgba(192,132,252,0.5);} 50%{box-shadow:0 0 60px rgba(192,132,252,0.9), 0 0 100px rgba(192,132,252,0.4);} }
+            @keyframes revealGoldGlow { 0%,100%{box-shadow:0 0 30px rgba(245,200,66,0.5);} 50%{box-shadow:0 0 60px rgba(245,200,66,0.9), 0 0 100px rgba(245,200,66,0.4);} }
+          `}</style>
+          <div style={{ color: '#c084fc', fontSize: q(28), fontWeight: 700, marginBottom: q(24), letterSpacing: 2, textShadow: '0 0 12px rgba(192,132,252,0.8)' }}>
+            本轮开奖结果
+          </div>
+          <div style={{ display: 'flex', gap: q(24), justifyContent: 'center', flexWrap: 'wrap', padding: `0 ${q(20)}` }}>
+            {revealItems.map((item, idx) => (
+              <div key={idx} style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                background: item.goodsLevel === 1
+                  ? 'linear-gradient(135deg,rgba(200,134,10,0.25),rgba(245,200,66,0.15))'
+                  : item.goodsLevel === 2
+                    ? 'linear-gradient(135deg,rgba(106,13,173,0.25),rgba(192,132,252,0.15))'
+                    : 'rgba(20,8,50,0.8)',
+                border: `2px solid ${
+                  item.goodsLevel === 1 ? 'rgba(245,200,66,0.8)'
+                    : item.goodsLevel === 2 ? 'rgba(192,132,252,0.8)'
+                    : 'rgba(96,165,250,0.5)'
+                }`,
+                borderRadius: q(16),
+                padding: `${q(20)} ${q(24)}`,
+                minWidth: q(240),
+                animation: item.goodsLevel === 1 ? 'revealGoldGlow 1.2s ease-in-out infinite' : 'revealGlow 1.5s ease-in-out infinite',
+              }}>
+                <div style={{ color: '#9ca3af', fontSize: q(20), marginBottom: q(8) }}>{item.nickname}</div>
+                <div style={{
+                  width: q(140), height: q(140), marginBottom: q(12),
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {item.goodsImage ? (
+                    <img src={item.goodsImage} alt={item.goodsName} style={{
+                      width: '100%', height: '100%', objectFit: 'contain',
+                      filter: item.goodsLevel === 1
+                        ? 'drop-shadow(0 0 16px rgba(245,200,66,0.9))'
+                        : item.goodsLevel === 2
+                          ? 'drop-shadow(0 0 14px rgba(192,132,252,0.9))'
+                          : 'none',
+                    }} />
+                  ) : (
+                    <div style={{ fontSize: q(60) }}>🎁</div>
+                  )}
+                </div>
+                <div style={{
+                  display: 'inline-block',
+                  padding: `${q(3)} ${q(14)}`,
+                  background: item.goodsLevel === 1 ? 'rgba(245,200,66,0.2)' : item.goodsLevel === 2 ? 'rgba(192,132,252,0.2)' : 'rgba(96,165,250,0.15)',
+                  borderRadius: q(6), marginBottom: q(6),
+                  color: item.goodsLevel === 1 ? '#f5c842' : item.goodsLevel === 2 ? '#c084fc' : '#60a5fa',
+                  fontSize: q(18), fontWeight: 700,
+                }}>
+                  {LEVEL_LABEL[item.goodsLevel] ?? '普通'}
+                </div>
+                <div style={{ color: '#fff', fontSize: q(22), fontWeight: 600, textAlign: 'center', maxWidth: q(200) }}>{item.goodsName}</div>
+                <div style={{ color: '#ffd700', fontSize: q(28), fontWeight: 800, marginTop: q(6) }}>¥{parseFloat(item.goodsValue).toFixed(2)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── 开场碰撞动画（覆盖全屏） ── */}
       {showIntro && (

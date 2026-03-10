@@ -1,5 +1,6 @@
 import { and, desc, eq, gt, gte, inArray, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { createPool } from "mysql2/promise";
 import {
   CsAgent,
   CsMessage,
@@ -35,16 +36,42 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
+// 使用连接池替代单连接，彻底解决 ECONNRESET 问题
+// 连接池会自动回收断开的连接，无需手动重置
+type Pool = ReturnType<typeof createPool>;
+let _pool: Pool | null = null;
 let _db: ReturnType<typeof drizzle> | null = null;
 
+function getPool(): Pool {
+  if (!_pool && process.env.DATABASE_URL) {
+    _pool = createPool({
+      uri: process.env.DATABASE_URL,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 10000,
+    });
+    console.log('[Database] 连接池已创建');
+  }
+  return _pool!;
+}
+
+/** @deprecated 保留兼容性，连接池模式下无需手动重置 */
 export function resetDb() {
-  _db = null;
+  // 连接池模式下不需要重置，保留函数避免调用报错
 }
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
-    try { _db = drizzle(process.env.DATABASE_URL); }
-    catch (error) { console.warn("[Database] Failed to connect:", error); _db = null; }
+    try {
+      const pool = getPool();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _db = drizzle(pool as any);
+    } catch (error) {
+      console.warn('[Database] Failed to create pool:', error);
+      _db = null;
+    }
   }
   return _db;
 }
