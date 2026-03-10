@@ -53,6 +53,10 @@ const R = {
     'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/5e419ff21581dadfbda4edff160600ef_260f206d.png',
     'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/30334c0758b43b3d8d6af7782a553acc_3a80b6da.png',
   ],
+  // 金币图标（门槛行展示）
+  coinIcon: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/075966c6c6e6c594c35d716a297022da_f41cb886.png',
+  // 右箭头图标
+  arrowRight: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/f7e7b0387980c2825a3e27298d7f629f_d0d9efbd.png',
 };
 
 // ── 筛选标签 ──────────────────────────────────────────────────────
@@ -94,201 +98,165 @@ function RollCard({ room, index, onClick }: { room: any; index: number; onClick:
         opacity: isEnded ? 0.7 : 1,
       }}
     >
-      {/* 卡片主体（704×159px） */}
+      {/* 卡片主体 */}
       <div style={{
         width: '100%',
-        height: q(159),
         backgroundImage: `url(${cardBg})`,
         backgroundSize: '100% 100%',
         backgroundRepeat: 'no-repeat',
         position: 'relative',
         display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'stretch',
+        flexDirection: 'column',
       }}>
-        {/* 左侧奖品图区域（200×156px） */}
-        <div style={{
-          position: 'relative',
-          width: q(200),
-          height: q(156),
-          marginTop: q(1),
-          flexShrink: 0,
-          backgroundImage: `url(${R.prizeBg})`,
-          backgroundSize: '100% 100%',
-          backgroundRepeat: 'no-repeat',
-        }}>
-          {/* 奖品图片（154×111px, margin: 23px 0 0 23px） */}
-          <img
-            src={prizeImg}
-            alt=""
-            style={{ width: q(154), height: q(111), marginTop: q(23), marginLeft: q(23), objectFit: 'contain', display: 'block' }}
-          />
-          {/* 价格条（200×36px, absolute bottom:0） */}
+        {/* 上半部分：左图 + 右侧信息 */}
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', minHeight: q(130) }}>
+          {/* 左侧奖品图区域：占满整个卡片高度 */}
           <div style={{
-            position: 'absolute',
-            left: 0, bottom: 0,
-            width: q(200), height: q(36),
-            backgroundImage: `url(${priceBar})`,
+            position: 'relative',
+            width: q(220),
+            alignSelf: 'stretch',
+            flexShrink: 0,
+            backgroundImage: `url(${R.prizeBg})`,
             backgroundSize: '100% 100%',
             backgroundRepeat: 'no-repeat',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <span style={{
-              color: 'rgba(255,246,13,1)',
-              fontSize: q(26),
-              fontFamily: 'Alibaba-PuHuiTi-B, sans-serif',
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
-              lineHeight: q(34),
-            }}>{prizeValue}</span>
-          </div>
-        </div>
-
-        {/* 右侧信息区（flex column，内部分3行：名称、时间+人数/门槛） */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'flex-start',
-          padding: `${q(11)} ${q(18)} 0 ${q(18)}`,
-          overflow: 'hidden',
-        }}>
-          {/* 第1行：房间名称 */}
-          <span style={{
-            color: 'rgba(255,255,255,1)',
-            fontSize: q(26),
-            fontFamily: 'Alibaba-PuHuiTi-R, sans-serif',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            lineHeight: q(34),
-            display: 'block',
-          }}>{room.title}</span>
-
-          {/* 第2行：开奖时间（margin-top: 11px） */}
-          <span style={{
-            color: 'rgba(255,255,255,1)',
-            fontSize: q(20),
-            fontFamily: 'Alibaba-PuHuiTi-R, sans-serif',
-            whiteSpace: 'nowrap',
-            lineHeight: q(34),
-            marginTop: q(11),
-            display: 'block',
-          }}>{endTimeStr}</span>
-
-          {/* 第3行：参与人数气泡 + 门槛标签（同一行，margin-top: 4px） */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginTop: q(4),
-            gap: q(8),
-          }}>
-            {/* 参与人数气泡（深色背景 + 左侧绝对定位图标） */}
+            {/* 奖品图片：占满左图区域 */}
+            <img
+              src={prizeImg}
+              alt=""
+              style={{ width: '85%', height: q(120), objectFit: 'contain', display: 'block', marginBottom: q(36) }}
+            />
+            {/* 价格条（absolute bottom:0） */}
             <div style={{
-              backgroundColor: 'rgba(13,3,56,1)',
-              height: q(24),
-              minWidth: q(80),
-              position: 'relative',
+              position: 'absolute',
+              left: 0, bottom: 0,
+              width: '100%', height: q(36),
+              backgroundImage: `url(${priceBar})`,
+              backgroundSize: '100% 100%',
+              backgroundRepeat: 'no-repeat',
               display: 'flex',
               alignItems: 'center',
-              paddingLeft: q(22),
-              paddingRight: q(8),
-              flexShrink: 0,
+              justifyContent: 'center',
             }}>
               <span style={{
                 color: 'rgba(255,246,13,1)',
-                fontSize: q(20),
-                fontFamily: 'Alibaba-PuHuiTi-M, sans-serif',
-                fontWeight: 500,
+                fontSize: q(26),
+                fontFamily: 'Alibaba-PuHuiTi-B, sans-serif',
+                fontWeight: 700,
                 whiteSpace: 'nowrap',
-              }}>{room.participantCount || 0}</span>
-              {/* 人数图标（absolute left:-12 top:-2） */}
-              <img
-                src={index % 2 === 0 ? R.peopleIcon1 : R.peopleIcon2}
-                alt=""
-                style={{ position: 'absolute', left: q(-12), top: q(-2), width: q(28), height: q(28), objectFit: 'contain' }}
-              />
+                lineHeight: q(34),
+              }}>{prizeValue}</span>
             </div>
-            {/* 门槛标签 */}
-            {isFree ? (
-              <img src={tagFreeImg} alt="无门槛" style={{ height: q(35), objectFit: 'contain', flexShrink: 0 }} />
-            ) : (
-              <div style={{
-                backgroundColor: 'rgba(36,10,113,0.68)',
-                border: '1px solid rgba(80,225,255,1)',
-                height: q(24),
-                display: 'flex',
-                alignItems: 'center',
-                padding: `0 ${q(8)}`,
-                flexShrink: 0,
-              }}>
-                <span style={{ color: 'rgba(80,225,255,1)', fontSize: q(18), fontFamily: 'Alibaba-PuHuiTi-R, sans-serif', whiteSpace: 'nowrap' }}>
-                  充值满{parseFloat(room.threshold).toFixed(0)}金币
-                </span>
-              </div>
-            )}
+          </div>
+
+          {/* 右侧信息区 */}
+          <div style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            padding: `${q(12)} ${q(16)} ${q(12)} ${q(16)}`,
+            overflow: 'hidden',
+            gap: q(8),
+          }}>
+            {/* 房间名称 */}
+            <span style={{
+              color: 'rgba(255,255,255,1)',
+              fontSize: q(26),
+              fontFamily: 'Alibaba-PuHuiTi-R, sans-serif',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              lineHeight: q(34),
+              display: 'block',
+            }}>{room.title}</span>
+
+            {/* 门槛行：金币图标 + 数量 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: q(6) }}>
+              <img src={R.coinIcon} alt="" style={{ width: q(30), height: q(30), objectFit: 'contain' }} />
+              <span style={{ color: 'rgba(255,255,255,1)', fontSize: q(22), fontFamily: 'Alibaba-PuHuiTi-R, sans-serif', whiteSpace: 'nowrap' }}>
+                {isFree ? '0' : parseFloat(room.threshold || '0').toFixed(0)}
+              </span>
+            </div>
+
+            {/* 开奖时间 */}
+            <span style={{
+              color: 'rgba(180,160,255,0.8)',
+              fontSize: q(20),
+              fontFamily: 'Alibaba-PuHuiTi-R, sans-serif',
+              whiteSpace: 'nowrap',
+              lineHeight: q(28),
+              display: 'block',
+            }}>{endTimeStr}</span>
+          </div>
+
+          {/* 右侧箭头按钮 */}
+          <div style={{ display: 'flex', alignItems: 'center', paddingRight: q(16), flexShrink: 0 }}>
+            <div style={{
+              width: q(16),
+              height: q(16),
+              borderTop: `${q(3)} solid rgba(100,180,255,0.9)`,
+              borderRight: `${q(3)} solid rgba(100,180,255,0.9)`,
+              transform: 'rotate(45deg)',
+              flexShrink: 0,
+            }} />
           </div>
         </div>
 
-        {/* 状态标签（右上角，进行中） */}
-        {!isEnded && (
-          <img
-            src={statusImg}
-            alt="进行中"
-            style={{
-              position: 'absolute',
-              right: q(-8),
-              top: q(-2),
-              height: q(35),
-              objectFit: 'contain',
-            }}
-          />
-        )}
-      </div>
-
-      {/* 下方统计行（group_11 区域） */}
-      <div style={{
-        background: 'linear-gradient(89deg, rgba(26,7,96,0.39) 0%, rgba(68,26,192,0.39) 50%, rgba(36,10,113,0.39) 100%)',
-        borderRadius: `0 0 ${q(15)} ${q(15)}`,
-        width: q(704),
-        height: q(46),
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingLeft: q(89),
-        gap: q(80),
-      }}>
-        {/* 参与人数 */}
-        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: q(8) }}>
-          <div style={{
-            width: q(31), height: q(22),
-            backgroundImage: `url(${R.peopleIcon1})`,
-            backgroundPosition: `${q(-4)} ${q(-4)}`,
-            backgroundSize: `${q(39)} ${q(30)}`,
-            backgroundRepeat: 'no-repeat',
-          }} />
-          <span style={{ color: 'rgba(133,102,255,1)', fontSize: q(26), fontFamily: 'Alibaba-PuHuiTi-R, sans-serif', lineHeight: q(34) }}>
-            {room.participantCount || 0}
-          </span>
-        </div>
         {/* 分隔线 */}
-        <img src={R.divider} alt="" style={{ width: q(1), height: q(40) }} />
-        {/* 奖品数量 */}
-        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: q(8) }}>
-          <div style={{
-            width: q(31), height: q(25),
-            backgroundImage: `url(${R.peopleIcon2})`,
-            backgroundPosition: `${q(-4)} ${q(-4)}`,
-            backgroundSize: `${q(39)} ${q(33)}`,
-            backgroundRepeat: 'no-repeat',
-          }} />
-          <span style={{ color: 'rgba(133,102,255,1)', fontSize: q(26), fontFamily: 'Alibaba-PuHuiTi-R, sans-serif', lineHeight: q(34) }}>
-            {room.prizeCount || room.prizes?.length || 0}
-          </span>
+        <div style={{ width: '90%', height: 1, background: 'rgba(133,102,255,0.3)', margin: `0 auto` }} />
+
+        {/* 下半部分：参与人数 + 奖品数 */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingLeft: q(220),
+          paddingRight: q(20),
+          height: q(46),
+          gap: q(30),
+        }}>
+          {/* 参与人数 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: q(8) }}>
+            <img src={R.peopleIcon1} alt="" style={{ width: q(28), height: q(28), objectFit: 'contain' }} />
+            <span style={{ color: 'rgba(133,102,255,1)', fontSize: q(24), fontFamily: 'Alibaba-PuHuiTi-R, sans-serif' }}>
+              {room.participantCount || 0}
+            </span>
+          </div>
+          {/* 分隔线 */}
+          <img src={R.divider} alt="" style={{ width: q(1), height: q(30) }} />
+          {/* 奖品数 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: q(8) }}>
+            <img src={R.peopleIcon2} alt="" style={{ width: q(28), height: q(28), objectFit: 'contain' }} />
+            <span style={{ color: 'rgba(133,102,255,1)', fontSize: q(24), fontFamily: 'Alibaba-PuHuiTi-R, sans-serif' }}>
+              {room.prizeCount || room.prizes?.length || 0}
+            </span>
+          </div>
+          {/* 门槛标签 */}
+          {isFree ? (
+            <img src={tagFreeImg} alt="无门槛" style={{ height: q(28), objectFit: 'contain', marginLeft: 'auto' }} />
+          ) : (
+            <div style={{
+              marginLeft: 'auto',
+              backgroundColor: 'rgba(36,10,113,0.68)',
+              border: '1px solid rgba(80,225,255,1)',
+              height: q(24),
+              display: 'flex',
+              alignItems: 'center',
+              padding: `0 ${q(8)}`,
+              flexShrink: 0,
+            }}>
+              <span style={{ color: 'rgba(80,225,255,1)', fontSize: q(18), fontFamily: 'Alibaba-PuHuiTi-R, sans-serif', whiteSpace: 'nowrap' }}>
+                充値满{parseFloat(room.threshold).toFixed(0)}金币
+              </span>
+              </div>
+          )}
         </div>
+
       </div>
     </div>
   );

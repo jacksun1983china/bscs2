@@ -280,11 +280,11 @@ export default function RollRoomDetail() {
     >
       {/* 顶部固定区（不滚动）：导航栏 + 用户信息卡 */}
       <div style={{ position: 'relative', zIndex: 2, flexShrink: 0 }}>
-        {/* 顶部导航栏（703×58px, margin: 84px 0 0 24px） */}
+        {/* 顶部导航栏（703×58px, margin: 20px 0 0 24px） */}
         <div style={{
           width: q(703),
           height: q(58),
-          marginTop: q(84),
+          marginTop: q(20),
           marginLeft: q(24),
           display: 'flex',
           flexDirection: 'row',
@@ -304,31 +304,25 @@ export default function RollRoomDetail() {
       </div>
 
       {/* 内容层（flex:1，可滚动） */}
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden', paddingBottom: q(125) }}>
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden' }}>
 
         {/* ── section_1：顶部区域（房间信息区）── */}
         <div style={{ position: 'relative', width: '100%', flexShrink: 0 }}>
 
           {/* box_1：房间信息区（750×655px） */}
-          <div style={{ position: 'relative', width: '100%', }}>
+          <div style={{ position: 'relative', width: '100%', minHeight: q(380) }}>
 
             {/* 占位用（原来PlayerInfoCard的位置，现在已移到固定区） */}
             <div style={{ height: q(18) }} />
 
-            {/* group_6：暗色背景分隔区（750×100px, margin: 387px 0 21px 0） */}
-            <div style={{
-              backgroundColor: 'rgba(5,4,18,0.45)',
-              width: '100%',
-              height: q(100),
-              marginTop: q(387),
-              marginBottom: q(21),
-            }} />
+            {/* group_6：暗色背景分隔区（占位，确保容器高度足够） */}
+            <div style={{ height: q(370) }} />
 
-            {/* group_7：房间信息区（750×358px, absolute left:0 top:297） */}
+            {/* group_7：房间信息区（750×358px, absolute left:0 top:10） */}
             <div style={{
               position: 'absolute',
               left: 0,
-              top: q(297),
+              top: q(10),
               width: '100%',
               height: q(358),
               backgroundImage: `url(${D.roomInfoBg})`,
@@ -405,11 +399,11 @@ export default function RollRoomDetail() {
                   </div>
                 </div>
 
-                {/* image-text_1：房间标识（110×28px, margin: 48px 0 0 146px） */}
+                {/* image-text_1：房间标识（110×28px, margin: 75px 0 0 146px） */}
                 <div style={{
                   position: 'absolute',
                   right: 0,
-                  top: q(48),
+                  top: q(75),
                   width: q(110),
                   height: q(28),
                   display: 'flex',
@@ -562,15 +556,19 @@ export default function RollRoomDetail() {
           </div>
         </div>
 
-        {/* group_9：分隔背景区 */}
+
+
+        {/* 背景图层：包裹 Tab栏 + 内容区，背景图拉伸到底部 */}
         <div style={{
-          width: '100%',
-          height: q(100),
-          backgroundImage: `url(${D.bgGroup9})`,
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundImage: `url(${D.prizesBg})`,
+          backgroundPosition: 'center top',
           backgroundSize: '100% 100%',
           backgroundRepeat: 'no-repeat',
-          flexShrink: 0,
-        }} />
+          paddingBottom: q(120),
+        }}>
 
         {/* group_10：Tab切换区 */}
         <div style={{ width: '100%', flexShrink: 0 }}>
@@ -632,16 +630,7 @@ export default function RollRoomDetail() {
         </div>
 
         {/* box_3：奖品/参与者内容区 */}
-        <div style={{
-          position: 'relative',
-          width: '100%',
-          backgroundImage: `url(${D.prizesBg})`,
-          backgroundPosition: 'center top',
-          backgroundSize: '100% auto',
-          backgroundRepeat: 'no-repeat',
-         
-          paddingBottom: q(20),
-        }}>
+        <div style={{ position: 'relative', width: '100%' }}>
           {/* 奖池物品（2列网格） */}
           {activeTab === 'prizes' && (
             <div style={{
@@ -793,10 +782,14 @@ export default function RollRoomDetail() {
         {isEnded && (
           <div style={{ textAlign: 'center', color: 'rgba(133,102,255,1)', fontSize: q(26), padding: `${q(30)} 0` }}>该Roll房已结束</div>
         )}
+
+        </div> {/* 背景图层结束 */}
       </div>
 
-      {/* 底部导航 - 永远沉底（flexShrink: 0） */}
-      <BottomNav />
+      {/* 底部导航 - absolute 定位盖在最顶层 */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+        <BottomNav />
+      </div>
     </div>
   );
 }
