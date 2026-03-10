@@ -329,3 +329,19 @@
 - [x] 插入充值档位初始数据（6个档位：30/50/100/200/500/1000）
 - [x] 创建 AdminRechargeConfigs.tsx 充值档位管理页面（增删改查）
 - [x] 集成充值档位管理到 AdminDashboard.tsx 侧边栏（💳 充值档位菜单项）
+
+## 需求文档功能开发（2026-03-10 第十三轮）
+- [ ] 修复背包页面：物品图片从boxGoods表读取（playerItems JOIN boxGoods）
+- [ ] 修复背包页面：三个操作按钮被PlayerInfoCard遮挡（z-index调整）
+- [ ] 首页游戏菜单图标上叠加文字标签（商城/福利/活动/邮件）
+- [ ] 商城页面：对接cs2pifa API（分类+商品列表+搜索筛选+购买）
+- [ ] 记录查询页面（我的记录入口，蓝湖背包空状态页面改造为记录页）
+- [ ] 竞技场制作（房间列表+创建对战+选箱子+老虎机滚动+胜负判定）
+- [ ] 修复PC端显示：全局居中手机容器，两侧加不喧宾夺主的装饰背景（非纯色）
+
+## 商城cs2pifa API集成（实时读取，不存库）
+- [x] 创建 server/cs2pifaApi.ts：RSA签名工具 + cs2pifa API请求封装
+- [x] 新增 shop.getCategories tRPC路由：实时从cs2pifa API获取分类列表
+- [x] 新增 shop.getProducts tRPC路由：实时从cs2pifa API获取商品列表（分类/关键词/价格/排序/分页）
+- [x] 新增 shop.buyProduct tRPC路由：玩家购买商品，扣除shopCoin，写入shopOrders
+- [x] 重写 Shop.tsx：接入实时商品数据，分类Tab+搜索+价格筛选+购买弹窗

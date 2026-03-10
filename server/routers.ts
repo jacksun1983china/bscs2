@@ -68,6 +68,9 @@ import {
   rollRooms,
   rollxGames,
   skuCategories,
+  shopItems,
+  shopOrders,
+  players,
 } from "../drizzle/schema";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
@@ -1488,6 +1491,100 @@ export const appRouter = router({
           })));
         }
         return { success: true };
+      }),
+  }),
+
+  // ── 商城（cs2pifa商品，实时从API读取，不存数据库） ──────────────────────────────
+  shop: router({
+    /** 获取商品分类列表（实时从cs2pifa API读取） */
+    getCategories: publicProcedure
+      .query(async () => {
+        const { getCategories } = await import("./cs2pifaApi");
+        const categories = await getCategories();
+        return categories;
+      }),
+
+    /** 获取商品列表（实时从cs2pifa API读取，支持分类/关键词/价格/排序/分页） */
+    getProducts: publicProcedure
+      .input(z.object({
+        typeId: z.number().optional(),
+        keyword: z.string().optional(),
+        minPrice: z.number().optional(),
+        maxPrice: z.number().optional(),
+        sortDesc: z.boolean().optional().default(false),
+        pageNum: z.number().min(1).default(1),
+        pageSize: z.number().min(1).max(100).default(20),
+      }))
+      .query(async ({ input }) => {
+        const { getProductsByCategory } = await import("./cs2pifaApi");
+        const result = await getProductsByCategory({
+          typeId: input.typeId,
+          keyword: input.keyword,
+          minPrice: input.minPrice,
+          maxPrice: input.maxPrice,
+          pageNum: input.pageNum,
+          pageSize: input.pageSize,
+          sortDesc: input.sortDesc,
+        });
+        return {
+          items: result.saleTemplateByCategoryResponseList,
+          total: result.total ?? result.saleTemplateByCategoryResponseList.length,
+          pageNum: input.pageNum,
+          pageSize: input.pageSize,
+        };
+      }),
+
+    /** 购买商品（扣除shopCoin，写入shopOrders，调用cs2pifa下单） */
+    buyProduct: publicProcedure
+      .input(z.object({
+        templateId: z.number(),
+        templateName: z.string(),
+        iconUrl: z.string(),
+        referencePrice: z.number(),
+        tradeLink: z.string().optional().default(''),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const player = await getPlayerFromCookie(ctx.req);
+        if (!player) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { eq: eqOp } = await import("drizzle-orm");
+        const [playerData] = await db.select().from(players).where(eqOp(players.id, player.playerId));
+        if (!playerData) throw new TRPCError({ code: "NOT_FOUND", message: "用户不存在" });
+        const price = input.referencePrice;
+        const balance = parseFloat(playerData.shopCoin ?? '0');
+        if (balance < price) throw new TRPCError({ code: "BAD_REQUEST", message: "商城币余额不足" });
+        const newBalance = (balance - price).toFixed(2);
+        await db.update(players).set({ shopCoin: newBalance }).where(eqOp(players.id, player.playerId));
+        const outOrderNo = `shop_${player.playerId}_${Date.now()}`;
+        await db.insert(shopOrders).values({
+          playerId: player.playerId,
+          shopItemId: 0,
+          itemName: input.templateName,
+          itemIcon: input.iconUrl,
+          payAmount: String(price),
+          status: 'processing',
+          csOrderNo: outOrderNo,
+        });
+        return { success: true, orderNo: outOrderNo, message: "购买成功，正在处理中" };
+      }),
+
+    /** 获取我的商城订单 */
+    getMyOrders: publicProcedure
+      .input(z.object({ page: z.number().min(1).default(1), pageSize: z.number().min(1).max(50).default(20) }))
+      .query(async ({ input, ctx }) => {
+        const player = await getPlayerFromCookie(ctx.req);
+        if (!player) throw new TRPCError({ code: "UNAUTHORIZED" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { eq: eqOp, desc: descFn } = await import("drizzle-orm");
+        const offset = (input.page - 1) * input.pageSize;
+        const orders = await db.select().from(shopOrders)
+          .where(eqOp(shopOrders.playerId, player.playerId))
+          .orderBy(descFn(shopOrders.createdAt))
+          .limit(input.pageSize)
+          .offset(offset);
+        return orders;
       }),
   }),
 });

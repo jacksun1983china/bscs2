@@ -675,3 +675,69 @@ export const weeklyCommissionStats = mysqlTable('weeklyCommissionStats', {
 });
 export type WeeklyCommissionStat = typeof weeklyCommissionStats.$inferSelect;
 export type InsertWeeklyCommissionStat = typeof weeklyCommissionStats.$inferInsert;
+
+// ── 商城商品表（从cs2pifa同步） ──────────────────────────────────────────────────────
+export const shopItems = mysqlTable("shopItems", {
+  id: int("id").autoincrement().primaryKey(),
+  /** cs2pifa 模板ID */
+  templateId: varchar("templateId", { length: 50 }).notNull().default(""),
+  /** 分类ID */
+  typeId: varchar("typeId", { length: 50 }).notNull().default(""),
+  /** 分类名称 */
+  typeName: varchar("typeName", { length: 100 }).notNull().default(""),
+  /** 武器类型哈希名 */
+  typeHashName: varchar("typeHashName", { length: 200 }).notNull().default(""),
+  /** 武器ID */
+  weaponId: int("weaponId").notNull().default(0),
+  /** 武器哈希名 */
+  weaponHashName: varchar("weaponHashName", { length: 200 }).notNull().default(""),
+  /** 模板哈希名 */
+  templateHashName: varchar("templateHashName", { length: 200 }).notNull().default(""),
+  /** 商品名称 */
+  templateName: varchar("templateName", { length: 300 }).notNull().default(""),
+  /** 商品图片URL */
+  iconUrl: varchar("iconUrl", { length: 500 }).notNull().default(""),
+  /** 磨损等级名称 */
+  exteriorName: varchar("exteriorName", { length: 100 }).notNull().default(""),
+  /** 稀有度名称 */
+  rarityName: varchar("rarityName", { length: 100 }).notNull().default(""),
+  /** 最低出售价格（元） */
+  minSellPrice: decimal("minSellPrice", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  /** 快速发货最低价格（元） */
+  fastShippingMinSellPrice: decimal("fastShippingMinSellPrice", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  /** 参考价格（元，用于展示） */
+  referencePrice: decimal("referencePrice", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  /** 在售数量 */
+  sellNum: int("sellNum").notNull().default(0),
+  /** 是否上架：1上架 0下架 */
+  enabled: tinyint("enabled").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ShopItem = typeof shopItems.$inferSelect;
+export type InsertShopItem = typeof shopItems.$inferInsert;
+
+// ── 商城订单表 ──────────────────────────────────────────────────────
+export const shopOrders = mysqlTable("shopOrders", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 玩家ID */
+  playerId: int("playerId").notNull(),
+  /** 商城商品ID */
+  shopItemId: int("shopItemId").notNull(),
+  /** 商品名称（快照） */
+  itemName: varchar("itemName", { length: 300 }).notNull().default(""),
+  /** 商品图片（快照） */
+  itemIcon: varchar("itemIcon", { length: 500 }).notNull().default(""),
+  /** 实际支付金额（shopCoin） */
+  payAmount: decimal("payAmount", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  /** 订单状态：pending/processing/completed/failed/cancelled */
+  status: varchar("status", { length: 30 }).notNull().default("pending"),
+  /** cs2pifa 订单号 */
+  csOrderNo: varchar("csOrderNo", { length: 100 }).notNull().default(""),
+  /** 备注 */
+  remark: varchar("remark", { length: 500 }).notNull().default(""),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ShopOrder = typeof shopOrders.$inferSelect;
+export type InsertShopOrder = typeof shopOrders.$inferInsert;

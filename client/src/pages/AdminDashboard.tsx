@@ -16,6 +16,7 @@ import { AdminGames } from './admin/AdminGames';
 import { AdminFinance } from './admin/AdminFinance';
 import { AdminSettings } from './admin/AdminSettings';
 import { AdminRechargeConfigs } from './admin/AdminRechargeConfigs';
+import AdminShop from './admin/AdminShop';
 
 // ── 国际化文本 ──────────────────────────────────────────────────
 const I18N = {
@@ -79,6 +80,7 @@ const I18N = {
     page: '页',
     total: '共',
     records: '条记录',
+    shop: '商城管理',
     // Roll房
     rollRooms: 'Roll房管理',
     createRollRoom: '创建Roll房',
@@ -189,6 +191,7 @@ const I18N = {
     page: 'Page',
     total: 'Total',
     records: 'records',
+    shop: 'Shop Mgmt',
     rollRooms: 'Roll Rooms',
     createRollRoom: 'Create Roll Room',
     roomName: 'Room Name',
@@ -494,9 +497,9 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
 }
 
 // ── 主仪表盘 ────────────────────────────────────────────────────
-const MENU_KEYS = ['players', 'games', 'rollRooms', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'finance', 'settings'] as const;
+const MENU_KEYS = ['players', 'games', 'rollRooms', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'settings'] as const;
 const MENU_ICONS: Record<string, string> = {
-  players: '👥', games: '🎮', rollRooms: '🎲', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', finance: '💰', settings: '⚙️',
+  players: '👥', games: '🎮', rollRooms: '🎲', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', settings: '⚙️',
 };
 
 export default function AdminDashboard() {
@@ -749,6 +752,8 @@ export default function AdminDashboard() {
           {activeMenu === 'boxes' && <AdminBoxes lang={lang} t={t} />}
           {/* 充值档位管理 */}
           {activeMenu === 'rechargeConfigs' && <AdminRechargeConfigs lang={lang} />}
+          {/* 商城管理 */}
+          {activeMenu === 'shop' && <AdminShop />}
           {/* 财务统计 */}
           {activeMenu === 'finance' && <AdminFinance lang={lang} />}
           {/* 系统设置 */}

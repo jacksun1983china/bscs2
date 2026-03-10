@@ -1,0 +1,35 @@
+{
+  "query": "SELECT id, name, imageUrl FROM boxGoods LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT id, name, imageUrl FROM boxGoods LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "沙漠之鹰 纵横波涛 (崭新出厂)",
+      "imageUrl": "/img/boxes/20250906_cd56380ee1a61b4a5d18b87107a852f8.png"
+    },
+    {
+      "id": "2",
+      "name": "Tec-9 银装素裹 (略有磨损",
+      "imageUrl": "/img/boxes/20250906_b9c8a94c3b514206a880f28752b05d69.png"
+    },
+    {
+      "id": "3",
+      "name": "格洛克 18 型 核子反应",
+      "imageUrl": "/img/boxes/20250906_277634507ed4ed929e6aec4cb8f556e4.png"
+    },
+    {
+      "id": "4",
+      "name": " 消音型 血虎",
+      "imageUrl": "/img/boxes/20250906_8388ea84b2821dac44879ffffa8be654.png"
+    },
+    {
+      "id": "5",
+      "name": "格洛克 18 型 蓝色裂纹",
+      "imageUrl": "/img/boxes/20250906_73d8f760f07110dc9548dea108021c03.png"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\timageUrl\n1\t沙漠之鹰 纵横波涛 (崭新出厂)\t/img/boxes/20250906_cd56380ee1a61b4a5d18b87107a852f8.png\n2\tTec-9 银装素裹 (略有磨损\t/img/boxes/20250906_b9c8a94c3b514206a880f28752b05d69.png\n3\t格洛克 18 型 核子反应\t/img/boxes/20250906_277634507ed4ed929e6aec4cb8f556e4.png\n4\t 消音型 血虎\t/img/boxes/20250906_8388ea84b2821dac44879ffffa8be654.png\n5\t格洛克 18 型 蓝色裂纹\t/img/boxes/20250906_73d8f760f07110dc9548dea108021c03.png\n",
+  "stderr": "",
+  "execution_time_ms": 1512
+}

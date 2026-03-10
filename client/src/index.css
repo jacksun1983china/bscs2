@@ -89,11 +89,34 @@
     overflow: hidden;
   }
   body {
-    /* 背景色填充 phone-container 外部区域，避免黑色空白 */
-    background: #0d0621;
+    /* 赛博朋克科幻背景：深紫底色 + 网格线 + 光晕 */
+    background-color: #06030f;
+    background-image:
+      /* 中央光晕 */
+      radial-gradient(ellipse 60% 80% at 50% 50%, rgba(80, 20, 160, 0.25) 0%, transparent 70%),
+      /* 左侧光晕 */
+      radial-gradient(ellipse 30% 50% at 10% 50%, rgba(40, 10, 100, 0.3) 0%, transparent 60%),
+      /* 右侧光晕 */
+      radial-gradient(ellipse 30% 50% at 90% 50%, rgba(40, 10, 100, 0.3) 0%, transparent 60%),
+      /* 顶部光晕 */
+      radial-gradient(ellipse 80% 30% at 50% 0%, rgba(100, 30, 200, 0.2) 0%, transparent 60%),
+      /* 细网格线 */
+      linear-gradient(rgba(80, 40, 160, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(80, 40, 160, 0.08) 1px, transparent 1px),
+      /* 粗网格线 */
+      linear-gradient(rgba(80, 40, 160, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(80, 40, 160, 0.04) 1px, transparent 1px);
+    background-size:
+      100% 100%,
+      100% 100%,
+      100% 100%,
+      100% 100%,
+      40px 40px,
+      40px 40px,
+      200px 200px,
+      200px 200px;
     display: flex;
     justify-content: center;
-    /* 改为垂直居中，避免大屏幕时下方留白 */
     align-items: center;
     min-height: 100vh;
     height: 100vh;

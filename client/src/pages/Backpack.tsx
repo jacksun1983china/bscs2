@@ -1,59 +1,38 @@
 /**
  * Backpack.tsx — 背包页面（蓝湖 lanhu_beibao 设计稿还原）
- * 布局：顶部返回+标题 → 个人信息卡(用户卡+金币/钻石+操作按钮) → 赠送提示栏 → 搜索排序栏 → 物品2列网格 → 底部操作栏 → 底部导航
+ * 布局：公共顶部导航 → 个人信息卡（悬停） → 操作按钮行 → 赠送提示栏 → 搜索排序栏 → 物品2列网格 → 底部操作栏 → 底部导航
  */
 import { useState, useCallback } from 'react';
-import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import BottomNav from '@/components/BottomNav';
+import TopNav from '@/components/TopNav';
+import PlayerInfoCard from '@/components/PlayerInfoCard';
 import SettingsModal from '@/components/SettingsModal';
 
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym';
 const B = {
   // 页面背景
   pageBg:          `${CDN}/66f8df24a63936b3d70aa867242db21b_02819819.png`,
-  // 顶部装饰线
-  topLine:         `${CDN}/865881086c8e42fdb565ab88ac0ef070_29355356.png`,
-  // 金币背景按钮
-  goldBg:          `${CDN}/fb10ef5bd83b2e1a7864cf24bb44a18c_18295927.png`,
-  // 金币小箭头
-  goldArrow:       `${CDN}/3a6e9188d633c1cd21593ed8408133ac_ea9ac85e.png`,
-  // 金币图标（左侧突出）
-  goldIcon:        `${CDN}/68d06572b4e879a9acfe7460f8439bf3_1573815c.png`,
-  // 钻石背景按钮
-  diamondBg:       `${CDN}/cff71f0728fc2e0bff99983813acbb1f_15ac454b.png`,
-  // 钻石小箭头
-  diamondArrow:    `${CDN}/e8630520d5bfdf8213ff84c3595f73d4_63d7acdc.png`,
-  // 钻石图标（左侧突出）
-  diamondIcon:     `${CDN}/9fb72832b51833b2da1905142fd086f6_ed828fea.png`,
-  // 操作栏背景（分解+提货保护）
-  actionBarBg:     `${CDN}/a1c5c21f376aab93e300ed064501e957_9723c289.png`,
+  // 操作栏背景（三按钮行）
+  actionBarBg:         `${CDN}/a1c5c21f376aab93e300ed064501e957_9723c289.png`,
   // 分解按钮背景
-  decomposeBtn:    `${CDN}/8b82a0f1b0eb8732c1fba806be0e2e7a_3123f506.png`,
-  // 分解图标
-  decomposeIcon:   `${CDN}/b400f59987e35b6feab1e589f258d441_711b5c26.png`,
-  // 提货保护按钮背景
-  protectBtn:      `${CDN}/4b4347a608aefc62a0e9822e249126de_67ffa359.png`,
-  // 提货保护图标
-  protectIcon:     `${CDN}/97de6f517430fe6063bab8e92561260d_d76a16f3.png`,
-  // 用户信息卡背景
-  userCardBg:      `${CDN}/b4173b907690ed51e12a772ecbfd5cb5_0a3f6831.png`,
-  // 徽章
-  badge:           `${CDN}/8a5e64a15da16b7f306028bf0963d5cf_83551751.png`,
-  // 分割线
-  divider:         `${CDN}/5df230a2c95e6ab12bdc6b77da771414_a32ecef0.png`,
+  decomposeBtn:        `${CDN}/8b82a0f1b0eb8732c1fba806be0e2e7a_3123f506.png`,
+  // 分解图标（未选中）
+  decomposeIconOff:    `${CDN}/b400f59987e35b6feab1e589f258d441_711b5c26.png`,
+  // 分解图标（选中）
+  decomposeIconOn:     `${CDN}/3bb6e8a2fd9db1d488cfe3821090fc12_a7b57fad.png`,
   // 提货按钮背景
-  extractBtn:      `${CDN}/5688d32a86417448b55164d4cb14fd9e_c0d36ef4.png`,
-  // 提货图标
-  extractIcon:     `${CDN}/426e41da3ba763c4a3dedee2d8088c21_02dafe77.png`,
-  // VIP标签背景
-  vipTagBg:        `${CDN}/8116c7a7702a34b92537d1a8a6ed31f2_839e49b5.png`,
-  // 右侧tab图标1
-  tabIcon1:        `${CDN}/69681f88ade804a3620928ce1ff33026_023c2c8e.png`,
-  // 右侧tab图标2
-  tabIcon2:        `${CDN}/3bb6e8a2fd9db1d488cfe3821090fc12_a7b57fad.png`,
-  // 右侧tab图标3（设置）
-  tabIcon3:        `${CDN}/424b4a7980c3bfdb5f0e8c56c995376a_9bd1fa56.png`,
+  pickupBtn:           `${CDN}/5688d32a86417448b55164d4cb14fd9e_c0d36ef4.png`,
+  // 提货图标（未选中）
+  pickupIconOff:       `${CDN}/426e41da3ba763c4a3dedee2d8088c21_02dafe77.png`,
+  // 提货图标（选中）
+  pickupIconOn:        `${CDN}/424b4a7980c3bfdb5f0e8c56c995376a_9bd1fa56.png`,
+  // 提货保护按钮背景
+  protectBtn:          `${CDN}/4b4347a608aefc62a0e9822e249126de_67ffa359.png`,
+  // 提货保护图标（未选中）
+  protectIconOff:      `${CDN}/97de6f517430fe6063bab8e92561260d_d76a16f3.png`,
+  // 提货保护图标（选中）
+  protectIconOn:       `${CDN}/69681f88ade804a3620928ce1ff33026_023c2c8e.png`,
   // 赠送提示栏背景
   giftBarBg:       `${CDN}/69829e1d03e954f76a5ac4f267381039_4742e319.png`,
   // 赠送图标
@@ -84,19 +63,17 @@ const B = {
   giftBtnBg:       `${CDN}/ea5349b516a062ff448e844526b7f857_327ab89d.png`,
   // 分解按钮背景（底部）
   decomposeBtnBg:  `${CDN}/ae45c8c3cff0e2f74fedde5a322a6c8e_2cc4698f.png`,
-  // 返回按钮
-  backBtn:         `${CDN}/9a1ced6e492a0c8a9d8db2e2be0e921a_1beb4fa6.png`,
 };
 
 // 750px 基准转换为 cqw
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 
 // 品质颜色
-const QUALITY_COLORS: Record<string, string> = {
-  legendary: '#f5c842',
-  epic:      '#c084fc',
-  rare:      '#60a5fa',
-  common:    '#9ca3af',
+const QUALITY_BG: Record<string, string> = {
+  legendary: 'linear-gradient(135deg,#c8860a,#f5c842)',
+  epic:      'linear-gradient(135deg,#6a0dad,#c084fc)',
+  rare:      'linear-gradient(135deg,#1a4fa8,#60a5fa)',
+  common:    'linear-gradient(135deg,#4a4a4a,#9a9a9a)',
 };
 const QUALITY_LABELS: Record<string, string> = {
   legendary: '传说',
@@ -104,26 +81,18 @@ const QUALITY_LABELS: Record<string, string> = {
   rare:      '稀有',
   common:    '普通',
 };
-const QUALITY_BG: Record<string, string> = {
-  legendary: 'linear-gradient(135deg,#c8860a,#f5c842)',
-  epic:      'linear-gradient(135deg,#6a0dad,#c084fc)',
-  rare:      'linear-gradient(135deg,#1a4fa8,#60a5fa)',
-  common:    'linear-gradient(135deg,#4a4a4a,#9a9a9a)',
-};
 
 interface InventoryItem {
   id: number;
   itemName: string | null;
   itemImageUrl: string | null;
-  itemQuality: string | null;
+  itemQuality: number | null;
   itemValue: string | null;
-  itemType: string | null;
   source: string;
   createdAt: Date;
 }
 
 export default function Backpack() {
-  const [, navigate] = useLocation();
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<'price' | 'time'>('time');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -166,8 +135,7 @@ export default function Backpack() {
     .filter(i => selectedIds.has(i.id))
     .reduce((s, i) => s + Number(i.itemValue ?? 0), 0);
 
-  const gold = Number(player?.gold ?? 0);
-  const diamond = Number(player?.diamond ?? 0);
+  const hasSelected = selectedIds.size > 0;
 
   return (
     <div
@@ -207,369 +175,107 @@ export default function Backpack() {
           paddingBottom: q(160),
         }}
       >
-        {/* ── 顶部装饰线 ── */}
-        <img
-          src={B.topLine}
-          alt=""
-          style={{ width: q(657), height: q(26), marginTop: q(31), marginLeft: q(63), display: 'block' }}
+        {/* ── 公共顶部导航 ── */}
+        <TopNav
+          showLogo={false}
+          onSettingsOpen={() => setSettingsVisible(true)}
+          settingsOpen={settingsVisible}
         />
 
-        {/* ── 顶部区域（相对定位容器，高度 468px） ── */}
-        <div style={{ position: 'relative', width: q(750), height: q(468) }}>
+        {/* ── 个人信息卡（悬停，负margin-top让卡片压在内容区上方） ── */}
+        <PlayerInfoCard
+          style={{
+            marginTop: q(-10),
+            position: 'relative',
+            zIndex: 10,
+          }}
+        />
 
-          {/* 返回按钮 */}
-          <img
-            src={B.backBtn}
-            alt="返回"
-            onClick={() => navigate('/')}
+        {/* ── 操作按钮行（分解 / 提货 / 提货保护），三态图 ── */}
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 20,
+            width: q(750),
+            height: q(113),
+            backgroundImage: `url(${B.actionBarBg})`,
+            backgroundSize: '100% 100%',
+            backgroundRepeat: 'no-repeat',
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: q(20),
+            marginTop: q(-8),
+          }}
+        >
+          {/* 分解按钮 */}
+          <div
             style={{
-              position: 'absolute',
-              left: q(24),
-              top: q(51),
-              width: q(50),
-              height: q(50),
+              width: q(220),
+              height: q(81),
+              backgroundImage: `url(${B.decomposeBtn})`,
+              backgroundSize: '100% 100%',
+              backgroundRepeat: 'no-repeat',
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
               cursor: 'pointer',
-              zIndex: 10,
-            }}
-          />
-
-          {/* 标题 + 右侧图标 */}
-          <div
-            style={{
-              position: 'absolute',
-              top: q(51),
-              left: q(347),
-              width: q(378),
-              height: q(59),
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'center',
+              gap: q(8),
+              opacity: hasSelected ? 1 : 0.6,
             }}
           >
-            <span
-              style={{
-                color: '#fff',
-                fontSize: q(30),
-                fontWeight: 500,
-                lineHeight: q(34),
-                marginTop: q(16),
-                whiteSpace: 'nowrap',
-              }}
-            >
-              背包
+            <img src={hasSelected ? B.decomposeIconOn : B.decomposeIconOff} alt="" style={{ width: q(40), height: q(40) }} />
+            <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500 }}>
+              分解
             </span>
-            <img src={B.tabIcon1} alt="" style={{ width: q(59), height: q(59), marginLeft: q(190) }} />
-            <img src={B.tabIcon2} alt="" style={{ width: q(59), height: q(59), marginLeft: q(13) }} />
           </div>
 
-          {/* 金币/钻石栏 */}
+          {/* 提货按钮 */}
           <div
             style={{
-              position: 'absolute',
-              top: q(51 + 59 + 53),
-              left: q(125),
-              width: q(625),
-              height: q(119),
-              backgroundImage: `url(${B.searchInputBg})`,
-              backgroundSize: '100% 100%',
-              backgroundRepeat: 'no-repeat',
-            }}
-          >
-            {/* 设置图标 */}
-            <img
-              src={B.tabIcon3}
-              alt=""
-              onClick={() => setSettingsVisible(true)}
-              style={{
-                width: q(35),
-                height: q(35),
-                position: 'absolute',
-                top: q(20),
-                left: q(542),
-                cursor: 'pointer',
-              }}
-            />
-            {/* 金币 + 钻石 */}
-            <div
-              style={{
-                position: 'absolute',
-                top: q(20 + 35 + 20),
-                left: q(308),
-                width: q(293),
-                height: q(34),
-                display: 'flex',
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-              }}
-            >
-              {/* 金币按钮 */}
-              <div
-                style={{
-                  position: 'relative',
-                  width: q(133),
-                  height: q(34),
-                  backgroundImage: `url(${B.goldBg})`,
-                  backgroundSize: '100% 100%',
-                  backgroundRepeat: 'no-repeat',
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                }}
-              >
-                <span
-                  style={{
-                    color: '#fff',
-                    fontSize: q(24),
-                    fontWeight: 500,
-                    lineHeight: q(34),
-                    marginLeft: q(40),
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {Math.floor(gold)}
-                </span>
-                <img src={B.goldArrow} alt="" style={{ width: q(10), height: q(19), marginLeft: q(8) }} />
-                <img
-                  src={B.goldIcon}
-                  alt=""
-                  style={{ position: 'absolute', left: q(-13), top: q(-2), width: q(41), height: q(37) }}
-                />
-              </div>
-              {/* 钻石按钮 */}
-              <div
-                style={{
-                  position: 'relative',
-                  width: q(133),
-                  height: q(34),
-                  backgroundImage: `url(${B.diamondBg})`,
-                  backgroundSize: '100% 100%',
-                  backgroundRepeat: 'no-repeat',
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                }}
-              >
-                <span
-                  style={{
-                    color: '#fff',
-                    fontSize: q(24),
-                    fontWeight: 700,
-                    lineHeight: q(34),
-                    marginLeft: q(38),
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {Math.floor(diamond)}
-                </span>
-                <img src={B.diamondArrow} alt="" style={{ width: q(10), height: q(19), marginLeft: q(8) }} />
-                <img
-                  src={B.diamondIcon}
-                  alt=""
-                  style={{ position: 'absolute', left: q(-20), top: q(-3), width: q(40), height: q(40) }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 操作按钮行（分解 + 提货保护） */}
-          <div
-            style={{
-              position: 'absolute',
-              top: q(51 + 59 + 53 + 119 + 30),
-              left: 0,
-              width: q(750),
-              height: q(113),
-              backgroundImage: `url(${B.actionBarBg})`,
+              width: q(220),
+              height: q(81),
+              backgroundImage: `url(${B.pickupBtn})`,
               backgroundSize: '100% 100%',
               backgroundRepeat: 'no-repeat',
               display: 'flex',
               flexDirection: 'row',
               alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              gap: q(8),
+              opacity: hasSelected ? 1 : 0.6,
             }}
           >
-            {/* 分解按钮 */}
-            <div
-              style={{
-                width: q(240),
-                height: q(81),
-                backgroundImage: `url(${B.decomposeBtn})`,
-                backgroundSize: '100% 100%',
-                backgroundRepeat: 'no-repeat',
-                margin: `${q(15)} 0 0 ${q(31)}`,
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                gap: q(8),
-              }}
-            >
-              <img src={B.decomposeIcon} alt="" style={{ width: q(40), height: q(40) }} />
-              <span style={{ color: '#fff', fontSize: q(28), fontWeight: 500, WebkitTextStroke: `${q(2)} rgba(105,51,0,1)` }}>
-                分解
-              </span>
-            </div>
+            <img src={hasSelected ? B.pickupIconOn : B.pickupIconOff} alt="" style={{ width: q(40), height: q(40) }} />
+            <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500 }}>
+              提货
+            </span>
+          </div>
 
-            {/* 提货保护按钮 */}
-            <div
-              style={{
-                width: q(221),
-                height: q(81),
-                backgroundImage: `url(${B.protectBtn})`,
-                backgroundSize: '100% 100%',
-                backgroundRepeat: 'no-repeat',
-                margin: `${q(15)} 0 0 ${q(258)}`,
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                gap: q(8),
-              }}
-            >
-              <img src={B.protectIcon} alt="" style={{ width: q(40), height: q(40) }} />
-              <span style={{ color: 'rgba(249,197,255,1)', fontSize: q(28), fontWeight: 500, WebkitTextStroke: `${q(2)} rgba(69,8,113,1)` }}>
-                提货保护
-              </span>
-            </div>
-
-            {/* 用户信息卡（绝对定位，叠在操作栏上方） */}
-            <div
-              style={{
-                position: 'absolute',
-                left: q(87),
-                top: q(-206),
-                width: q(450),
-                height: q(281),
-                backgroundImage: `url(${B.userCardBg})`,
-                backgroundSize: '100% 100%',
-                backgroundRepeat: 'no-repeat',
-              }}
-            >
-              {/* 名字行 */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: q(70),
-                  left: q(82),
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: q(8),
-                }}
-              >
-                <span
-                  style={{
-                    color: '#fff',
-                    fontSize: q(28),
-                    fontWeight: 500,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    maxWidth: q(150),
-                  }}
-                >
-                  {player?.nickname ?? '未登录'}
-                </span>
-                <img src={B.badge} alt="" style={{ width: q(67), height: q(46) }} />
-              </div>
-              {/* ID行 */}
-              <span
-                style={{
-                  position: 'absolute',
-                  top: q(120),
-                  left: q(82),
-                  color: '#fff',
-                  fontSize: q(26),
-                  fontWeight: 500,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                ID：{player?.id ?? '---'}
-              </span>
-              {/* 分割线 */}
-              <img
-                src={B.divider}
-                alt=""
-                style={{ position: 'absolute', left: q(249), top: q(121), width: q(365), height: q(1) }}
-              />
-              {/* 头像圆形 */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: q(-87),
-                  top: q(32),
-                  backgroundColor: 'rgba(46,30,98,1)',
-                  borderRadius: '50%',
-                  width: q(117),
-                  height: q(117),
-                  border: `${q(2)} solid rgba(0,0,0,1)`,
-                  overflow: 'hidden',
-                }}
-              >
-                <img
-                  src={player?.avatar ?? '/img/avatars/001.png'}
-                  alt="头像"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={e => { (e.target as HTMLImageElement).src = '/img/avatars/001.png'; }}
-                />
-              </div>
-              {/* 提货按钮 */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: q(193),
-                  top: q(221),
-                  width: q(240),
-                  height: q(81),
-                  backgroundImage: `url(${B.extractBtn})`,
-                  backgroundSize: '100% 100%',
-                  backgroundRepeat: 'no-repeat',
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  gap: q(8),
-                }}
-              >
-                <img src={B.extractIcon} alt="" style={{ width: q(40), height: q(40) }} />
-                <span style={{ color: 'rgba(249,197,255,1)', fontSize: q(28), fontWeight: 500, WebkitTextStroke: `${q(2)} rgba(69,8,113,1)` }}>
-                  提货
-                </span>
-              </div>
-            </div>
-
-            {/* VIP标签 */}
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: q(-56),
-                height: q(73),
-                width: q(184),
-                backgroundImage: `url(${B.vipTagBg})`,
-                backgroundSize: '196px 73px',
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: '-12px 0px',
-              }}
-            >
-              <span
-                style={{
-                  display: 'block',
-                  color: '#fff',
-                  fontSize: q(24),
-                  fontWeight: 700,
-                  lineHeight: q(34),
-                  marginTop: q(13),
-                  marginLeft: q(60),
-                  WebkitTextStroke: `${q(2)} rgba(105,51,0,1)`,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                VIP{player?.vipLevel ?? 1}
-              </span>
-            </div>
+          {/* 提货保护按钮 */}
+          <div
+            style={{
+              width: q(220),
+              height: q(81),
+              backgroundImage: `url(${B.protectBtn})`,
+              backgroundSize: '100% 100%',
+              backgroundRepeat: 'no-repeat',
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              gap: q(8),
+              opacity: hasSelected ? 1 : 0.6,
+            }}
+          >
+            <img src={hasSelected ? B.protectIconOn : B.protectIconOff} alt="" style={{ width: q(40), height: q(40) }} />
+            <span style={{ color: 'rgba(249,197,255,1)', fontSize: q(26), fontWeight: 500 }}>
+              提货保护
+            </span>
           </div>
         </div>
 
@@ -592,7 +298,7 @@ export default function Backpack() {
               backgroundImage: `url(${B.giftBarBg})`,
               backgroundSize: '100% 100%',
               backgroundRepeat: 'no-repeat',
-              marginTop: q(72),
+              marginTop: q(20),
               display: 'flex',
               flexDirection: 'row',
               alignItems: 'center',
@@ -610,7 +316,7 @@ export default function Backpack() {
                 whiteSpace: 'nowrap',
               }}
             >
-              <span style={{ color: '#fff' }}>当前VIP{player?.vipLevel ?? 1},今日可赠送</span>
+              <span style={{ color: '#fff' }}>当前VIP{player?.vipLevel ?? 0},今日可赠送</span>
               <span style={{ color: 'rgba(255,246,13,1)' }}>0</span>
               <span style={{ color: '#fff' }}>次</span>
             </div>
@@ -643,8 +349,7 @@ export default function Backpack() {
                 fontWeight: 500,
                 margin: `${q(31)} 0 0 ${q(24)}`,
                 whiteSpace: 'nowrap',
-                WebkitTextStroke: `${q(2)} rgba(105,51,0,1)`,
-              }}
+                }}
             >
               共{total}件
             </span>

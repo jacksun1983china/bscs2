@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT id, name, image_url, quality, value, type FROM items LIMIT 10;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute \nSELECT id, name, image_url, quality, value, type FROM items LIMIT 10;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 'image_url' in 'field list'"
+  ]
+}

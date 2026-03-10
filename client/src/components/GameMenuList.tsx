@@ -4,7 +4,7 @@
  * 布局要求：
  * - 外层容器占满父级 flex:1 的空间，支持上下滚动
  * - 支持任意数量游戏卡片（4个、7个、8个均可）
- * - 左侧头像列 + 右侧游戏卡片列，顶部对齐
+ * - 左侧功能按钮列（头像+文字标签）+ 右侧游戏卡片列，顶部对齐
  * - 隐藏滚动条但保留滚动功能
  */
 import React from 'react';
@@ -23,6 +23,14 @@ interface GameItem {
   route?: string;
 }
 
+// 左侧功能按钮标签（叠加在头像图标上）
+const FUNC_LABELS = [
+  { id: 'shop',    label: '商城', route: '/shop'   },
+  { id: 'welfare', label: '福利', route: undefined },
+  { id: 'event',   label: '活动', route: undefined },
+  { id: 'mail',    label: '邮件', route: undefined },
+];
+
 const GAMES: GameItem[] = [
   {
     id: 'arena',
@@ -30,7 +38,7 @@ const GAMES: GameItem[] = [
     labelImage: LANHU.arenaLabel,
     labelText: '竞技场',
     avatarImage: LANHU.gameAvatar1,
-    route: undefined,
+    route: '/arena',
   },
   {
     id: 'wheel',
@@ -105,7 +113,7 @@ export default function GameMenuList() {
           position: 'relative',
         }}
       >
-        {/* 左侧头像列 */}
+        {/* 左侧功能按钮列（头像图标 + 文字标签叠加） */}
         <div
           style={{
             display: 'flex',
@@ -115,21 +123,63 @@ export default function GameMenuList() {
             width: q(122),
           }}
         >
-          {GAMES.map((game) => (
-            <img
-              key={game.id}
-              src={game.avatarImage}
-              alt=""
-              style={{
-                width: q(122),
-                height: q(122),
-                objectFit: 'cover',
-                borderRadius: q(10),
-                flexShrink: 0,
-                display: 'block',
-              }}
-            />
-          ))}
+          {GAMES.map((game, idx) => {
+            const funcLabel = FUNC_LABELS[idx];
+            return (
+              <div
+                key={game.id}
+                style={{
+                  position: 'relative',
+                  width: q(122),
+                  height: q(122),
+                  borderRadius: q(10),
+                  overflow: 'hidden',
+                  flexShrink: 0,
+                  cursor: funcLabel?.route ? 'pointer' : 'default',
+                }}
+                onClick={() => funcLabel?.route && navigate(funcLabel.route)}
+              >
+                {/* 头像背景图 */}
+                <img
+                  src={game.avatarImage}
+                  alt=""
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                />
+                {/* 底部渐变遮罩 + 功能文字标签 */}
+                {funcLabel && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      background: 'linear-gradient(to top, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.0) 100%)',
+                      padding: `${q(6)} 0 ${q(8)} 0`,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: '#ffffff',
+                        fontSize: q(24),
+                        fontWeight: 700,
+                        letterSpacing: '0.05em',
+                        textShadow: '0 1px 4px rgba(0,0,0,0.9)',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {funcLabel.label}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* 右侧游戏卡片列 */}

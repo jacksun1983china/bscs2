@@ -1,0 +1,35 @@
+{
+  "query": "SELECT id, name, imageUrl FROM items LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT id, name, imageUrl FROM items LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "AK-47 | 火蛇",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/a1c5c21f376aab93e300ed064501e957_753a644f.png"
+    },
+    {
+      "id": "2",
+      "name": "M4A4 | 龙王",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/b4173b907690ed51e12a772ecbfd5cb5_9ccda618.png"
+    },
+    {
+      "id": "3",
+      "name": "AWP | 龙焰",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/c129451fcab144f6e68e1db45947c268_83720daf.png"
+    },
+    {
+      "id": "4",
+      "name": "蝴蝶刀 | 渐变之色",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/29f82e47f68c4a388031776b987b74d2_0843e4d4.png"
+    },
+    {
+      "id": "5",
+      "name": "沙漠之鹰 | 印花集",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/8b82a0f1b0eb8732c1fba806be0e2e7a_8a08ab40.png"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\timageUrl\n1\tAK-47 | 火蛇\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/a1c5c21f376aab93e300ed064501e957_753a644f.png\n2\tM4A4 | 龙王\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/b4173b907690ed51e12a772ecbfd5cb5_9ccda618.png\n3\tAWP | 龙焰\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/c129451fcab144f6e68e1db45947c268_83720daf.png\n4\t蝴蝶刀 | 渐变之色\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/29f82e47f68c4a388031776b987b74d2_0843e4d4.png\n5\t沙漠之鹰 | 印花集\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/8b82a0f1b0eb8732c1fba806be0e2e7a_8a08ab40.png\n",
+  "stderr": "",
+  "execution_time_ms": 1501
+}

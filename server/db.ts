@@ -13,6 +13,7 @@ import {
   InsertUser,
   InsertWeeklyCommissionStat,
   WeeklyCommissionStat,
+  boxGoods,
   commissionLogs,
   csAgents,
   csMessages,
@@ -536,16 +537,14 @@ export async function getPlayerInventory(playerId: number, page: number = 1, lim
         status: playerItems.status,
         recycleGold: playerItems.recycleGold,
         createdAt: playerItems.createdAt,
-        // JOIN items fields
-        itemName: items.name,
-        itemImageUrl: items.imageUrl,
-        itemQuality: items.quality,
-        itemValue: items.value,
-        itemType: items.type,
-        itemGame: items.game,
+        // JOIN boxGoods fields (itemId references boxGoods.id)
+        itemName: boxGoods.name,
+        itemImageUrl: boxGoods.imageUrl,
+        itemQuality: boxGoods.level,
+        itemValue: boxGoods.price,
       })
       .from(playerItems)
-      .leftJoin(items, eq(playerItems.itemId, items.id))
+      .leftJoin(boxGoods, eq(playerItems.itemId, boxGoods.id))
       .where(eq(playerItems.playerId, playerId))
       .orderBy(desc(playerItems.createdAt))
       .limit(limit)

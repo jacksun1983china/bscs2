@@ -19,6 +19,7 @@ import RollX from "./pages/RollX";
 import CustomerService from "./pages/CustomerService";
 import AgentLogin from "./pages/AgentLogin";
 import AgentDashboard from "./pages/AgentDashboard";
+import Shop from "./pages/Shop";
 function Router() {
   return (
     <Switch>
@@ -35,6 +36,7 @@ function Router() {
       <Route path={"/bag"} component={Bag} />
       <Route path={"/backpack"} component={Backpack} />
       <Route path={"/recharge"} component={Deposit} />
+      <Route path={"/shop"} component={Shop} />
       {/* 客服系统 */}
       <Route path={"/kefu"} component={CustomerService} />
       <Route path={"/agent/login"} component={AgentLogin} />
