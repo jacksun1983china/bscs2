@@ -117,18 +117,7 @@ export default function Share() {
         <TopNav showLogo={false} />
         {/* 公共个人信息卡（与首页/Roll房完全一致） */}
         <PlayerInfoCard style={{ marginTop: q(8) }} />
-        {/* VIP 标签（text-wrapper_1，绝对定位于卡片左下） */}
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center', justifyContent: 'center',
-            background: `url(${IMG.vipTagBg}) center/100% 100% no-repeat`,
-            width: q(104), height: q(34),
-            marginLeft: q(32), marginTop: q(4),
-          }}
-        >
-          <span style={{ color: '#fff', fontSize: q(24), fontWeight: 700 }}>VIP{player?.vipLevel ?? 0}</span>
-        </div>
+
       </div>
 
       {/* ══════════════════════════════════════════════════════

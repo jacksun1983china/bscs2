@@ -296,3 +296,6 @@
 - [x] Share.tsx 邀请码区域文字超出边界修复
 - [x] Share.tsx 说明按钮文字修复（"说明"两字）
 - [x] Share.tsx TopNav 和个人卡片固定悬停（不随内容滚动），参考 Roll 房列表页
+
+## 分享页面 VIP 标签重复修复（2026-03-10 第七轮）
+- [x] 删除 Share.tsx 中多余的 VIP 标签（PlayerInfoCard 内部已有，Share.tsx 不应再额外渲染）
