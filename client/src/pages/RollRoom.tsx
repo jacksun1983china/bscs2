@@ -332,8 +332,8 @@ export default function RollRoom() {
         <div style={{ position: 'absolute', inset: 0, backgroundImage: `url(${R.bgBox2})`, backgroundSize: 'cover', backgroundRepeat: 'no-repeat', backgroundPosition: 'center top' }} />
       </div>
 
-      {/* 内容层（flex: 1，内部分为顶部导航（不滚动）+ 可滚动内容区） */}
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+      {/* 内容层（flex: 1，内部分为顶部导航（不滚动）+ 可滚动内容区），底部留出 BottomNav 的高度空间 */}
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, paddingBottom: q(90) }}>
 
         {/* 顶部固定区（不滚动）：导航栏 + 用户信息卡 */}
         <div style={{ position: 'relative', width: '100%', flexShrink: 0 }}>
@@ -370,11 +370,11 @@ export default function RollRoom() {
           overflowY: 'auto',
           overflowX: 'hidden',
         }}>
-          {/* 列表区（margin-top: 71px） */}
+          {/* 列表区（margin-top: 0） */}
           <div style={{
             position: 'relative',
             width: '100%',
-            marginTop: q(71),
+            marginTop: 0,
             backgroundImage: `url(${R.bgBox5})`,
             backgroundSize: '100% 100%',
             backgroundRepeat: 'no-repeat',
@@ -517,8 +517,10 @@ export default function RollRoom() {
 
       </div>
 
-      {/* 底部导航 - 永远沉底（flexShrink: 0），背景与全局背景无缝衔接 */}
-      <BottomNav active="" />
+      {/* 底部导航 - absolute 悖浮在背景图上，不占据 flex 流空间，与背景图叠加无接缝 */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
+        <BottomNav active="" />
+      </div>
     </div>
   );
 }
