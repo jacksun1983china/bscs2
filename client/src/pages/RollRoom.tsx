@@ -55,8 +55,8 @@ const R = {
   ],
   // 金币图标（门槛行展示）
   coinIcon: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/075966c6c6e6c594c35d716a297022da_f41cb886.png',
-  // 右箭头图标
-  arrowRight: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/f7e7b0387980c2825a3e27298d7f629f_d0d9efbd.png',
+  // 右箭头图标（菱形双箭头）
+  arrowRight: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/4b797e6fde7e6c645637129cdb424191_47624983.png',
 };
 
 // ── 筛选标签 ──────────────────────────────────────────────────────
@@ -68,8 +68,8 @@ const FILTERS = [
 ] as const;
 
 function RollCard({ room, index, onClick }: { room: any; index: number; onClick: () => void }) {
-  const cardBg = index % 2 === 0 ? R.cardBg1 : R.cardBg2;
-  const priceBar = R.priceBars[index % R.priceBars.length];
+  const cardBg = R.cardBg1;
+  const priceBar = R.priceBars[0];
   const statusImg = R.statusActive[index % R.statusActive.length];
   const isFree = !room.threshold || parseFloat(room.threshold) === 0;
   const tagFreeImg = index % 2 === 0 ? R.tagFree1 : R.tagFree2;
@@ -211,15 +211,9 @@ function RollCard({ room, index, onClick }: { room: any; index: number; onClick:
                 display: 'block',
               }}>{endTimeStr}</span>
             </div>
-            {/* 右箭头 */}
+            {/* 右箭头图片 */}
             <div style={{ display: 'flex', alignItems: 'center', paddingRight: q(16), flexShrink: 0 }}>
-              <div style={{
-                width: q(16),
-                height: q(16),
-                borderTop: `${q(3)} solid rgba(100,180,255,0.9)`,
-                borderRight: `${q(3)} solid rgba(100,180,255,0.9)`,
-                transform: 'rotate(45deg)',
-              }} />
+              <img src={R.arrowRight} alt="" style={{ width: q(40), height: q(40), objectFit: 'contain' }} />
             </div>
           </div>
 
