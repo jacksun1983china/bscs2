@@ -210,51 +210,29 @@ function RollCard({ room, index, onClick }: { room: any; index: number; onClick:
         {/* 分隔线 */}
         <div style={{ width: '90%', height: 1, background: 'rgba(133,102,255,0.3)', margin: `0 auto` }} />
 
-        {/* 下半部分：参与人数 + 奖品数 */}
+        {/* 下半部分：奖品数 + 参与人数（严格按设计稿，无门槛标签） */}
         <div style={{
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
-          paddingLeft: q(220),
-          paddingRight: q(20),
+          paddingLeft: q(16),
+          paddingRight: q(16),
           height: q(46),
-          gap: q(30),
         }}>
-          {/* 参与人数 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: q(8) }}>
-            <img src={R.peopleIcon1} alt="" style={{ width: q(28), height: q(28), objectFit: 'contain' }} />
-            <span style={{ color: 'rgba(133,102,255,1)', fontSize: q(24), fontFamily: 'Alibaba-PuHuiTi-R, sans-serif' }}>
-              {room.participantCount || 0}
-            </span>
-          </div>
-          {/* 分隔线 */}
-          <img src={R.divider} alt="" style={{ width: q(1), height: q(30) }} />
-          {/* 奖品数 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: q(8) }}>
-            <img src={R.peopleIcon2} alt="" style={{ width: q(28), height: q(28), objectFit: 'contain' }} />
+          {/* 奖品数（左侧） */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: q(8), flex: 1, justifyContent: 'center' }}>
+            <img src={R.peopleIcon1} alt="" style={{ width: q(32), height: q(32), objectFit: 'contain' }} />
             <span style={{ color: 'rgba(133,102,255,1)', fontSize: q(24), fontFamily: 'Alibaba-PuHuiTi-R, sans-serif' }}>
               {room.prizeCount || room.prizes?.length || 0}
             </span>
           </div>
-          {/* 门槛标签（统一样式） */}
-          <div style={{
-            marginLeft: 'auto',
-            backgroundColor: 'rgba(36,10,113,0.68)',
-            border: `1px solid ${isFree ? 'rgba(100,220,100,0.8)' : 'rgba(80,225,255,1)'}`,
-            borderRadius: q(4),
-            height: q(28),
-            display: 'flex',
-            alignItems: 'center',
-            padding: `0 ${q(10)}`,
-            flexShrink: 0,
-          }}>
-            <span style={{
-              color: isFree ? 'rgba(100,220,100,1)' : 'rgba(80,225,255,1)',
-              fontSize: q(18),
-              fontFamily: 'Alibaba-PuHuiTi-R, sans-serif',
-              whiteSpace: 'nowrap',
-            }}>
-              {isFree ? '无门槛' : `充値满${parseFloat(room.threshold).toFixed(0)}金币`}
+          {/* 垂直分隔线 */}
+          <div style={{ width: 1, height: q(28), background: 'rgba(133,102,255,0.5)' }} />
+          {/* 参与人数（右侧） */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: q(8), flex: 1, justifyContent: 'center' }}>
+            <img src={R.peopleIcon2} alt="" style={{ width: q(32), height: q(32), objectFit: 'contain' }} />
+            <span style={{ color: 'rgba(133,102,255,1)', fontSize: q(24), fontFamily: 'Alibaba-PuHuiTi-R, sans-serif' }}>
+              {room.participantCount || 0}
             </span>
           </div>
         </div>
