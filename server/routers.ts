@@ -172,11 +172,17 @@ export const appRouter = router({
       if (!session) return null;
       const player = await getPlayerById(session.playerId);
       if (!player) return null;
+      // 如果有推荐人，查询推荐人昵称
+      let invitedByNickname: string | null = null;
+      if (player.invitedBy) {
+        const inviter = await getPlayerById(player.invitedBy);
+        invitedByNickname = inviter?.nickname ?? null;
+      }
       return {
         id: player.id, phone: player.phone, nickname: player.nickname, avatar: player.avatar,
         vipLevel: player.vipLevel, gold: player.gold, diamond: player.diamond, shopCoin: player.shopCoin,
         totalRecharge: player.totalRecharge, inviteCode: player.inviteCode,
-        invitedBy: player.invitedBy, identity: player.identity,
+        invitedBy: player.invitedBy, invitedByNickname, identity: player.identity,
         commissionEnabled: player.commissionEnabled, commissionBalance: player.commissionBalance,
         steamAccount: player.steamAccount, realName: player.realName ? "已认证" : "",
         createdAt: player.createdAt,
