@@ -278,37 +278,42 @@ export default function RollRoomDetail() {
         overflowX: 'hidden',
       }}
     >
-      {/* 内容层（flex:1，可滚动） */}
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto', paddingBottom: q(125) }}>
+      {/* 顶部固定区（不滚动）：导航栏 + 用户信息卡 */}
+      <div style={{ position: 'relative', zIndex: 2, flexShrink: 0 }}>
+        {/* 顶部导航栏（703×58px, margin: 84px 0 0 24px） */}
+        <div style={{
+          width: q(703),
+          height: q(58),
+          marginTop: q(84),
+          marginLeft: q(24),
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+        }}>
+          {/* 返回按钮 */}
+          <img
+            src={D.navBack}
+            alt="返回"
+            onClick={() => navigate('/roll')}
+            style={{ width: q(58), height: q(49), objectFit: 'contain', cursor: 'pointer' }}
+          />
+          <div style={{ flex: 1 }} />
+        </div>
+        {/* 用户信息卡 */}
+        <PlayerInfoCard style={{ marginTop: q(18) }} />
+      </div>
 
-        {/* ── section_1：顶部区域（包含用户信息卡 + 房间信息区）── */}
+      {/* 内容层（flex:1，可滚动） */}
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden', paddingBottom: q(125) }}>
+
+        {/* ── section_1：顶部区域（房间信息区）── */}
         <div style={{ position: 'relative', width: '100%', flexShrink: 0 }}>
 
-          {/* 顶部导航栏（703×58px, margin: 84px 0 0 24px） */}
-          <div style={{
-            width: q(703),
-            height: q(58),
-            marginTop: q(84),
-            marginLeft: q(24),
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-          }}>
-            {/* 返回按钮 */}
-            <img
-              src={D.navBack}
-              alt="返回"
-              onClick={() => navigate('/roll')}
-              style={{ width: q(58), height: q(49), objectFit: 'contain', cursor: 'pointer' }}
-            />
-            <div style={{ flex: 1 }} />
-          </div>
-
-          {/* box_1：用户信息卡 + 房间信息区（750×655px） */}
+          {/* box_1：房间信息区（750×655px） */}
           <div style={{ position: 'relative', width: '100%', }}>
 
-            {/* 用户信息卡（公共组件 PlayerInfoCard） */}
-            <PlayerInfoCard style={{ marginTop: q(18) }} />
+            {/* 占位用（原来PlayerInfoCard的位置，现在已移到固定区） */}
+            <div style={{ height: q(18) }} />
 
             {/* group_6：暗色背景分隔区（750×100px, margin: 387px 0 21px 0） */}
             <div style={{

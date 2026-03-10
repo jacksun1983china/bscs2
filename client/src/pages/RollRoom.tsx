@@ -369,11 +369,14 @@ export default function RollRoom() {
           minHeight: 0,
           overflowY: 'auto',
           overflowX: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
         }}>
           {/* 列表区（margin-top: 0） */}
           <div style={{
             position: 'relative',
             width: '100%',
+            minHeight: '100%',
             marginTop: 0,
             backgroundImage: `url(${R.bgBox5})`,
             backgroundSize: '100% 100%',
