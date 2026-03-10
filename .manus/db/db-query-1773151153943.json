@@ -1,0 +1,65 @@
+{
+  "query": "SELECT pi.id, pi.playerId, pi.itemId, pi.status, pi.createdAt, i.name as itemName, i.imageUrl as itemImageUrl, i.quality as itemQuality, i.value as itemValue FROM playerItems pi LEFT JOIN items i ON pi.itemId = i.id LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT pi.id, pi.playerId, pi.itemId, pi.status, pi.createdAt, i.name as itemName, i.imageUrl as itemImageUrl, i.quality as itemQuality, i.value as itemValue FROM playerItems pi LEFT JOIN items i ON pi.itemId = i.id LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "playerId": "1",
+      "itemId": "1",
+      "status": "0",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "AK-47 | 火蛇",
+      "itemImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/a1c5c21f376aab93e300ed064501e957_753a644f.png",
+      "itemQuality": "legendary",
+      "itemValue": "2888.00"
+    },
+    {
+      "id": "2",
+      "playerId": "1",
+      "itemId": "2",
+      "status": "0",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "M4A4 | 龙王",
+      "itemImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/b4173b907690ed51e12a772ecbfd5cb5_9ccda618.png",
+      "itemQuality": "legendary",
+      "itemValue": "3200.00"
+    },
+    {
+      "id": "3",
+      "playerId": "1",
+      "itemId": "3",
+      "status": "0",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "AWP | 龙焰",
+      "itemImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/c129451fcab144f6e68e1db45947c268_83720daf.png",
+      "itemQuality": "epic",
+      "itemValue": "1580.00"
+    },
+    {
+      "id": "4",
+      "playerId": "1",
+      "itemId": "4",
+      "status": "0",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "蝴蝶刀 | 渐变之色",
+      "itemImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/29f82e47f68c4a388031776b987b74d2_0843e4d4.png",
+      "itemQuality": "legendary",
+      "itemValue": "5600.00"
+    },
+    {
+      "id": "5",
+      "playerId": "1",
+      "itemId": "5",
+      "status": "0",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "沙漠之鹰 | 印花集",
+      "itemImageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/8b82a0f1b0eb8732c1fba806be0e2e7a_8a08ab40.png",
+      "itemQuality": "epic",
+      "itemValue": "880.00"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tplayerId\titemId\tstatus\tcreatedAt\titemName\titemImageUrl\titemQuality\titemValue\n1\t1\t1\t0\t2026-03-10 13:08:52\tAK-47 | 火蛇\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/a1c5c21f376aab93e300ed064501e957_753a644f.png\tlegendary\t2888.00\n2\t1\t2\t0\t2026-03-10 13:08:52\tM4A4 | 龙王\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/b4173b907690ed51e12a772ecbfd5cb5_9ccda618.png\tlegendary\t3200.00\n3\t1\t3\t0\t2026-03-10 13:08:52\tAWP | 龙焰\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/c129451fcab144f6e68e1db45947c268_83720daf.png\tepic\t1580.00\n4\t1\t4\t0\t2026-03-10 13:08:52\t蝴蝶刀 | 渐变之色\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/29f82e47f68c4a388031776b987b74d2_0843e4d4.png\tlegendary\t5600.00\n5\t1\t5\t0\t2026-03-10 13:08:52\t沙漠之鹰 | 印花集\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/8b82a0f1b0eb8732c1fba806be0e2e7a_8a08ab40.png\tepic\t880.00\n",
+  "stderr": "",
+  "execution_time_ms": 1627
+}

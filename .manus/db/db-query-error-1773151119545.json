@@ -1,0 +1,8 @@
+{
+  "query": "SELECT pi.id, pi.playerId, pi.itemId, pi.obtainedAt, i.name as itemName, i.imageUrl as itemImageUrl, i.quality as itemQuality, i.value as itemValue FROM player_items pi LEFT JOIN items i ON pi.itemId = i.id LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT pi.id, pi.playerId, pi.itemId, pi.obtainedAt, i.name as itemName, i.imageUrl as itemImageUrl, i.quality as itemQuality, i.value as itemValue FROM player_items pi LEFT JOIN items i ON pi.itemId = i.id LIMIT 5;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'f39rghmccdkvuc3rbx8cym.player_items' doesn't exist"
+  ]
+}

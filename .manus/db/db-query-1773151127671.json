@@ -1,0 +1,19 @@
+{
+  "query": "SHOW TABLES LIKE '%item%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SHOW TABLES LIKE '%item%';",
+  "rows": [
+    {
+      "Tables_in_f39rghmcCDkVuc3rBX8cym (%item%)": "boxItems"
+    },
+    {
+      "Tables_in_f39rghmcCDkVuc3rBX8cym (%item%)": "items"
+    },
+    {
+      "Tables_in_f39rghmcCDkVuc3rBX8cym (%item%)": "playerItems"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_f39rghmcCDkVuc3rBX8cym (%item%)\nboxItems\nitems\nplayerItems\n",
+  "stderr": "",
+  "execution_time_ms": 1540
+}

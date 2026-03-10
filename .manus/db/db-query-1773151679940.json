@@ -1,0 +1,74 @@
+{
+  "query": "SELECT id, username, password, name, enabled, createdAt FROM csAgents LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT id, username, password, name, enabled, createdAt FROM csAgents LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "username": "test_agent_1773086880955",
+      "password": "test123456",
+      "name": "测试客服",
+      "enabled": "1",
+      "createdAt": "2026-03-09 20:08:02"
+    },
+    {
+      "id": "2",
+      "username": "session_agent_1773086883447",
+      "password": "test123456",
+      "name": "会话测试客服",
+      "enabled": "1",
+      "createdAt": "2026-03-09 20:08:03"
+    },
+    {
+      "id": "30001",
+      "username": "test_agent_1773117263773",
+      "password": "test123456",
+      "name": "测试客服",
+      "enabled": "1",
+      "createdAt": "2026-03-10 04:34:25"
+    },
+    {
+      "id": "30002",
+      "username": "session_agent_1773117266150",
+      "password": "test123456",
+      "name": "会话测试客服",
+      "enabled": "1",
+      "createdAt": "2026-03-10 04:34:26"
+    },
+    {
+      "id": "60001",
+      "username": "test_agent_1773138445611",
+      "password": "test123456",
+      "name": "测试客服",
+      "enabled": "1",
+      "createdAt": "2026-03-10 10:27:27"
+    },
+    {
+      "id": "60002",
+      "username": "session_agent_1773138448202",
+      "password": "test123456",
+      "name": "会话测试客服",
+      "enabled": "1",
+      "createdAt": "2026-03-10 10:27:28"
+    },
+    {
+      "id": "60003",
+      "username": "test_agent_1773141474689",
+      "password": "test123456",
+      "name": "测试客服",
+      "enabled": "1",
+      "createdAt": "2026-03-10 11:17:55"
+    },
+    {
+      "id": "60004",
+      "username": "session_agent_1773141477001",
+      "password": "test123456",
+      "name": "会话测试客服",
+      "enabled": "1",
+      "createdAt": "2026-03-10 11:17:57"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tusername\tpassword\tname\tenabled\tcreatedAt\n1\ttest_agent_1773086880955\ttest123456\t测试客服\t1\t2026-03-09 20:08:02\n2\tsession_agent_1773086883447\ttest123456\t会话测试客服\t1\t2026-03-09 20:08:03\n30001\ttest_agent_1773117263773\ttest123456\t测试客服\t1\t2026-03-10 04:34:25\n30002\tsession_agent_1773117266150\ttest123456\t会话测试客服\t1\t2026-03-10 04:34:26\n60001\ttest_agent_1773138445611\ttest123456\t测试客服\t1\t2026-03-10 10:27:27\n60002\tsession_agent_1773138448202\ttest123456\t会话测试客服\t1\t2026-03-10 10:27:28\n60003\ttest_agent_1773141474689\ttest123456\t测试客服\t1\t2026-03-10 11:17:55\n60004\tsession_agent_1773141477001\ttest123456\t会话测试客服\t1\t2026-03-10 11:17:57\n",
+  "stderr": "",
+  "execution_time_ms": 1550
+}

@@ -1,0 +1,58 @@
+{
+  "query": "SELECT username, password, name, enabled FROM csAgents;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT username, password, name, enabled FROM csAgents;",
+  "rows": [
+    {
+      "username": "test_agent_1773086880955",
+      "password": "test123456",
+      "name": "测试客服",
+      "enabled": "1"
+    },
+    {
+      "username": "session_agent_1773086883447",
+      "password": "test123456",
+      "name": "会话测试客服",
+      "enabled": "1"
+    },
+    {
+      "username": "test_agent_1773117263773",
+      "password": "test123456",
+      "name": "测试客服",
+      "enabled": "1"
+    },
+    {
+      "username": "session_agent_1773117266150",
+      "password": "test123456",
+      "name": "会话测试客服",
+      "enabled": "1"
+    },
+    {
+      "username": "test_agent_1773138445611",
+      "password": "test123456",
+      "name": "测试客服",
+      "enabled": "1"
+    },
+    {
+      "username": "session_agent_1773138448202",
+      "password": "test123456",
+      "name": "会话测试客服",
+      "enabled": "1"
+    },
+    {
+      "username": "test_agent_1773141474689",
+      "password": "test123456",
+      "name": "测试客服",
+      "enabled": "1"
+    },
+    {
+      "username": "session_agent_1773141477001",
+      "password": "test123456",
+      "name": "会话测试客服",
+      "enabled": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "username\tpassword\tname\tenabled\ntest_agent_1773086880955\ttest123456\t测试客服\t1\nsession_agent_1773086883447\ttest123456\t会话测试客服\t1\ntest_agent_1773117263773\ttest123456\t测试客服\t1\nsession_agent_1773117266150\ttest123456\t会话测试客服\t1\ntest_agent_1773138445611\ttest123456\t测试客服\t1\nsession_agent_1773138448202\ttest123456\t会话测试客服\t1\ntest_agent_1773141474689\ttest123456\t测试客服\t1\nsession_agent_1773141477001\ttest123456\t会话测试客服\t1\n",
+  "stderr": "",
+  "execution_time_ms": 1628
+}

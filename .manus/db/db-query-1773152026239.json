@@ -1,0 +1,100 @@
+{
+  "query": "SELECT id, name, imageUrl, quality, value, type, game FROM items LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT id, name, imageUrl, quality, value, type, game FROM items LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "AK-47 | 火蛇",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/a1c5c21f376aab93e300ed064501e957_753a644f.png",
+      "quality": "legendary",
+      "value": "2888.00",
+      "type": "weapon",
+      "game": "CS"
+    },
+    {
+      "id": "2",
+      "name": "M4A4 | 龙王",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/b4173b907690ed51e12a772ecbfd5cb5_9ccda618.png",
+      "quality": "legendary",
+      "value": "3200.00",
+      "type": "weapon",
+      "game": "CS"
+    },
+    {
+      "id": "3",
+      "name": "AWP | 龙焰",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/c129451fcab144f6e68e1db45947c268_83720daf.png",
+      "quality": "epic",
+      "value": "1580.00",
+      "type": "weapon",
+      "game": "CS"
+    },
+    {
+      "id": "4",
+      "name": "蝴蝶刀 | 渐变之色",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/29f82e47f68c4a388031776b987b74d2_0843e4d4.png",
+      "quality": "legendary",
+      "value": "5600.00",
+      "type": "weapon",
+      "game": "CS"
+    },
+    {
+      "id": "5",
+      "name": "沙漠之鹰 | 印花集",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/8b82a0f1b0eb8732c1fba806be0e2e7a_8a08ab40.png",
+      "quality": "epic",
+      "value": "880.00",
+      "type": "weapon",
+      "game": "CS"
+    },
+    {
+      "id": "6",
+      "name": "M9刺刀 | 虎牙",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/5688d32a86417448b55164d4cb14fd9e_e33839ce.png",
+      "quality": "legendary",
+      "value": "4200.00",
+      "type": "weapon",
+      "game": "CS"
+    },
+    {
+      "id": "7",
+      "name": "格洛克 | 水仙",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/8116c7a7702a34b92537d1a8a6ed31f2_f8f03db0.png",
+      "quality": "rare",
+      "value": "320.00",
+      "type": "weapon",
+      "game": "CS"
+    },
+    {
+      "id": "8",
+      "name": "P250 | 亚洲龙",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/5b14973f8ab73f386b1182a2fc979e40_6ad58a1c.png",
+      "quality": "rare",
+      "value": "450.00",
+      "type": "weapon",
+      "game": "CS"
+    },
+    {
+      "id": "9",
+      "name": "FAMAS | 眼镜蛇",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/e27a3ef1e862b6b7090ccf7420539bff_709ac2c0.png",
+      "quality": "rare",
+      "value": "280.00",
+      "type": "weapon",
+      "game": "CS"
+    },
+    {
+      "id": "10",
+      "name": "UMP-45 | 机械零件",
+      "imageUrl": "https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/af31f3e9089d190c8287c38fe8421350_f5977de9.png",
+      "quality": "common",
+      "value": "120.00",
+      "type": "weapon",
+      "game": "CS"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\timageUrl\tquality\tvalue\ttype\tgame\n1\tAK-47 | 火蛇\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/a1c5c21f376aab93e300ed064501e957_753a644f.png\tlegendary\t2888.00\tweapon\tCS\n2\tM4A4 | 龙王\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/b4173b907690ed51e12a772ecbfd5cb5_9ccda618.png\tlegendary\t3200.00\tweapon\tCS\n3\tAWP | 龙焰\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/c129451fcab144f6e68e1db45947c268_83720daf.png\tepic\t1580.00\tweapon\tCS\n4\t蝴蝶刀 | 渐变之色\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/29f82e47f68c4a388031776b987b74d2_0843e4d4.png\tlegendary\t5600.00\tweapon\tCS\n5\t沙漠之鹰 | 印花集\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/8b82a0f1b0eb8732c1fba806be0e2e7a_8a08ab40.png\tepic\t880.00\tweapon\tCS\n6\tM9刺刀 | 虎牙\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/5688d32a86417448b55164d4cb14fd9e_e33839ce.png\tlegendary\t4200.00\tweapon\tCS\n7\t格洛克 | 水仙\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/8116c7a7702a34b92537d1a8a6ed31f2_f8f03db0.png\trare\t320.00\tweapon\tCS\n8\tP250 | 亚洲龙\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/5b14973f8ab73f386b1182a2fc979e40_6ad58a1c.png\trare\t450.00\tweapon\tCS\n9\tFAMAS | 眼镜蛇\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/e27a3ef1e862b6b7090ccf7420539bff_709ac2c0.png\trare\t280.00\tweapon\tCS\n10\tUMP-45 | 机械零件\thttps://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/af31f3e9089d190c8287c38fe8421350_f5977de9.png\tcommon\t120.00\tweapon\tCS\n",
+  "stderr": "",
+  "execution_time_ms": 1633
+}
