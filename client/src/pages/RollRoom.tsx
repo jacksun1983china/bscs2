@@ -236,25 +236,27 @@ function RollCard({ room, index, onClick }: { room: any; index: number; onClick:
               {room.prizeCount || room.prizes?.length || 0}
             </span>
           </div>
-          {/* 门槛标签 */}
-          {isFree ? (
-            <img src={tagFreeImg} alt="无门槛" style={{ height: q(28), objectFit: 'contain', marginLeft: 'auto' }} />
-          ) : (
-            <div style={{
-              marginLeft: 'auto',
-              backgroundColor: 'rgba(36,10,113,0.68)',
-              border: '1px solid rgba(80,225,255,1)',
-              height: q(24),
-              display: 'flex',
-              alignItems: 'center',
-              padding: `0 ${q(8)}`,
-              flexShrink: 0,
+          {/* 门槛标签（统一样式） */}
+          <div style={{
+            marginLeft: 'auto',
+            backgroundColor: 'rgba(36,10,113,0.68)',
+            border: `1px solid ${isFree ? 'rgba(100,220,100,0.8)' : 'rgba(80,225,255,1)'}`,
+            borderRadius: q(4),
+            height: q(28),
+            display: 'flex',
+            alignItems: 'center',
+            padding: `0 ${q(10)}`,
+            flexShrink: 0,
+          }}>
+            <span style={{
+              color: isFree ? 'rgba(100,220,100,1)' : 'rgba(80,225,255,1)',
+              fontSize: q(18),
+              fontFamily: 'Alibaba-PuHuiTi-R, sans-serif',
+              whiteSpace: 'nowrap',
             }}>
-              <span style={{ color: 'rgba(80,225,255,1)', fontSize: q(18), fontFamily: 'Alibaba-PuHuiTi-R, sans-serif', whiteSpace: 'nowrap' }}>
-                充値满{parseFloat(room.threshold).toFixed(0)}金币
-              </span>
-              </div>
-          )}
+              {isFree ? '无门槛' : `充値满${parseFloat(room.threshold).toFixed(0)}金币`}
+            </span>
+          </div>
         </div>
 
       </div>
