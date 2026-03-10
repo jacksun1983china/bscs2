@@ -68,6 +68,8 @@ import {
   rollRoomPrizes,
   rollRooms,
   rollxGames,
+  rushGames,
+  dingdongGames,
   skuCategories,
   shopItems,
   shopOrders,
@@ -363,10 +365,10 @@ export const appRouter = router({
     login: publicProcedure
       .input(z.object({ account: z.string(), password: z.string() }))
       .mutation(async ({ input, ctx }) => {
-        const ADMIN_ACCOUNTS = [
-          { account: 'admin', password: 'admin123' },
-        ];
-        const found = ADMIN_ACCOUNTS.find(a => a.account === input.account && a.password === input.password);
+        // 从环境变量读取管理员账号密码（默认 admin/admin123）
+        const adminAccount = process.env.ADMIN_ACCOUNT || 'admin';
+        const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+        const found = input.account === adminAccount && input.password === adminPassword;
         if (!found) throw new TRPCError({ code: 'UNAUTHORIZED', message: '账号或密码错误' });
         // 签发管理员JWT token
         const token = await new SignJWT({ type: 'admin', account: input.account })
@@ -1621,11 +1623,187 @@ export const appRouter = router({
           .orderBy(descFn(shopOrders.createdAt))
           .limit(input.pageSize)
           .offset(offset);
-        return orders;
+         return orders;
+      }),
+  }),
+
+  // ── 过马路游戏（Uncrossable Rush）──────────────────────────────────────────────
+  rush: router({
+    /** 获取游戏设置 */
+    getSettings: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return { rtp: 96, minBet: 1, maxBet: 10000, enabled: true };
+      const rows = await db.select().from(gameSettings).where(eq(gameSettings.gameKey, "rush"));
+      if (!rows.length) {
+        await db.insert(gameSettings).values({ gameKey: "rush", rtp: "96.00", minBet: "1.00", maxBet: "10000.00", enabled: 1 });
+        return { rtp: 96, minBet: 1, maxBet: 10000, enabled: true };
+      }
+      const s = rows[0];
+      return { rtp: parseFloat(s.rtp), minBet: parseFloat(s.minBet), maxBet: parseFloat(s.maxBet), enabled: s.enabled === 1 };
+    }),
+    /** 开始游戏（扣除投注金额） */
+    startGame: publicProcedure
+      .input(z.object({ betAmount: z.number().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const playerToken = await getPlayerFromCookie(ctx.req);
+        if (!playerToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const settingsRows = await db.select().from(gameSettings).where(eq(gameSettings.gameKey, "rush"));
+        let rtp = 96, minBet = 1, maxBet = 10000;
+        if (settingsRows.length) {
+          rtp = parseFloat(settingsRows[0].rtp);
+          minBet = parseFloat(settingsRows[0].minBet);
+          maxBet = parseFloat(settingsRows[0].maxBet);
+          if (!settingsRows[0].enabled) throw new TRPCError({ code: "FORBIDDEN", message: "游戏暂未开放" });
+        }
+        if (input.betAmount < minBet || input.betAmount > maxBet)
+          throw new TRPCError({ code: "BAD_REQUEST", message: `投注金额需在 ${minBet}~${maxBet} 之间` });
+        const playerRows = await db.select().from(players).where(eq(players.id, playerToken.playerId));
+        if (!playerRows.length) throw new TRPCError({ code: "NOT_FOUND", message: "玩家不存在" });
+        const player = playerRows[0];
+        const currentGold = parseFloat(player.gold);
+        if (currentGold < input.betAmount) throw new TRPCError({ code: "BAD_REQUEST", message: "金币不足" });
+        // 扣除投注金额
+        const newGold = currentGold - input.betAmount;
+        await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
+        // 预生成每条车道的死亡概率（基于RTP）
+        // 每条车道的存活概率 = (rtp/100)^(1/maxLanes)
+        const maxLanes = 8;
+        const survivalPerLane = Math.pow(rtp / 100, 1 / maxLanes);
+        const laneResults: boolean[] = [];
+        for (let i = 0; i < maxLanes; i++) {
+          laneResults.push(Math.random() < survivalPerLane);
+        }
+        return { success: true, laneResults, balanceAfter: newGold, betAmount: input.betAmount };
+      }),
+    /** 结束游戏（收手或死亡，结算金额） */
+    endGame: publicProcedure
+      .input(z.object({
+        betAmount: z.number().positive(),
+        lanesReached: z.number().min(0),
+        isDead: z.boolean(),
+        finalMultiplier: z.number().min(0),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const playerToken = await getPlayerFromCookie(ctx.req);
+        if (!playerToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const playerRows = await db.select().from(players).where(eq(players.id, playerToken.playerId));
+        if (!playerRows.length) throw new TRPCError({ code: "NOT_FOUND" });
+        const player = playerRows[0];
+        const currentGold = parseFloat(player.gold);
+        let winAmount = 0;
+        let netAmount = -input.betAmount;
+        if (!input.isDead && input.lanesReached > 0) {
+          winAmount = input.betAmount * input.finalMultiplier;
+          netAmount = winAmount - input.betAmount;
+        }
+        const newGold = currentGold + winAmount;
+        await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
+        await db.insert(rushGames).values({
+          playerId: playerToken.playerId,
+          betAmount: input.betAmount.toFixed(2),
+          lanesReached: input.lanesReached,
+          isDead: input.isDead ? 1 : 0,
+          finalMultiplier: input.finalMultiplier.toFixed(2),
+          winAmount: winAmount.toFixed(2),
+          netAmount: netAmount.toFixed(2),
+          balanceAfter: newGold.toFixed(2),
+        });
+        return { winAmount, netAmount, balanceAfter: newGold };
+      }),
+    /** 获取历史记录 */
+    getHistory: publicProcedure
+      .input(z.object({ limit: z.number().default(20) }))
+      .query(async ({ ctx, input }) => {
+        const playerToken = await getPlayerFromCookie(ctx.req);
+        if (!playerToken) return [];
+        const db = await getDb();
+        if (!db) return [];
+        const rows = await db.select().from(rushGames)
+          .where(eq(rushGames.playerId, playerToken.playerId))
+          .orderBy(desc(rushGames.createdAt)).limit(input.limit);
+        return rows.map(r => ({ id: r.id, betAmount: parseFloat(r.betAmount), lanesReached: r.lanesReached, isDead: r.isDead === 1, finalMultiplier: parseFloat(r.finalMultiplier), winAmount: parseFloat(r.winAmount), netAmount: parseFloat(r.netAmount), balanceAfter: parseFloat(r.balanceAfter), createdAt: r.createdAt }));
+      }),
+  }),
+
+  // ── 丁咚游戏（Fruit Bomb）──────────────────────────────────────────────────────
+  dingdong: router({
+    /** 获取游戏设置 */
+    getSettings: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return { rtp: 96, minBet: 1, maxBet: 10000, enabled: true, gridSize: 16 };
+      const rows = await db.select().from(gameSettings).where(eq(gameSettings.gameKey, "dingdong"));
+      if (!rows.length) {
+        await db.insert(gameSettings).values({ gameKey: "dingdong", rtp: "96.00", minBet: "1.00", maxBet: "10000.00", enabled: 1 });
+        return { rtp: 96, minBet: 1, maxBet: 10000, enabled: true, gridSize: 16 };
+      }
+      const s = rows[0];
+      return { rtp: parseFloat(s.rtp), minBet: parseFloat(s.minBet), maxBet: parseFloat(s.maxBet), enabled: s.enabled === 1, gridSize: 16 };
+    }),
+    /** 投注并开奖 */
+    play: publicProcedure
+      .input(z.object({ betAmount: z.number().positive(), selectedCell: z.number().min(0).max(15) }))
+      .mutation(async ({ ctx, input }) => {
+        const playerToken = await getPlayerFromCookie(ctx.req);
+        if (!playerToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const settingsRows = await db.select().from(gameSettings).where(eq(gameSettings.gameKey, "dingdong"));
+        let rtp = 96, minBet = 1, maxBet = 10000;
+        if (settingsRows.length) {
+          rtp = parseFloat(settingsRows[0].rtp);
+          minBet = parseFloat(settingsRows[0].minBet);
+          maxBet = parseFloat(settingsRows[0].maxBet);
+          if (!settingsRows[0].enabled) throw new TRPCError({ code: "FORBIDDEN", message: "游戏暂未开放" });
+        }
+        if (input.betAmount < minBet || input.betAmount > maxBet)
+          throw new TRPCError({ code: "BAD_REQUEST", message: `投注金额需在 ${minBet}~${maxBet} 之间` });
+        const playerRows = await db.select().from(players).where(eq(players.id, playerToken.playerId));
+        if (!playerRows.length) throw new TRPCError({ code: "NOT_FOUND" });
+        const player = playerRows[0];
+        const currentGold = parseFloat(player.gold);
+        if (currentGold < input.betAmount) throw new TRPCError({ code: "BAD_REQUEST", message: "金币不足" });
+        // 16格，中奖倍率：1格=16x，4格=4x，8格=2x（按RTP调整）
+        // 简化：随机选1个中奖格，中奖倍率=16*rtp/100
+        const gridSize = 16;
+        const winCell = Math.floor(Math.random() * gridSize);
+        const isWin = winCell === input.selectedCell;
+        const multiplier = isWin ? (gridSize * rtp / 100) : 0;
+        const winAmount = isWin ? input.betAmount * multiplier : 0;
+        const netAmount = isWin ? winAmount - input.betAmount : -input.betAmount;
+        const newGold = currentGold + netAmount;
+        await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
+        await db.insert(dingdongGames).values({
+          playerId: playerToken.playerId,
+          betAmount: input.betAmount.toFixed(2),
+          selectedCell: input.selectedCell,
+          winCell,
+          isWin: isWin ? 1 : 0,
+          multiplier: multiplier.toFixed(2),
+          winAmount: winAmount.toFixed(2),
+          netAmount: netAmount.toFixed(2),
+          balanceAfter: newGold.toFixed(2),
+        });
+        return { isWin, winCell, multiplier, winAmount, netAmount, balanceAfter: newGold, selectedCell: input.selectedCell };
+      }),
+    /** 获取历史记录 */
+    getHistory: publicProcedure
+      .input(z.object({ limit: z.number().default(20) }))
+      .query(async ({ ctx, input }) => {
+        const playerToken = await getPlayerFromCookie(ctx.req);
+        if (!playerToken) return [];
+        const db = await getDb();
+        if (!db) return [];
+        const rows = await db.select().from(dingdongGames)
+          .where(eq(dingdongGames.playerId, playerToken.playerId))
+          .orderBy(desc(dingdongGames.createdAt)).limit(input.limit);
+        return rows.map(r => ({ id: r.id, betAmount: parseFloat(r.betAmount), selectedCell: r.selectedCell, winCell: r.winCell, isWin: r.isWin === 1, multiplier: parseFloat(r.multiplier), winAmount: parseFloat(r.winAmount), netAmount: parseFloat(r.netAmount), balanceAfter: parseFloat(r.balanceAfter), createdAt: r.createdAt }));
       }),
   }),
 });
-
 export type AppRouter = typeof appRouter;
 
 // 竞技场路由已在 appRouter 中注册

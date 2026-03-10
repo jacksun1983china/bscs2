@@ -16,6 +16,7 @@ import PlayerInfoCard from '@/components/PlayerInfoCard';
 import TopNav from '@/components/TopNav';
 import SettingsModal from '@/components/SettingsModal';
 import ParticleCanvas from '@/components/ParticleCanvas';
+import { useSound } from '@/hooks/useSound';
 
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -43,6 +44,17 @@ export default function Home() {
   const [, navigate] = useLocation();
   const [activeNav, setActiveNav] = useState('home');
   const [settingsVisible, setSettingsVisible] = useState(false);
+  // 入场动画状态
+  const [splashVisible, setSplashVisible] = useState(true);
+  const [splashFading, setSplashFading] = useState(false);
+  const { playClick } = useSound();
+
+  // 入场动画：1.5秒后淡出
+  useEffect(() => {
+    const t1 = setTimeout(() => setSplashFading(true), 1500);
+    const t2 = setTimeout(() => setSplashVisible(false), 2100);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
 
   const { data: player, isLoading, isFetching } = trpc.player.me.useQuery(undefined, {
     refetchOnWindowFocus: true,
@@ -130,6 +142,84 @@ export default function Home() {
 
       {/* ── z=1 粒子 Canvas ── */}
       <ParticleCanvas />
+
+      {/* ── 入场动画递层（z=100）── */}
+      {splashVisible && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 100,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'linear-gradient(160deg, #0d0621 0%, #1a0840 50%, #0d0621 100%)',
+            opacity: splashFading ? 0 : 1,
+            transition: 'opacity 0.6s ease',
+            pointerEvents: splashFading ? 'none' : 'auto',
+          }}
+        >
+          {/* LOGO */}
+          <img
+            src={ASSETS.logok}
+            alt="logo"
+            style={{
+              width: '45%',
+              objectFit: 'contain',
+              animation: 'splashLogoIn 0.8s cubic-bezier(0.34,1.56,0.64,1) forwards',
+              filter: 'drop-shadow(0 0 24px rgba(160,80,255,0.8))',
+            }}
+          />
+          {/* 光晕动画 */}
+          <div
+            style={{
+              marginTop: q(40),
+              width: q(120),
+              height: q(4),
+              borderRadius: q(2),
+              background: 'rgba(120,60,220,0.3)',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                height: '100%',
+                background: 'linear-gradient(90deg, #7c3aed, #22d3ee)',
+                animation: 'splashProgress 1.4s ease forwards',
+                borderRadius: q(2),
+              }}
+            />
+          </div>
+          <div
+            style={{
+              marginTop: q(20),
+              color: 'rgba(160,80,255,0.7)',
+              fontSize: q(22),
+              letterSpacing: 3,
+              animation: 'splashTextIn 0.6s 0.3s ease forwards',
+              opacity: 0,
+            }}
+          >
+            加载中...
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes splashLogoIn {
+          from { opacity: 0; transform: scale(0.6) translateY(20px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes splashProgress {
+          from { width: 0%; }
+          to   { width: 100%; }
+        }
+        @keyframes splashTextIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
 
       {/* ── z=2 全局扫光条 ── */}
       <div className="fx-sweep-bar" />

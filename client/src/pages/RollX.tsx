@@ -17,6 +17,7 @@ import BottomNav from '@/components/BottomNav';
 import TopNav from '@/components/TopNav';
 import { useGameAlert } from '@/components/GameAlert';
 import { useLocation } from 'wouter';
+import { useSound } from '@/hooks/useSound';
 
 // ── px → cqw 转换（基准 750px）──────────────────────────────────
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -95,6 +96,7 @@ function getGreenClipPath(circlePercent: number, radius: number): string {
 export default function RollX() {
   const [, navigate] = useLocation();
   const { showAlert } = useGameAlert();
+  const { playClick, playWin, playLose, playSpinStop, playBetUp, playBetDown, isMuted, toggleMute } = useSound();
 
   // 滑动条索引（0~21）
   const [coeffIndex, setCoeffIndex] = useState(7);
@@ -161,12 +163,19 @@ export default function RollX() {
 
     try {
       const res = await spinMutation.mutateAsync({ betAmount, multiplier });
+      // 旋转开始音效（旋转中）
       animateSpin(res.isWin, res.stopAngle, () => {
         setResult({ ...res });
         setShowResult(true);
         setIsSpinning(false);
         refetchPlayer();
         refetchHistory();
+        // 旋转停止音效
+        playSpinStop();
+        // 中奖/失败音效（延迟200ms，等待停止音效播放完）
+        setTimeout(() => {
+          if (res.isWin) playWin(); else playLose();
+        }, 300);
       });
     } catch (err: any) {
       setIsSpinning(false);
@@ -205,6 +214,32 @@ export default function RollX() {
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 2, width: '100%' }}>
         <TopNav showLogo={false} onBackClick={() => navigate('/')} />
       </div>
+
+      {/* ── 静音按钮（右上角悬浮）── */}
+      <button
+        onClick={() => { toggleMute(); }}
+        style={{
+          position: 'absolute',
+          top: q(60),
+          right: q(20),
+          zIndex: 10,
+          width: q(60),
+          height: q(60),
+          borderRadius: '50%',
+          background: 'rgba(20,8,50,0.85)',
+          border: '1px solid rgba(120,60,220,0.5)',
+          color: '#fff',
+          fontSize: q(28),
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+        }}
+        title={isMuted ? '开启音效' : '静音'}
+      >
+        {isMuted ? '🔇' : '🔊'}
+      </button>
 
       {/* ── 内容区 ── */}
       <div
@@ -363,7 +398,7 @@ export default function RollX() {
             {showResult && result ? (
               <>
                 <div style={{ color: result.isWin ? CYBER.win : CYBER.lose, fontSize: wheelSize * 0.06, fontWeight: 700, lineHeight: 1.1, textShadow: result.isWin ? `0 0 10px ${CYBER.winGlow}` : `0 0 10px ${CYBER.loseGlow}` }}>
-                  {result.isWin ? 'WIN' : 'LOSE'}
+                  {result.isWin ? '中奖' : '未中'}
                 </div>
                 <div style={{ color: CYBER.textPrimary, fontSize: wheelSize * 0.055, fontWeight: 700 }}>
                   {result.isWin ? result.winAmount.toFixed(2) : (-result.netAmount).toFixed(2)}
@@ -372,7 +407,7 @@ export default function RollX() {
             ) : (
               <>
                 <div style={{ color: CYBER.win, fontSize: wheelSize * 0.06, fontWeight: 700, lineHeight: 1.1, textShadow: `0 0 10px ${CYBER.winGlow}` }}>
-                  WIN
+                  可赢
                 </div>
                 <div style={{ color: CYBER.textPrimary, fontSize: wheelSize * 0.055, fontWeight: 700 }}>
                   {potentialWin}
@@ -471,7 +506,7 @@ export default function RollX() {
           {/* 投注金额滑动条 */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: q(8) }}>
-              <span style={{ color: CYBER.textSecondary, fontSize: q(24), letterSpacing: 1 }}>BET AMOUNT</span>
+              <span style={{ color: CYBER.textSecondary, fontSize: q(24), letterSpacing: 1 }}>投注金额</span>
               <span style={{ color: CYBER.accent, fontSize: q(30), fontWeight: 700, textShadow: `0 0 8px rgba(192,132,252,0.6)` }}>{betAmountDisplay.toFixed(2)}</span>
             </div>
             <div style={{ position: 'relative', height: q(14) }}>
@@ -543,7 +578,7 @@ export default function RollX() {
 
           {/* SPIN 按钮 */}
           <button
-            onClick={handleSpin}
+            onClick={() => { playClick(); handleSpin(); }}
             disabled={isSpinning}
             style={{
               width: '60%',
@@ -564,7 +599,7 @@ export default function RollX() {
               transition: 'all 0.2s',
             }}
           >
-            {isSpinning ? '...' : 'SPIN'}
+            {isSpinning ? '转中...' : '旋转'}
           </button>
 
           {/* 余额显示 */}
@@ -576,7 +611,7 @@ export default function RollX() {
               paddingBottom: q(8),
             }}
           >
-            BALANCE:{' '}
+            余额：{' '}
             <span style={{ color: CYBER.accentCyan, fontWeight: 600, textShadow: `0 0 8px rgba(34,211,238,0.5)` }}>
               {gold.toFixed(2)}
             </span>
@@ -586,7 +621,7 @@ export default function RollX() {
           {history && history.length > 0 && (
             <div style={{ marginTop: q(8) }}>
               <div style={{ color: CYBER.textMuted, fontSize: q(22), marginBottom: q(10), textAlign: 'center', letterSpacing: 2 }}>
-                RECENT BETS
+                最近投注
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: q(6) }}>
                 {history.slice(0, 6).map(h => (
@@ -660,7 +695,7 @@ export default function RollX() {
               textShadow: result.isWin ? `0 0 20px ${CYBER.winGlow}` : `0 0 20px ${CYBER.loseGlow}`,
               letterSpacing: 2,
             }}>
-              {result.isWin ? 'YOU WIN!' : 'YOU LOSE'}
+              {result.isWin ? '恭喜中奖！' : '未中奖'}
             </div>
             <div style={{ color: CYBER.textPrimary, fontSize: 22, marginBottom: 6 }}>
               {result.isWin
@@ -687,7 +722,7 @@ export default function RollX() {
                 letterSpacing: 1,
               }}
             >
-              CONTINUE
+              继续
             </button>
           </div>
         </div>

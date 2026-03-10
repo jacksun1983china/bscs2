@@ -821,3 +821,34 @@ export const arenaRoundResults = mysqlTable("arenaRoundResults", {
 });
 export type ArenaRoundResult = typeof arenaRoundResults.$inferSelect;
 export type InsertArenaRoundResult = typeof arenaRoundResults.$inferInsert;
+
+// ── 过马路游戏记录表（Uncrossable Rush）──────────────────────────────────────────
+export const rushGames = mysqlTable("rushGames", {
+  id: int("id").autoincrement().primaryKey(),
+  playerId: int("playerId").notNull(),
+  betAmount: decimal("betAmount", { precision: 18, scale: 2 }).notNull(),
+  lanesReached: int("lanesReached").notNull().default(0),
+  isDead: tinyint("isDead").notNull().default(0),
+  finalMultiplier: decimal("finalMultiplier", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  winAmount: decimal("winAmount", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  netAmount: decimal("netAmount", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  balanceAfter: decimal("balanceAfter", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type RushGame = typeof rushGames.$inferSelect;
+
+// ── 丁咚游戏记录表（Fruit Bomb）────────────────────────────────────────────────
+export const dingdongGames = mysqlTable("dingdongGames", {
+  id: int("id").autoincrement().primaryKey(),
+  playerId: int("playerId").notNull(),
+  betAmount: decimal("betAmount", { precision: 18, scale: 2 }).notNull(),
+  selectedCell: int("selectedCell").notNull(),
+  winCell: int("winCell").notNull(),
+  isWin: tinyint("isWin").notNull().default(0),
+  multiplier: decimal("multiplier", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  winAmount: decimal("winAmount", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  netAmount: decimal("netAmount", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  balanceAfter: decimal("balanceAfter", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type DingdongGame = typeof dingdongGames.$inferSelect;

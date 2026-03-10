@@ -7,4 +7,7 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  // 管理员账号密码（通过环境变量配置，默认备用密码）
+  adminAccount: process.env.ADMIN_ACCOUNT ?? "admin",
+  adminPassword: process.env.ADMIN_PASSWORD ?? "admin123",
 };

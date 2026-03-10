@@ -76,7 +76,7 @@ const I18N = {
     noPermission: '无管理员权限',
     collapse: '收起',
     expand: '展开',
-    testHint: '测试账号：admin / admin123',
+    testHint: '',  // 生产环境不显示测试账号
     loginError: '账号或密码错误',
     page: '页',
     total: '共',
@@ -188,7 +188,7 @@ const I18N = {
     noPermission: 'No admin permission',
     collapse: 'Collapse',
     expand: 'Expand',
-    testHint: 'Test: admin / admin123',
+    testHint: '',  // Don't show test credentials in production
     loginError: 'Invalid account or password',
     page: 'Page',
     total: 'Total',

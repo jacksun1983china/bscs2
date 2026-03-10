@@ -1,7 +1,7 @@
 /**
  * useArenaWS.ts — 竞技场实时通信 Hook（SSE 版本）
  *
- * 使用 SSE（Server-Sent Events）替代 WebSocket，解决 Manus 平台代理不支持 WebSocket 的问题。
+ * 使用 SSE（Server-Sent Events）实现实时通信，兼容性更好。
  * 接口与原 WebSocket 版本完全兼容，调用方无需修改。
  *
  * 用法：

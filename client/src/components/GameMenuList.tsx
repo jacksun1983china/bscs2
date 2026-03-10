@@ -48,12 +48,12 @@ const GAMES: GameItem[] = [
     route: '/rollx',
   },
   {
-    id: 'rainbow',
+    id: 'dingdong',
     bgImage: LANHU.gameCard3Bg,
     labelImage: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/caihongzhuanpan_197b930b.png',
-    labelText: '彩虹转盘',
+    labelText: '丁咚',
     avatarImage: LANHU.gameAvatar3,
-    route: undefined,
+    route: '/dingdong',
   },
   {
     id: 'roll',
@@ -62,6 +62,14 @@ const GAMES: GameItem[] = [
     labelText: 'ROLL房',
     avatarImage: LANHU.gameAvatar4,
     route: '/roll',
+  },
+  {
+    id: 'rush',
+    bgImage: LANHU.gameCard1Bg,
+    labelImage: null,
+    labelText: '过马路',
+    avatarImage: LANHU.gameAvatar5,
+    route: '/rush',
   },
 ];
 
@@ -188,7 +196,7 @@ export default function GameMenuList() {
               }}
               onClick={() => game.route && navigate(game.route)}
             >
-              {game.labelImage && (
+              {game.labelImage ? (
                 <img
                   src={game.labelImage}
                   alt={game.labelText}
@@ -201,10 +209,24 @@ export default function GameMenuList() {
                     width: 'auto',
                     objectFit: 'contain',
                     maxWidth: '55%',
-                    /* 标签图片也微微浮动，增加层次感 */
                     filter: 'drop-shadow(0 0 8px rgba(192,132,252,0.6))',
                   }}
                 />
+              ) : (
+                <div style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  color: '#fff',
+                  fontSize: q(40),
+                  fontWeight: 900,
+                  letterSpacing: 2,
+                  textShadow: '0 0 12px rgba(192,132,252,0.9), 0 2px 4px rgba(0,0,0,0.8)',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {game.labelText}
+                </div>
               )}
               {/* 卡片底部渐变遮罩增强 */}
               <div

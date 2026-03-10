@@ -23,6 +23,8 @@ import Shop from "./pages/Shop";
 import Arena from "./pages/Arena";
 import ArenaRoom from "./pages/ArenaRoom";
 import ArenaHistory from "./pages/ArenaHistory";
+import UncrossableRush from "./pages/UncrossableRush";
+import DingDong from "./pages/DingDong";
 function Router() {
   return (
     <Switch>
@@ -34,6 +36,8 @@ function Router() {
       <Route path={"/arena/:id"} component={ArenaRoom} />
       <Route path={"/arena-history"} component={ArenaHistory} />
       <Route path={"/rollx"} component={RollX} />
+      <Route path={"/rush"} component={UncrossableRush} />
+      <Route path={"/dingdong"} component={DingDong} />
       <Route path={"/roll"} component={RollRoom} />
       <Route path={"/roll/:id"} component={RollRoomDetail} />
       {/* 底部导航页面 */}
