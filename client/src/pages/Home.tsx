@@ -192,22 +192,16 @@ export default function Home() {
             ))}
           </div>
 
-          {/* 蒙版框架图叠在最上层：只显示边框线条（将原蒙版框图用screen模式叠加，蓝色区域透明，边框保留） */}
-          <img
-            src="/img/701b6ae6376947b76d1b867bdd8e2d0d.png"
-            alt=""
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              pointerEvents: 'none',
-              zIndex: 4,
-              mixBlendMode: 'screen',
-              opacity: 1,
-            }}
-          />
+          {/* 霸虹边框装饰（不使用框架图，避免色偏） */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            border: '1.5px solid rgba(120,60,220,0.6)',
+            borderRadius: q(20),
+            boxShadow: '0 0 12px rgba(100,40,200,0.5), inset 0 0 20px rgba(0,0,0,0.15)',
+            pointerEvents: 'none',
+            zIndex: 4,
+          }} />
 
           {banners.length > 1 && (
             <div style={{ position: 'absolute', bottom: q(16), left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: q(6), zIndex: 5 }}>

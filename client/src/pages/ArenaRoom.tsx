@@ -7,8 +7,8 @@
  * 3. 实时累计价值：每轮老虎机停止后，玩家座位卡片下方实时累加总价值
  * 4. 头像修复：使用 getAvatarUrl() 统一处理系统头像ID和URL格式
  */
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { playSlotTick, playSlotStop, playWinFanfare, playLoseTone } from '@/lib/arenaSound';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { playSlotStop, playWinFanfare, playLoseTone } from '@/lib/arenaSound';
 import { useLocation, useParams } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import TopNav from '@/components/TopNav';
@@ -38,6 +38,9 @@ const LEVEL_GLOW: Record<number, string> = {
 
 // ── 老虎机滚动动画组件 ────────────────────────────────────────────────────────
 
+// 卷轴单元格高度（cqw单位的px基准）
+const REEL_ITEM_PX = 160;
+
 interface SlotMachineProps {
   finalItem: {
     goodsId: number;
@@ -51,26 +54,48 @@ interface SlotMachineProps {
   width?: string;
   /** 跳过动画，直接显示最终结果 */
   skipAnim?: boolean;
+  /** 箱子内道具列表，用于卷轴滚动 */
+  reelItems?: Array<{ id: number; name: string; imageUrl: string; goodsLevel: number }>;
 }
 
-function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = false }: SlotMachineProps) {
-  const [displayItem, setDisplayItem] = useState<typeof finalItem>(null);
-  const [isRolling, setIsRolling] = useState(false);
+function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = false, reelItems = [] }: SlotMachineProps) {
   const [showFinal, setShowFinal] = useState(false);
+  const [displayItem, setDisplayItem] = useState<typeof finalItem>(null);
+  const [translateY, setTranslateY] = useState(0);
+  const [transition, setTransition] = useState('none');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const animFrameRef = useRef<number | null>(null);
 
-  const PLACEHOLDER_LEVELS = [1, 2, 3, 3, 3, 4, 2, 1, 3, 4];
-  const PLACEHOLDER_NAMES = ['传说武器', '稀有装备', '普通道具', '回收物品', '神秘宝箱', '限定皮肤', '稀有配件', '普通材料'];
-  const [rollingIdx, setRollingIdx] = useState(0);
-  const tickCountRef = useRef(0);
+  // 构建卷轴条目：随机打乱 + 重复多次，末尾放目标物品
+  const buildReel = useCallback((target: typeof finalItem, items: typeof reelItems) => {
+    if (!target) return [];
+    const pool = items.length > 0 ? items : [
+      { id: 0, name: '传说武器', imageUrl: '', goodsLevel: 1 },
+      { id: 1, name: '稀有装备', imageUrl: '', goodsLevel: 2 },
+      { id: 2, name: '普通道具', imageUrl: '', goodsLevel: 3 },
+      { id: 3, name: '回收物品', imageUrl: '', goodsLevel: 4 },
+      { id: 4, name: '神秘宝箱', imageUrl: '', goodsLevel: 2 },
+      { id: 5, name: '限定皮肤', imageUrl: '', goodsLevel: 1 },
+    ];
+    // 重复 5 轮随机条目，最后一格是目标
+    const reel: Array<{ id: number; name: string; imageUrl: string; goodsLevel: number }> = [];
+    for (let i = 0; i < 30; i++) {
+      reel.push(pool[Math.floor(Math.random() * pool.length)]);
+    }
+    // 最后放目标物品
+    reel.push({ id: target.goodsId, name: target.goodsName, imageUrl: target.goodsImage, goodsLevel: target.goodsLevel });
+    return reel;
+  }, []);
+
+  const [reel, setReel] = useState<Array<{ id: number; name: string; imageUrl: string; goodsLevel: number }>>([]);
 
   // 跳过：直接显示最终结果
   useEffect(() => {
     if (skipAnim && finalItem) {
       if (timerRef.current) clearTimeout(timerRef.current);
-      if (intervalRef.current) clearTimeout(intervalRef.current);
-      setIsRolling(false);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      setTransition('none');
+      setTranslateY(0);
       setShowFinal(true);
       setDisplayItem(finalItem);
       onDone?.();
@@ -79,125 +104,210 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
 
   useEffect(() => {
     if (spinning && finalItem && !skipAnim) {
-      setIsRolling(true);
+      const newReel = buildReel(finalItem, reelItems);
+      setReel(newReel);
       setShowFinal(false);
-      tickCountRef.current = 0;
-      let idx = 0;
-      let interval = 60;
-      const scheduleNext = () => {
-        intervalRef.current = setTimeout(() => {
-          idx = (idx + 1) % PLACEHOLDER_NAMES.length;
-          setRollingIdx(idx);
-          tickCountRef.current++;
-          if (tickCountRef.current % 2 === 0) playSlotTick();
-          const elapsed = tickCountRef.current * interval;
-          if (elapsed > 1700) interval = Math.min(interval + 15, 200);
-          if (elapsed < 2500) scheduleNext();
-        }, interval) as unknown as ReturnType<typeof setTimeout>;
-      };
-      scheduleNext();
+      setDisplayItem(null);
+      // 重置到顶部（无动画）
+      setTransition('none');
+      setTranslateY(0);
+
+      // 下一帧开始滚动到倒数第2格（目标前一格），使用 cubic-bezier 减速
+      const totalItems = newReel.length;
+      // 目标在最后一格（index = totalItems - 1），视口中心显示 index=0
+      // 需要滚动到目标格居中：translateY = -(targetIndex * REEL_ITEM_PX)
+      const targetIndex = totalItems - 1;
+      const finalY = -(targetIndex * REEL_ITEM_PX);
+      // 先快速滚到目标前一格（无弹性），再弹性回弹到目标
+      const preY = -((targetIndex - 1) * REEL_ITEM_PX);
+
+      // 第一阶段：快速加速滚动（2.2s，ease-in-out）
+      requestAnimationFrame(() => {
+        setTransition(`transform 2.2s cubic-bezier(0.25, 0.1, 0.1, 1.0)`);
+        setTranslateY(preY);
+      });
+
+      // 第二阶段：弹性停止到目标（0.4s，弹性曲线）
       timerRef.current = setTimeout(() => {
-        if (intervalRef.current) clearTimeout(intervalRef.current as unknown as ReturnType<typeof setTimeout>);
-        setIsRolling(false);
-        setShowFinal(true);
-        setDisplayItem(finalItem);
+        setTransition(`transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)`);
+        setTranslateY(finalY);
         playSlotStop(finalItem.goodsLevel);
-        onDone?.();
-      }, 2500);
+
+        // 动画结束后展示最终结果
+        timerRef.current = setTimeout(() => {
+          setShowFinal(true);
+          setDisplayItem(finalItem);
+          onDone?.();
+        }, 450);
+      }, 2200);
     }
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      if (intervalRef.current) clearTimeout(intervalRef.current as unknown as ReturnType<typeof setTimeout>);
     };
   }, [spinning, finalItem]);
 
-  const currentLevel = isRolling ? PLACEHOLDER_LEVELS[rollingIdx % PLACEHOLDER_LEVELS.length] : (displayItem?.goodsLevel ?? 3);
-  const currentName = isRolling ? PLACEHOLDER_NAMES[rollingIdx] : (displayItem?.goodsName ?? '');
-  const currentImage = isRolling ? '' : (displayItem?.goodsImage ?? '');
-  const currentValue = isRolling ? '' : (displayItem?.goodsValue ?? '');
-
-  const glowAnimClass = showFinal && currentLevel === 1
+  const glowAnimClass = showFinal && displayItem?.goodsLevel === 1
     ? 'arena-legendary-glow'
-    : showFinal && currentLevel === 2
+    : showFinal && displayItem?.goodsLevel === 2
       ? 'arena-rare-pulse'
       : '';
+
+  const itemH = q(REEL_ITEM_PX);
 
   return (
     <div
       className={glowAnimClass}
       style={{
         width,
-        background: isRolling
-          ? `linear-gradient(135deg,rgba(30,10,65,0.9),rgba(80,20,160,0.5))`
-          : (showFinal ? LEVEL_BG[currentLevel] : 'rgba(20,8,50,0.8)'),
-        border: `2px solid ${showFinal ? LEVEL_GLOW[currentLevel].replace('0.6)', '1)').replace('0.4)', '1)').replace('0.3)', '1)') : 'rgba(120,60,220,0.4)'}`,
+        background: showFinal
+          ? LEVEL_BG[displayItem?.goodsLevel ?? 3]
+          : 'rgba(12,4,30,0.95)',
+        border: `2px solid ${
+          showFinal
+            ? LEVEL_GLOW[displayItem?.goodsLevel ?? 3].replace('0.6)', '1)').replace('0.4)', '1)').replace('0.3)', '1)')
+            : 'rgba(120,60,220,0.5)'
+        }`,
         borderRadius: q(12),
-        padding: q(12),
         textAlign: 'center',
-        transition: 'background 0.3s, border-color 0.3s',
+        transition: 'background 0.4s, border-color 0.4s, box-shadow 0.4s',
         boxShadow: showFinal
-          ? currentLevel === 1
-            ? `0 0 30px rgba(245,200,66,0.8), 0 0 60px rgba(245,200,66,0.4), inset 0 0 20px rgba(245,200,66,0.1)`
-            : currentLevel === 2
+          ? displayItem?.goodsLevel === 1
+            ? `0 0 30px rgba(245,200,66,0.8), 0 0 60px rgba(245,200,66,0.4)`
+            : displayItem?.goodsLevel === 2
               ? `0 0 25px rgba(192,132,252,0.8), 0 0 50px rgba(192,132,252,0.4)`
-              : `0 0 15px ${LEVEL_GLOW[currentLevel]}`
-          : 'none',
-        minHeight: q(160),
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        overflow: 'hidden',
+              : `0 0 15px ${LEVEL_GLOW[displayItem?.goodsLevel ?? 3]}`
+          : '0 0 8px rgba(80,20,160,0.4)',
         position: 'relative',
+        overflow: 'hidden',
+        minHeight: q(REEL_ITEM_PX + 60),
       }}
     >
-      {showFinal && currentLevel === 1 && (
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse at 50% 30%, rgba(245,200,66,0.25) 0%, transparent 70%)',
-          animation: 'arenaPulse 1.2s ease-in-out infinite',
-        }} />
-      )}
-      {showFinal && currentLevel === 2 && (
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          background: 'radial-gradient(ellipse at 50% 30%, rgba(192,132,252,0.2) 0%, transparent 70%)',
-          animation: 'arenaPulse 1.5s ease-in-out infinite',
-        }} />
-      )}
-      <div style={{ width: q(100), height: q(100), marginBottom: q(8), position: 'relative' }}>
-        {currentImage ? (
-          <img src={currentImage} alt={currentName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-        ) : (
+      {/* 卷轴滚动区域（spinning时显示） */}
+      {!showFinal && (
+        <>
+          {/* 顶部/底部渐变遮罩 */}
           <div style={{
-            width: '100%', height: '100%',
-            background: isRolling ? `linear-gradient(135deg,${LEVEL_BG[currentLevel]})` : 'rgba(120,60,220,0.2)',
+            position: 'absolute', top: 0, left: 0, right: 0, height: '35%',
+            background: 'linear-gradient(to bottom, rgba(12,4,30,0.95) 0%, transparent 100%)',
+            zIndex: 3, pointerEvents: 'none',
+          }} />
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: '35%',
+            background: 'linear-gradient(to top, rgba(12,4,30,0.95) 0%, transparent 100%)',
+            zIndex: 3, pointerEvents: 'none',
+          }} />
+          {/* 中间选中框 */}
+          <div style={{
+            position: 'absolute', left: 0, right: 0,
+            top: '50%', transform: 'translateY(-50%)',
+            height: itemH,
+            border: '2px solid rgba(192,132,252,0.8)',
+            boxShadow: '0 0 12px rgba(192,132,252,0.5), inset 0 0 8px rgba(192,132,252,0.1)',
+            zIndex: 4, pointerEvents: 'none',
             borderRadius: q(8),
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            animation: isRolling ? 'slotSpin 0.08s linear infinite' : 'none',
+          }} />
+          {/* 卷轴条目 */}
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            transform: `translateY(calc(50% - ${q(REEL_ITEM_PX / 2)} + ${q(translateY)}))`,
+            transition,
+            willChange: 'transform',
           }}>
-            <span style={{ fontSize: q(40) }}>🎁</span>
+            {reel.map((item, idx) => (
+              <div key={idx} style={{
+                width: '100%', height: itemH,
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                padding: `${q(8)} ${q(4)}`,
+                flexShrink: 0,
+              }}>
+                {item.imageUrl ? (
+                  <img src={item.imageUrl} alt={item.name}
+                    style={{ width: q(90), height: q(90), objectFit: 'contain', marginBottom: q(4) }} />
+                ) : (
+                  <div style={{
+                    width: q(90), height: q(90), marginBottom: q(4),
+                    background: LEVEL_BG[item.goodsLevel] || 'rgba(120,60,220,0.3)',
+                    borderRadius: q(8),
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: q(36),
+                  }}>🎁</div>
+                )}
+                <div style={{
+                  color: '#e0d0ff', fontSize: q(16), fontWeight: 500,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  width: '90%', textAlign: 'center',
+                }}>{item.name}</div>
+              </div>
+            ))}
           </div>
-        )}
-      </div>
-      <div style={{
-        display: 'inline-block',
-        padding: `${q(2)} ${q(10)}`,
-        background: isRolling ? 'rgba(120,60,220,0.4)' : 'rgba(0,0,0,0.3)',
-        borderRadius: q(4), color: '#fff',
-        fontSize: q(18), fontWeight: 600, marginBottom: q(4),
-      }}>
-        {LEVEL_LABEL[currentLevel]}
-      </div>
-      <div style={{
-        color: '#fff', fontSize: q(20), fontWeight: 600,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        width: '90%',
-        animation: isRolling ? 'slotTextFlip 0.08s linear infinite' : 'none',
-      }}>
-        {currentName || (isRolling ? '...' : '等待开始')}
-      </div>
-      {showFinal && currentValue && (
-        <div style={{ color: '#ffd700', fontSize: q(22), fontWeight: 700, marginTop: q(4) }}>
-          ¥{parseFloat(currentValue).toFixed(2)}
+        </>
+      )}
+
+      {/* 最终结果展示 */}
+      {showFinal && displayItem && (
+        <div style={{
+          padding: `${q(16)} ${q(12)}`,
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+        }}>
+          {displayItem.goodsLevel === 1 && (
+            <div style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none',
+              background: 'radial-gradient(ellipse at 50% 30%, rgba(245,200,66,0.3) 0%, transparent 70%)',
+              animation: 'arenaPulse 1.2s ease-in-out infinite',
+            }} />
+          )}
+          {displayItem.goodsLevel === 2 && (
+            <div style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none',
+              background: 'radial-gradient(ellipse at 50% 30%, rgba(192,132,252,0.2) 0%, transparent 70%)',
+              animation: 'arenaPulse 1.5s ease-in-out infinite',
+            }} />
+          )}
+          <div style={{ width: q(120), height: q(120), marginBottom: q(8), position: 'relative', zIndex: 1 }}>
+            {displayItem.goodsImage ? (
+              <img src={displayItem.goodsImage} alt={displayItem.goodsName}
+                style={{ width: '100%', height: '100%', objectFit: 'contain',
+                  filter: displayItem.goodsLevel === 1 ? 'drop-shadow(0 0 12px rgba(245,200,66,0.8))'
+                    : displayItem.goodsLevel === 2 ? 'drop-shadow(0 0 10px rgba(192,132,252,0.8))' : 'none',
+                }} />
+            ) : (
+              <div style={{
+                width: '100%', height: '100%',
+                background: LEVEL_BG[displayItem.goodsLevel],
+                borderRadius: q(12),
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: q(48),
+              }}>🎁</div>
+            )}
+          </div>
+          <div style={{
+            display: 'inline-block', padding: `${q(3)} ${q(12)}`,
+            background: 'rgba(0,0,0,0.4)', borderRadius: q(4),
+            color: '#fff', fontSize: q(18), fontWeight: 700, marginBottom: q(6), zIndex: 1, position: 'relative',
+          }}>
+            {LEVEL_LABEL[displayItem.goodsLevel]}
+          </div>
+          <div style={{
+            color: '#fff', fontSize: q(20), fontWeight: 600,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            width: '90%', zIndex: 1, position: 'relative',
+          }}>
+            {displayItem.goodsName}
+          </div>
+          <div style={{ color: '#ffd700', fontSize: q(24), fontWeight: 700, marginTop: q(6), zIndex: 1, position: 'relative' }}>
+            ¥{parseFloat(displayItem.goodsValue).toFixed(2)}
+          </div>
         </div>
+      )}
+
+      {/* 等待状态 */}
+      {!showFinal && !spinning && (
+        <div style={{
+          height: q(REEL_ITEM_PX + 60),
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'rgba(192,132,252,0.4)', fontSize: q(22),
+        }}>等待开始</div>
       )}
     </div>
   );
@@ -345,6 +455,13 @@ export default function ArenaRoom() {
     { enabled: roomId > 0, refetchOnWindowFocus: false }
   );
 
+  // 获取所有笱子的道具列表，用于卷轴动画
+  const boxIds = useMemo(() => roomDetail?.boxList?.map((b: { id: number }) => b.id) ?? [], [roomDetail?.boxList]);
+  const { data: boxGoodsMap } = trpc.arena.getBoxGoodsList.useQuery(
+    { boxIds },
+    { enabled: boxIds.length > 0, refetchOnWindowFocus: false }
+  );
+
   const joinRoom = trpc.arena.joinRoom.useMutation({
     onSuccess: () => {
       setIsPresent(true);
@@ -417,7 +534,7 @@ export default function ArenaRoom() {
 
   // ── 触发开场动画 ──
   const triggerIntro = useCallback((playerList: Array<{ playerId: number; nickname: string; avatar: string; seatNo: number }>) => {
-    if (introShownRef.current || playerList.length < 2) return;
+    if (introShownRef.current || playerList.length < 1) return;
     introShownRef.current = true;
     setShowIntro(true);
     setSkipIntro(false);
@@ -774,12 +891,12 @@ export default function ArenaRoom() {
       />
 
       {/* ── 开场碰撞动画（覆盖全屏） ── */}
-      {showIntro && players.length >= 2 && (
+      {showIntro && (
         <ArenaIntroAnimation
-          players={[
-            { nickname: players[0]?.nickname ?? '玩家1', avatar: players[0]?.avatar ?? '001' },
-            { nickname: players[1]?.nickname ?? '玩家2', avatar: players[1]?.avatar ?? '001' },
-          ]}
+          players={players.map((p) => ({
+            nickname: p?.nickname ?? '',
+            avatar: p?.avatar ?? '001',
+          }))}
           skip={skipIntro}
           onComplete={() => setShowIntro(false)}
         />
@@ -869,6 +986,9 @@ export default function ArenaRoom() {
                 const seatNo = i + 1;
                 const p = players.find((pl) => pl.seatNo === seatNo);
                 const finalItem = p ? currentRoundItems[p.playerId] ?? null : null;
+                // 当前轮次对应的笱子ID
+                const currentBoxId = roomDetail?.boxList?.[currentRound - 1]?.id;
+                const reelItems = currentBoxId && boxGoodsMap ? (boxGoodsMap[currentBoxId] ?? []) : [];
                 return (
                   <div key={seatNo} style={{ flex: 1 }}>
                     <div style={{ color: '#9ca3af', fontSize: q(20), textAlign: 'center', marginBottom: q(6) }}>
@@ -879,6 +999,7 @@ export default function ArenaRoom() {
                       spinning={spinning && !!finalItem}
                       onDone={handleSlotDone}
                       skipAnim={skipGameAnim}
+                      reelItems={reelItems}
                     />
                   </div>
                 );
@@ -1024,7 +1145,10 @@ export default function ArenaRoom() {
         {/* 历史轮次结果 */}
         {Object.keys(roundResults).length > 0 && (
           <div>
-            <div style={{ color: '#9ca3af', fontSize: q(22), marginBottom: q(8) }}>开箱记录</div>
+            <div style={{ color: '#9ca3af', fontSize: q(22), marginBottom: q(8), display: 'flex', alignItems: 'center', gap: q(8) }}>
+              <span style={{ width: q(4), height: q(18), background: 'linear-gradient(#c084fc,#7c3aed)', display: 'inline-block', borderRadius: q(2) }} />
+              开箱记录
+            </div>
             {Object.entries(roundResults).sort((a, b) => Number(a[0]) - Number(b[0])).map(([roundNo, results]) => {
               const enrichedResults = (results as any[]).map((r: any) => {
                 if (r.seatNo && r.seatNo > 0) return r;
@@ -1037,24 +1161,87 @@ export default function ArenaRoom() {
               }).sort((a: any, b: any) => a.seatNo - b.seatNo);
               return (
                 <div key={roundNo} style={{
-                  background: 'rgba(20,8,50,0.7)',
-                  border: '1px solid rgba(120,60,220,0.25)',
-                  borderRadius: q(10), padding: q(12),
-                  marginBottom: q(10),
+                  background: 'linear-gradient(135deg,rgba(20,8,50,0.85),rgba(12,4,30,0.9))',
+                  border: '1px solid rgba(120,60,220,0.3)',
+                  borderRadius: q(14), padding: q(16),
+                  marginBottom: q(12),
+                  boxShadow: '0 4px 16px rgba(80,20,160,0.2)',
                 }}>
-                  <div style={{ color: '#c084fc', fontSize: q(22), fontWeight: 600, marginBottom: q(8) }}>第 {roundNo} 轮</div>
+                  <div style={{
+                    color: '#c084fc', fontSize: q(22), fontWeight: 700, marginBottom: q(12),
+                    display: 'flex', alignItems: 'center', gap: q(8),
+                    borderBottom: '1px solid rgba(120,60,220,0.2)', paddingBottom: q(8),
+                  }}>
+                    <span style={{
+                      background: 'rgba(120,60,220,0.3)', borderRadius: q(6),
+                      padding: `${q(2)} ${q(10)}`, fontSize: q(20),
+                    }}>第 {roundNo} 轮</span>
+                  </div>
                   <div style={{ display: 'flex', gap: q(10) }}>
                     {enrichedResults.map((r: any) => (
                       <div key={r.playerId} style={{ flex: 1, textAlign: 'center' }}>
-                        <div style={{ color: '#9ca3af', fontSize: q(18), marginBottom: q(4) }}>{r.nickname}</div>
+                        <div style={{ color: '#9ca3af', fontSize: q(18), marginBottom: q(8), fontWeight: 500 }}>{r.nickname}</div>
+                        {/* 武器图卡片 */}
                         <div style={{
+                          position: 'relative',
                           background: LEVEL_BG[r.goodsLevel],
-                          borderRadius: q(8), padding: q(8),
-                          boxShadow: `0 0 10px ${LEVEL_GLOW[r.goodsLevel]}`,
+                          borderRadius: q(12), padding: q(10),
+                          boxShadow: r.goodsLevel === 1
+                            ? `0 0 20px rgba(245,200,66,0.7), 0 0 40px rgba(245,200,66,0.3), inset 0 0 12px rgba(245,200,66,0.1)`
+                            : r.goodsLevel === 2
+                              ? `0 0 16px rgba(192,132,252,0.7), 0 0 32px rgba(192,132,252,0.3)`
+                              : `0 0 10px ${LEVEL_GLOW[r.goodsLevel]}`,
+                          overflow: 'hidden',
                         }}>
-                          {r.goodsImage && <img src={r.goodsImage} alt={r.goodsName} style={{ width: q(50), height: q(50), objectFit: 'contain', marginBottom: q(4) }} />}
-                          <div style={{ color: '#fff', fontSize: q(18), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.goodsName}</div>
-                          <div style={{ color: '#ffd700', fontSize: q(18) }}>¥{parseFloat(r.goodsValue).toFixed(2)}</div>
+                          {/* 稀有度光效背景 */}
+                          {r.goodsLevel <= 2 && (
+                            <div style={{
+                              position: 'absolute', inset: 0, pointerEvents: 'none',
+                              background: r.goodsLevel === 1
+                                ? 'radial-gradient(ellipse at 50% 20%, rgba(245,200,66,0.3) 0%, transparent 65%)'
+                                : 'radial-gradient(ellipse at 50% 20%, rgba(192,132,252,0.25) 0%, transparent 65%)',
+                              animation: 'arenaPulse 1.5s ease-in-out infinite',
+                            }} />
+                          )}
+                          {/* 武器图 */}
+                          <div style={{ position: 'relative', zIndex: 1 }}>
+                            {r.goodsImage ? (
+                              <img
+                                src={r.goodsImage}
+                                alt={r.goodsName}
+                                style={{
+                                  width: q(110), height: q(110), objectFit: 'contain',
+                                  marginBottom: q(6), display: 'block', margin: '0 auto',
+                                  filter: r.goodsLevel === 1
+                                    ? 'drop-shadow(0 0 10px rgba(245,200,66,0.9)) drop-shadow(0 0 20px rgba(245,200,66,0.5))'
+                                    : r.goodsLevel === 2
+                                      ? 'drop-shadow(0 0 8px rgba(192,132,252,0.9)) drop-shadow(0 0 16px rgba(192,132,252,0.5))'
+                                      : 'none',
+                                }}
+                              />
+                            ) : (
+                              <div style={{
+                                width: q(110), height: q(110), margin: '0 auto',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: q(48), marginBottom: q(6),
+                              }}>🎁</div>
+                            )}
+                            {/* 品质标签 */}
+                            <div style={{
+                              display: 'inline-block', padding: `${q(2)} ${q(8)}`,
+                              background: 'rgba(0,0,0,0.45)', borderRadius: q(4),
+                              color: '#fff', fontSize: q(16), fontWeight: 700,
+                              marginBottom: q(4),
+                            }}>{LEVEL_LABEL[r.goodsLevel]}</div>
+                            <div style={{
+                              color: '#fff', fontSize: q(18), fontWeight: 600,
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              marginBottom: q(4),
+                            }}>{r.goodsName}</div>
+                            <div style={{ color: '#ffd700', fontSize: q(22), fontWeight: 800 }}>
+                              ¥{parseFloat(r.goodsValue).toFixed(2)}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))}

@@ -479,6 +479,31 @@ export const arenaRouter = router({
         return { ...p, room };
       });
     }),
+
+  /** 获取多个箱子的道具列表（供老虎机卷轴使用） */
+  getBoxGoodsList: publicProcedure
+    .input(z.object({ boxIds: z.array(z.number()).min(1).max(20) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const rows = await db
+        .select()
+        .from(boxGoods)
+        .where(inArray(boxGoods.boxId, input.boxIds));
+      // 按 boxId 分组
+      const map: Record<number, Array<{ id: number; name: string; imageUrl: string; goodsLevel: number; probability: string }>> = {};
+      for (const r of rows) {
+        if (!map[r.boxId]) map[r.boxId] = [];
+        map[r.boxId].push({
+          id: r.id,
+          name: r.name,
+          imageUrl: r.imageUrl ?? '',
+          goodsLevel: r.level ?? 3,
+          probability: String(r.probability ?? '1'),
+        });
+      }
+      return map;
+    }),
 });
 
 // ── 游戏结束处理 ──────────────────────────────────────────────────────────
