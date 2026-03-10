@@ -9,6 +9,7 @@ import { trpc } from '@/lib/trpc';
 import TopNav from '@/components/TopNav';
 import BottomNav from '@/components/BottomNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
+import SettingsModal from '@/components/SettingsModal';
 
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
 
@@ -60,6 +61,7 @@ export default function Profile() {
   const [, navigate] = useLocation();
   const [musicOn, setMusicOn] = useState(true);
   const [sfxOn, setSfxOn] = useState(true);
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   const { data: player } = trpc.player.me.useQuery();
   const logoutMutation = trpc.player.logout.useMutation({
@@ -74,14 +76,12 @@ export default function Profile() {
 
   return (
     <div
+      className="phone-container"
       style={{
-        position: 'relative',
-        width: '100%',
-        height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'hidden',
         containerType: 'inline-size',
+        position: 'relative',
       }}
     >
       {/* 背景 */}
@@ -113,7 +113,7 @@ export default function Profile() {
         }}
       >
         {/* 顶部导航 */}
-        <TopNav showLogo={false} />
+        <TopNav showLogo={false} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
 
         {/* 页面标题 */}
         <div style={{ textAlign: 'center', color: '#fff', fontSize: q(34), fontWeight: 500, marginTop: q(-10), marginBottom: q(8) }}>
@@ -358,6 +358,8 @@ export default function Profile() {
       <div style={{ position: 'relative', zIndex: 10, flexShrink: 0 }}>
         <BottomNav active="wode" />
       </div>
+      {/* 设置弹窗：position:absolute，受 phone-container 约束 */}
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
   );
 }

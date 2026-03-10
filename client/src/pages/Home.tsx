@@ -23,6 +23,7 @@ import { trpc } from '@/lib/trpc';
 import GameMenuList from '@/components/GameMenuList';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
 import TopNav from '@/components/TopNav';
+import SettingsModal from '@/components/SettingsModal';
 
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -40,6 +41,7 @@ const BROADCASTS = [
 
 export default function Home() {
   const [, navigate] = useLocation();
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const { data: player, isLoading, isFetching } = trpc.player.me.useQuery(undefined, {
     refetchOnWindowFocus: true,
     staleTime: 0,
@@ -120,7 +122,7 @@ export default function Home() {
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 1, width: '100%' }}>
 
         {/* ── section_1: 顶部导航（公共组件） ── */}
-        <TopNav showLogo={true} />
+        <TopNav showLogo={true} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
 
         {/* ── Banner 750×340px, margin-top: 1px ── */}
         <div
@@ -290,6 +292,8 @@ export default function Home() {
           style={{ position: 'absolute', left: q(300), top: q(-37), width: q(151), height: q(124), objectFit: 'contain', cursor: 'pointer' }}
         />
       </div>
+      {/* 设置弹窗：position:absolute，受 phone-container 约束 */}
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
   );
 }

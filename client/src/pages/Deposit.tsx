@@ -8,6 +8,7 @@ import { trpc } from '@/lib/trpc';
 import TopNav from '@/components/TopNav';
 import BottomNav from '@/components/BottomNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
+import SettingsModal from '@/components/SettingsModal';
 
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
 
@@ -45,6 +46,7 @@ type PayMethod = 'zhifubao' | 'weixin';
 export default function Deposit() {
   const [selectedAmount, setSelectedAmount] = useState<number>(200);
   const [payMethod, setPayMethod] = useState<PayMethod>('zhifubao');
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   const { data: configsData } = trpc.player.rechargeConfigs.useQuery();
   const amounts = (configsData && configsData.length > 0)
@@ -53,14 +55,12 @@ export default function Deposit() {
 
   return (
     <div
+      className="phone-container"
       style={{
-        position: 'relative',
-        width: '100%',
-        height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'hidden',
         containerType: 'inline-size',
+        position: 'relative',
       }}
     >
       <img
@@ -89,7 +89,7 @@ export default function Deposit() {
           paddingBottom: q(120),
         }}
       >
-        <TopNav showLogo={false} />
+        <TopNav showLogo={false} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
 
         <div style={{ textAlign: 'center', color: '#fff', fontSize: q(34), fontWeight: 500, marginTop: q(-10), marginBottom: q(8), letterSpacing: 1 }}>
           Deposit
@@ -189,6 +189,8 @@ export default function Deposit() {
       <div style={{ position: 'relative', zIndex: 10, flexShrink: 0 }}>
         <BottomNav active="chongzhi" />
       </div>
+      {/* 设置弹窗：position:absolute，受 phone-container 约束 */}
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
   );
 }

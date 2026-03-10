@@ -8,11 +8,18 @@
  *
  * 基准：750px 宽，使用 cqw 响应式单位
  * 依赖父容器的 containerType: inline-size 来计算 cqw
+ *
+ * ⚠️ SettingsModal 已移出 TopNav，由各父页面在 phone-container 层级渲染，
+ * 以确保 position:absolute 弹窗正确受限于手机框内。
+ * 父页面需要：
+ *   1. import SettingsModal from '@/components/SettingsModal';
+ *   2. const [settingsVisible, setSettingsVisible] = useState(false);
+ *   3. <TopNav onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
+ *   4. <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+ *      （放在 phone-container 直接子级，与背景图同级）
  */
-import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { LANHU, ASSETS } from '@/lib/assets';
-import SettingsModal from '@/components/SettingsModal';
 
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -24,11 +31,14 @@ interface TopNavProps {
   onBackClick?: () => void;
   /** 额外的容器样式 */
   style?: React.CSSProperties;
+  /** 设置按钮点击回调（由父页面控制弹窗显示） */
+  onSettingsOpen?: () => void;
+  /** 设置弹窗是否打开（用于高亮效果） */
+  settingsOpen?: boolean;
 }
 
-export default function TopNav({ showLogo = false, onBackClick, style }: TopNavProps) {
+export default function TopNav({ showLogo = false, onBackClick, style, onSettingsOpen, settingsOpen }: TopNavProps) {
   const [, navigate] = useLocation();
-  const [settingsVisible, setSettingsVisible] = useState(false);
 
   const handleBack = () => {
     if (onBackClick) {
@@ -39,7 +49,6 @@ export default function TopNav({ showLogo = false, onBackClick, style }: TopNavP
   };
 
   return (
-    <>
     <div
       style={{
         display: 'flex',
@@ -85,36 +94,29 @@ export default function TopNav({ showLogo = false, onBackClick, style }: TopNavP
           alt="VIP"
           style={{ width: q(79), height: q(80), cursor: 'pointer', objectFit: 'contain' }}
         />
-          {/* 全部按钮 → 点击弹出设置面板 */}
-          <div
-            onClick={() => setSettingsVisible(true)}
-            style={{ position: 'relative', cursor: 'pointer' }}
-          >
-            <img
-              src={LANHU.allGamesIcon}
-              alt="全部"
-              style={{ width: q(79), height: q(80), objectFit: 'contain', display: 'block' }}
+        {/* 全部按钮 → 点击弹出设置面板（由父页面控制） */}
+        <div
+          onClick={onSettingsOpen}
+          style={{ position: 'relative', cursor: 'pointer' }}
+        >
+          <img
+            src={LANHU.allGamesIcon}
+            alt="全部"
+            style={{ width: q(79), height: q(80), objectFit: 'contain', display: 'block' }}
+          />
+          {settingsOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: -4,
+                borderRadius: '50%',
+                boxShadow: '0 0 12px rgba(180,80,255,0.8)',
+                pointerEvents: 'none',
+              }}
             />
-            {settingsVisible && (
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: -4,
-                  borderRadius: '50%',
-                  boxShadow: '0 0 12px rgba(180,80,255,0.8)',
-                  pointerEvents: 'none',
-                }}
-              />
-            )}
-          </div>
+          )}
+        </div>
       </div>
     </div>
-
-      {/* 设置弹窗 */}
-      <SettingsModal
-        visible={settingsVisible}
-        onClose={() => setSettingsVisible(false)}
-      />
-    </>
   );
 }

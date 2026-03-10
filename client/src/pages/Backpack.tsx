@@ -8,6 +8,7 @@ import { trpc } from '@/lib/trpc';
 import TopNav from '@/components/TopNav';
 import BottomNav from '@/components/BottomNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
+import SettingsModal from '@/components/SettingsModal';
 
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
 
@@ -77,6 +78,7 @@ export default function Backpack() {
   const [sortBy, setSortBy] = useState<SortType>('price');
   const [searchText, setSearchText] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   const { data: player } = trpc.player.me.useQuery();
   const { data: backpackData } = trpc.player.inventory.useQuery({ page: 1, limit: 50 });
@@ -99,14 +101,12 @@ export default function Backpack() {
 
   return (
     <div
+      className="phone-container"
       style={{
-        position: 'relative',
-        width: '100%',
-        height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'hidden',
         containerType: 'inline-size',
+        position: 'relative',
         background: '#0d0621',
       }}
     >
@@ -124,7 +124,7 @@ export default function Backpack() {
         }}
       >
         {/* 顶部导航 */}
-        <TopNav showLogo={false} />
+        <TopNav showLogo={false} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
 
         {/* 标题行：背包 + 两个图标 */}
         <div
@@ -413,14 +413,15 @@ export default function Backpack() {
         )}
       </div>
 
-      {/* 底部导航 */}
+       {/* 底部导航 */}
       <div style={{ position: 'relative', zIndex: 10, flexShrink: 0 }}>
         <BottomNav active="beibao" />
       </div>
+      {/* 设置弹窗：position:absolute，受 phone-container 约束 */}
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
   );
 }
-
 // 道具卡片子组件
 function ItemCard({ item, isSelected, onToggle, size }: {
   item: BackpackItem;
