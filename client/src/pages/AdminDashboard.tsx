@@ -482,20 +482,10 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
           {loading ? t.loggingIn : t.loginBtn}
         </button>
 
-        {/* 测试提示 */}
-        <div style={{
-          marginTop: 16, padding: '8px 12px', borderRadius: 8,
-          background: 'rgba(255,200,0,0.08)', border: '1px solid rgba(255,200,0,0.2)',
-          color: 'rgba(255,200,100,0.7)', fontSize: 12, textAlign: 'center',
-        }}>
-          🔧 {t.testHint}
-        </div>
+
       </div>
 
-      {/* 底部版权 */}
-      <div style={{ marginTop: 32, color: 'rgba(120,80,200,0.4)', fontSize: 12 }}>
-        BDCS2 © 2025 · Admin Console
-      </div>
+
     </div>
   );
 }
@@ -618,7 +608,7 @@ export default function AdminDashboard() {
           {sidebarOpen && (
             <div style={{ overflow: 'hidden' }}>
               <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, letterSpacing: 1, whiteSpace: 'nowrap' }}>BDCS2</div>
-              <div style={{ color: 'rgba(180,150,255,0.45)', fontSize: 10, whiteSpace: 'nowrap' }}>Admin Console</div>
+
             </div>
           )}
         </div>

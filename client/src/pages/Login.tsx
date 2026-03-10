@@ -277,14 +277,7 @@ export default function Login() {
                 {sendCodeMutation.isPending ? '发送中...' : countdown > 0 ? `${countdown}s` : '获取验证码'}
               </button>
             </div>
-            {/* 测试模式提示 */}
-            <div style={{
-              marginTop: 8, padding: '5px 10px',
-              background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.25)',
-              borderRadius: 6, fontSize: 11, color: 'rgba(6,182,212,0.8)',
-            }}>
-              🔧 测试模式：验证码固定为 <strong>123456</strong>
-            </div>
+
           </div>
 
           {/* 用户协议 */}
@@ -357,12 +350,7 @@ export default function Login() {
           </button>
         </div>
 
-        {/* 底部装饰文字 */}
-        <div style={{ marginTop: 24, marginBottom: 32, textAlign: 'center' }}>
-          <p style={{ color: 'rgba(180,150,255,0.3)', fontSize: 11, letterSpacing: 1 }}>
-            BDCS2 · 2025 · ALL RIGHTS RESERVED
-          </p>
-        </div>
+
       </div>
 
       {/* 输入框占位符颜色 & 旋转动画 */}
