@@ -782,8 +782,8 @@ export const arenaRoomPlayers = mysqlTable("arenaRoomPlayers", {
   playerId: int("playerId").notNull(),
   /** 玩家昵称（快照） */
   nickname: varchar("nickname", { length: 100 }).notNull().default(""),
-  /** 玩家头像（快照） */
-  avatar: varchar("avatar", { length: 10 }).notNull().default("001"),
+  /** 玩家头像（快照，可以是系统头像ID或OAuth头像URL） */
+  avatar: varchar("avatar", { length: 512 }).notNull().default("001"),
   /** 座位号（1/2/3） */
   seatNo: tinyint("seatNo").notNull().default(1),
   /** 该玩家所有轮次获得物品总价值 */

@@ -1,22 +1,13 @@
 /**
- * Home.tsx — 严格按蓝湖设计稿 1:1 还原
- * 设计稿：750px × 1624px
- * 转换规则：所有 px 值 / 750 * 100 = cqw（容器查询宽度单位）
+ * Home.tsx — 严格按蓝湖设计稿 1:1 还原 + 炫酷特效
  *
- * 布局结构（flex column，高度 = 100vh）：
- * ┌─────────────────────────────────┐
- * │  顶部固定区（不滚动）              │  flex-shrink: 0
- * │  - section_1: 顶部导航           │
- * │  - image-wrapper_1: Banner       │
- * │  - section_2: 用户信息区 + VIP   │
- * ├─────────────────────────────────┤
- * │  游戏菜单区（可滚动）              │  flex: 1, overflow-y: auto
- * │  → <GameMenuList /> 组件         │
- * ├─────────────────────────────────┤
- * │  底部导航（永远沉底）              │  flex-shrink: 0
- * └─────────────────────────────────┘
+ * 特效层次（z-index 从低到高）：
+ *  z=0  背景图
+ *  z=1  粒子 Canvas（ParticleCanvas）
+ *  z=2  全局扫光条（fx-sweep-bar）
+ *  z=3+ 内容层
  */
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { LANHU, ASSETS } from '@/lib/assets';
 import { trpc } from '@/lib/trpc';
@@ -24,6 +15,7 @@ import GameMenuList from '@/components/GameMenuList';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
 import TopNav from '@/components/TopNav';
 import SettingsModal from '@/components/SettingsModal';
+import ParticleCanvas from '@/components/ParticleCanvas';
 
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -39,9 +31,19 @@ const BROADCASTS = [
   '7723190竞技场排名第一，获得传说装备',
 ];
 
+// 底部导航配置
+const NAV_ITEMS = [
+  { key: 'profile',  icon: () => LANHU.myIcon,       label: '我的',  route: '/profile',  ml: 65  },
+  { key: 'share',    icon: () => LANHU.shareIcon,     label: '分享',  route: '/share',    ml: 76  },
+  { key: 'backpack', icon: () => LANHU.bagIcon,       label: '背包',  route: '/backpack', ml: 244 },
+  { key: 'recharge', icon: () => LANHU.rechargeIcon,  label: '充值',  route: '/recharge', ml: 69  },
+];
+
 export default function Home() {
   const [, navigate] = useLocation();
+  const [activeNav, setActiveNav] = useState('home');
   const [settingsVisible, setSettingsVisible] = useState(false);
+
   const { data: player, isLoading, isFetching } = trpc.player.me.useQuery(undefined, {
     refetchOnWindowFocus: true,
     staleTime: 0,
@@ -50,8 +52,11 @@ export default function Home() {
   const { data: broadcastList } = trpc.public.broadcasts.useQuery();
 
   const [bannerIndex, setBannerIndex] = useState(0);
+  const [prevBannerIndex, setPrevBannerIndex] = useState<number | null>(null);
   const [msgIndex, setMsgIndex] = useState(0);
   const [msgVisible, setMsgVisible] = useState(true);
+  // 每次 bannerIndex 变化时切换 Ken Burns 动画 key
+  const [kbKey, setKbKey] = useState(0);
 
   const banners = (bannerList && bannerList.length > 0)
     ? bannerList
@@ -62,7 +67,12 @@ export default function Home() {
     : BROADCASTS;
 
   const goNextBanner = useCallback(() => {
-    setBannerIndex(i => (i + 1) % banners.length);
+    setBannerIndex(i => {
+      const next = (i + 1) % banners.length;
+      setPrevBannerIndex(i);
+      setKbKey(k => k + 1);
+      return next;
+    });
   }, [banners.length]);
 
   useEffect(() => {
@@ -73,7 +83,7 @@ export default function Home() {
 
   useEffect(() => {
     if (banners.length <= 1) return;
-    const t = setInterval(goNextBanner, 4000);
+    const t = setInterval(goNextBanner, 5000);
     return () => clearInterval(t);
   }, [goNextBanner, banners.length]);
 
@@ -94,15 +104,17 @@ export default function Home() {
     if (b?.linkUrl) window.open(b.linkUrl, '_blank');
   };
 
+  const handleNavClick = (key: string, route: string) => {
+    setActiveNav(key);
+    navigate(route);
+  };
+
   return (
     <div
       className="phone-container"
-      style={{ display: 'flex', flexDirection: 'column', containerType: 'inline-size', position: 'relative' }}
+      style={{ display: 'flex', flexDirection: 'column', containerType: 'inline-size', position: 'relative', overflow: 'hidden' }}
     >
-      {/* ══════════════════════════════════════════════════════
-          全局背景图：position: absolute; inset: 0
-          backgroundSize: cover 确保铺满整个容器，不截断
-          ══════════════════════════════════════════════════════ */}
+      {/* ── z=0 全局背景图 ── */}
       <div
         style={{
           position: 'absolute',
@@ -116,15 +128,21 @@ export default function Home() {
         }}
       />
 
+      {/* ── z=1 粒子 Canvas ── */}
+      <ParticleCanvas />
+
+      {/* ── z=2 全局扫光条 ── */}
+      <div className="fx-sweep-bar" />
+
       {/* ══════════════════════════════════════════════════════
           顶部固定区（不滚动）
           ══════════════════════════════════════════════════════ */}
-      <div style={{ flexShrink: 0, position: 'relative', zIndex: 1, width: '100%' }}>
+      <div style={{ flexShrink: 0, position: 'relative', zIndex: 10, width: '100%' }}>
 
-        {/* ── section_1: 顶部导航（公共组件） ── */}
+        {/* ── section_1: 顶部导航 ── */}
         <TopNav showLogo={true} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
 
-        {/* ── Banner 750×340px, margin-top: 1px ── */}
+        {/* ── Banner 750×340px ── */}
         <div
           style={{
             width: q(750),
@@ -141,9 +159,10 @@ export default function Home() {
         >
           {banners.map((b, i) => (
             <img
-              key={b.id}
+              key={`${b.id}-${kbKey}-${i}`}
               src={b.imageUrl}
               alt={b.title || 'banner'}
+              className={i === bannerIndex ? `fx-ken-burns-${kbKey % 2}` : ''}
               style={{
                 position: 'absolute',
                 width: q(679), height: q(313),
@@ -151,26 +170,50 @@ export default function Home() {
                 objectFit: 'cover',
                 borderRadius: q(12),
                 opacity: i === bannerIndex ? 1 : 0,
-                transition: 'opacity 0.6s ease',
+                transition: 'opacity 0.7s ease',
+                transformOrigin: 'center center',
               }}
             />
           ))}
+
+          {/* Banner 底部霓虹光晕线 */}
+          <div style={{
+            position: 'absolute',
+            bottom: q(8),
+            left: q(38),
+            right: q(38),
+            height: 2,
+            background: 'linear-gradient(90deg, transparent, rgba(192,132,252,0.8), rgba(139,92,246,1), rgba(192,132,252,0.8), transparent)',
+            borderRadius: 2,
+            boxShadow: '0 0 8px rgba(192,132,252,0.6), 0 0 16px rgba(139,92,246,0.4)',
+            pointerEvents: 'none',
+          }} />
+
           {banners.length > 1 && (
             <div style={{ position: 'absolute', bottom: q(16), left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: q(6), zIndex: 5 }}>
               {banners.map((_, i) => (
-                <div key={i} onClick={e => { e.stopPropagation(); setBannerIndex(i); }}
-                  style={{ width: i === bannerIndex ? q(20) : q(8), height: q(8), borderRadius: q(4), background: i === bannerIndex ? '#c084fc' : 'rgba(255,255,255,0.4)', transition: 'all 0.3s ease', cursor: 'pointer' }}
+                <div key={i} onClick={e => { e.stopPropagation(); setBannerIndex(i); setKbKey(k => k + 1); }}
+                  style={{
+                    width: i === bannerIndex ? q(20) : q(8),
+                    height: q(8),
+                    borderRadius: q(4),
+                    background: i === bannerIndex ? '#c084fc' : 'rgba(255,255,255,0.4)',
+                    transition: 'all 0.3s ease',
+                    cursor: 'pointer',
+                    boxShadow: i === bannerIndex ? '0 0 6px rgba(192,132,252,0.8)' : 'none',
+                  }}
                 />
               ))}
             </div>
           )}
         </div>
 
-        {/* ── section_2: 用户信息区 750×281px, margin-top: 8.6667cqw ── */}
+        {/* ── section_2: 用户信息区 ── */}
         <div style={{ position: 'relative', width: q(750), marginTop: '8.6667cqw' }}>
 
-          {/* box_3: 广播栏 absolute，相对section_2: left=87-80=7px, top=-64px, 739×102px */}
+          {/* 广播栏 */}
           <div
+            className="fx-broadcast-pulse"
             style={{
               position: 'absolute',
               left: q(7), top: q(-64),
@@ -179,9 +222,9 @@ export default function Home() {
               backgroundSize: '100% 100%',
               backgroundRepeat: 'no-repeat',
               zIndex: 2,
+              borderRadius: q(8),
             }}
           >
-            {/* 广播内容行：垂直居中于102px容器 */}
             <div
               style={{
                 display: 'flex',
@@ -194,7 +237,6 @@ export default function Home() {
                 right: q(20),
               }}
             >
-              {/* 广播喇叭图标 31×32px */}
               <div
                 style={{
                   width: q(31), height: q(32),
@@ -205,7 +247,6 @@ export default function Home() {
                   flexShrink: 0,
                 }}
               />
-              {/* 广播文字，单条淡入淡出 */}
               <div style={{ flex: 1, height: q(32), overflow: 'hidden', marginLeft: q(11) }}>
                 <span
                   key={msgIndex}
@@ -228,7 +269,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* block_1 + 头像框 + VIP标签 → 提取为 PlayerInfoCard 公共组件 */}
+          {/* 玩家信息卡 */}
           <PlayerInfoCard />
         </div>
       </div>
@@ -236,12 +277,12 @@ export default function Home() {
       {/* ══════════════════════════════════════════════════════
           游戏菜单区（唯一可滚动区域）
           ══════════════════════════════════════════════════════ */}
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, paddingTop: 2, paddingBottom: 2 }}>
+      <div style={{ position: 'relative', zIndex: 10, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, paddingTop: 2, paddingBottom: 2 }}>
         <GameMenuList />
       </div>
 
       {/* ══════════════════════════════════════════════════════
-          底部导航 - 永远沉底（flex-shrink: 0）
+          底部导航 — 永远沉底
           ══════════════════════════════════════════════════════ */}
       <div
         style={{
@@ -259,40 +300,67 @@ export default function Home() {
           containerType: 'inline-size',
         }}
       >
-        {/* 我的 */}
-        <div onClick={() => navigate('/profile')}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: q(60), marginLeft: q(65), cursor: 'pointer', flexShrink: 0, gap: q(4) }}>
-          <img src={LANHU.myIcon} alt="我的" style={{ width: q(60), height: q(60), objectFit: 'contain' }} />
-          <span style={{ textShadow: '0px 1px 5px rgba(33,0,80,0.67)', color: 'rgba(217,148,255,1)', fontSize: q(22), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500, whiteSpace: 'nowrap', lineHeight: 1 }}>我的</span>
-        </div>
+        {NAV_ITEMS.map((item, idx) => (
+          <div
+            key={item.key}
+            onClick={() => handleNavClick(item.key, item.route)}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: q(60),
+              marginLeft: q(item.ml),
+              cursor: 'pointer',
+              flexShrink: 0,
+              gap: q(4),
+            }}
+          >
+            <img
+              src={item.icon()}
+              alt={item.label}
+              className={activeNav === item.key ? 'fx-nav-active' : ''}
+              style={{
+                width: q(60),
+                height: q(60),
+                objectFit: 'contain',
+                transition: 'filter 0.3s ease',
+              }}
+            />
+            <span style={{
+              textShadow: '0px 1px 5px rgba(33,0,80,0.67)',
+              color: activeNav === item.key ? 'rgba(255,200,255,1)' : 'rgba(217,148,255,1)',
+              fontSize: q(22),
+              fontFamily: 'Alibaba-PuHuiTi-M, sans-serif',
+              fontWeight: activeNav === item.key ? 700 : 500,
+              whiteSpace: 'nowrap',
+              lineHeight: 1,
+            }}>
+              {item.label}
+            </span>
+          </div>
+        ))}
 
-        {/* 分享 */}
-        <div onClick={() => navigate('/share')}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: q(60), marginLeft: q(76), cursor: 'pointer', flexShrink: 0, gap: q(4) }}>
-          <img src={LANHU.shareIcon} alt="分享" style={{ width: q(60), height: q(60), objectFit: 'contain' }} />
-          <span style={{ textShadow: '0px 1px 5px rgba(33,0,80,0.67)', color: 'rgba(217,148,255,1)', fontSize: q(22), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500, whiteSpace: 'nowrap', lineHeight: 1 }}>分享</span>
-        </div>
-
-        {/* 背包（跳过大厅中心位置） */}
-        <div onClick={() => navigate('/backpack')}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: q(60), marginLeft: q(244), cursor: 'pointer', flexShrink: 0, gap: q(4) }}>
-          <img src={LANHU.bagIcon} alt="背包" style={{ width: q(60), height: q(60), objectFit: 'contain' }} />
-          <span style={{ textShadow: '0px 1px 5px rgba(33,0,80,0.67)', color: 'rgba(217,148,255,1)', fontSize: q(22), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500, whiteSpace: 'nowrap', lineHeight: 1 }}>背包</span>
-        </div>
-
-        {/* 充值 */}
-        <div onClick={() => navigate('/recharge')}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: q(60), marginLeft: q(69), cursor: 'pointer', flexShrink: 0, gap: q(4) }}>
-          <img src={LANHU.rechargeIcon} alt="充值" style={{ width: q(60), height: q(60), objectFit: 'contain' }} />
-          <span style={{ textShadow: '0px 1px 5px rgba(33,0,80,0.67)', color: 'rgba(217,148,255,1)', fontSize: q(22), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500, whiteSpace: 'nowrap', lineHeight: 1 }}>充值</span>
-        </div>
-
-        {/* 大厅中心图标 absolute */}
-        <img src={LANHU.hallIcon} alt="大厅" onClick={() => navigate('/')}
-          style={{ position: 'absolute', left: q(300), top: q(-37), width: q(151), height: q(124), objectFit: 'contain', cursor: 'pointer' }}
+        {/* 大厅中心图标 */}
+        <img
+          src={LANHU.hallIcon}
+          alt="大厅"
+          onClick={() => { setActiveNav('home'); navigate('/'); }}
+          className={activeNav === 'home' ? 'fx-nav-active' : ''}
+          style={{
+            position: 'absolute',
+            left: q(300),
+            top: q(-37),
+            width: q(151),
+            height: q(124),
+            objectFit: 'contain',
+            cursor: 'pointer',
+            transition: 'filter 0.3s ease',
+          }}
         />
       </div>
-      {/* 设置弹窗：position:absolute，受 phone-container 约束 */}
+
+      {/* 设置弹窗 */}
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
   );

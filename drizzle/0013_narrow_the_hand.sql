@@ -1,0 +1,1 @@
+ALTER TABLE `arenaRoomPlayers` MODIFY COLUMN `avatar` varchar(512) NOT NULL DEFAULT '001';

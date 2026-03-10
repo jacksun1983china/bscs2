@@ -1,11 +1,10 @@
 /**
- * GameMenuList.tsx — 游戏菜单列表组件
+ * GameMenuList.tsx — 游戏菜单列表组件（含炫酷特效）
  *
- * 布局要求：
- * - 外层容器占满父级 flex:1 的空间，支持上下滚动
- * - 支持任意数量游戏卡片（4个、7个、8个均可）
- * - 左侧功能按钮列（头像+文字标签）+ 右侧游戏卡片列，顶部对齐
- * - 隐藏滚动条但保留滚动功能
+ * 特效：
+ * - 卡片入场：页面加载时从下方依次滑入（stagger）
+ * - 卡片漂浮：每张卡片轻微上下漂浮（不同相位）
+ * - 卡片悬停：霓虹光晕 + 上浮 + 扫光
  */
 import React from 'react';
 import { useLocation } from 'wouter';
@@ -70,10 +69,6 @@ export default function GameMenuList() {
   const [, navigate] = useLocation();
 
   return (
-    /*
-      外层：撑满父级空间，containerType 让 cqw 基于自身宽度计算
-      overflowY: auto 允许上下滚动，隐藏滚动条保持视觉干净
-    */
     <div
       style={{
         width: '100%',
@@ -82,30 +77,19 @@ export default function GameMenuList() {
         background: 'transparent',
         overflowY: 'auto',
         overflowX: 'hidden',
-        /* 隐藏滚动条（Firefox） */
         scrollbarWidth: 'none' as React.CSSProperties['scrollbarWidth'],
       }}
-      /* 隐藏滚动条（WebKit/Chrome） */
       className="hide-scrollbar"
     >
-      {/*
-        游戏菜单外框：九宫格拉伸
-        - 左右留 29px 边距
-        - 高度自适应内容（不设固定高度），内容多时自然撑开
-        - 底部留 8px 间距，避免最后一张卡片贴边
-      */}
       <div
         style={{
           margin: `0 ${q(29)} ${q(8)} ${q(29)}`,
-          /* 九宫格边框图 */
           borderStyle: 'solid',
           borderImageSource: `url(${LANHU.gameMenuBg})`,
           borderImageSlice: '70 70 70 70 fill',
           borderImageWidth: `${q(70)} ${q(70)} ${q(70)} ${q(70)}`,
           borderImageRepeat: 'stretch',
-          /* 内边距 */
           padding: `${q(20)} ${q(20)}`,
-          /* 布局：横排，内容顶部对齐 */
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'flex-start',
@@ -113,7 +97,7 @@ export default function GameMenuList() {
           position: 'relative',
         }}
       >
-        {/* 左侧功能按钮列（头像图标 + 文字标签叠加） */}
+        {/* 左侧功能按钮列 */}
         <div
           style={{
             display: 'flex',
@@ -128,6 +112,7 @@ export default function GameMenuList() {
             return (
               <div
                 key={game.id}
+                className={`fx-slide-in-${idx} fx-float-${idx} fx-card-hover`}
                 style={{
                   position: 'relative',
                   width: q(122),
@@ -139,18 +124,11 @@ export default function GameMenuList() {
                 }}
                 onClick={() => funcLabel?.route && navigate(funcLabel.route)}
               >
-                {/* 头像背景图 */}
                 <img
                   src={game.avatarImage}
                   alt=""
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    display: 'block',
-                  }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
-                {/* 底部渐变遮罩 + 功能文字标签 */}
                 {funcLabel && (
                   <div
                     style={{
@@ -192,9 +170,10 @@ export default function GameMenuList() {
             minWidth: 0,
           }}
         >
-          {GAMES.map((game) => (
+          {GAMES.map((game, idx) => (
             <div
               key={game.id}
+              className={`fx-slide-in-${idx} fx-float-${idx} fx-card-hover`}
               style={{
                 position: 'relative',
                 width: '100%',
@@ -222,9 +201,23 @@ export default function GameMenuList() {
                     width: 'auto',
                     objectFit: 'contain',
                     maxWidth: '55%',
+                    /* 标签图片也微微浮动，增加层次感 */
+                    filter: 'drop-shadow(0 0 8px rgba(192,132,252,0.6))',
                   }}
                 />
               )}
+              {/* 卡片底部渐变遮罩增强 */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: '40%',
+                  background: 'linear-gradient(to top, rgba(20,5,50,0.5) 0%, transparent 100%)',
+                  pointerEvents: 'none',
+                }}
+              />
             </div>
           ))}
         </div>

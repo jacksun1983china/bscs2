@@ -27,9 +27,17 @@ export const SYSTEM_AVATARS = [
   { id: '016', url: '/img/avatars/016.png', gender: 'female', label: '女8' },
 ] as const;
 
-/** 根据头像ID获取URL，默认返回001 */
+/** 根据头像ID获取URL，默认返回001
+ * 支持两种格式：
+ * 1. 系统头像ID（如 "001"~"016"）
+ * 2. OAuth头像URL（如 "https://..."）
+ */
 export function getAvatarUrl(avatarId?: string | null): string {
   if (!avatarId) return '/img/avatars/001.png';
+  // 如果是URL格式（OAuth头像），直接返回
+  if (avatarId.startsWith('http://') || avatarId.startsWith('https://')) {
+    return avatarId;
+  }
   const found = SYSTEM_AVATARS.find(a => a.id === avatarId);
   return found ? found.url : '/img/avatars/001.png';
 }
