@@ -20,7 +20,7 @@ const WD = {
   // 分享招募行背景
   shareRowBg: CDN + 'a61d46d78194157d311c32389d39cc3f_42336295.png',
   // 分享招募图标
-  shareIcon: CDN + '600229944aa9c04afae9c035a316a6fe_c4f9020a.png',
+  shareIcon: CDN + '600229944aa9c04afae9c035a316a6fe_a6634b70.png',
   // 箭头
   arrowRight: CDN + 'e0603ba4213d69b29db5d8db9a605a18_c4f9020a.png',
   // 菜单行背景1（我的记录）
@@ -33,10 +33,10 @@ const WD = {
   menuIcon0: CDN + '7f10c3bf7f42170b236350c03d14ce63_c6f293b5.png',
   // 菜单图标2（STEAM）
   menuIcon1: CDN + 'eb9ac6eabb1be862754eb31989971610_c0bb2029.png',
-  // 菜单图标3（安全密码）
-  menuIcon2: CDN + '26e359d4a3780056f0401f0b6aacdf7b_daa2766d.png',
+  // 菜单图标（安全密码）
+  menuIcon2: CDN + '26e359d4a3780056f0401f0b6aacdf7b_143406fd.png',
   // 实名认证行背景
-  realNameBg: CDN + '62dd1bc1b4fe3b2408cd114ae3166526_*.png',
+  realNameBg: CDN + '62dd1bc1b4fe3b2408cd114ae3166526_10ff2ed8.png',
   // 音乐音效行背景
   musicBg: CDN + 'f922b7b76b2da590622724e36208846c_4cdc7d0a.png',
   // 音乐图标
@@ -44,11 +44,11 @@ const WD = {
   // 音乐开关-开
   musicOn: CDN + 'cd980fd99599a03db61ebff862b15d73_65db3b8c.png',
   // 音乐开关-关
-  musicOff: CDN + '1608392f7755887cc5fec3c7e9f6f52a_*.png',
+  musicOff: CDN + '1608392f7755887cc5fec3c7e9f6f52a_0a9092c2.png',
   // 退出登录左装饰
   logoutLeft: CDN + 'dc610d9243ec14bd0142f1a11ef46d9b_25331e88.png',
   // 退出登录右装饰
-  logoutRight: CDN + '57d2b35cf93f3bbc485d643558f35d3b_*.png',
+  logoutRight: CDN + '57d2b35cf93f3bbc485d643558f35d3b_1910808a.png',
   // VIP进度图
   vipProgress: CDN + 'd18c3f329695c8e72ef4bb3a42a92dce_0e011fd6.png',
   // 推荐人信息背景
@@ -99,7 +99,14 @@ export default function Profile() {
         }}
       />
 
-      {/* 内容层 */}
+      {/* 顶部固定区：TopNav + PlayerInfoCard，不随内容滚动 */}
+      <div style={{ flexShrink: 0, position: 'relative', zIndex: 2, width: '100%' }}>
+        <TopNav showLogo={false} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
+        <div style={{ padding: `0 ${q(30)}`, marginTop: q(8) }}>
+          <PlayerInfoCard />
+        </div>
+      </div>
+      {/* 内容滚动区 */}
       <div
         style={{
           position: 'relative',
@@ -112,18 +119,6 @@ export default function Profile() {
           paddingBottom: q(120),
         }}
       >
-        {/* 顶部导航 */}
-        <TopNav showLogo={false} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
-
-        {/* 页面标题 */}
-        <div style={{ textAlign: 'center', color: '#fff', fontSize: q(34), fontWeight: 500, marginTop: q(-10), marginBottom: q(8) }}>
-          我的
-        </div>
-
-        {/* 玩家信息卡 */}
-        <div style={{ padding: `0 ${q(30)}`, marginTop: q(10) }}>
-          <PlayerInfoCard />
-        </div>
 
         {/* 推荐人信息 */}
         {player?.invitedByNickname && (

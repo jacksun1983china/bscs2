@@ -15,6 +15,7 @@ import { AdminBoxes } from './admin/AdminBoxes';
 import { AdminGames } from './admin/AdminGames';
 import { AdminFinance } from './admin/AdminFinance';
 import { AdminSettings } from './admin/AdminSettings';
+import { AdminRechargeConfigs } from './admin/AdminRechargeConfigs';
 
 // ── 国际化文本 ──────────────────────────────────────────────────
 const I18N = {
@@ -116,6 +117,7 @@ const I18N = {
     bannerSort: '排序',
     bannerEnabled: '启用',
     bannerDisabled: '禁用',
+    rechargeConfigs: '充值档位',
     // 返佣
     rebate: '返佣配置',
     rebateRate: '返佣比例(%)',
@@ -223,6 +225,7 @@ const I18N = {
     bannerSort: 'Sort',
     bannerEnabled: 'Enabled',
     bannerDisabled: 'Disabled',
+    rechargeConfigs: 'Recharge Config',
     rebate: 'Rebate Config',
     rebateRate: 'Rebate Rate(%)',
     identityMerchant: 'Merchant',
@@ -491,9 +494,9 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
 }
 
 // ── 主仪表盘 ────────────────────────────────────────────────────
-const MENU_KEYS = ['players', 'games', 'rollRooms', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'finance', 'settings'] as const;
+const MENU_KEYS = ['players', 'games', 'rollRooms', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'finance', 'settings'] as const;
 const MENU_ICONS: Record<string, string> = {
-  players: '👥', games: '🎮', rollRooms: '🎲', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', finance: '💰', settings: '⚙️',
+  players: '👥', games: '🎮', rollRooms: '🎲', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', finance: '💰', settings: '⚙️',
 };
 
 export default function AdminDashboard() {
@@ -623,7 +626,7 @@ export default function AdminDashboard() {
                 key={key}
                 onClick={() => {
                   setActiveMenu(key);
-                  if (!['players', 'games', 'rollRooms', 'banners', 'rebate', 'categories', 'boxes', 'finance', 'settings'].includes(key)) toast.info(t.featureSoon);
+                  if (!['players', 'games', 'rollRooms', 'banners', 'rebate', 'categories', 'boxes', 'rechargeConfigs', 'finance', 'settings'].includes(key)) toast.info(t.featureSoon);
                 }}
                 title={!sidebarOpen ? label : undefined}
                 style={{
@@ -744,6 +747,8 @@ export default function AdminDashboard() {
           {activeMenu === 'categories' && <AdminCategories lang={lang} t={t} />}
           {/* 宝箱管理 */}
           {activeMenu === 'boxes' && <AdminBoxes lang={lang} t={t} />}
+          {/* 充值档位管理 */}
+          {activeMenu === 'rechargeConfigs' && <AdminRechargeConfigs lang={lang} />}
           {/* 财务统计 */}
           {activeMenu === 'finance' && <AdminFinance lang={lang} />}
           {/* 系统设置 */}

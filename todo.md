@@ -305,3 +305,27 @@
 - [x] 我的页面（Profile.tsx）严格还原蓝湖设计稿
 - [x] 背包页面（Backpack.tsx）严格还原蓝湖设计稿
 - [x] TopNav「全部」按钮添加设置弹窗（音乐/音效/客服/关于/退出游戏）
+
+## 顶部悬停布局（2026-03-10 第九轮）
+- [ ] Deposit.tsx：顶部导航+玩家信息卡固定悬停，内容区可滚动
+- [ ] Profile.tsx：顶部导航+玩家信息卡固定悬停，内容区可滚动
+- [ ] Backpack.tsx：顶部导航+玩家信息卡固定悬停，内容区可滚动
+
+## 背包页面蓝湖还原（2026-03-10 第十轮）
+- [ ] 修复 Profile.tsx 语法错误
+- [ ] 修复 db.ts getPlayerInventory JOIN items 表
+- [ ] 按蓝湖代码完整重写 Backpack.tsx（顶部+个人信息卡悬停，内容区滚动）
+
+## 背包+充值档位后台配置（2026-03-10 第十一轮）
+- [ ] 背包页面：按蓝湖代码重写（正确CDN URL + 顶部悬停 + 数据库物品）
+- [ ] 充值档位：drizzle schema 新增 rechargeConfigs 表（如不存在）
+- [ ] 充值档位：tRPC 接口（管理员CRUD + 前端查询）
+- [ ] 充值档位：管理员后台配置页面
+- [ ] 充值档位：前端充值页面动态读取档位
+## 充值档位后台配置完成（2026-03-10 第十二轮）
+- [x] 修复 db.ts getPlayerInventory JOIN items 表字段映射（itemQuality/itemValue/itemType）
+- [x] 重写 Backpack.tsx（顶部悬停 + 数据库物品 + 正确字段映射）
+- [x] 修复 Deposit.tsx 字段映射（amount/gold/bonusDiamond/tag）
+- [x] 插入充值档位初始数据（6个档位：30/50/100/200/500/1000）
+- [x] 创建 AdminRechargeConfigs.tsx 充值档位管理页面（增删改查）
+- [x] 集成充值档位管理到 AdminDashboard.tsx 侧边栏（💳 充值档位菜单项）

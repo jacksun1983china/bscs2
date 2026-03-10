@@ -50,7 +50,7 @@ export default function Deposit() {
 
   const { data: configsData } = trpc.player.rechargeConfigs.useQuery();
   const amounts = (configsData && configsData.length > 0)
-    ? configsData.map((c: any) => ({ amount: c.amount, bonus: c.bonus ?? 37 }))
+    ? configsData.map((c: any) => ({ amount: Number(c.amount), bonus: Number(c.bonusDiamond ?? 0), gold: Number(c.gold), tag: c.tag ?? '' }))
     : DEFAULT_AMOUNTS;
 
   return (
@@ -77,6 +77,14 @@ export default function Deposit() {
         }}
       />
 
+        {/* 顶部固定区：TopNav + PlayerInfoCard，不随内容滚动 */}
+      <div style={{ flexShrink: 0, position: 'relative', zIndex: 2, width: '100%' }}>
+        <TopNav showLogo={false} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
+        <div style={{ padding: `0 ${q(30)}`, marginTop: q(8) }}>
+          <PlayerInfoCard />
+        </div>
+      </div>
+      {/* 内容滚动区 */}
       <div
         style={{
           position: 'relative',
@@ -89,15 +97,6 @@ export default function Deposit() {
           paddingBottom: q(120),
         }}
       >
-        <TopNav showLogo={false} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
-
-        <div style={{ textAlign: 'center', color: '#fff', fontSize: q(34), fontWeight: 500, marginTop: q(-10), marginBottom: q(8), letterSpacing: 1 }}>
-          Deposit
-        </div>
-
-        <div style={{ padding: `0 ${q(30)}`, marginTop: q(10) }}>
-          <PlayerInfoCard />
-        </div>
 
         {/* 支付方式 */}
         <div style={{ display: 'flex', flexDirection: 'row', gap: q(20), padding: `${q(24)} ${q(30)} 0` }}>

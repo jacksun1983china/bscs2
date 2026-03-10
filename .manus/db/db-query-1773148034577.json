@@ -1,0 +1,103 @@
+{
+  "query": "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name;",
+  "rows": [
+    {
+      "table_name": "__drizzle_migrations"
+    },
+    {
+      "table_name": "banners"
+    },
+    {
+      "table_name": "boxGoods"
+    },
+    {
+      "table_name": "boxItems"
+    },
+    {
+      "table_name": "boxes"
+    },
+    {
+      "table_name": "broadcasts"
+    },
+    {
+      "table_name": "commissionLogs"
+    },
+    {
+      "table_name": "csAgents"
+    },
+    {
+      "table_name": "csMessages"
+    },
+    {
+      "table_name": "csQuickReplies"
+    },
+    {
+      "table_name": "csSessions"
+    },
+    {
+      "table_name": "gameConfigs"
+    },
+    {
+      "table_name": "gameSettings"
+    },
+    {
+      "table_name": "goldLogs"
+    },
+    {
+      "table_name": "inviteRecords"
+    },
+    {
+      "table_name": "items"
+    },
+    {
+      "table_name": "messages"
+    },
+    {
+      "table_name": "playerItems"
+    },
+    {
+      "table_name": "players"
+    },
+    {
+      "table_name": "rechargeConfigs"
+    },
+    {
+      "table_name": "rechargeOrders"
+    },
+    {
+      "table_name": "rollParticipants"
+    },
+    {
+      "table_name": "rollRoomPrizes"
+    },
+    {
+      "table_name": "rollRooms"
+    },
+    {
+      "table_name": "rollWinners"
+    },
+    {
+      "table_name": "rollxGames"
+    },
+    {
+      "table_name": "skuCategories"
+    },
+    {
+      "table_name": "smsCodes"
+    },
+    {
+      "table_name": "users"
+    },
+    {
+      "table_name": "vipConfigs"
+    },
+    {
+      "table_name": "weeklyCommissionStats"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\n__drizzle_migrations\nbanners\nboxGoods\nboxItems\nboxes\nbroadcasts\ncommissionLogs\ncsAgents\ncsMessages\ncsQuickReplies\ncsSessions\ngameConfigs\ngameSettings\ngoldLogs\ninviteRecords\nitems\nmessages\nplayerItems\nplayers\nrechargeConfigs\nrechargeOrders\nrollParticipants\nrollRoomPrizes\nrollRooms\nrollWinners\nrollxGames\nskuCategories\nsmsCodes\nusers\nvipConfigs\nweeklyCommissionStats\n",
+  "stderr": "",
+  "execution_time_ms": 1523
+}

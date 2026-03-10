@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO rechargeConfigs (amount, gold, bonusDiamond, tag, isFirstRecharge, sort, status) VALUES\n(30.00, 30.00, 0.00, '', 0, 1, 1),\n(50.00, 50.00, 0.00, '', 0, 2, 1),\n(100.00, 100.00, 0.00, '最热门', 0, 3, 1),\n(200.00, 200.00, 37.00, '', 0, 4, 1),\n(500.00, 500.00, 100.00, '', 0, 5, 1),\n(1000.00, 1000.00, 250.00, '', 0, 6, 1);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute INSERT INTO rechargeConfigs (amount, gold, bonusDiamond, tag, isFirstRecharge, sort, status) VALUES\n(30.00, 30.00, 0.00, '', 0, 1, 1),\n(50.00, 50.00, 0.00, '', 0, 2, 1),\n(100.00, 100.00, 0.00, '最热门', 0, 3, 1),\n(200.00, 200.00, 37.00, '', 0, 4, 1),\n(500.00, 500.00, 100.00, '', 0, 5, 1),\n(1000.00, 1000.00, 250.00, '', 0, 6, 1);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1528
+}

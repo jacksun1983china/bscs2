@@ -2,6 +2,7 @@
  * Backpack.tsx — 背包页面
  * 严格还原蓝湖 lanhu_beibao 设计稿
  * 布局：TopNav → PlayerInfoCard → 操作按钮行 → 筛选排序行 → 道具列表 → BottomNav
+ * 数据：从数据库读取（trpc.player.inventory）
  */
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
@@ -13,65 +14,43 @@ import SettingsModal from '@/components/SettingsModal';
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
 
 const BB = {
-  // 页面背景
-  pageBg: CDN + '865881086c8e42fdb565ab88ac0ef070_*.png',
-  // 背包标题图
-  titleImg: CDN + 'ccf4cb97381efacab90c9d344feb1496_c632e754.png',
-  // 关闭/返回按钮
-  closeBtn: CDN + '20ff4689b6231b9ac2323b9564f688df_*.png',
-  // 标签栏背景（全部/枪械/饰品）
-  tabBg: CDN + '009e8d412a7d3bff55bd0a9e7711ce02_*.png',
-  // 分解按钮
+  pageBg: CDN + '74d18b69057e89f0807e0d0ca7575514_57d00e7e.png',
   decomposeIcon: CDN + 'b400f59987e35b6feab1e589f258d441_d52bf2e6.png',
-  // 提货保护图标
-  protectIcon: CDN + '97de6f517430fe6063bab8e92561260d_*.png',
-  // 提货按钮
-  deliverBtn: CDN + '426e41da3ba763c4a3dedee2d8088c21_*.png',
-  // 价格排序图标
-  priceSort: CDN + '1b8ac55424ce8ab7ad80daf188f581b2_*.png',
-  // 时间排序图标
-  timeSort: CDN + '33a88881278b4762a2a00c211315bb2a_*.png',
-  // 道具卡片背景（大）
-  itemCardBig: CDN + 'e0c8e2812ccd231c8ec0d8ab6943e2c8_c6692eb4.png',
-  // 道具卡片背景（小）
-  itemCardSmall1: CDN + '1e3be3fe75fa0c0adbe07e1bffaab34d_*.png',
-  itemCardSmall2: CDN + 'df439a558f645fbe12c17b4f785e20aa_c882b199.png',
-  // 道具图片（示例枪械）
-  itemGun1: CDN + 'd00316c512a6f938b2a058ba1a46f653_08213462.png',
-  itemGun2: CDN + 'e0c8e2812ccd231c8ec0d8ab6943e2c8_c6692eb4.png',
-  itemGun3: CDN + '1e3be3fe75fa0c0adbe07e1bffaab34d_*.png',
-  itemGun4: CDN + 'df439a558f645fbe12c17b4f785e20aa_c882b199.png',
-  // 金币图标
+  protectIcon: CDN + '97de6f517430fe6063bab8e92561260d_3b6c2b2b.png',
+  priceSort: CDN + '1b8ac55424ce8ab7ad80daf188f581b2_7e0d6e1a.png',
+  timeSort: CDN + '33a88881278b4762a2a00c211315bb2a_b6e7e3c1.png',
   coinIcon: CDN + 'e3896d873cf738587ae50f74b2720a8b_1d38293a.png',
-  coinIcon2: CDN + 'f2ccd58cecc1e8ae1b16202fab94fd4f_c3913bf0.png',
-  // 加载更多按钮
-  loadMore: CDN + '097f9471937fdb90867e6497e283bdfd_*.png',
-  // 背包大图（顶部装饰）
-  headerBg: CDN + '865881086c8e42fdb565ab88ac0ef070_*.png',
 };
 
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 
-// 道具数据类型
-interface BackpackItem {
-  id: number;
-  name: string;
-  quality: string;
-  price: number;
-  image: string;
-}
+const QUALITY_COLORS: Record<string, string> = {
+  common: 'rgba(180,180,180,1)',
+  rare: 'rgba(58,130,255,1)',
+  epic: 'rgba(160,80,255,1)',
+  legendary: 'rgba(255,180,0,1)',
+};
 
-// 模拟道具数据
-const MOCK_ITEMS: BackpackItem[] = [
-  { id: 1, name: 'M4A1 消音型 | 氧化处理', quality: '崭新出厂', price: 123.08, image: CDN + 'd00316c512a6f938b2a058ba1a46f653_08213462.png' },
-  { id: 2, name: 'M4A1 消音型 | 氧化处理', quality: '崭新出厂', price: 123.08, image: CDN + 'e0c8e2812ccd231c8ec0d8ab6943e2c8_c6692eb4.png' },
-  { id: 3, name: 'M4A1 消音型 | 氧化处理', quality: '崭新出厂', price: 123.08, image: CDN + 'd00316c512a6f938b2a058ba1a46f653_08213462.png' },
-  { id: 4, name: 'M4A1 消音型 | 氧化处理', quality: '崭新出厂', price: 123.08, image: CDN + 'e0c8e2812ccd231c8ec0d8ab6943e2c8_c6692eb4.png' },
-  { id: 5, name: 'M4A1 消音型 | 氧化处理', quality: '崭新出厂', price: 123.08, image: CDN + 'd00316c512a6f938b2a058ba1a46f653_08213462.png' },
-];
+const QUALITY_LABELS: Record<string, string> = {
+  common: '普通',
+  rare: '稀有',
+  epic: '史诗',
+  legendary: '传说',
+};
 
 type SortType = 'price' | 'time';
 type TabType = 'all' | 'gun' | 'skin';
+
+interface InventoryItem {
+  id: number;
+  itemName: string | null;
+  itemImageUrl: string | null;
+  itemQuality: string | null;
+  itemValue: string | null;
+  itemType: string | null;
+  source: string;
+  createdAt: Date;
+}
 
 export default function Backpack() {
   const [activeTab, setActiveTab] = useState<TabType>('all');
@@ -81,8 +60,21 @@ export default function Backpack() {
   const [settingsVisible, setSettingsVisible] = useState(false);
 
   const { data: player } = trpc.player.me.useQuery();
-  const { data: backpackData } = trpc.player.inventory.useQuery({ page: 1, limit: 50 });
-  const items: BackpackItem[] = (backpackData as any)?.items ?? MOCK_ITEMS;
+  const { data: backpackData, isLoading } = trpc.player.inventory.useQuery({ page: 1, limit: 50 });
+
+  const rawItems: InventoryItem[] = (backpackData?.list ?? []) as InventoryItem[];
+
+  const filteredItems = rawItems.filter(item => {
+    if (searchText && !(item.itemName ?? '').includes(searchText)) return false;
+    if (activeTab === 'gun' && item.itemType !== 'weapon') return false;
+    if (activeTab === 'skin' && item.itemType !== 'skin') return false;
+    return true;
+  });
+
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    if (sortBy === 'price') return Number(b.itemValue ?? 0) - Number(a.itemValue ?? 0);
+    return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
+  });
 
   const toggleSelect = (id: number) => {
     setSelectedItems(prev => {
@@ -110,7 +102,30 @@ export default function Backpack() {
         background: '#0d0621',
       }}
     >
-      {/* 内容层 */}
+      <img
+        src={BB.pageBg}
+        alt=""
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          zIndex: 0,
+          opacity: 0.6,
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* 顶部固定区 */}
+      <div style={{ flexShrink: 0, position: 'relative', zIndex: 2, width: '100%' }}>
+        <TopNav showLogo={false} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
+        <div style={{ padding: `0 ${q(30)}`, marginTop: q(8) }}>
+          <PlayerInfoCard />
+        </div>
+      </div>
+
+      {/* 内容滚动区 */}
       <div
         style={{
           position: 'relative',
@@ -123,41 +138,16 @@ export default function Backpack() {
           paddingBottom: q(120),
         }}
       >
-        {/* 顶部导航 */}
-        <TopNav showLogo={false} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
-
-        {/* 标题行：背包 + 两个图标 */}
+        {/* 操作按钮行 */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'row',
             alignItems: 'center',
-            padding: `${q(10)} ${q(30)} 0`,
-            gap: q(16),
-          }}
-        >
-          <span style={{ color: '#fff', fontSize: q(34), fontWeight: 700, letterSpacing: 1 }}>背包</span>
-          <img src={BB.titleImg} alt="背包" style={{ height: q(36), objectFit: 'contain' }} />
-          <img src={BB.closeBtn} alt="关闭" style={{ width: q(36), height: q(36), objectFit: 'contain', marginLeft: 'auto', cursor: 'pointer' }} />
-        </div>
-
-        {/* 玩家信息卡 */}
-        <div style={{ padding: `${q(10)} ${q(30)} 0` }}>
-          <PlayerInfoCard />
-        </div>
-
-        {/* 操作按钮行：分解 + 提货保护 + 提货 + VIP1 */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
             padding: `${q(16)} ${q(30)} 0`,
             gap: q(16),
           }}
         >
-          {/* 分解 */}
           <div
             style={{
               display: 'flex',
@@ -175,7 +165,6 @@ export default function Backpack() {
             <span style={{ color: '#fff', fontSize: q(24), fontWeight: 500 }}>分解</span>
           </div>
 
-          {/* 提货保护 */}
           <div
             style={{
               display: 'flex',
@@ -193,49 +182,13 @@ export default function Backpack() {
             <span style={{ color: '#fff', fontSize: q(24), fontWeight: 500 }}>提货保护</span>
           </div>
 
-          {/* 用户信息小卡 */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              background: 'rgba(5,4,18,0.7)',
-              borderRadius: q(16),
-              padding: `${q(10)} ${q(20)}`,
-              border: '1px solid rgba(120,60,220,0.3)',
-            }}
-          >
-            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: q(8) }}>
-              <span style={{ color: '#fff', fontSize: q(22), fontWeight: 500 }}>
-                {player?.nickname ?? '天启时时川'}
-              </span>
-            </div>
-            <span style={{ color: 'rgba(153,128,204,1)', fontSize: q(20), marginTop: q(4) }}>
-              ID：{player?.id ?? '5456415'}
-            </span>
-            {/* 提货按钮 */}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: q(8),
-                marginTop: q(8),
-                cursor: 'pointer',
-              }}
-            >
-              <img src={BB.deliverBtn} alt="提货" style={{ width: q(36), height: q(36), objectFit: 'contain' }} />
-              <span style={{ color: '#fff', fontSize: q(22) }}>提货</span>
-            </div>
-          </div>
-
-          {/* VIP标签 */}
           <div
             style={{
               background: 'linear-gradient(135deg, #f5a623 0%, #e8750a 100%)',
               borderRadius: q(8),
               padding: `${q(4)} ${q(16)}`,
               flexShrink: 0,
+              marginLeft: 'auto',
             }}
           >
             <span style={{ color: '#fff', fontSize: q(22), fontWeight: 700 }}>
@@ -303,10 +256,8 @@ export default function Backpack() {
             gap: q(16),
           }}
         >
-          {/* 共N件 */}
-          <span style={{ color: '#fff', fontSize: q(24), flexShrink: 0 }}>共{items.length}件</span>
+          <span style={{ color: '#fff', fontSize: q(24), flexShrink: 0 }}>共{sortedItems.length}件</span>
 
-          {/* 搜索框 */}
           <div
             style={{
               flex: 1,
@@ -331,7 +282,6 @@ export default function Backpack() {
             />
           </div>
 
-          {/* 价格排序 */}
           <div
             onClick={() => setSortBy('price')}
             style={{
@@ -344,10 +294,9 @@ export default function Backpack() {
             }}
           >
             <img src={BB.priceSort} alt="价格" style={{ width: q(28), height: q(28), objectFit: 'contain' }} />
-            <span style={{ color: '#fff', fontSize: q(22) }}>价格</span>
+            <span style={{ color: sortBy === 'price' ? 'rgba(255,246,13,1)' : '#fff', fontSize: q(22) }}>价格</span>
           </div>
 
-          {/* 时间排序 */}
           <div
             onClick={() => setSortBy('time')}
             style={{
@@ -360,43 +309,59 @@ export default function Backpack() {
             }}
           >
             <img src={BB.timeSort} alt="时间" style={{ width: q(28), height: q(28), objectFit: 'contain' }} />
-            <span style={{ color: '#fff', fontSize: q(22) }}>时间</span>
+            <span style={{ color: sortBy === 'time' ? 'rgba(255,246,13,1)' : '#fff', fontSize: q(22) }}>时间</span>
           </div>
         </div>
 
-        {/* 道具列表：第一行大卡+小卡，后续两列小卡 */}
+        {/* 道具列表 */}
         <div style={{ padding: `${q(12)} ${q(30)} 0` }}>
-          {items.length === 0 ? (
+          {isLoading ? (
+            <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)', fontSize: q(26), padding: `${q(60)} 0` }}>
+              加载中...
+            </div>
+          ) : sortedItems.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: q(26), padding: `${q(60)} 0` }}>
-              背包空空如也
+              背包空空如也，去 Roll 房赢取奖品吧！
             </div>
           ) : (
             <>
-              {/* 第一行：1大 + 1小（竖排） */}
-              {items.length >= 1 && (
+              {sortedItems.length >= 1 && (
                 <div style={{ display: 'flex', flexDirection: 'row', gap: q(14), marginBottom: q(14) }}>
-                  {/* 大卡 */}
-                  <ItemCard item={items[0]} isSelected={selectedItems.has(items[0].id)} onToggle={toggleSelect} size="big" />
-                  {/* 右侧小卡列 */}
+                  <ItemCard
+                    item={sortedItems[0]}
+                    isSelected={selectedItems.has(sortedItems[0].id)}
+                    onToggle={toggleSelect}
+                    size="big"
+                  />
                   <div style={{ display: 'flex', flexDirection: 'column', gap: q(14), flex: 1 }}>
-                    {items.slice(1, 3).map(item => (
-                      <ItemCard key={item.id} item={item} isSelected={selectedItems.has(item.id)} onToggle={toggleSelect} size="small" />
+                    {sortedItems.slice(1, 3).map(item => (
+                      <ItemCard
+                        key={item.id}
+                        item={item}
+                        isSelected={selectedItems.has(item.id)}
+                        onToggle={toggleSelect}
+                        size="small"
+                      />
                     ))}
                   </div>
                 </div>
               )}
-              {/* 后续行：两列小卡 */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: q(14) }}>
-                {items.slice(3).map(item => (
-                  <ItemCard key={item.id} item={item} isSelected={selectedItems.has(item.id)} onToggle={toggleSelect} size="small" />
+                {sortedItems.slice(3).map(item => (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    isSelected={selectedItems.has(item.id)}
+                    onToggle={toggleSelect}
+                    size="small"
+                  />
                 ))}
               </div>
             </>
           )}
         </div>
 
-        {/* 加载更多 */}
-        {items.length > 0 && (
+        {sortedItems.length > 0 && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: `${q(24)} 0` }}>
             <div
               style={{
@@ -413,18 +378,21 @@ export default function Backpack() {
         )}
       </div>
 
-       {/* 底部导航 */}
       <div style={{ position: 'relative', zIndex: 10, flexShrink: 0 }}>
         <BottomNav active="beibao" />
       </div>
-      {/* 设置弹窗：position:absolute，受 phone-container 约束 */}
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
   );
 }
-// 道具卡片子组件
-function ItemCard({ item, isSelected, onToggle, size }: {
-  item: BackpackItem;
+
+function ItemCard({
+  item,
+  isSelected,
+  onToggle,
+  size,
+}: {
+  item: InventoryItem;
   isSelected: boolean;
   onToggle: (id: number) => void;
   size: 'big' | 'small';
@@ -432,6 +400,10 @@ function ItemCard({ item, isSelected, onToggle, size }: {
   const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
   const coinIcon = CDN + 'e3896d873cf738587ae50f74b2720a8b_1d38293a.png';
   const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
+
+  const qualityKey = item.itemQuality ?? 'common';
+  const qualityColor = QUALITY_COLORS[qualityKey] ?? 'rgba(180,180,180,1)';
+  const qualityLabel = QUALITY_LABELS[qualityKey] ?? '普通';
 
   return (
     <div
@@ -448,43 +420,42 @@ function ItemCard({ item, isSelected, onToggle, size }: {
         flex: size === 'big' ? '0 0 55%' : undefined,
       }}
     >
-      {/* 道具图片 */}
       <div style={{ padding: q(12), paddingBottom: 0 }}>
         <img
-          src={item.image}
-          alt={item.name}
+          src={item.itemImageUrl ?? ''}
+          alt={item.itemName ?? ''}
           style={{
             width: '100%',
             aspectRatio: '1',
             objectFit: 'contain',
             display: 'block',
           }}
+          onError={e => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
         />
       </div>
-      {/* 道具名称 */}
       <div style={{ padding: `${q(8)} ${q(12)}` }}>
         <div style={{ color: '#fff', fontSize: q(20), fontWeight: 500, lineHeight: 1.3, marginBottom: q(6) }}>
-          {item.name}
+          {item.itemName ?? '未知道具'}
         </div>
-        {/* 品质标签 */}
         <div
           style={{
             display: 'inline-block',
-            background: 'rgba(58,255,255,0.15)',
+            background: `${qualityColor}22`,
             borderRadius: q(6),
             padding: `${q(2)} ${q(10)}`,
             marginBottom: q(6),
+            border: `1px solid ${qualityColor}55`,
           }}
         >
-          <span style={{ color: 'rgba(58,255,255,1)', fontSize: q(18) }}>{item.quality}</span>
+          <span style={{ color: qualityColor, fontSize: q(18) }}>{qualityLabel}</span>
         </div>
-        {/* 价格行 */}
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: q(6) }}>
           <img src={coinIcon} alt="金币" style={{ width: q(24), height: q(24), objectFit: 'contain' }} />
-          <span style={{ color: 'rgba(255,246,13,1)', fontSize: q(22), fontWeight: 700 }}>{item.price}</span>
+          <span style={{ color: 'rgba(255,246,13,1)', fontSize: q(22), fontWeight: 700 }}>
+            {Number(item.itemValue ?? 0).toFixed(2)}
+          </span>
         </div>
       </div>
-      {/* 选中角标 */}
       {isSelected && (
         <div
           style={{

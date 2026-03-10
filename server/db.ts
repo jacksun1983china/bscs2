@@ -18,6 +18,7 @@ import {
   csMessages,
   csQuickReplies,
   csSessions,
+  items,
   messages,
   playerItems,
   players,
@@ -526,7 +527,29 @@ export async function getPlayerInventory(playerId: number, page: number = 1, lim
   if (!db) return { list: [], total: 0 };
   const offset = (page - 1) * limit;
   const [list, countResult] = await Promise.all([
-    db.select().from(playerItems).where(eq(playerItems.playerId, playerId)).orderBy(desc(playerItems.createdAt)).limit(limit).offset(offset),
+    db
+      .select({
+        id: playerItems.id,
+        playerId: playerItems.playerId,
+        itemId: playerItems.itemId,
+        source: playerItems.source,
+        status: playerItems.status,
+        recycleGold: playerItems.recycleGold,
+        createdAt: playerItems.createdAt,
+        // JOIN items fields
+        itemName: items.name,
+        itemImageUrl: items.imageUrl,
+        itemQuality: items.quality,
+        itemValue: items.value,
+        itemType: items.type,
+        itemGame: items.game,
+      })
+      .from(playerItems)
+      .leftJoin(items, eq(playerItems.itemId, items.id))
+      .where(eq(playerItems.playerId, playerId))
+      .orderBy(desc(playerItems.createdAt))
+      .limit(limit)
+      .offset(offset),
     db.select({ count: sql<number>`count(*)` }).from(playerItems).where(eq(playerItems.playerId, playerId)),
   ]);
   return { list, total: Number(countResult[0]?.count ?? 0) };

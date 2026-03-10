@@ -1,0 +1,9 @@
+{
+  "query": "\n-- 先获取玩家ID\nSET @pid = (SELECT id FROM players WHERE phone = '18526239983');\n\n-- 插入背包物品（来源：box=宝箱，roll=roll房）\nINSERT INTO playerItems (playerId, itemId, source, status, recycleGold) VALUES\n(@pid, 1, 'box', 0, '0.00'),\n(@pid, 2, 'roll', 0, '0.00'),\n(@pid, 3, 'box', 0, '0.00'),\n(@pid, 4, 'roll', 0, '0.00'),\n(@pid, 5, 'box', 0, '0.00'),\n(@pid, 6, 'roll', 0, '0.00'),\n(@pid, 7, 'box', 0, '0.00'),\n(@pid, 8, 'box', 0, '0.00'),\n(@pid, 9, 'roll', 0, '0.00'),\n(@pid, 10, 'box', 0, '0.00'),\n(@pid, 11, 'box', 0, '0.00'),\n(@pid, 12, 'roll', 0, '0.00');\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute \n-- 先获取玩家ID\nSET @pid = (SELECT id FROM players WHERE phone = '18526239983');\n\n-- 插入背包物品（来源：box=宝箱，roll=roll房）\nINSERT INTO playerItems (playerId, itemId, source, status, recycleGold) VALUES\n(@pid, 1, 'box', 0, '0.00'),\n(@pid, 2, 'roll', 0, '0.00'),\n(@pid, 3, 'box', 0, '0.00'),\n(@pid, 4, 'roll', 0, '0.00'),\n(@pid, 5, 'box', 0, '0.00'),\n(@pid, 6, 'roll', 0, '0.00'),\n(@pid, 7, 'box', 0, '0.00'),\n(@pid, 8, 'box', 0, '0.00'),\n(@pid, 9, 'roll', 0, '0.00'),\n(@pid, 10, 'box', 0, '0.00'),\n(@pid, 11, 'box', 0, '0.00'),\n(@pid, 12, 'roll', 0, '0.00');\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1779
+}
