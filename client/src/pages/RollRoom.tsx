@@ -358,7 +358,7 @@ export default function RollRoom() {
             <div style={{ flex: 1 }} />
           </div>
           {/* 用户信息卡（固定置顶，不随内容滚动） */}
-          <PlayerInfoCard style={{ marginTop: q(18), marginLeft: q(38) }} />
+          <PlayerInfoCard style={{ marginTop: q(18) }} />
         </div>
 
         {/* 内容背景区（flex:1，可滚动），背景透明，由外层absolute背景层提供 */}
