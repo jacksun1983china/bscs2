@@ -868,7 +868,7 @@ export const appRouter = router({
     }),
 
     /** 旋转 - 服务端决定结果，扣/加金币 */
-    spin: protectedProcedure
+    spin: publicProcedure
       .input(z.object({ betAmount: z.number().positive(), multiplier: z.number().min(1.01) }))
       .mutation(async ({ ctx, input }) => {
         const playerToken = await getPlayerFromCookie(ctx.req);
@@ -926,7 +926,7 @@ export const appRouter = router({
       }),
 
     /** 获取游戏历史记录 */
-    getHistory: protectedProcedure
+    getHistory: publicProcedure
       .input(z.object({ limit: z.number().default(20) }))
       .query(async ({ ctx, input }) => {
         const playerToken = await getPlayerFromCookie(ctx.req);

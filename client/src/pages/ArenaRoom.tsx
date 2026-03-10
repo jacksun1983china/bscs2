@@ -321,6 +321,7 @@ export default function ArenaRoom() {
     : false;
 
   const [replayRound, setReplayRound] = useState(0);
+  const replayRoundRef = useRef(0); // 用ref跟踪最新值，避免handleSlotDone闭包捕获旧值
   const [isReplaying, setIsReplaying] = useState(false);
 
   const [isPresent, setIsPresent] = useState(false);
@@ -594,7 +595,10 @@ export default function ArenaRoom() {
   // ── 回放模式：第一轮延迟启动 ──
   useEffect(() => {
     if (isReplaying && replayRound === 0) {
-      const timer = setTimeout(() => setReplayRound(1), 800);
+      const timer = setTimeout(() => {
+        replayRoundRef.current = 1;
+        setReplayRound(1);
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [isReplaying, replayRound]);
@@ -659,13 +663,15 @@ export default function ArenaRoom() {
         if (isReplaying && roomDetail?.roundResults) {
           const allRoundNos = Array.from(new Set(roomDetail.roundResults.map((r) => r.roundNo))).sort((a, b) => a - b);
           const totalReplayRounds = allRoundNos.length;
-          const roundNo = allRoundNos[replayRound - 1];
+          // 使用ref获取最新轮次，避免闭包捕获旧值导致第二轮卡死
+          const currentReplayRound = replayRoundRef.current;
+          const roundNo = allRoundNos[currentReplayRound - 1];
           const resultsForRound = roomDetail.roundResults.filter((r) => r.roundNo === roundNo);
           const newResults = resultsForRound.map((r) => {
             const p = players.find((pl) => pl.playerId === r.playerId);
             return { ...r, nickname: p?.nickname ?? '', seatNo: p?.seatNo ?? 0 };
           });
-          setRoundResults((prev2) => ({ ...prev2, [replayRound]: newResults }));
+          setRoundResults((prev2) => ({ ...prev2, [currentReplayRound]: newResults }));
 
           // 更新实时累计价值
           setLiveValues((prev2) => {
@@ -676,9 +682,11 @@ export default function ArenaRoom() {
             return next2;
           });
 
-          if (replayRound < totalReplayRounds) {
+          if (currentReplayRound < totalReplayRounds) {
             setTimeout(() => {
-              setReplayRound((r) => r + 1);
+              const nextRound = currentReplayRound + 1;
+              replayRoundRef.current = nextRound;
+              setReplayRound(nextRound);
               setCurrentRound((r) => r + 1);
               setCurrentRoundItems({});
             }, 1200);

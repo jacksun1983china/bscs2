@@ -147,47 +147,67 @@ export default function Home() {
           style={{
             width: q(750),
             height: q(340),
-            backgroundImage: `url(${LANHU.bannerBg})`,
-            backgroundSize: '100% 100%',
-            backgroundRepeat: 'no-repeat',
             marginTop: q(1),
             position: 'relative',
-            overflow: 'hidden',
             cursor: banners[bannerIndex]?.linkUrl ? 'pointer' : 'default',
           }}
           onClick={handleBannerClick}
         >
-          {banners.map((b, i) => (
-            <img
-              key={`${b.id}-${kbKey}-${i}`}
-              src={b.imageUrl}
-              alt={b.title || 'banner'}
-              className={i === bannerIndex ? `fx-ken-burns-${kbKey % 2}` : ''}
-              style={{
-                position: 'absolute',
-                width: q(679), height: q(313),
-                top: q(12), left: q(38),
-                objectFit: 'cover',
-                borderRadius: q(12),
-                opacity: i === bannerIndex ? 1 : 0,
-                transition: 'opacity 0.7s ease',
-                transformOrigin: 'center center',
-              }}
-            />
-          ))}
+          {/* Banner 图片层：用蒙版PNG的Alpha通道裁剪 */}
+          <div
+            style={{
+              position: 'absolute',
+              width: q(750),
+              height: q(340),
+              top: 0,
+              left: 0,
+              // 使用蒙版图的Alpha通道裁剪内容（蓝色区域显示，四角透明区域被裁掉）
+              WebkitMaskImage: `url(/img/banner-mask.png)`,
+              WebkitMaskSize: '100% 100%',
+              WebkitMaskRepeat: 'no-repeat',
+              maskImage: `url(/img/banner-mask.png)`,
+              maskSize: '100% 100%',
+              maskRepeat: 'no-repeat',
+              overflow: 'hidden',
+            }}
+          >
+            {banners.map((b, i) => (
+              <img
+                key={`${b.id}-${kbKey}-${i}`}
+                src={b.imageUrl}
+                alt={b.title || 'banner'}
+                className={i === bannerIndex ? `fx-ken-burns-${kbKey % 2}` : ''}
+                style={{
+                  position: 'absolute',
+                  width: '100%',
+                  height: '100%',
+                  top: 0,
+                  left: 0,
+                  objectFit: 'cover',
+                  opacity: i === bannerIndex ? 1 : 0,
+                  transition: 'opacity 0.7s ease',
+                  transformOrigin: 'center center',
+                }}
+              />
+            ))}
+          </div>
 
-          {/* Banner 底部霓虹光晕线 */}
-          <div style={{
-            position: 'absolute',
-            bottom: q(8),
-            left: q(38),
-            right: q(38),
-            height: 2,
-            background: 'linear-gradient(90deg, transparent, rgba(192,132,252,0.8), rgba(139,92,246,1), rgba(192,132,252,0.8), transparent)',
-            borderRadius: 2,
-            boxShadow: '0 0 8px rgba(192,132,252,0.6), 0 0 16px rgba(139,92,246,0.4)',
-            pointerEvents: 'none',
-          }} />
+          {/* 蒙版框架图叠在最上层：只显示边框线条（将原蒙版框图用screen模式叠加，蓝色区域透明，边框保留） */}
+          <img
+            src="/img/701b6ae6376947b76d1b867bdd8e2d0d.png"
+            alt=""
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+              zIndex: 4,
+              mixBlendMode: 'screen',
+              opacity: 1,
+            }}
+          />
 
           {banners.length > 1 && (
             <div style={{ position: 'absolute', bottom: q(16), left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: q(6), zIndex: 5 }}>
