@@ -165,13 +165,13 @@ export default function GameMenuList() {
                   alt={game.labelText}
                   style={{
                     position: 'absolute',
-                    right: '8%',
+                    left: '50%',
                     top: '50%',
-                    transform: 'translateY(-50%)',
-                    height: '55%',
+                    transform: 'translate(-50%, -50%)',
+                    height: '42%',
                     width: 'auto',
                     objectFit: 'contain',
-                    maxWidth: '60%',
+                    maxWidth: '55%',
                   }}
                 />
               )}
