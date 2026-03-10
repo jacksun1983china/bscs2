@@ -1,112 +1,114 @@
 /**
- * BottomNav — 公共底部导航组件
- * 所有游戏页面共用，1:1 还原设计稿
- * 图标尺寸：普通 38x38，大厅中央 90x74（突出导航栏上方）
+ * BottomNav — 公共底部导航组件（最终版，与首页完全一致）
+ * 所有游戏页面共用，1:1 还原蓝湖设计稿
+ * 基准：750px 宽，使用 cqw 响应式单位
+ * 永远沉底（position: fixed / sticky 由父容器控制）
  */
 import { useLocation } from 'wouter';
-import { ASSETS } from '@/lib/assets';
+import { LANHU } from '@/lib/assets';
 
-const TAB_ITEMS: Array<{ key: string; icon: string; label: string; route: string; isCenter?: boolean }> = [
-  { key: 'wode',     icon: ASSETS.wode,     label: '我的',   route: '/profile' },
-  { key: 'fenxiang', icon: ASSETS.fenxiang, label: '分享',   route: '/share' },
-  { key: 'dating',   icon: ASSETS.dating,   label: '大厅',   route: '/',       isCenter: true },
-  { key: 'beibao',   icon: ASSETS.beibao,   label: '背包',   route: '/bag' },
-  { key: 'chongzhi', icon: ASSETS.chongzhi, label: '充值',   route: '/recharge' },
-];
+// px → cqw 转换（基准 750px）
+const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 
 interface BottomNavProps {
-  /** 当前激活的 tab key，默认 'dating' */
+  /** 当前激活的 tab key（暂未使用高亮，保留接口兼容性） */
   active?: string;
 }
 
-export default function BottomNav({ active = 'dating' }: BottomNavProps) {
+export default function BottomNav({ active: _active }: BottomNavProps) {
   const [, navigate] = useLocation();
 
   return (
-    <div style={{ position: 'relative', width: '100%' }}>
-      {/* 导航栏背景：高度 70px，与原版比例一致 */}
-      <img
-        src={ASSETS.tucheng7}
-        alt=""
-        style={{ width: '100%', display: 'block', height: 70 }}
-      />
-      {/* 图标层 */}
+    <div
+      style={{
+        position: 'relative',
+        flexShrink: 0,
+        width: '100%',
+        height: q(90),
+        zIndex: 100,
+        backgroundImage: `url(${LANHU.bottomNavBg})`,
+        backgroundSize: '100% 100%',
+        backgroundRepeat: 'no-repeat',
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        containerType: 'inline-size',
+      }}
+    >
+      {/* 我的 */}
       <div
+        onClick={() => navigate('/profile')}
         style={{
-          position: 'absolute',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          width: q(60), marginLeft: q(65), cursor: 'pointer', flexShrink: 0, gap: q(4),
         }}
       >
-        {TAB_ITEMS.map(tab => (
-          <div
-            key={tab.key}
-            onClick={() => navigate(tab.route)}
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 3,
-              cursor: 'pointer',
-              paddingBottom: tab.isCenter ? 0 : 4,
-            }}
-          >
-            {tab.isCenter ? (
-              /* 大厅：大型徽章图标，突出于导航栏上方 */
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  marginTop: -36,
-                }}
-              >
-                <img
-                  src={tab.icon}
-                  alt={tab.label}
-                  style={{
-                    width: 90,
-                    height: 74,
-                    objectFit: 'contain',
-                    filter:
-                      active === tab.key
-                        ? 'drop-shadow(0 0 8px rgba(192,132,252,0.8))'
-                        : 'none',
-                  }}
-                />
-              </div>
-            ) : (
-              <>
-                <img
-                  src={tab.icon}
-                  alt={tab.label}
-                  style={{
-                    width: 38,
-                    height: 38,
-                    objectFit: 'contain',
-                    filter:
-                      active === tab.key
-                        ? 'drop-shadow(0 0 6px rgba(192,132,252,0.9)) brightness(1.2)'
-                        : 'brightness(0.7)',
-                  }}
-                />
-                <span
-                  style={{
-                    color: active === tab.key ? '#c084fc' : '#666',
-                    fontSize: 11,
-                    fontWeight: active === tab.key ? 700 : 400,
-                  }}
-                >
-                  {tab.label}
-                </span>
-              </>
-            )}
-          </div>
-        ))}
+        <img src={LANHU.myIcon} alt="我的" style={{ width: q(60), height: q(60), objectFit: 'contain' }} />
+        <span style={{
+          textShadow: '0px 1px 5px rgba(33,0,80,0.67)', color: 'rgba(217,148,255,1)',
+          fontSize: q(22), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500,
+          whiteSpace: 'nowrap', lineHeight: 1,
+        }}>我的</span>
       </div>
+
+      {/* 分享 */}
+      <div
+        onClick={() => navigate('/share')}
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          width: q(60), marginLeft: q(76), cursor: 'pointer', flexShrink: 0, gap: q(4),
+        }}
+      >
+        <img src={LANHU.shareIcon} alt="分享" style={{ width: q(60), height: q(60), objectFit: 'contain' }} />
+        <span style={{
+          textShadow: '0px 1px 5px rgba(33,0,80,0.67)', color: 'rgba(217,148,255,1)',
+          fontSize: q(22), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500,
+          whiteSpace: 'nowrap', lineHeight: 1,
+        }}>分享</span>
+      </div>
+
+      {/* 背包（跳过大厅中心位置） */}
+      <div
+        onClick={() => navigate('/bag')}
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          width: q(60), marginLeft: q(244), cursor: 'pointer', flexShrink: 0, gap: q(4),
+        }}
+      >
+        <img src={LANHU.bagIcon} alt="背包" style={{ width: q(60), height: q(60), objectFit: 'contain' }} />
+        <span style={{
+          textShadow: '0px 1px 5px rgba(33,0,80,0.67)', color: 'rgba(217,148,255,1)',
+          fontSize: q(22), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500,
+          whiteSpace: 'nowrap', lineHeight: 1,
+        }}>背包</span>
+      </div>
+
+      {/* 充值 */}
+      <div
+        onClick={() => navigate('/recharge')}
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          width: q(60), marginLeft: q(69), cursor: 'pointer', flexShrink: 0, gap: q(4),
+        }}
+      >
+        <img src={LANHU.rechargeIcon} alt="充值" style={{ width: q(60), height: q(60), objectFit: 'contain' }} />
+        <span style={{
+          textShadow: '0px 1px 5px rgba(33,0,80,0.67)', color: 'rgba(217,148,255,1)',
+          fontSize: q(22), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500,
+          whiteSpace: 'nowrap', lineHeight: 1,
+        }}>充值</span>
+      </div>
+
+      {/* 大厅中心图标 absolute */}
+      <img
+        src={LANHU.hallIcon}
+        alt="大厅"
+        onClick={() => navigate('/')}
+        style={{
+          position: 'absolute', left: q(300), top: q(-37),
+          width: q(151), height: q(124), objectFit: 'contain', cursor: 'pointer',
+        }}
+      />
     </div>
   );
 }
