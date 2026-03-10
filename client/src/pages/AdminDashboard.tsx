@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { AdminRollRooms } from './admin/AdminRollRooms';
 import { AdminBanners } from './admin/AdminBanners';
 import { AdminRebate } from './admin/AdminRebate';
+import { AdminCategories } from './admin/AdminCategories';
+import { AdminBoxes } from './admin/AdminBoxes';
 
 // ── 国际化文本 ──────────────────────────────────────────────────
 const I18N = {
@@ -27,7 +29,8 @@ const I18N = {
     logout: '退出登录',
     players: '玩家管理',
     orders: '订单管理',
-    boxes: '箱子配置',
+    categories: '分类管理',
+    boxes: '宝笱管理',
     finance: '财务统计',
     settings: '系统设置',
     totalPlayers: '总玩家数',
@@ -134,6 +137,7 @@ const I18N = {
     logout: 'Logout',
     players: 'Players',
     orders: 'Orders',
+    categories: 'Categories',
     boxes: 'Box Config',
     finance: 'Finance',
     settings: 'Settings',
@@ -492,9 +496,9 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
 }
 
 // ── 主仪表盘 ────────────────────────────────────────────────────
-const MENU_KEYS = ['players', 'rollRooms', 'banners', 'rebate', 'orders', 'boxes', 'finance', 'settings'] as const;
+const MENU_KEYS = ['players', 'rollRooms', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'finance', 'settings'] as const;
 const MENU_ICONS: Record<string, string> = {
-  players: '👥', rollRooms: '🎲', banners: '🖼️', rebate: '💸', orders: '📦', boxes: '🎁', finance: '💰', settings: '⚙️',
+  players: '👥', rollRooms: '🎲', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', finance: '💰', settings: '⚙️',
 };
 
 export default function AdminDashboard() {
@@ -622,7 +626,7 @@ export default function AdminDashboard() {
                 key={key}
                 onClick={() => {
                   setActiveMenu(key);
-                  if (!['players', 'rollRooms', 'banners', 'rebate'].includes(key)) toast.info(t.featureSoon);
+                  if (!['players', 'rollRooms', 'banners', 'rebate', 'categories', 'boxes'].includes(key)) toast.info(t.featureSoon);
                 }}
                 title={!sidebarOpen ? label : undefined}
                 style={{
@@ -736,7 +740,10 @@ export default function AdminDashboard() {
 
           {/* 返佣配置 */}
           {activeMenu === 'rebate' && <AdminRebate lang={lang} t={t} />}
-
+          {/* 分类管理 */}
+          {activeMenu === 'categories' && <AdminCategories lang={lang} t={t} />}
+          {/* 宝箱管理 */}
+          {activeMenu === 'boxes' && <AdminBoxes lang={lang} t={t} />}
           {/* 玩家管理（默认） */}
           {activeMenu === 'players' && <>
 

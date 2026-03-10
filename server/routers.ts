@@ -58,6 +58,8 @@ import { SignJWT, jwtVerify } from "jose";
 import { eq, desc, sql } from "drizzle-orm";
 import {
   banners,
+  boxGoods,
+  boxes,
   broadcasts,
   csAgents,
   gameSettings,
@@ -65,6 +67,7 @@ import {
   rollRoomPrizes,
   rollRooms,
   rollxGames,
+  skuCategories,
 } from "../drizzle/schema";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
@@ -1095,6 +1098,222 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
         await deleteCsQuickReply(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ── SKU管理（分类 + 宝笱） ──────────────────────────────────────────────────────
+  sku: router({
+    // ── 分类管理 ──
+    /** 获取分类列表 */
+    categoryList: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select().from(skuCategories).orderBy(skuCategories.sort);
+    }),
+
+    /** 管理员：创建分类 */
+    createCategory: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1).max(100),
+        iconUrl: z.string().default(""),
+        sort: z.number().default(0),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const [result] = await db.insert(skuCategories).values({
+          name: input.name,
+          iconUrl: input.iconUrl,
+          sort: input.sort,
+          status: 1,
+        });
+        return { success: true, id: (result as any).insertId };
+      }),
+
+    /** 管理员：更新分类 */
+    updateCategory: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).max(100).optional(),
+        iconUrl: z.string().optional(),
+        sort: z.number().optional(),
+        status: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { id, ...updates } = input;
+        const filtered = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined));
+        await db.update(skuCategories).set(filtered).where(eq(skuCategories.id, id));
+        return { success: true };
+      }),
+
+    /** 管理员：删除分类 */
+    deleteCategory: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await db.delete(skuCategories).where(eq(skuCategories.id, input.id));
+        return { success: true };
+      }),
+
+    // ── 宝笱管理 ──
+    /** 获取宝笱列表（支持分页和分类筛选） */
+    boxList: publicProcedure
+      .input(z.object({
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(100).default(20),
+        categoryId: z.number().optional(),
+        keyword: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return { data: [], total: 0 };
+        const { and, like, count } = await import("drizzle-orm");
+        const conditions = [];
+        if (input.categoryId) conditions.push(eq(boxes.categoryId, input.categoryId));
+        if (input.keyword) conditions.push(like(boxes.name, `%${input.keyword}%`));
+        const where = conditions.length > 0 ? and(...conditions) : undefined;
+        const offset = (input.page - 1) * input.limit;
+        const [data, totalRows] = await Promise.all([
+          db.select().from(boxes).where(where).orderBy(boxes.sort, boxes.id).limit(input.limit).offset(offset),
+          db.select({ cnt: count() }).from(boxes).where(where),
+        ]);
+        return { data, total: Number(totalRows[0]?.cnt || 0) };
+      }),
+
+    /** 获取宝笱详情（含商品列表） */
+    boxDetail: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const [box] = await db.select().from(boxes).where(eq(boxes.id, input.id));
+        if (!box) throw new TRPCError({ code: "NOT_FOUND", message: "宝笱不存在" });
+        const goods = await db.select().from(boxGoods).where(eq(boxGoods.boxId, input.id)).orderBy(boxGoods.sort);
+        return { ...box, goods };
+      }),
+
+    /** 管理员：创建宝笱 */
+    createBox: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1).max(100),
+        imageUrl: z.string().default(""),
+        goodsBgUrl: z.string().default(""),
+        price: z.number().min(0),
+        categoryId: z.number(),
+        category: z.string().default(""),
+        description: z.string().default(""),
+        sort: z.number().default(0),
+        goods: z.array(z.object({
+          name: z.string().min(1),
+          imageUrl: z.string().default(""),
+          level: z.number().min(1).max(4).default(3),
+          price: z.number().min(0).default(0),
+          probability: z.number().min(0).default(1),
+        })).default([]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const [result] = await db.insert(boxes).values({
+          name: input.name,
+          imageUrl: input.imageUrl,
+          goodsBgUrl: input.goodsBgUrl,
+          price: String(input.price),
+          categoryId: input.categoryId,
+          category: input.category,
+          description: input.description,
+          sort: input.sort,
+          status: 1,
+        });
+        const boxId = (result as any).insertId;
+        if (input.goods.length > 0) {
+          await db.insert(boxGoods).values(input.goods.map((g, i) => ({
+            boxId,
+            name: g.name,
+            imageUrl: g.imageUrl,
+            level: g.level,
+            price: String(g.price),
+            probability: String(g.probability),
+            sort: i,
+          })));
+        }
+        return { success: true, id: boxId };
+      }),
+
+    /** 管理员：更新宝笱 */
+    updateBox: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).max(100).optional(),
+        imageUrl: z.string().optional(),
+        goodsBgUrl: z.string().optional(),
+        price: z.number().min(0).optional(),
+        categoryId: z.number().optional(),
+        category: z.string().optional(),
+        description: z.string().optional(),
+        sort: z.number().optional(),
+        status: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { id, price, ...rest } = input;
+        const updates: Record<string, any> = { ...rest };
+        if (price !== undefined) updates.price = String(price);
+        const filtered = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined));
+        await db.update(boxes).set(filtered).where(eq(boxes.id, id));
+        return { success: true };
+      }),
+
+    /** 管理员：删除宝笱 */
+    deleteBox: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await db.delete(boxGoods).where(eq(boxGoods.boxId, input.id));
+        await db.delete(boxes).where(eq(boxes.id, input.id));
+        return { success: true };
+      }),
+
+    /** 管理员：更新宝笱内商品列表（全量替换） */
+    updateBoxGoods: protectedProcedure
+      .input(z.object({
+        boxId: z.number(),
+        goods: z.array(z.object({
+          name: z.string().min(1),
+          imageUrl: z.string().default(""),
+          level: z.number().min(1).max(4).default(3),
+          price: z.number().min(0).default(0),
+          probability: z.number().min(0).default(1),
+        })),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await db.delete(boxGoods).where(eq(boxGoods.boxId, input.boxId));
+        if (input.goods.length > 0) {
+          await db.insert(boxGoods).values(input.goods.map((g, i) => ({
+            boxId: input.boxId,
+            name: g.name,
+            imageUrl: g.imageUrl,
+            level: g.level,
+            price: String(g.price),
+            probability: String(g.probability),
+            sort: i,
+          })));
+        }
         return { success: true };
       }),
   }),

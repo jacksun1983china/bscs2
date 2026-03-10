@@ -529,3 +529,94 @@ export const csQuickReplies = mysqlTable("csQuickReplies", {
 });
 
 export type CsQuickReply = typeof csQuickReplies.$inferSelect;
+
+// ── SKU分类 ──────────────────────────────────────────────────────
+export const skuCategories = mysqlTable("skuCategories", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 分类名称 */
+  name: varchar("name", { length: 100 }).notNull(),
+  /** 分类图标URL */
+  iconUrl: varchar("iconUrl", { length: 500 }).notNull().default(""),
+  /** 排序 */
+  sort: int("sort").notNull().default(0),
+  /** 状态：1启用 0禁用 */
+  status: tinyint("status").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type SkuCategory = typeof skuCategories.$inferSelect;
+export type InsertSkuCategory = typeof skuCategories.$inferInsert;
+
+// ── 箱子配置 ──────────────────────────────────────────────────────
+export const boxes = mysqlTable("boxes", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 箱子名称 */
+  name: varchar("name", { length: 100 }).notNull(),
+  /** 箱子图片URL（封面背景） */
+  imageUrl: varchar("imageUrl", { length: 500 }).notNull().default(""),
+  /** 商品背景图URL */
+  goodsBgUrl: varchar("goodsBgUrl", { length: 500 }).notNull().default(""),
+  /** 开箱价格（金币） */
+  price: decimal("price", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  /** 分类ID（关联skuCategories） */
+  categoryId: int("categoryId").notNull().default(0),
+  /** 分类标签（冗余字段） */
+  category: varchar("category", { length: 50 }).notNull().default("普通"),
+  /** 描述 */
+  description: varchar("description", { length: 500 }).notNull().default(""),
+  /** 排序 */
+  sort: int("sort").notNull().default(0),
+  /** 状态：1启用 0禁用 */
+  status: tinyint("status").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Box = typeof boxes.$inferSelect;
+export type InsertBox = typeof boxes.$inferInsert;
+
+// ── 箱子道具关联 ──────────────────────────────────────────────────────
+export const boxItems = mysqlTable("boxItems", {
+  id: int("id").autoincrement().primaryKey(),
+  boxId: int("boxId").notNull(),
+  itemId: int("itemId").notNull(),
+  /** 出现概率（0-100，百分比） */
+  probability: decimal("probability", { precision: 6, scale: 4 }).notNull().default("1.0000"),
+  /** 排序 */
+  sort: int("sort").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type BoxItem = typeof boxItems.$inferSelect;
+
+// ── 箱子内置商品（直接存储，不依赖items表） ──────────────────────────────────────────────────────
+export const boxGoods = mysqlTable("boxGoods", {
+  id: int("id").autoincrement().primaryKey(),
+  boxId: int("boxId").notNull(),
+  /** 商品名称 */
+  name: varchar("name", { length: 200 }).notNull(),
+  /** 商品图片URL */
+  imageUrl: varchar("imageUrl", { length: 500 }).notNull().default(""),
+  /** 品质等级：1=传说 2=稀有 3=普通 4=回收 */
+  level: tinyint("level").notNull().default(3),
+  /** 市场价值（金币） */
+  price: decimal("price", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  /** 出现概率（百分比，如 0.01 表示 0.01%） */
+  probability: decimal("probability", { precision: 10, scale: 4 }).notNull().default("1.0000"),
+  /** 排序 */
+  sort: int("sort").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type BoxGood = typeof boxGoods.$inferSelect;
+export type InsertBoxGood = typeof boxGoods.$inferInsert;
+
+// ── 网站系统设置 ──────────────────────────────────────────────────────
+export const siteSettings = mysqlTable("siteSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 设置键名 */
+  settingKey: varchar("settingKey", { length: 100 }).notNull().unique(),
+  /** 设置值 */
+  value: text("value").notNull().default(""),
+  /** 描述 */
+  description: varchar("description", { length: 255 }).notNull().default(""),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type SiteSetting = typeof siteSettings.$inferSelect;

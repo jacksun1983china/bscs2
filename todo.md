@@ -195,3 +195,32 @@
 - [x] 前端: 我的页面头像选择弹窗（8男+8女，点击即更换）
 - [x] PlayerInfoBar组件使用getAvatarUrl显示系统头像
 - [x] 所有图片改为相对路径（/img/xxx.png）
+
+## 管理后台补全模块（2026-03-10）
+- [ ] 数据库：boxes（箱子配置表）、boxItems（箱子道具关联表）
+- [ ] 数据库：siteSettings（网站系统设置表）
+- [ ] 后端API：admin.orderList（充值订单列表+搜索+状态筛选）
+- [ ] 后端API：admin.orderStats（订单统计：总金额、今日、本月）
+- [ ] 后端API：admin.manualRecharge（手动充值）
+- [ ] 后端API：admin.boxList / createBox / updateBox / deleteBox
+- [ ] 后端API：admin.boxItemList / addBoxItem / removeBoxItem
+- [ ] 后端API：admin.financeStats（财务统计：总充值、金币流水、每日收入图表）
+- [ ] 后端API：admin.getSiteSettings / updateSiteSettings
+- [ ] 前端：管理后台「订单管理」页面（充值订单列表、手动充值、统计卡片）
+- [ ] 前端：管理后台「箱子配置」页面（箱子列表、创建/编辑箱子、道具配置）
+- [ ] 前端：管理后台「财务统计」页面（统计卡片、金币流水图表、每日收入）
+- [ ] 前端：管理后台「系统设置」页面（网站名称、LOGO、公告、充值档位、游戏设置）
+- [ ] 侧边栏导航：将4个新模块从"功能即将上线"改为真实跳转
+- [ ] 提交到GitHub仓库 jacksun1983china/bscs2
+
+## 从 bdcs2.com 抓取分类和宝箱数据（2026-03-10）
+- [x] 登录 bdcs2.com 后台抓取分类管理数据（名称+图片）
+- [x] 登录 bdcs2.com 后台抓取宝箱管理数据（名称+图片+价格等）
+- [x] 下载所有图片存储到 client/public/img/boxes/（相对路径）
+- [x] 数据库：skuCategories（分类表）、boxes（宝箱表）、boxGoods（宝箱道具）
+- [x] 将分类和宝箱数据写入数据库（4分类、48宝箱、468道具）
+- [x] 后端API：分类管理（列表/创建/编辑/删除）
+- [x] 后端API：宝箱管理（列表/详情/更新状态/删除）
+- [x] 管理后台：分类管理页面
+- [x] 管理后台：宝箱管理页面
+- [x] 侧边栏导航集成
