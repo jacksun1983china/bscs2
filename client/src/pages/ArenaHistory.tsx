@@ -56,6 +56,7 @@ function RecordCard({ record }: { record: RecordItem }) {
   const createdAt = record.createdAt
     ? new Date(typeof record.createdAt === 'object' ? (record.createdAt as Date).getTime() : Number(record.createdAt))
     : null;
+  const isFinished = room.status === 'finished';
 
   return (
     <div
@@ -164,6 +165,44 @@ function RecordCard({ record }: { record: RecordItem }) {
           胜利
         </div>
       )}
+
+      {/* 操作按钮 */}
+      <div
+        style={{ display: 'flex', gap: q(12), marginTop: q(16) }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={() => navigate(`/arena/${record.roomId}`)}
+          style={{
+            flex: 1,
+            padding: `${q(10)} 0`,
+            background: 'rgba(120,60,220,0.2)',
+            border: '1px solid rgba(120,60,220,0.4)',
+            borderRadius: q(10), color: '#c084fc',
+            fontSize: q(22), cursor: 'pointer',
+          }}
+        >
+          查看结果
+        </button>
+        {isFinished && (
+          <button
+            onClick={() => navigate(`/arena/${record.roomId}?replay=1`)}
+            style={{
+              flex: 1,
+              padding: `${q(10)} 0`,
+              background: isWinner
+                ? 'linear-gradient(135deg,rgba(245,200,66,0.25),rgba(200,134,10,0.15))'
+                : 'rgba(96,165,250,0.15)',
+              border: `1px solid ${isWinner ? 'rgba(245,200,66,0.5)' : 'rgba(96,165,250,0.4)'}`,
+              borderRadius: q(10),
+              color: isWinner ? '#f5c842' : '#60a5fa',
+              fontSize: q(22), fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            ▶ 回放
+          </button>
+        )}
+      </div>
     </div>
   );
 }

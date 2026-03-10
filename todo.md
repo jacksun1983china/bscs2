@@ -387,3 +387,19 @@
 - [x] 前端：ArenaHistory.tsx 历史记录页（胜负/开笱总价值/金币盈亏）
 - [x] App.tsx 注册 /arena-history 路由
 - [x] 竞技场页面添加「我的记录」入口按鈕
+
+## 竞技场体验修复（2026-03-11）
+- [ ] 房间列表页显示「我的房间」入口（已创建/加入的房间），支持重新进入
+- [ ] ArenaRoom.tsx 退出按钮改为仅离开页面（navigate('/arena')），不自动取消房间
+- [ ] 等待中的取消房间功能改为独立的「取消房间」按钮，与「返回大厅」分开
+- [ ] 后端：cancelRoom 只允许房主取消，且房间状态为 waiting 时才能取消
+
+## 竞技场规则重构（2026-03-11）
+- [ ] Arena.tsx：创建房间后直接返回列表页（不跳转进入房间）
+- [ ] Arena.tsx：房间卡片点击逻辑 — waiting状态直接navigate进入（不调joinRoom），playing/finished状态也直接navigate
+- [ ] ArenaRoom.tsx：增加「是否在场」标志（isPresent），进入页面时通过WebSocket订阅标记在场
+- [ ] ArenaRoom.tsx：在场模式 — 显示完整开箱动画流程
+- [ ] ArenaRoom.tsx：不在场/已结束模式 — 直接显示最终结果和开箱记录，不播动画
+- [ ] ArenaHistory.tsx：每局记录添加「回放」按钮，跳转到回放页面
+- [ ] ArenaReplay.tsx：新建回放页，读取历史轮次结果，逐轮播放老虎机动画
+- [ ] App.tsx：注册 /arena-replay/:roomId 路由

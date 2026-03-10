@@ -121,7 +121,7 @@ export const arenaRouter = router({
   /** 获取房间详情（含玩家和已有轮次结果） */
   getRoomDetail: publicProcedure
     .input(z.object({ roomId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [room] = await db.select().from(arenaRooms).where(eq(arenaRooms.id, input.roomId));
@@ -136,7 +136,7 @@ export const arenaRouter = router({
         .from(arenaRoundResults)
         .where(eq(arenaRoundResults.roomId, input.roomId))
         .orderBy(arenaRoundResults.roundNo, arenaRoundResults.playerId);
-      // 解析宝箱列表
+      // 解析宝笱列表
       let boxList: Array<{ id: number; name: string; imageUrl: string; price: string }> = [];
       try {
         const boxIds: number[] = JSON.parse(room.boxIds || "[]");
@@ -146,11 +146,17 @@ export const arenaRouter = router({
             const b = boxRows.find((x) => x.id === bid);
             return b
               ? { id: b.id, name: b.name, imageUrl: b.imageUrl, price: b.price }
-              : { id: bid, name: "未知宝箱", imageUrl: "", price: "0.00" };
+              : { id: bid, name: "未知宝笱", imageUrl: "", price: "0.00" };
           });
         }
       } catch {}
-      return { room, players: roomPlayers, roundResults, boxList };
+      // 获取当前登录玩家ID（未登录则为0）
+      let myPlayerId = 0;
+      try {
+        const session = await getPlayerFromCookie((ctx as any).req);
+        if (session) myPlayerId = session.playerId;
+      } catch {}
+      return { room, players: roomPlayers, roundResults, boxList, myPlayerId };
     }),
 
   /** 创建房间 */
@@ -233,12 +239,14 @@ export const arenaRouter = router({
       if (!room) throw new TRPCError({ code: "NOT_FOUND", message: "房间不存在" });
       if (room.status !== "waiting") throw new TRPCError({ code: "BAD_REQUEST", message: "房间已不在等待状态" });
       if (room.currentPlayers >= room.maxPlayers) throw new TRPCError({ code: "BAD_REQUEST", message: "房间已满" });
-      // 检查是否已在房间
+      // 检查是否已在房间（已在房间则直接返回成功，允许重新进入）
       const [existing] = await db
         .select()
         .from(arenaRoomPlayers)
         .where(and(eq(arenaRoomPlayers.roomId, input.roomId), eq(arenaRoomPlayers.playerId, session.playerId)));
-      if (existing) throw new TRPCError({ code: "BAD_REQUEST", message: "您已在房间中" });
+      if (existing) {
+        return { roomId: input.roomId, alreadyJoined: true };
+      }
       // 查询玩家信息
       const [player] = await db.select().from(players).where(eq(players.id, session.playerId));
       if (!player) throw new TRPCError({ code: "NOT_FOUND", message: "玩家不存在" });
@@ -408,6 +416,43 @@ export const arenaRouter = router({
       const summaries = await fetchRoomSummaries();
       broadcastRoomListUpdate(summaries);
       return { success: true };
+    }),
+
+  /** 获取我当前所在的活跃房间（waiting/playing） */
+  getMyActiveRoom: publicProcedure
+    .query(async ({ ctx }) => {
+      const session = await getPlayerFromCookie((ctx as any).req);
+      if (!session) return null;
+      const db = await getDb();
+      if (!db) return null;
+      // 查询玩家已加入的房间
+      const myRoomPlayers = await db
+        .select()
+        .from(arenaRoomPlayers)
+        .where(eq(arenaRoomPlayers.playerId, session.playerId))
+        .orderBy(desc(arenaRoomPlayers.createdAt))
+        .limit(10);
+      if (myRoomPlayers.length === 0) return null;
+      const roomIds = myRoomPlayers.map((p) => p.roomId);
+      // 找到最近的 waiting 或 playing 房间
+      const activeRooms = await db
+        .select()
+        .from(arenaRooms)
+        .where(inArray(arenaRooms.id, roomIds))
+        .orderBy(desc(arenaRooms.createdAt));
+      const active = activeRooms.find((r) => r.status === 'waiting' || r.status === 'playing');
+      if (!active) return null;
+      return {
+        id: active.id,
+        roomNo: active.roomNo,
+        status: active.status,
+        currentPlayers: active.currentPlayers,
+        maxPlayers: active.maxPlayers,
+        rounds: active.rounds,
+        entryFee: active.entryFee,
+        creatorId: active.creatorId,
+        isCreator: active.creatorId === session.playerId,
+      };
     }),
 
   /** 获取我参与的竞技场记录 */

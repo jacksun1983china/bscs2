@@ -283,14 +283,55 @@ function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false }: Playe
 export default function ArenaRoom() {
   const params = useParams<{ id: string }>();
   const roomId = parseInt(params.id || '0');
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const [settingsVisible, setSettingsVisible] = useState(false);
+
+  // 检测 URL 中是否有 ?replay=1 参数
+  const isReplayMode = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('replay') === '1'
+    : false;
+
+  // 回放状态
+  const [replayRound, setReplayRound] = useState(0); // 0 = 未开始，1+ = 当前回放轮次
+  const [isReplaying, setIsReplaying] = useState(false);
+
+  // isPresent: 玩家是否在场（本次页面打开期间在场）
+  // 在场 = 看完整动画；不在场（直接进入已结束房间）= 直接看结果
+  const [isPresent, setIsPresent] = useState(false);
+  const [joinError, setJoinError] = useState('');
+  const [joinLoading, setJoinLoading] = useState(false);
 
   // 房间详情
   const { data: roomDetail, refetch: refetchRoom } = trpc.arena.getRoomDetail.useQuery(
     { roomId },
     { enabled: roomId > 0, refetchOnWindowFocus: false }
   );
+
+  // 进入房间时自动加入（如果房间是waiting且未加入则加入，已加入或playing/finished则直接进入观看）
+  const joinRoom = trpc.arena.joinRoom.useMutation({
+    onSuccess: () => {
+      setIsPresent(true);
+      setJoinLoading(false);
+      refetchRoom();
+    },
+    onError: (err) => {
+      // 房间已满/已结束 → 仍允许进入查看（不在场模式）
+      setJoinLoading(false);
+      if (err.message.includes('已满') || err.message.includes('不在等待')) {
+        setIsPresent(false); // 不在场，直接看结果
+      } else {
+        setJoinError(err.message);
+      }
+    },
+  });
+
+  // 页面加载时尝试加入房间
+  useEffect(() => {
+    if (roomId > 0) {
+      setJoinLoading(true);
+      joinRoom.mutate({ roomId });
+    }
+  }, [roomId]);
 
   // 游戏状态
   const [gameStatus, setGameStatus] = useState<'waiting' | 'playing' | 'finished'>('waiting');
@@ -411,11 +452,34 @@ export default function ArenaRoom() {
   useEffect(() => {
     if (roomDetail?.room) {
       const status = roomDetail.room.status as 'waiting' | 'playing' | 'finished' | 'cancelled';
-      if (status === 'playing') setGameStatus('playing');
-      else if (status === 'finished') setGameStatus('finished');
+      if (status === 'playing') {
+        setGameStatus('playing');
+        setIsPresent(true); // 游戏进行中进入，标记为在场
+      } else if (status === 'finished') {
+        setGameStatus('finished');
+        // 如果房间已结束且不在场，且还没有gameOverData，尝试从玩家列表构建结果
+        if (!isPresent && !gameOverData && roomDetail.players.length > 0) {
+          // 计算每个玩家的总价值
+          const playerTotals: Record<number, number> = {};
+          for (const r of roomDetail.roundResults) {
+            playerTotals[r.playerId] = (playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue);
+          }
+          const maxVal = Math.max(...Object.values(playerTotals));
+          const overPlayers = roomDetail.players.map((p) => ({
+            playerId: p.playerId,
+            nickname: p.nickname,
+            avatar: p.avatar,
+            seatNo: p.seatNo,
+            totalValue: (playerTotals[p.playerId] ?? 0).toFixed(2),
+            isWinner: (playerTotals[p.playerId] ?? 0) === maxVal,
+          }));
+          const winner = overPlayers.find((p) => p.isWinner);
+          setGameOverData({ winnerId: winner?.playerId ?? 0, players: overPlayers });
+        }
+      }
       if (roomDetail.room.currentRound > 0) setCurrentRound(roomDetail.room.currentRound);
     }
-  }, [roomDetail]);
+  }, [roomDetail, isPresent, gameOverData]);
 
   // 同步已有轮次结果
   useEffect(() => {
@@ -438,10 +502,65 @@ export default function ArenaRoom() {
     }
   }, [roomDetail?.roundResults]);
 
+  // 回放模式：页面加载完成且有历史数据后自动开始回放
+  useEffect(() => {
+    if (
+      isReplayMode &&
+      !isReplaying &&
+      roomDetail?.roundResults &&
+      roomDetail.roundResults.length > 0 &&
+      roomDetail.players.length > 0
+    ) {
+      setIsReplaying(true);
+      setGameStatus('playing');
+      setGameOverData(null);
+      setRoundResults({});
+      setCurrentRound(1);
+      setCurrentRoundItems({});
+      setSpinning(false);
+      setSpinDoneCount(0);
+    }
+  }, [isReplayMode, roomDetail?.roundResults, roomDetail?.players]);
+
+  // 回放模式：每轮结束后自动进入下一轮
+  useEffect(() => {
+    if (!isReplaying || !roomDetail?.roundResults) return;
+    const allRoundNos = Array.from(new Set(roomDetail.roundResults.map((r) => r.roundNo))).sort((a, b) => a - b);
+    const totalReplayRounds = allRoundNos.length;
+    if (replayRound > 0 && replayRound <= totalReplayRounds && !spinning) {
+      const roundNo = allRoundNos[replayRound - 1];
+      const resultsForRound = roomDetail.roundResults.filter((r) => r.roundNo === roundNo);
+      const itemMap: typeof currentRoundItems = {};
+      for (const r of resultsForRound) {
+        itemMap[r.playerId] = {
+          goodsId: r.goodsId,
+          goodsName: r.goodsName,
+          goodsImage: r.goodsImage,
+          goodsLevel: r.goodsLevel,
+          goodsValue: r.goodsValue,
+        };
+      }
+      setCurrentRoundItems(itemMap);
+      setSpinning(true);
+      setSpinDoneCount(0);
+    }
+  }, [isReplaying, replayRound, spinning]);
+
+  // 回放模式开始第一轮
+  useEffect(() => {
+    if (isReplaying && replayRound === 0) {
+      const timer = setTimeout(() => setReplayRound(1), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [isReplaying, replayRound]);
+
   const room = roomDetail?.room;
   const players = roomDetail?.players ?? [];
   const maxPlayers = room?.maxPlayers ?? 2;
   const totalRounds = room?.rounds ?? 1;
+
+  const myPlayerId = roomDetail?.myPlayerId ?? 0;
+  const isCreator = room ? room.creatorId === myPlayerId : false;
 
   // 当所有老虎机都滚完时
   const handleSlotDone = useCallback(() => {
@@ -449,37 +568,88 @@ export default function ArenaRoom() {
       const next = prev + 1;
       if (next >= maxPlayers) {
         setSpinning(false);
-        // 保存本轮结果
-      const newResults = Object.entries(currentRoundItems).map(([pid, item]) => {
-                  const p = players.find((pl) => pl.playerId === Number(pid));
-                  return {
-                    playerId: Number(pid),
-                    nickname: p?.nickname ?? '',
-                    seatNo: p?.seatNo ?? 0,
-                    ...item,
-                  };
-                });
-              setRoundResults((prev2) => ({
-                ...prev2,
-                [currentRound]: newResults,
+
+        if (isReplaying && roomDetail?.roundResults) {
+          // 回放模式：保存本轮结果并推进回放轮次
+          const allRoundNos = Array.from(new Set(roomDetail.roundResults.map((r) => r.roundNo))).sort((a, b) => a - b);
+          const totalReplayRounds = allRoundNos.length;
+          const roundNo = allRoundNos[replayRound - 1];
+          const resultsForRound = roomDetail.roundResults.filter((r) => r.roundNo === roundNo);
+          const newResults = resultsForRound.map((r) => {
+            const p = players.find((pl) => pl.playerId === r.playerId);
+            return { ...r, nickname: p?.nickname ?? '', seatNo: p?.seatNo ?? 0 };
+          });
+          setRoundResults((prev2) => ({ ...prev2, [replayRound]: newResults }));
+
+          if (replayRound < totalReplayRounds) {
+            // 进入下一回放轮
+            setTimeout(() => {
+              setReplayRound((r) => r + 1);
+              setCurrentRound((r) => r + 1);
+              setCurrentRoundItems({});
+            }, 1200);
+          } else {
+            // 回放结束，显示胜负结果
+            setTimeout(() => {
+              const playerTotals: Record<number, number> = {};
+              for (const r of roomDetail.roundResults) {
+                playerTotals[r.playerId] = (playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue);
+              }
+              const maxVal = Math.max(...Object.values(playerTotals));
+              const overPlayers = roomDetail.players.map((p) => ({
+                playerId: p.playerId,
+                nickname: p.nickname,
+                avatar: p.avatar,
+                seatNo: p.seatNo,
+                totalValue: (playerTotals[p.playerId] ?? 0).toFixed(2),
+                isWinner: (playerTotals[p.playerId] ?? 0) === maxVal,
               }));
-        // 进入下一轮
-        if (currentRound < totalRounds) {
-          setTimeout(() => {
-            setCurrentRound((r) => r + 1);
-            setCurrentRoundItems({});
-          }, 1200);
+              const winner = overPlayers.find((p) => p.isWinner);
+              setGameOverData({ winnerId: winner?.playerId ?? 0, players: overPlayers });
+              setGameStatus('finished');
+              setIsReplaying(false);
+              if (winner?.playerId === myPlayerId) playWinFanfare();
+              else playLoseTone();
+            }, 1200);
+          }
+        } else {
+          // 正常模式：保存本轮结果
+          const newResults = Object.entries(currentRoundItems).map(([pid, item]) => {
+            const p = players.find((pl) => pl.playerId === Number(pid));
+            return { playerId: Number(pid), nickname: p?.nickname ?? '', seatNo: p?.seatNo ?? 0, ...item };
+          });
+          setRoundResults((prev2) => ({ ...prev2, [currentRound]: newResults }));
+          // 进入下一轮
+          if (currentRound < totalRounds) {
+            setTimeout(() => {
+              setCurrentRound((r) => r + 1);
+              setCurrentRoundItems({});
+            }, 1200);
+          }
         }
       }
       return next;
     });
-  }, [maxPlayers, currentRound, totalRounds, currentRoundItems, players]);
+  }, [maxPlayers, currentRound, totalRounds, currentRoundItems, players, isReplaying, replayRound, roomDetail?.roundResults, roomDetail?.players, myPlayerId]);
 
-  // 取消房间
-  const cancelRoom = trpc.arena.cancelRoom.useMutation({
-    onSuccess: () => navigate('/arena'),
-    onError: (err) => alert(err.message),
-  });
+  // 房间不允许取消，已移除 cancelRoom
+
+  if (joinLoading && !room) {
+    return (
+      <div className="phone-container" style={{ display: 'flex', flexDirection: 'column', containerType: 'inline-size', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ color: '#9ca3af', fontSize: q(28) }}>进入房间中...</div>
+      </div>
+    );
+  }
+
+  if (joinError) {
+    return (
+      <div className="phone-container" style={{ display: 'flex', flexDirection: 'column', containerType: 'inline-size', alignItems: 'center', justifyContent: 'center', gap: q(20) }}>
+        <div style={{ color: '#ef4444', fontSize: q(28) }}>{joinError}</div>
+        <button onClick={() => navigate('/arena')} style={{ padding: `${q(12)} ${q(32)}`, background: 'rgba(120,60,220,0.3)', border: '1px solid #c084fc', borderRadius: q(10), color: '#c084fc', fontSize: q(24), cursor: 'pointer' }}>返回大厅</button>
+      </div>
+    );
+  }
 
   if (!room) {
     return (
@@ -521,18 +691,7 @@ export default function ArenaRoom() {
             <span style={{ color: '#9ca3af', fontSize: q(22) }}>
               {gameStatus === 'waiting' ? '等待中' : gameStatus === 'playing' ? `第 ${currentRound}/${totalRounds} 轮` : '已结束'}
             </span>
-            {gameStatus === 'waiting' && (
-              <button
-                onClick={() => cancelRoom.mutate({ roomId })}
-                style={{
-                  padding: `${q(6)} ${q(16)}`,
-                  background: 'rgba(239,68,68,0.2)',
-                  border: '1px solid #ef4444',
-                  borderRadius: q(8), color: '#ef4444',
-                  fontSize: q(20), cursor: 'pointer',
-                }}
-              >取消</button>
-            )}
+            {/* 房间不允许取消 */}
           </div>
         </div>
 

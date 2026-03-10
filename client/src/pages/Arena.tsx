@@ -339,14 +339,8 @@ export default function Arena() {
 
   const displayRooms = liveRooms ?? roomsData;
 
-  const joinRoom = trpc.arena.joinRoom.useMutation({
-    onSuccess: (data, variables) => {
-      navigate(`/arena/${variables.roomId}`);
-    },
-    onError: (err) => {
-      alert(err.message);
-    },
-  });
+  // 点击房间卡片：直接进入房间页面，不在列表页调 joinRoom
+  // joinRoom 逻辑移到 ArenaRoom.tsx 内部处理（进入时自动判断是否已在房间）
 
   return (
     <div className="phone-container" style={{ display: 'flex', flexDirection: 'column', containerType: 'inline-size', position: 'relative' }}>
@@ -429,13 +423,7 @@ export default function Arena() {
             <RoomCard
               key={room.id}
               room={room}
-              onClick={() => {
-                if (room.status === 'waiting') {
-                  joinRoom.mutate({ roomId: room.id });
-                } else {
-                  navigate(`/arena/${room.id}`);
-                }
-              }}
+              onClick={() => navigate(`/arena/${room.id}`)}
             />
           ))
         )}
@@ -445,9 +433,10 @@ export default function Arena() {
       {showCreate && (
         <CreateRoomModal
           onClose={() => setShowCreate(false)}
-          onCreated={(roomId) => {
+          onCreated={(_roomId) => {
+            // 创建房间后直接关闭弹窗返回列表页，不跳转进入房间
             setShowCreate(false);
-            navigate(`/arena/${roomId}`);
+            refetch(); // 刷新房间列表
           }}
         />
       )}
