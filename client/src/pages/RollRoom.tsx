@@ -338,11 +338,11 @@ export default function RollRoom() {
         {/* 顶部固定区（不滚动）：导航栏 + 用户信息卡 */}
         <div style={{ position: 'relative', width: '100%', flexShrink: 0 }}>
           <div style={{ height: q(31) }} />
-          {/* 导航栏（703×58px, margin: 53px 0 0 24px） */}
+          {/* 导航栏（703×58px, margin: 0 0 0 24px） */}
           <div style={{
             width: q(703),
             height: q(58),
-            marginTop: q(53),
+            marginTop: 0,
             marginLeft: q(24),
             display: 'flex',
             flexDirection: 'row',

@@ -275,6 +275,7 @@ export default function RollRoomDetail() {
         backgroundPosition: 'top center',
         position: 'relative',
         containerType: 'inline-size',
+        overflowX: 'hidden',
       }}
     >
       {/* 内容层（flex:1，可滚动） */}
@@ -307,7 +308,7 @@ export default function RollRoomDetail() {
           <div style={{ position: 'relative', width: '100%', }}>
 
             {/* 用户信息卡（公共组件 PlayerInfoCard） */}
-            <PlayerInfoCard style={{ marginTop: q(18), marginLeft: q(38) }} />
+            <PlayerInfoCard style={{ marginTop: q(18) }} />
 
             {/* group_6：暗色背景分隔区（750×100px, margin: 387px 0 21px 0） */}
             <div style={{
