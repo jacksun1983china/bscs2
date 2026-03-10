@@ -332,8 +332,8 @@ export default function RollRoom() {
         <div style={{ position: 'absolute', inset: 0, backgroundImage: `url(${R.bgBox2})`, backgroundSize: 'cover', backgroundRepeat: 'no-repeat', backgroundPosition: 'center top' }} />
       </div>
 
-      {/* 内容层（flex: 1，内部分为顶部导航（不滚动）+ 可滚动内容区），底部留出 BottomNav 的高度空间 */}
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, paddingBottom: q(90) }}>
+      {/* 内容层（flex: 1，内部分为顶部导航（不滚动）+ 可滚动内容区），底部不留白，BottomNav absolute 叠加在上面 */}
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
         {/* 顶部固定区（不滚动）：导航栏 + 用户信息卡 */}
         <div style={{ position: 'relative', width: '100%', flexShrink: 0 }}>
