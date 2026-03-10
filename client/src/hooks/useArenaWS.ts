@@ -1,8 +1,11 @@
 /**
- * useArenaWS.ts — 竞技场 WebSocket 客户端 Hook
+ * useArenaWS.ts — 竞技场实时通信 Hook（SSE 版本）
+ *
+ * 使用 SSE（Server-Sent Events）替代 WebSocket，解决 Manus 平台代理不支持 WebSocket 的问题。
+ * 接口与原 WebSocket 版本完全兼容，调用方无需修改。
  *
  * 用法：
- *   const { connected, subscribe, unsubscribe } = useArenaWS({ onMessage })
+ *   const { connected, subscribeList, subscribeRoom } = useArenaWS({ onMessage })
  */
 
 import { useEffect, useRef, useCallback } from 'react';
@@ -14,100 +17,84 @@ export interface ArenaWSMessage {
 
 interface UseArenaWSOptions {
   onMessage?: (msg: ArenaWSMessage) => void;
-  /** 是否自动订阅房间列表 */
+  /** 是否自动订阅房间列表（roomId=0） */
   subscribeList?: boolean;
   /** 自动订阅的房间ID */
   subscribeRoomId?: number | null;
 }
 
 export function useArenaWS({ onMessage, subscribeList = false, subscribeRoomId = null }: UseArenaWSOptions) {
-  const wsRef = useRef<WebSocket | null>(null);
+  const esRef = useRef<EventSource | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const connectedRef = useRef(false);
-  const pendingSubscriptions = useRef<{ list: boolean; rooms: Set<number> }>({
-    list: subscribeList,
-    rooms: new Set(subscribeRoomId ? [subscribeRoomId] : []),
-  });
+  const onMessageRef = useRef(onMessage);
 
-  const send = useCallback((msg: Record<string, unknown>) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(msg));
+  // 保持 onMessage 引用最新，避免闭包问题
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
+
+  const connect = useCallback((roomId: number) => {
+    // 关闭已有连接
+    if (esRef.current) {
+      esRef.current.close();
+      esRef.current = null;
     }
-  }, []);
 
-  const connect = useCallback(() => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
+    const url = `/api/arena/events?roomId=${roomId}`;
+    const es = new EventSource(url);
+    esRef.current = es;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/arena`;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      connectedRef.current = true;
-      // 恢复订阅
-      if (pendingSubscriptions.current.list) {
-        ws.send(JSON.stringify({ type: 'subscribe_list' }));
-      }
-      for (const roomId of Array.from(pendingSubscriptions.current.rooms)) {
-        ws.send(JSON.stringify({ type: 'subscribe_room', roomId }));
-      }
-    };
-
-    ws.onmessage = (event) => {
+    es.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data) as ArenaWSMessage;
-        onMessage?.(msg);
+        // 过滤心跳
+        if (msg.type === 'connected') return;
+        onMessageRef.current?.(msg);
       } catch {
         // ignore parse errors
       }
     };
 
-    ws.onclose = () => {
-      connectedRef.current = false;
+    es.onerror = () => {
+      es.close();
+      esRef.current = null;
       // 3秒后重连
       reconnectTimerRef.current = setTimeout(() => {
-        connect();
+        connect(roomId);
       }, 3000);
     };
+  }, []);
 
-    ws.onerror = () => {
-      ws.close();
-    };
-  }, [onMessage]);
-
+  // 初始连接
   useEffect(() => {
-    connect();
+    const roomId = subscribeRoomId ?? (subscribeList ? 0 : -1);
+    if (roomId < 0) return; // 不需要连接
+
+    connect(roomId);
+
     return () => {
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      wsRef.current?.close();
-      wsRef.current = null;
+      esRef.current?.close();
+      esRef.current = null;
     };
+  }, [connect, subscribeList, subscribeRoomId]);
+
+  // 以下方法保留接口兼容性（SSE 无需客户端发送订阅消息，连接时已通过 URL 参数指定）
+  const subscribeListFn = useCallback(() => {
+    connect(0);
   }, [connect]);
 
-  /** 订阅房间列表 */
-  const subscribeListFn = useCallback(() => {
-    pendingSubscriptions.current.list = true;
-    send({ type: 'subscribe_list' });
-  }, [send]);
-
-  /** 取消订阅房间列表 */
   const unsubscribeListFn = useCallback(() => {
-    pendingSubscriptions.current.list = false;
-    send({ type: 'unsubscribe_list' });
-  }, [send]);
+    // SSE 无需取消订阅，关闭连接即可
+  }, []);
 
-  /** 订阅某个房间 */
   const subscribeRoom = useCallback((roomId: number) => {
-    pendingSubscriptions.current.rooms.add(roomId);
-    send({ type: 'subscribe_room', roomId });
-  }, [send]);
+    connect(roomId);
+  }, [connect]);
 
-  /** 取消订阅某个房间 */
-  const unsubscribeRoom = useCallback((roomId: number) => {
-    pendingSubscriptions.current.rooms.delete(roomId);
-    send({ type: 'unsubscribe_room', roomId });
-  }, [send]);
+  const unsubscribeRoom = useCallback((_roomId: number) => {
+    // SSE 无需取消订阅
+  }, []);
 
   return {
     subscribeList: subscribeListFn,

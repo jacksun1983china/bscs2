@@ -443,3 +443,16 @@
 ## 开场动画修复与3人版（2026-03-11）
 - [x] 修复2人开场动画：等待双方玩家头像都准备好再触发，同时从两侧飞入，不能先出现一个
 - [x] 新增3人版量子纠缠开场动画：三角形布局，三方头像同时飞入，之间有闪电链连接，最终爆炸光效散开
+
+## Banner蒙版修复（2026-03-11）
+- [ ] 恢复原始轮播背景图，蒙版PNG只用于裁剪形状，不替换背景图
+
+## Banner底框修复（2026-03-11）
+- [ ] 将霓虹边框图（701b6ae6...png）放在Banner底层作为底框装饰，Banner图片在其上方用蒙版裁剪成圆角显示
+
+## WebSocket → SSE 改造（修复生产环境实时通信）
+- [x] 服务端：新建 server/arenaSSE.ts，用 SSE 替换 WebSocket 广播
+- [x] 服务端：在 server/_core/index.ts 挂载 SSE 端点 /api/arena/events
+- [x] 客户端：重写 useArenaWS hook，用 EventSource 替换 WebSocket
+- [x] 修复 arenaBot.ts 数据库 ECONNRESET 时自动重置重连
+- [ ] 发布到生产环境并测试机器人自动加入

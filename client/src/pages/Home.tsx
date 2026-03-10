@@ -153,15 +153,32 @@ export default function Home() {
           }}
           onClick={handleBannerClick}
         >
-          {/* Banner 图片层：用蒙版PNG的Alpha通道裁剪 */}
+          {/* 底层：霏虹边框图（701b6ae6...png）作为底框装饰 */}
+          <img
+            src="/img/701b6ae6376947b76d1b867bdd8e2d0d.png"
+            alt=""
+            style={{
+              position: 'absolute',
+              width: '100%',
+              height: '100%',
+              top: 0,
+              left: 0,
+              objectFit: 'fill',
+              zIndex: 0,
+              pointerEvents: 'none',
+            }}
+          />
+
+          {/* 中间层：Banner图片，用蒙版PNG裁剪成圆角，显示在边框内部 */}
           <div
             style={{
               position: 'absolute',
-              width: q(750),
-              height: q(340),
-              top: 0,
-              left: 0,
-              // 使用蒙版图的Alpha通道裁剪内容（蓝色区域显示，四角透明区域被裁掉）
+              // 内缩一小圈，让边框图的外框能显示出来
+              top: '6%',
+              left: '2.5%',
+              width: '95%',
+              height: '88%',
+              // 使用蒙版图的Alpha通道裁剪内容
               WebkitMaskImage: `url(/img/banner-mask.png)`,
               WebkitMaskSize: '100% 100%',
               WebkitMaskRepeat: 'no-repeat',
@@ -169,6 +186,7 @@ export default function Home() {
               maskSize: '100% 100%',
               maskRepeat: 'no-repeat',
               overflow: 'hidden',
+              zIndex: 1,
             }}
           >
             {banners.map((b, i) => (
@@ -191,17 +209,6 @@ export default function Home() {
               />
             ))}
           </div>
-
-          {/* 霸虹边框装饰（不使用框架图，避免色偏） */}
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            border: '1.5px solid rgba(120,60,220,0.6)',
-            borderRadius: q(20),
-            boxShadow: '0 0 12px rgba(100,40,200,0.5), inset 0 0 20px rgba(0,0,0,0.15)',
-            pointerEvents: 'none',
-            zIndex: 4,
-          }} />
 
           {banners.length > 1 && (
             <div style={{ position: 'absolute', bottom: q(16), left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: q(6), zIndex: 5 }}>

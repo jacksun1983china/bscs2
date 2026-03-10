@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { initArenaWs } from "../arenaWs";
+import { initArenaSSE } from "../arenaSSE";
 import { startBotLoop } from "../arenaBot";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -45,6 +46,9 @@ async function startServer() {
       createContext,
     })
   );
+  // 挂载竞技场 SSE 服务（在静态文件之前）
+  initArenaSSE(app);
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

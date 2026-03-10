@@ -9,7 +9,7 @@
  *   5. 机器人的开箱结果由服务端正常随机决定（与真实玩家相同概率）
  */
 
-import { getDb } from "./db";
+import { getDb, resetDb } from "./db";
 import {
   arenaRooms,
   arenaRoomPlayers,
@@ -24,7 +24,7 @@ import {
   broadcastRoundResult,
   broadcastGameOver,
   broadcastRoomListUpdate,
-} from "./arenaWs";
+} from "./arenaSSE";
 
 // ── 配置 ──────────────────────────────────────────────────────────────────
 const BOT_CHECK_INTERVAL = 8000;   // 每8秒检测一次
@@ -255,8 +255,13 @@ export function startBotLoop() {
   setInterval(async () => {
     try {
       await checkAndFillRooms();
-    } catch (err) {
+    } catch (err: any) {
       console.error("[ArenaBot] 检测房间出错:", err);
+      // 数据库连接断开时重置，下次自动重连
+      if (err?.cause?.message?.includes('ECONNRESET') || err?.message?.includes('ECONNRESET')) {
+        console.log('[ArenaBot] 数据库连接断开，重置连接...');
+        resetDb();
+      }
     }
   }, BOT_CHECK_INTERVAL);
 }

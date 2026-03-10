@@ -31,7 +31,7 @@ import {
   broadcastRoundResult,
   broadcastGameOver,
   broadcastRoomCancelled,
-} from "./arenaWs";
+} from "./arenaSSE";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
 const PLAYER_COOKIE = "bdcs2_player_token";
