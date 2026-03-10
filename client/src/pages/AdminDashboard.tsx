@@ -244,11 +244,6 @@ const I18N = {
   },
 };
 
-// 管理员账号（模拟，后续可接数据库）
-const ADMIN_ACCOUNTS = [
-  { account: 'admin', password: 'admin123' },
-];
-
 // ── 玩家详情弹窗 ────────────────────────────────────────────────
 function PlayerDetailModal({
   playerId, onClose, t,
@@ -326,22 +321,26 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
   const [loading, setLoading] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
 
+  const loginMutation = trpc.admin.login.useMutation({
+    onSuccess: (data) => {
+      localStorage.setItem('bdcs2_admin_session', JSON.stringify({ account: data.account, loginAt: Date.now() }));
+      onLogin(data.account);
+      toast.success(lang === 'zh' ? '登录成功' : 'Login successful');
+      setLoading(false);
+    },
+    onError: (e) => {
+      toast.error(e.message || t.loginError);
+      setLoading(false);
+    },
+  });
+
   const handleLogin = async () => {
     if (!account.trim() || !password.trim()) {
       toast.error(lang === 'zh' ? '请填写账号和密码' : 'Please fill in all fields');
       return;
     }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 600));
-    const found = ADMIN_ACCOUNTS.find(a => a.account === account && a.password === password);
-    if (found) {
-      localStorage.setItem('bdcs2_admin_session', JSON.stringify({ account, loginAt: Date.now() }));
-      onLogin(account);
-      toast.success(lang === 'zh' ? '登录成功' : 'Login successful');
-    } else {
-      toast.error(t.loginError);
-    }
-    setLoading(false);
+    loginMutation.mutate({ account, password });
   };
 
   return (
@@ -532,11 +531,22 @@ export default function AdminDashboard() {
     return () => { document.body.classList.remove('admin-mode'); };
   }, []);
 
+  const logoutMutation = trpc.admin.logout.useMutation({
+    onSuccess: () => {
+      localStorage.removeItem('bdcs2_admin_session');
+      setAdminAccount(null);
+      toast.success(lang === 'zh' ? '已退出登录' : 'Logged out');
+    },
+    onError: () => {
+      // 即使服务端失败，也清除本地session
+      localStorage.removeItem('bdcs2_admin_session');
+      setAdminAccount(null);
+    },
+  });
+
   const handleLogout = useCallback(() => {
-    localStorage.removeItem('bdcs2_admin_session');
-    setAdminAccount(null);
-    toast.success(lang === 'zh' ? '已退出登录' : 'Logged out');
-  }, [lang]);
+    logoutMutation.mutate();
+  }, [logoutMutation]);
 
   const [activeMenu, setActiveMenu] = useState<string>('players');
   const [page, setPage] = useState(1);

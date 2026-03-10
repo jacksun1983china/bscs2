@@ -359,6 +359,41 @@ export const appRouter = router({
 
   // ── 管理后台 ──────────────────────────────────────────────────
   admin: router({
+    // 管理员登录（独立账号密码，不依赖Manus OAuth）
+    login: publicProcedure
+      .input(z.object({ account: z.string(), password: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const ADMIN_ACCOUNTS = [
+          { account: 'admin', password: 'admin123' },
+        ];
+        const found = ADMIN_ACCOUNTS.find(a => a.account === input.account && a.password === input.password);
+        if (!found) throw new TRPCError({ code: 'UNAUTHORIZED', message: '账号或密码错误' });
+        // 签发管理员JWT token
+        const token = await new SignJWT({ type: 'admin', account: input.account })
+          .setProtectedHeader({ alg: 'HS256' })
+          .setIssuedAt()
+          .setExpirationTime('8h')
+          .sign(JWT_SECRET);
+        // 设置 cookie
+        const isSecure = (ctx.req as any).protocol === 'https' ||
+          ((ctx.req as any).headers?.['x-forwarded-proto'] || '').includes('https');
+        ctx.res.cookie('bdcs2_admin_token', token, {
+          httpOnly: true,
+          secure: isSecure,
+          sameSite: isSecure ? 'none' : 'lax',
+          maxAge: 8 * 3600 * 1000,
+          path: '/',
+        });
+        return { success: true, account: input.account };
+      }),
+
+    // 管理员退出
+    logout: publicProcedure
+      .mutation(async ({ ctx }) => {
+        ctx.res.clearCookie('bdcs2_admin_token', { path: '/' });
+        return { success: true };
+      }),
+
     // 玩家管理
     playerList: protectedProcedure
       .input(z.object({ page: z.number().min(1).default(1), limit: z.number().min(1).max(100).default(15), keyword: z.string().optional(), status: z.number().optional(), vipLevel: z.number().optional() }))
