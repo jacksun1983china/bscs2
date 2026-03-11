@@ -219,6 +219,9 @@ export default function DingDong() {
       setIsSpinning(false);
       isSpinningRef.current = false;
 
+      // ★ 光标停止后停留 1.5 秒，让玩家看清楚停在哪里
+      await new Promise<void>(res => setTimeout(res, 1500));
+
       const bets = result.bets as Record<number, number>;
       setLastResult({
         isWin: result.isWin,
@@ -232,16 +235,15 @@ export default function DingDong() {
       if (result.isWin) {
         playWin();
         setPendingWinAmount(result.winAmount);
-        // 中奖：先显示光圈动画（showResult），2.5秒后再弹出押大小
+        // 中奖：先显示光圈动画（showResult），2.5 秒后再弹出押大小
         setShowResult(true);
         setTimeout(() => {
           setShowResult(false);
           setShowDicePhase(true);
         }, 2500);
       } else {
-        // 未中奖：不显示动画，直接播放失败音效，加快进程
+        // 未中奖：播放失败音效，停留后直接结束
         playLose();
-        // 不调用 setShowResult(true)，直接结束
       }
 
       await refetchPlayer();
