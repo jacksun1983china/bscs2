@@ -997,6 +997,29 @@ export default function ArenaRoom() {
     });
   }, [maxPlayers, currentRound, totalRounds, currentRoundItems, players, isReplaying, replayRound, roomDetail?.roundResults, roomDetail?.players, myPlayerId]);
 
+  // ── 开场动画完成回调（用 useCallback 稳定引用，避免 ArenaIntroAnimation 的 useEffect 因引用变化而重置计时器） ──
+  const handleIntroComplete = useCallback(() => {
+    showIntroRef.current = false; // 开场动画已结束
+    setShowIntro(false);
+    // 回放模式：开场动画完成，解除等待状态，允许 slot 开始
+    if (isReplaying) {
+      setReplayWaitingIntro(false);
+    }
+    // 实时模式：如果开场动画期间有缓存的 round_result，现在触发 slot 动画
+    if (pendingSpinRef.current) {
+      const pending = pendingSpinRef.current;
+      pendingSpinRef.current = null;
+      // 延迟 100ms 确保 React 状态已更新
+      setTimeout(() => {
+        setCurrentRoundItems(pending.itemMap);
+        setCurrentRound(pending.roundNo);
+        setSpinning(true);
+        setSpinDoneCount(0);
+        setSkipGameAnim(false);
+      }, 100);
+    }
+  }, [isReplaying]); // isReplaying 是唯一需要的依赖，其余通过 ref 访问
+
   if (joinLoading && !room) {
     return (
       <div className="phone-container" style={{ display: 'flex', flexDirection: 'column', containerType: 'inline-size', alignItems: 'center', justifyContent: 'center' }}>
@@ -1112,27 +1135,7 @@ export default function ArenaRoom() {
             avatar: p?.avatar ?? '001',
           }))}
           skip={skipIntro}
-          onComplete={() => {
-            showIntroRef.current = false; // 开场动画已结束
-            setShowIntro(false);
-            // 回放模式：开场动画完成，解除等待状态，允许 slot 开始
-            if (isReplaying) {
-              setReplayWaitingIntro(false);
-            }
-            // 实时模式：如果开场动画期间有缓存的 round_result，现在触发 slot 动画
-            if (pendingSpinRef.current) {
-              const pending = pendingSpinRef.current;
-              pendingSpinRef.current = null;
-              // 延迟 100ms 确保 React 状态已更新
-              setTimeout(() => {
-                setCurrentRoundItems(pending.itemMap);
-                setCurrentRound(pending.roundNo);
-                setSpinning(true);
-                setSpinDoneCount(0);
-                setSkipGameAnim(false);
-              }, 100);
-            }
-          }}
+          onComplete={handleIntroComplete}
         />
       )}
 
