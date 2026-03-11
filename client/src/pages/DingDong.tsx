@@ -88,8 +88,16 @@ export default function DingDong() {
   const [cursorPos, setCursorPos] = useState<number>(0);
   const rafRef = useRef<number>(0);
   const prevTimeRef = useRef<number>(0);
-  const speedRef = useRef<number>(0.015); // 格/ms（待机慢速）
+  const speedRef = useRef<number>(0); // 格/ms（当前速度）
   const targetPosRef = useRef<number | null>(null); // 目标停止位置
+
+  // 三段式动画状态机
+  const spinPhaseRef = useRef<'idle' | 'accelerating' | 'spinning' | 'decelerating'>('idle');
+  // 动画参数（可调）
+  const SPEED_MAX = 0.10;    // 匀速峰值（格/ms）≈ 每秒 2 格
+  const SPEED_ACCEL = 0.00020; // 加速度（格/ms²）约 0.5s 达到峰值
+  const SPEED_DECEL = 0.00010; // 减速度（格/ms²）约 1s 减到 0
+  const DECEL_DIST = 6;      // 距目标还有多少格时切换减速阶段
 
   // 开奖结果
   const [lastResult, setLastResult] = useState<{
@@ -106,33 +114,59 @@ export default function DingDong() {
   const [diceResult, setDiceResult] = useState<{ win: boolean; value: number; amount: number } | null>(null);
   const [pendingWinAmount, setPendingWinAmount] = useState(0);
 
-  // ── 光标动画 ──────────────────────────────────────────────────
+  // ── 光标动画（三段式状态机） ─────────────────────────────────
   useEffect(() => {
     const loop = (t: number) => {
       if (prevTimeRef.current) {
-        const dt = t - prevTimeRef.current;
+        const dt = Math.min(t - prevTimeRef.current, 50); // 防止切标后大跳跃
+        const phase = spinPhaseRef.current;
         const target = targetPosRef.current;
 
-        if (target !== null) {
-          // 正在减速停止
-          const dist = (target - cursorPosRef.current + OUTER_RING.length) % OUTER_RING.length;
-          if (dist < 0.15) {
-            // 到达目标
-            cursorPosRef.current = target;
-            setCursorPos(target);
-            targetPosRef.current = null;
-            speedRef.current = 0.015;
-          } else {
-            // 减速
-            const slowFactor = Math.max(0.15, dist / OUTER_RING.length);
-            const step = Math.min(speedRef.current * dt * slowFactor * 3, dist);
-            cursorPosRef.current = (cursorPosRef.current + step) % OUTER_RING.length;
-            setCursorPos(cursorPosRef.current);
-          }
-        } else if (isSpinningRef.current) {
-          // 旋转中才移动光标（待机状态静止不动）
+        if (phase === 'idle') {
+          // 待机：静止不动
+        } else if (phase === 'accelerating') {
+          // 加速阶段：速度逐渐增大到 SPEED_MAX
+          speedRef.current = Math.min(speedRef.current + SPEED_ACCEL * dt, SPEED_MAX);
           cursorPosRef.current = (cursorPosRef.current + speedRef.current * dt) % OUTER_RING.length;
           setCursorPos(cursorPosRef.current);
+          if (speedRef.current >= SPEED_MAX) {
+            spinPhaseRef.current = 'spinning';
+          }
+        } else if (phase === 'spinning') {
+          // 匀速阶段：如果有目标且距离小于 DECEL_DIST，切换减速
+          if (target !== null) {
+            const dist = (target - cursorPosRef.current + OUTER_RING.length) % OUTER_RING.length;
+            if (dist <= DECEL_DIST) {
+              spinPhaseRef.current = 'decelerating';
+            }
+          }
+          cursorPosRef.current = (cursorPosRef.current + speedRef.current * dt) % OUTER_RING.length;
+          setCursorPos(cursorPosRef.current);
+        } else if (phase === 'decelerating') {
+          // 减速收尾阶段
+          if (target !== null) {
+            const dist = (target - cursorPosRef.current + OUTER_RING.length) % OUTER_RING.length;
+            if (dist < 0.08 || speedRef.current <= 0.002) {
+              // 到达目标，停止
+              cursorPosRef.current = target;
+              setCursorPos(target);
+              targetPosRef.current = null;
+              speedRef.current = 0;
+              spinPhaseRef.current = 'idle';
+            } else {
+              // 平滑减速：速度按减速度减小，但不能超过剩余距离
+              speedRef.current = Math.max(speedRef.current - SPEED_DECEL * dt, 0.002);
+              const step = Math.min(speedRef.current * dt, dist);
+              cursorPosRef.current = (cursorPosRef.current + step) % OUTER_RING.length;
+              setCursorPos(cursorPosRef.current);
+            }
+          } else {
+            // 没有目标时也减速（错误保护）
+            speedRef.current = Math.max(speedRef.current - SPEED_DECEL * dt, 0);
+            cursorPosRef.current = (cursorPosRef.current + speedRef.current * dt) % OUTER_RING.length;
+            setCursorPos(cursorPosRef.current);
+            if (speedRef.current <= 0) spinPhaseRef.current = 'idle';
+          }
         }
       }
       prevTimeRef.current = t;
@@ -140,7 +174,7 @@ export default function DingDong() {
     };
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
-  }, []);
+  }, [SPEED_MAX, SPEED_ACCEL, SPEED_DECEL, DECEL_DIST]);
 
   // ── tRPC ──────────────────────────────────────────────────────
   const { data: playerData, refetch: refetchPlayer } = trpc.player.me.useQuery();
@@ -149,13 +183,13 @@ export default function DingDong() {
 
   const playMut = trpc.dingdong.play.useMutation({
     onSuccess: async (result) => {
-      // 加速光标
-      speedRef.current = 0.18;
+      // 启动加速阶段
+      speedRef.current = 0;
+      spinPhaseRef.current = 'accelerating';
       playRing();
 
       // 计算目标停止位置（开奖水果在外圈的某个格子）
       const winFruitId = result.winFruit as number;
-      // 找外圈中对应水果的格子索引
       const winCells = OUTER_FRUITS
         .map((f, i) => ({ i, f }))
         .filter(({ f }) => f.id === winFruitId);
@@ -163,22 +197,19 @@ export default function DingDong() {
         ? winCells[Math.floor(Math.random() * winCells.length)].i
         : 0;
 
-      // 等待至少转3圈后停止
-      const minRounds = 3;
-      const currentPos = cursorPosRef.current;
-      const totalDist = minRounds * OUTER_RING.length +
-        ((targetCell - currentPos + OUTER_RING.length) % OUTER_RING.length);
+      // 等待加速完成（约 0.5s）再开始计时
+      await new Promise<void>(res => setTimeout(res, 600));
 
-      // 模拟转动时间（约2秒）
-      await new Promise<void>(res => setTimeout(res, 2000));
+      // 匀速旋转至少 2.5 秒，确保转足够圈数
+      await new Promise<void>(res => setTimeout(res, 2500));
 
-      // 设置目标位置，开始减速
+      // 设置目标位置，开始减速收尾
       targetPosRef.current = targetCell;
 
-      // 等待光标停止
+      // 等待光标停止（spinPhase 回到 idle）
       await new Promise<void>(res => {
         const check = setInterval(() => {
-          if (targetPosRef.current === null) {
+          if (spinPhaseRef.current === 'idle') {
             clearInterval(check);
             res();
           }
@@ -219,7 +250,8 @@ export default function DingDong() {
     onError: (err) => {
       setIsSpinning(false);
       isSpinningRef.current = false;
-      speedRef.current = 0.015;
+      speedRef.current = 0;
+      spinPhaseRef.current = 'idle';
       targetPosRef.current = null;
       showAlert(err.message || '下注失败');
     },
