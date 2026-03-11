@@ -8,6 +8,9 @@
  *   - roomId=0 或不传：订阅房间列表更新
  *   - roomId=N：订阅指定房间的实时事件
  *
+ * 弹幕端点：POST /api/arena/danmaku
+ *   - body: { roomId, nickname, avatar, text, emoji }
+ *
  * 事件格式（与原 WebSocket 消息格式完全相同）：
  *   data: {"type":"room_list_update","rooms":[...]}
  *   data: {"type":"player_joined","roomId":1,"player":{...}}
@@ -15,6 +18,8 @@
  *   data: {"type":"round_result","roomId":1,"roundNo":1,"results":[...]}
  *   data: {"type":"game_over","roomId":1,"winnerId":1,"players":[...]}
  *   data: {"type":"room_cancelled","roomId":1}
+ *   data: {"type":"spectator_count","roomId":1,"count":3}
+ *   data: {"type":"danmaku","roomId":1,"nickname":"...","avatar":"001","text":"🔥","ts":1234567890}
  */
 
 import type { Request, Response, Express } from "express";
@@ -29,9 +34,27 @@ interface SSEClient {
 
 const clients = new Set<SSEClient>();
 
+// ── 观战者人数统计 ────────────────────────────────────────────────────────────
+
+/** 获取指定房间的 SSE 连接数（观战者人数） */
+export function getSpectatorCount(roomId: number): number {
+  let count = 0;
+  for (const client of Array.from(clients)) {
+    if (client.roomId === roomId && !client.res.writableEnded) count++;
+  }
+  return count;
+}
+
+/** 广播观战者人数更新给房间内所有客户端 */
+function broadcastSpectatorCount(roomId: number) {
+  const count = getSpectatorCount(roomId);
+  broadcastToRoom(roomId, { type: "spectator_count", roomId, count });
+}
+
 // ── 挂载 SSE 端点 ─────────────────────────────────────────────────────────────
 
 export function initArenaSSE(app: Express) {
+  // SSE 事件流端点
   app.get("/api/arena/events", (req: Request, res: Response) => {
     const roomId = parseInt((req.query.roomId as string) || "0", 10);
 
@@ -48,6 +71,14 @@ export function initArenaSSE(app: Express) {
     // 发送连接成功事件
     sendToClient(client, { type: "connected" });
 
+    // 如果是房间连接（非列表订阅），立即发送当前观战者人数
+    if (roomId > 0) {
+      // 稍微延迟，确保客户端已准备好接收
+      setTimeout(() => {
+        broadcastSpectatorCount(roomId);
+      }, 200);
+    }
+
     // 心跳：每 25 秒发一次，防止代理超时断开
     const heartbeat = setInterval(() => {
       if (res.writableEnded) {
@@ -61,10 +92,47 @@ export function initArenaSSE(app: Express) {
     req.on("close", () => {
       clearInterval(heartbeat);
       clients.delete(client);
+      // 断开后广播最新观战者人数
+      if (roomId > 0) {
+        setTimeout(() => broadcastSpectatorCount(roomId), 100);
+      }
     });
   });
 
+  // 弹幕发送端点（POST，因为 SSE 是单向的，弹幕需要通过 HTTP POST 发送）
+  app.post("/api/arena/danmaku", (req: Request, res: Response) => {
+    const { roomId, nickname, avatar, text } = req.body as {
+      roomId: number;
+      nickname: string;
+      avatar: string;
+      text: string;
+    };
+
+    if (!roomId || !text || text.trim().length === 0) {
+      res.status(400).json({ error: "参数错误" });
+      return;
+    }
+
+    // 限制弹幕长度
+    const safeText = String(text).slice(0, 20);
+    const safeNickname = String(nickname || "观众").slice(0, 12);
+    const safeAvatar = String(avatar || "001");
+
+    // 广播弹幕给房间内所有客户端
+    broadcastToRoom(Number(roomId), {
+      type: "danmaku",
+      roomId: Number(roomId),
+      nickname: safeNickname,
+      avatar: safeAvatar,
+      text: safeText,
+      ts: Date.now(),
+    });
+
+    res.json({ ok: true });
+  });
+
   console.log("[ArenaSSE] SSE endpoint mounted at /api/arena/events");
+  console.log("[ArenaSSE] Danmaku endpoint mounted at /api/arena/danmaku");
 }
 
 // ── 工具函数 ──────────────────────────────────────────────────────────────────

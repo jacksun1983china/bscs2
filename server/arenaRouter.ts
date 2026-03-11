@@ -22,7 +22,7 @@ import {
   boxGoods,
   players,
 } from "../drizzle/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { SignJWT, jwtVerify } from "jose";
 import {
   broadcastRoomListUpdate,
@@ -234,67 +234,97 @@ export const arenaRouter = router({
       if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // 查询房间
-      const [room] = await db.select().from(arenaRooms).where(eq(arenaRooms.id, input.roomId));
-      if (!room) throw new TRPCError({ code: "NOT_FOUND", message: "房间不存在" });
-      if (room.status !== "waiting") throw new TRPCError({ code: "BAD_REQUEST", message: "房间已不在等待状态" });
-      if (room.currentPlayers >= room.maxPlayers) throw new TRPCError({ code: "BAD_REQUEST", message: "房间已满" });
-      // 检查是否已在房间（已在房间则直接返回成功，允许重新进入）
-      const [existing] = await db
+
+      // 先在事务外检查玩家是否已在房间（已在则直接返回，不需要加锁）
+      const [existingCheck] = await db
         .select()
         .from(arenaRoomPlayers)
         .where(and(eq(arenaRoomPlayers.roomId, input.roomId), eq(arenaRoomPlayers.playerId, session.playerId)));
-      if (existing) {
+      if (existingCheck) {
         return { roomId: input.roomId, alreadyJoined: true };
       }
-      // 查询玩家信息
+
+      // 查询玩家信息（事务外）
       const [player] = await db.select().from(players).where(eq(players.id, session.playerId));
       if (!player) throw new TRPCError({ code: "NOT_FOUND", message: "玩家不存在" });
-      const entryFee = parseFloat(room.entryFee);
-      const gold = parseFloat(player.gold ?? "0");
-      if (gold < entryFee) throw new TRPCError({ code: "BAD_REQUEST", message: `金币不足，需要 ${entryFee} 金币` });
-      // 扣除金币
-      await db
-        .update(players)
-        .set({ gold: (gold - entryFee).toFixed(2) })
-        .where(eq(players.id, session.playerId));
-      // 确定座位号
-      const seatNo = room.currentPlayers + 1;
-      // 添加参与者
-      await db.insert(arenaRoomPlayers).values({
-        roomId: input.roomId,
-        playerId: session.playerId,
-        nickname: player.nickname || player.phone,
-        avatar: player.avatar || "001",
-        seatNo,
+
+      // 使用事务 + SELECT FOR UPDATE 行锁防止超员竞态条件
+      let seatNo = 0;
+      let isFull = false;
+      let entryFee = 0;
+
+      await (db as any).transaction(async (tx: any) => {
+        // FOR UPDATE 锁定该行，防止并发请求同时通过检查
+        const [roomForUpdate] = await tx.execute(
+          sql`SELECT * FROM arena_rooms WHERE id = ${input.roomId} FOR UPDATE`
+        );
+        const room = (roomForUpdate as any[])[0];
+        if (!room) throw new TRPCError({ code: "NOT_FOUND", message: "房间不存在" });
+        if (room.status !== "waiting") throw new TRPCError({ code: "BAD_REQUEST", message: "房间已不在等待状态" });
+        if (room.current_players >= room.max_players) throw new TRPCError({ code: "BAD_REQUEST", message: "房间已满" });
+
+        // 事务内再次检查是否已在房间（防止同一玩家并发加入）
+        const [existingInTx] = await tx
+          .select()
+          .from(arenaRoomPlayers)
+          .where(and(eq(arenaRoomPlayers.roomId, input.roomId), eq(arenaRoomPlayers.playerId, session.playerId)));
+        if (existingInTx) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "已在房间中" });
+        }
+
+        entryFee = parseFloat(room.entry_fee);
+        const gold = parseFloat(player.gold ?? "0");
+        if (gold < entryFee) throw new TRPCError({ code: "BAD_REQUEST", message: `金币不足，需要 ${entryFee} 金币` });
+
+        // 扣除金币
+        await tx
+          .update(players)
+          .set({ gold: (gold - entryFee).toFixed(2) })
+          .where(eq(players.id, session.playerId));
+
+        // 确定座位号
+        seatNo = room.current_players + 1;
+
+        // 添加参与者
+        await tx.insert(arenaRoomPlayers).values({
+          roomId: input.roomId,
+          playerId: session.playerId,
+          nickname: player.nickname || player.phone,
+          avatar: player.avatar || "001",
+          seatNo,
+        });
+
+        // 更新房间人数
+        const newCount = room.current_players + 1;
+        isFull = newCount >= room.max_players;
+        await tx
+          .update(arenaRooms)
+          .set({
+            currentPlayers: newCount,
+            status: isFull ? "playing" : "waiting",
+            currentRound: isFull ? 1 : 0,
+          })
+          .where(eq(arenaRooms.id, input.roomId));
       });
-      // 更新房间人数
-      const newCount = room.currentPlayers + 1;
-      const isFull = newCount >= room.maxPlayers;
-      await db
-        .update(arenaRooms)
-        .set({
-          currentPlayers: newCount,
-          status: isFull ? "playing" : "waiting",
-          currentRound: isFull ? 1 : 0,
-        })
-        .where(eq(arenaRooms.id, input.roomId));
-      // 广播玩家加入
+
+      // 事务外广播事件
       broadcastPlayerJoined(
         input.roomId,
         { playerId: session.playerId, nickname: player.nickname || player.phone, avatar: player.avatar || "001", seatNo },
         null
       );
+
       // 如果房间满了，广播游戏开始，并异步自动执行所有轮次
       if (isFull) {
         broadcastGameStarted(input.roomId);
-        // 延迟 1.5 秒等客户端收到 game_started 并准备好后再开始开笱
+        // 延迟 5 秒等开场动画完整播放完毕（开场动画约 3-4 秒）再开始开笱
         setTimeout(() => {
           autoSpinAllRounds(input.roomId).catch((err) => {
             console.error('[Arena] autoSpinAllRounds error:', err);
           });
-        }, 1500);
+        }, 5000);
       }
+
       // 广播房间列表更新
       const summaries = await fetchRoomSummaries();
       broadcastRoomListUpdate(summaries);

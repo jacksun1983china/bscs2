@@ -451,6 +451,9 @@ export default function ArenaRoom() {
   const [showIntro, setShowIntro] = useState(false);
   const [skipIntro, setSkipIntro] = useState(false);
   const introShownRef = useRef(false); // 防止重复触发
+  const showIntroRef = useRef(false); // 实时跟踪 showIntro 状态，供事件处理函数读取
+  // 开场动画期间到达的 round_result 缓存，动画结束后再触发
+  const pendingSpinRef = useRef<{ itemMap: Record<number, { goodsId: number; goodsName: string; goodsImage: string; goodsLevel: number; goodsValue: string }>; roundNo: number } | null>(null);
 
   // ── 跳过游戏动画状态 ──
   const [skipGameAnim, setSkipGameAnim] = useState(false);
@@ -460,7 +463,23 @@ export default function ArenaRoom() {
   const [liveValues, setLiveValues] = useState<Record<number, number>>({});
 
   // ── 观战者缓存的玩家信息（在 roomDetail 加载前通过 round_result 获取） ──
-  const [spectatorPlayers, setSpectatorPlayers] = useState<Array<{ playerId: number; nickname: string; avatar: string; seatNo: number }>>([]);
+  const [spectatorPlayers, setSpectatorPlayers] = useState<Array<{ playerId: number; nickname: string; avatar: string; seatNo: number }>>([])
+
+  // ── 观战者人数 ──
+  const [spectatorCount, setSpectatorCount] = useState(0);
+
+  // ── 弹幕列表 ──
+  interface DanmakuItem {
+    id: number;
+    nickname: string;
+    avatar: string;
+    text: string;
+    ts: number;
+  }
+  const [danmakuList, setDanmakuList] = useState<DanmakuItem[]>([]);
+  const [danmakuInput, setDanmakuInput] = useState('');
+  const [danmakuSending, setDanmakuSending] = useState(false);
+  const danmakuIdRef = useRef(0);
 
   const { data: roomDetail, refetch: refetchRoom } = trpc.arena.getRoomDetail.useQuery(
     { roomId },
@@ -581,6 +600,7 @@ export default function ArenaRoom() {
     if (!forceReplay && introShownRef.current) return;
     if (playerList.length < 1) return;
     introShownRef.current = true;
+    showIntroRef.current = true; // 实时标记开场动画正在播放
     setShowIntro(true);
     setSkipIntro(false);
   }, []);
@@ -612,7 +632,7 @@ export default function ArenaRoom() {
           const enriched = results.map((r: any) => ({ ...r }));
           return { ...prev, [roundNo]: enriched };
         });
-        // 更新实时累计价值
+        // 更新实时累计价値
         setLiveValues((prev) => {
           const next = { ...prev };
           for (const r of results) {
@@ -630,10 +650,6 @@ export default function ArenaRoom() {
             goodsValue: r.goodsValue,
           };
         }
-        setCurrentRoundItems(itemMap);
-        setSpinning(true);
-        setSpinDoneCount(0);
-        setSkipGameAnim(false);
         // 缓存玩家信息（观战者在 roomDetail 加载前也能正确显示玩家名称）
         if (results.length > 0 && results[0].seatNo !== undefined) {
           setSpectatorPlayers(results.map((r: any) => ({
@@ -642,6 +658,17 @@ export default function ArenaRoom() {
             avatar: r.avatar ?? '001',
             seatNo: r.seatNo,
           })));
+        }
+        setCurrentRoundItems(itemMap);
+        if (showIntroRef.current) {
+          // 开场动画正在播放，缓存结果，动画结束后再触发 slot
+          pendingSpinRef.current = { itemMap, roundNo };
+          // 不设置 spinning=true，避免在开场动画期间在后台播放动画
+        } else {
+          // 开场动画已结束，直接触发 slot 动画
+          setSpinning(true);
+          setSpinDoneCount(0);
+          setSkipGameAnim(false);
         }
         break;
       }
@@ -663,6 +690,28 @@ export default function ArenaRoom() {
         alert('房间已被取消');
         navigate('/arena');
         break;
+      case 'spectator_count':
+        setSpectatorCount(msg.count as number);
+        break;
+      case 'danmaku': {
+        const item: DanmakuItem = {
+          id: ++danmakuIdRef.current,
+          nickname: msg.nickname as string,
+          avatar: msg.avatar as string,
+          text: msg.text as string,
+          ts: msg.ts as number,
+        };
+        setDanmakuList((prev) => {
+          const next = [...prev, item];
+          // 最多保留 30 条弹幕
+          return next.length > 30 ? next.slice(next.length - 30) : next;
+        });
+        // 5 秒后自动移除
+        setTimeout(() => {
+          setDanmakuList((prev) => prev.filter((d) => d.id !== item.id));
+        }, 5000);
+        break;
+      }
     }
   }, [refetchRoom, navigate]);
 
@@ -1064,10 +1113,24 @@ export default function ArenaRoom() {
           }))}
           skip={skipIntro}
           onComplete={() => {
+            showIntroRef.current = false; // 开场动画已结束
             setShowIntro(false);
             // 回放模式：开场动画完成，解除等待状态，允许 slot 开始
             if (isReplaying) {
               setReplayWaitingIntro(false);
+            }
+            // 实时模式：如果开场动画期间有缓存的 round_result，现在触发 slot 动画
+            if (pendingSpinRef.current) {
+              const pending = pendingSpinRef.current;
+              pendingSpinRef.current = null;
+              // 延迟 100ms 确保 React 状态已更新
+              setTimeout(() => {
+                setCurrentRoundItems(pending.itemMap);
+                setCurrentRound(pending.roundNo);
+                setSpinning(true);
+                setSpinDoneCount(0);
+                setSkipGameAnim(false);
+              }, 100);
             }
           }}
         />
@@ -1105,6 +1168,13 @@ export default function ArenaRoom() {
                 borderRadius: q(8), padding: `${q(4)} ${q(12)}`,
                 color: '#60a5fa', fontSize: q(20), fontWeight: 600,
               }}>👁 观战</span>
+            )}
+            {/* 观战者人数：游戏进行中时显示 */}
+            {spectatorCount > 0 && (gameStatus === 'playing' || gameStatus === 'finished') && (
+              <span style={{
+                color: '#9ca3af', fontSize: q(20),
+                display: 'flex', alignItems: 'center', gap: q(4),
+              }}>👁 {spectatorCount}人观战</span>
             )}
           </div>
         </div>
@@ -1152,6 +1222,44 @@ export default function ArenaRoom() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* 弹幕飘动层：游戏进行中显示 */}
+        {(gameStatus === 'playing' || gameStatus === 'finished') && danmakuList.length > 0 && (
+          <div style={{
+            position: 'relative',
+            height: q(80),
+            overflow: 'hidden',
+            marginBottom: q(8),
+            pointerEvents: 'none',
+          }}>
+            {danmakuList.map((d, idx) => (
+              <div
+                key={d.id}
+                style={{
+                  position: 'absolute',
+                  top: `${(idx % 3) * 33}%`,
+                  left: 0,
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: q(6),
+                  background: 'rgba(0,0,0,0.55)',
+                  borderRadius: q(20),
+                  padding: `${q(4)} ${q(12)}`,
+                  animation: 'danmakuSlide 5s linear forwards',
+                }}
+              >
+                <img
+                  src={`/img/avatars/${d.avatar}.png`}
+                  alt=""
+                  style={{ width: q(28), height: q(28), borderRadius: '50%', flexShrink: 0 }}
+                />
+                <span style={{ color: '#e0d0ff', fontSize: q(22), fontWeight: 600 }}>{d.nickname}:</span>
+                <span style={{ color: '#fff', fontSize: q(22) }}>{d.text}</span>
+              </div>
+            ))}
           </div>
         )}
 

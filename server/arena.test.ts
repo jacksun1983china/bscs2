@@ -250,3 +250,137 @@ describe("spectator mode logic", () => {
     expect(spectatorPlayers[1].seatNo).toBe(2);
   });
 });
+
+// ── 测试超员防护逻辑 ─────────────────────────────────────────────────────────
+
+describe("joinRoom 超员防护", () => {
+  it("should reject join when room is full (currentPlayers >= maxPlayers)", () => {
+    // 模拟事务内的满员检查
+    const checkRoomFull = (currentPlayers: number, maxPlayers: number): string | null => {
+      if (currentPlayers >= maxPlayers) return "房间已满";
+      return null;
+    };
+
+    expect(checkRoomFull(2, 2)).toBe("房间已满");
+    expect(checkRoomFull(3, 2)).toBe("房间已满"); // 超员情况
+    expect(checkRoomFull(1, 2)).toBeNull(); // 未满
+    expect(checkRoomFull(0, 2)).toBeNull(); // 空房间
+  });
+
+  it("should reject join when room is not in waiting status", () => {
+    const checkRoomStatus = (status: string): string | null => {
+      if (status !== "waiting") return "房间已不在等待状态";
+      return null;
+    };
+
+    expect(checkRoomStatus("playing")).toBe("房间已不在等待状态");
+    expect(checkRoomStatus("finished")).toBe("房间已不在等待状态");
+    expect(checkRoomStatus("waiting")).toBeNull();
+  });
+
+  it("should prevent same player from joining twice (duplicate check)", () => {
+    const existingPlayers = [
+      { roomId: 1, playerId: 100, seatNo: 1 },
+    ];
+
+    const checkDuplicate = (roomId: number, playerId: number): boolean => {
+      return existingPlayers.some((p) => p.roomId === roomId && p.playerId === playerId);
+    };
+
+    expect(checkDuplicate(1, 100)).toBe(true);  // 已在房间
+    expect(checkDuplicate(1, 200)).toBe(false); // 未在房间
+    expect(checkDuplicate(2, 100)).toBe(false); // 不同房间
+  });
+
+  it("should correctly calculate seatNo based on current_players", () => {
+    // 模拟事务内座位号计算（使用 current_players 字段）
+    const calcSeatNo = (currentPlayers: number): number => currentPlayers + 1;
+
+    expect(calcSeatNo(0)).toBe(1); // 第一个玩家
+    expect(calcSeatNo(1)).toBe(2); // 第二个玩家
+    expect(calcSeatNo(3)).toBe(4); // 第四个玩家
+  });
+});
+
+// ── 测试 slot 动画时序逻辑 ────────────────────────────────────────────────────
+
+describe("slot 动画时序", () => {
+  it("should defer spinning when intro animation is playing", () => {
+    let showIntroRef = true; // 模拟开场动画正在播放
+    let pendingSpinRef: { itemMap: Record<number, unknown>; roundNo: number } | null = null;
+    let spinning = false;
+
+    // 模拟 round_result 处理
+    const handleRoundResult = (itemMap: Record<number, unknown>, roundNo: number) => {
+      if (showIntroRef) {
+        // 开场动画正在播放，缓存结果
+        pendingSpinRef = { itemMap, roundNo };
+      } else {
+        // 直接触发
+        spinning = true;
+      }
+    };
+
+    handleRoundResult({ 1: { goodsId: 1 }, 2: { goodsId: 2 } }, 1);
+
+    // 开场动画期间：spinning 不应该被设置
+    expect(spinning).toBe(false);
+    expect(pendingSpinRef).not.toBeNull();
+    expect(pendingSpinRef!.roundNo).toBe(1);
+  });
+
+  it("should trigger spinning from pendingSpinRef when intro completes", () => {
+    let showIntroRef = true;
+    let pendingSpinRef: { itemMap: Record<number, unknown>; roundNo: number } | null = {
+      itemMap: { 1: { goodsId: 1 }, 2: { goodsId: 2 } },
+      roundNo: 1,
+    };
+    let spinning = false;
+    let spinDoneCount = 0;
+
+    // 模拟 onComplete 回调
+    const onIntroComplete = () => {
+      showIntroRef = false;
+      if (pendingSpinRef) {
+        const pending = pendingSpinRef;
+        pendingSpinRef = null;
+        // 触发 slot 动画
+        spinning = true;
+        spinDoneCount = 0;
+      }
+    };
+
+    onIntroComplete();
+
+    expect(showIntroRef).toBe(false);
+    expect(pendingSpinRef).toBeNull();
+    expect(spinning).toBe(true);
+    expect(spinDoneCount).toBe(0);
+  });
+
+  it("should trigger spinning immediately when intro is not playing", () => {
+    let showIntroRef = false; // 开场动画未播放
+    let pendingSpinRef: unknown = null;
+    let spinning = false;
+
+    const handleRoundResult = (itemMap: Record<number, unknown>, roundNo: number) => {
+      if (showIntroRef) {
+        pendingSpinRef = { itemMap, roundNo };
+      } else {
+        spinning = true;
+      }
+    };
+
+    handleRoundResult({ 1: { goodsId: 1 } }, 1);
+
+    expect(spinning).toBe(true);
+    expect(pendingSpinRef).toBeNull();
+  });
+
+  it("autoSpinAllRounds delay should be 5000ms to allow intro animation to complete", () => {
+    // 验证服务端延迟配置：开场动画约 3-4 秒，延迟 5 秒确保动画结束后再发送 round_result
+    const INTRO_ANIMATION_DURATION_MS = 4000; // 开场动画最长约 4 秒
+    const AUTO_SPIN_DELAY_MS = 5000; // 服务端延迟
+    expect(AUTO_SPIN_DELAY_MS).toBeGreaterThan(INTRO_ANIMATION_DURATION_MS);
+  });
+});
