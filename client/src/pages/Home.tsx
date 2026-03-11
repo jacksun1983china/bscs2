@@ -56,9 +56,9 @@ export default function Home() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  const { data: player, isLoading, isFetching } = trpc.player.me.useQuery(undefined, {
+  const { data: player, isLoading, isFetching, fetchStatus } = trpc.player.me.useQuery(undefined, {
     refetchOnWindowFocus: true,
-    staleTime: 0,
+    staleTime: 30 * 1000, // 30秒内不重复请求，避免频繁刷新
   });
   const { data: bannerList } = trpc.public.banners.useQuery();
   const { data: broadcastList } = trpc.public.broadcasts.useQuery();
@@ -87,11 +87,14 @@ export default function Home() {
     });
   }, [banners.length]);
 
+  // 只有在查询真正完成（非加载中、非后台刷新）且确认无用户时才跳转
+  // fetchStatus === 'idle' 表示请求已完成且当前没有进行中的请求
+  // 这样可以避免 invalidate 后短暂 data=undefined 的竞态条件误触发跳转
   useEffect(() => {
-    if (!isLoading && !isFetching && !player) {
+    if (!isLoading && fetchStatus === 'idle' && !player) {
       navigate('/login');
     }
-  }, [player, isLoading, isFetching]);
+  }, [player, isLoading, fetchStatus]);
 
   useEffect(() => {
     if (banners.length <= 1) return;

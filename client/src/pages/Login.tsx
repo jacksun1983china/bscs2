@@ -81,8 +81,9 @@ export default function Login() {
   const loginMutation = trpc.player.login.useMutation({
     onSuccess: async (data) => {
       toast.success(data.isNew ? '注册成功，欢迎加入 BDCS2！' : '登录成功！');
-      await utils.player.me.invalidate();
-      setTimeout(() => navigate('/'), 100);
+      // 先刷新 player.me 缓存，确保首页加载时已有数据，避免竞态条件跳回登录页
+      await utils.player.me.refetch();
+      navigate('/');
     },
     onError: (e) => toast.error(e.message),
   });
