@@ -285,9 +285,15 @@ export const arenaRouter = router({
         { playerId: session.playerId, nickname: player.nickname || player.phone, avatar: player.avatar || "001", seatNo },
         null
       );
-      // 如果房间满了，广播游戏开始
+      // 如果房间满了，广播游戏开始，并异步自动执行所有轮次
       if (isFull) {
         broadcastGameStarted(input.roomId);
+        // 延迟 1.5 秒等客户端收到 game_started 并准备好后再开始开笱
+        setTimeout(() => {
+          autoSpinAllRounds(input.roomId).catch((err) => {
+            console.error('[Arena] autoSpinAllRounds error:', err);
+          });
+        }, 1500);
       }
       // 广播房间列表更新
       const summaries = await fetchRoomSummaries();
@@ -539,6 +545,112 @@ export const arenaRouter = router({
       return map;
     }),
 });
+
+// ── 自动执行所有轮次（游戏开始时服务端自动驱动） ──────────────────────────────
+
+/**
+ * 游戏开始后，服务端自动按顺序执行所有轮次并广播结果。
+ * 每轮之间延迟 1.5 秒，给客户端动画播放时间。
+ * 前端只需监听 round_result 和 game_over 广播即可。
+ */
+async function autoSpinAllRounds(roomId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const [room] = await db.select().from(arenaRooms).where(eq(arenaRooms.id, roomId));
+  if (!room || room.status !== 'playing') return;
+
+  const roomPlayers = await db
+    .select()
+    .from(arenaRoomPlayers)
+    .where(eq(arenaRoomPlayers.roomId, roomId))
+    .orderBy(arenaRoomPlayers.seatNo);
+
+  const boxIds: number[] = JSON.parse(room.boxIds || '[]');
+  const totalRounds = room.rounds;
+
+  for (let roundNo = 1; roundNo <= totalRounds; roundNo++) {
+    // 检查该轮是否已有结果（幂等）
+    const existing = await db
+      .select()
+      .from(arenaRoundResults)
+      .where(and(eq(arenaRoundResults.roomId, roomId), eq(arenaRoundResults.roundNo, roundNo)));
+    if (existing.length > 0) {
+      // 已有结果，广播给可能错过的客户端
+      const results = existing.map((r) => ({
+        playerId: r.playerId,
+        nickname: roomPlayers.find((p) => p.playerId === r.playerId)?.nickname ?? '',
+        seatNo: roomPlayers.find((p) => p.playerId === r.playerId)?.seatNo ?? 0,
+        goodsId: r.goodsId,
+        goodsName: r.goodsName,
+        goodsImage: r.goodsImage,
+        goodsLevel: r.goodsLevel,
+        goodsValue: r.goodsValue,
+      }));
+      broadcastRoundResult(roomId, roundNo, results);
+    } else {
+      const boxId = boxIds[roundNo - 1];
+      if (!boxId) continue;
+      const [box] = await db.select().from(boxes).where(eq(boxes.id, boxId));
+      if (!box) continue;
+      const goods = await db.select().from(boxGoods).where(eq(boxGoods.boxId, boxId));
+      if (goods.length === 0) continue;
+
+      const results: Array<{
+        playerId: number; nickname: string; seatNo: number;
+        goodsId: number; goodsName: string; goodsImage: string;
+        goodsLevel: number; goodsValue: string;
+      }> = [];
+
+      for (const rp of roomPlayers) {
+        const picked = rollBoxGoods(goods as any) as {
+          id: number; name: string; imageUrl: string;
+          level: number; price: string | number; probability: string;
+        };
+        await db.insert(arenaRoundResults).values({
+          roomId,
+          roundNo,
+          playerId: rp.playerId,
+          boxId,
+          boxName: box.name,
+          goodsId: picked.id,
+          goodsName: picked.name,
+          goodsImage: picked.imageUrl,
+          goodsLevel: picked.level,
+          goodsValue: String(picked.price),
+        });
+        results.push({
+          playerId: rp.playerId,
+          nickname: rp.nickname,
+          seatNo: rp.seatNo,
+          goodsId: picked.id,
+          goodsName: picked.name,
+          goodsImage: picked.imageUrl,
+          goodsLevel: picked.level,
+          goodsValue: String(picked.price),
+        });
+      }
+      broadcastRoundResult(roomId, roundNo, results);
+
+      // 更新当前轮次
+      if (roundNo < totalRounds) {
+        await db.update(arenaRooms).set({ currentRound: roundNo + 1 }).where(eq(arenaRooms.id, roomId));
+      }
+    }
+
+    // 等待客户端动画播放（slot动画约3秒 + 开奖展示2.2秒 = 5.2秒，留余量用6秒）
+    if (roundNo < totalRounds) {
+      await new Promise((res) => setTimeout(res, 6000));
+    }
+  }
+
+  // 所有轮次完成，执行游戏结束
+  const freshPlayers = await db
+    .select()
+    .from(arenaRoomPlayers)
+    .where(eq(arenaRoomPlayers.roomId, roomId))
+    .orderBy(arenaRoomPlayers.seatNo);
+  await finishGame(roomId, db, freshPlayers);
+}
 
 // ── 游戏结束处理 ──────────────────────────────────────────────────────────
 

@@ -473,6 +473,10 @@ export default function ArenaRoom() {
     }
   );
 
+  // 用 ref 跟踪最新的 roomDetail，供 useCallback 闭包中访问
+  const roomDetailRef = useRef(roomDetail);
+  useEffect(() => { roomDetailRef.current = roomDetail; }, [roomDetail]);
+
   // 获取所有笱子的道具列表，用于卷轴动画
   const boxIds = useMemo(() => roomDetail?.boxList?.map((b: { id: number }) => b.id) ?? [], [roomDetail?.boxList]);
   const { data: boxGoodsMap } = trpc.arena.getBoxGoodsList.useQuery(
@@ -588,6 +592,12 @@ export default function ArenaRoom() {
         setGameStatus('playing');
         setCurrentRound(1);
         refetchRoom();
+        // 立即触发开场动画，不等 roomDetail 刷新
+        // 从当前 roomDetail 获取玩家列表，如果没有则用空列表先展示动画
+        {
+          const currentPlayers = (roomDetailRef.current?.players ?? []) as Array<{ playerId: number; nickname: string; avatar: string; seatNo: number }>;
+          triggerIntro(currentPlayers.length >= 2 ? currentPlayers : [{ playerId: 0, nickname: '玩家1', avatar: '001', seatNo: 1 }, { playerId: 1, nickname: '玩家2', avatar: '002', seatNo: 2 }]);
+        }
         break;
       case 'round_result': {
         const results = msg.results as any[];
