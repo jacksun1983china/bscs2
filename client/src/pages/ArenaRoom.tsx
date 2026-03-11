@@ -1064,12 +1064,13 @@ export default function ArenaRoom() {
       {/* ── 开奖展示覆盖层 ── */}
       {showRoundReveal && revealItems.length > 0 && (
         <div style={{
-          position: 'fixed', inset: 0, zIndex: 200,
-          background: 'rgba(8,2,22,0.88)',
+          position: 'absolute', inset: 0, zIndex: 200,
+          background: 'rgba(8,2,22,0.92)',
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
           animation: 'fadeInReveal 0.3s ease',
-          containerType: 'inline-size',
+          overflow: 'hidden',
+          padding: `${q(20)} ${q(16)}`,
         }}>
           <style>{`
             @keyframes fadeInReveal { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
@@ -1079,9 +1080,10 @@ export default function ArenaRoom() {
           <div style={{ color: '#c084fc', fontSize: q(28), fontWeight: 700, marginBottom: q(24), letterSpacing: 2, textShadow: '0 0 12px rgba(192,132,252,0.8)' }}>
             本轮开奖结果
           </div>
-          <div style={{ display: 'flex', gap: q(24), justifyContent: 'center', flexWrap: 'wrap', padding: `0 ${q(20)}` }}>
+          <div style={{ display: 'flex', gap: q(16), justifyContent: 'center', flexWrap: 'nowrap', width: '100%', padding: `0 ${q(8)}` }}>
             {revealItems.map((item, idx) => (
               <div key={idx} style={{
+                flex: 1, minWidth: 0,
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                 background: item.goodsLevel === 1
                   ? 'linear-gradient(135deg,rgba(200,134,10,0.25),rgba(245,200,66,0.15))'
@@ -1094,13 +1096,12 @@ export default function ArenaRoom() {
                     : 'rgba(96,165,250,0.5)'
                 }`,
                 borderRadius: q(16),
-                padding: `${q(20)} ${q(24)}`,
-                minWidth: q(240),
+                padding: `${q(16)} ${q(12)}`,
                 animation: item.goodsLevel === 1 ? 'revealGoldGlow 1.2s ease-in-out infinite' : 'revealGlow 1.5s ease-in-out infinite',
               }}>
                 <div style={{ color: '#9ca3af', fontSize: q(20), marginBottom: q(8) }}>{item.nickname}</div>
                 <div style={{
-                  width: q(140), height: q(140), marginBottom: q(12),
+                  width: q(110), height: q(110), marginBottom: q(10),
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   {item.goodsImage ? (

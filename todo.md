@@ -631,3 +631,6 @@
 - [x] 修复 arenaRouter autoSpinAllRounds 轮间延迟，改为 5500ms
 - [x] 修复 createRoom 重复宝箱 ID 验证失败（inArray 去重后验证）
 - [x] 修复 players 数组不包含机器人玩家导致 slot 无法渲染的问题（优先使用更完整的玩家列表）
+
+## 竞技场开奖结果弹层布局修复（2026-03-11）
+- [x] 修复开奖结果弹层（本轮开奖结果）超出手机容器范围的问题，确保完全在 phone-container 内显示
