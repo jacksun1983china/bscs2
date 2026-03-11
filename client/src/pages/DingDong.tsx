@@ -465,30 +465,32 @@ export default function DingDong() {
                         }}
                       />
 
-                      {/* 黄色光标（当前格）- 纯色块 */}
+                      {/* 黄色光标（当前格） */}
                       {isCursor && (
-                        <div
+                        <img
+                          src={YELLOW_CURSOR}
+                          alt=""
                           style={{
                             position: 'absolute', inset: 0,
-                            background: '#facc15',
-                            borderRadius: q(6),
+                            width: '100%', height: '100%',
+                            objectFit: 'contain',
                             opacity: 1,
                             zIndex: 2,
-                            boxShadow: '0 0 12px 3px #facc1599, inset 0 0 6px rgba(255,255,255,0.4)',
                           }}
                         />
                       )}
 
-                      {/* 拖尾光标（渐变透明黄色色块） */}
+                      {/* 拖尾光标（黄色图片透明度渐变） */}
                       {tailOpacity > 0 && (
-                        <div
+                        <img
+                          src={YELLOW_CURSOR}
+                          alt=""
                           style={{
                             position: 'absolute', inset: 0,
-                            background: '#facc15',
-                            borderRadius: q(6),
+                            width: '100%', height: '100%',
+                            objectFit: 'contain',
                             opacity: tailOpacity,
                             zIndex: 2,
-                            boxShadow: `0 0 ${Math.round(tailOpacity * 10)}px ${Math.round(tailOpacity * 2)}px #facc1566`,
                           }}
                         />
                       )}
