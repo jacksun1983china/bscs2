@@ -278,7 +278,8 @@ async function checkAndFillRooms() {
   const now = Date.now();
 
   for (const room of waitingRooms) {
-    const createdAt = room.createdAt instanceof Date ? room.createdAt.getTime() : Number(room.createdAt);
+    // 修复：Number(dateString) 返回 NaN，必须用 new Date() 解析
+    const createdAt = room.createdAt instanceof Date ? room.createdAt.getTime() : new Date(room.createdAt).getTime();
     const waitSeconds = (now - createdAt) / 1000;
 
     // 等待时间未超过阈值，跳过

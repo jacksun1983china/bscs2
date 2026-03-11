@@ -418,6 +418,40 @@ export const arenaRouter = router({
       return { success: true };
     }),
 
+  /** 离开房间（仅 waiting 状态，退还入场费，房间继续等待） */
+  leaveRoom: publicProcedure
+    .input(z.object({ roomId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const session = await getPlayerFromCookie((ctx as any).req);
+      if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [room] = await db.select().from(arenaRooms).where(eq(arenaRooms.id, input.roomId));
+      if (!room) return { success: true }; // 房间不存在，直接返回
+      if (room.status !== "waiting") return { success: true }; // 游戏已开始，不能离开
+      // 检查玩家是否在房间内
+      const [rp] = await db.select().from(arenaRoomPlayers)
+        .where(and(eq(arenaRoomPlayers.roomId, input.roomId), eq(arenaRoomPlayers.playerId, session.playerId)));
+      if (!rp) return { success: true }; // 玩家不在房间内
+      // 退还入场费
+      const entryFee = parseFloat(room.entryFee);
+      const [p] = await db.select().from(players).where(eq(players.id, session.playerId));
+      if (p) {
+        const newGold = (parseFloat(p.gold ?? "0") + entryFee).toFixed(2);
+        await db.update(players).set({ gold: newGold }).where(eq(players.id, session.playerId));
+      }
+      // 删除玩家记录
+      await db.delete(arenaRoomPlayers)
+        .where(and(eq(arenaRoomPlayers.roomId, input.roomId), eq(arenaRoomPlayers.playerId, session.playerId)));
+      // 更新房间人数（房间继续等待，不取消）
+      const newCount = Math.max(0, room.currentPlayers - 1);
+      await db.update(arenaRooms).set({ currentPlayers: newCount }).where(eq(arenaRooms.id, input.roomId));
+      // 广播房间列表更新
+      const summaries = await fetchRoomSummaries();
+      broadcastRoomListUpdate(summaries);
+      return { success: true };
+    }),
+
   /** 获取我当前所在的活跃房间（waiting/playing） */
   getMyActiveRoom: publicProcedure
     .query(async ({ ctx }) => {

@@ -473,7 +473,8 @@ export default function ArenaRoom() {
     },
     onError: (err) => {
       setJoinLoading(false);
-      if (err.message.includes('已满') || err.message.includes('不在等待')) {
+      // 房间已满、已不在等待状态（playing/finished）时，不显示错误，让roomDetail的useEffect处理展示
+      if (err.message.includes('已满') || err.message.includes('不在等待') || err.message.includes('已不在等待')) {
         setIsPresent(false);
       } else {
         setJoinError(err.message);
