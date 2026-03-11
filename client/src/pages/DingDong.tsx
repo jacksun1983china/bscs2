@@ -328,9 +328,9 @@ export default function DingDong() {
   // ── 光标位置计算 ──────────────────────────────────────────────
   const cursorIndex = Math.round(cursorPos) % OUTER_RING.length;
 
-  // 格子尺寸
-  const CELL_PX = 84;
-  const GAP_PX = 4;
+  // 格子尺寸（缩小以适配左侧栏）
+  const CELL_PX = 72;
+  const GAP_PX = 3;
   const COLS = 6;
   const ROWS = 6;
 
@@ -376,21 +376,17 @@ export default function DingDong() {
       {/* 内容区 */}
       <div style={{ flex: 1, overflowY: 'auto', position: 'relative', zIndex: 1, paddingBottom: q(120) }}>
 
-        {/* 标题 */}
+        {/* 标题 + 余额（紧凑单行） */}
         <div style={{
-          textAlign: 'center', padding: `${q(12)} 0 ${q(4)}`,
-          color: '#f0e6ff', fontSize: q(30), fontWeight: 900, letterSpacing: 2,
-          textShadow: '0 0 20px rgba(160,80,255,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: `${q(8)} ${q(16)} ${q(4)}`,
         }}>
-          🍉 水果机
-        </div>
-
-        {/* 余额 */}
-        <div style={{
-          textAlign: 'center', marginBottom: q(8),
-          color: '#ffd700', fontSize: q(26), fontWeight: 700,
-        }}>
-          💰 {gold.toFixed(2)}
+          <div style={{ color: '#f0e6ff', fontSize: q(28), fontWeight: 900, letterSpacing: 2, textShadow: '0 0 20px rgba(160,80,255,0.7)' }}>
+            🍉 水果机
+          </div>
+          <div style={{ color: '#ffd700', fontSize: q(24), fontWeight: 700 }}>
+            💰 {gold.toFixed(2)}
+          </div>
         </div>
 
         {/* ── 主游戏区 ── */}
@@ -415,10 +411,11 @@ export default function DingDong() {
             }}
           />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: q(10), position: 'relative', zIndex: 1 }}>
+          {/* ── 左右两栏布局：左侧转盘 + 右侧控制区 ── */}
+          <div style={{ display: 'flex', gap: q(10), position: 'relative', zIndex: 1, alignItems: 'flex-start' }}>
 
-            {/* ── 转盘区（全宽居中）── */}
-            <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+            {/* ── 左侧：转盘区 ── */}
+            <div style={{ flexShrink: 0, position: 'relative' }}>
               {/* 格子容器 */}
               <div style={{
                 display: 'grid',
@@ -604,19 +601,10 @@ export default function DingDong() {
               )}
             </div>
 
-            {/* ── 下方：下注面板 ── */}
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: q(8) }}>
+            {/* ── 右侧：控制区（快捷金额 + 全押/清空 + 开始按钮） ── */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: q(8), minWidth: 0 }}>
 
-              {/* 余额 */}
-              <div style={{
-                background: 'rgba(0,0,0,0.5)', borderRadius: q(8), padding: `${q(5)} ${q(8)}`,
-                color: '#ffd700', fontSize: q(20), fontWeight: 700, textAlign: 'center',
-                border: '1px solid rgba(255,215,0,0.3)',
-              }}>
-                💰 {gold.toFixed(2)}
-              </div>
-
-              {/* 快捷金额选择 */}
+              {/* 快捷金额选择（2×2） */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: q(4) }}>
                 {BET_PRESETS.map(amt => (
                   <button
@@ -626,7 +614,7 @@ export default function DingDong() {
                     style={{
                       background: quickBet === amt ? 'rgba(120,60,220,0.6)' : 'rgba(255,255,255,0.07)',
                       border: `1px solid ${quickBet === amt ? 'rgba(180,100,255,0.8)' : 'rgba(255,255,255,0.15)'}`,
-                      borderRadius: q(6), color: '#fff', fontSize: q(18), padding: `${q(4)} 0`, cursor: 'pointer',
+                      borderRadius: q(6), color: '#fff', fontSize: q(20), padding: `${q(6)} 0`, cursor: 'pointer',
                     }}
                   >{amt}</button>
                 ))}
@@ -640,7 +628,7 @@ export default function DingDong() {
                   style={{
                     flex: 1, background: 'rgba(120,60,220,0.4)',
                     border: '1px solid rgba(180,100,255,0.5)', borderRadius: q(6),
-                    color: '#fff', fontSize: q(17), padding: `${q(5)} 0`, cursor: 'pointer',
+                    color: '#fff', fontSize: q(18), padding: `${q(6)} 0`, cursor: 'pointer',
                   }}
                 >全押</button>
                 <button
@@ -649,107 +637,128 @@ export default function DingDong() {
                   style={{
                     flex: 1, background: 'rgba(255,255,255,0.07)',
                     border: '1px solid rgba(255,255,255,0.15)', borderRadius: q(6),
-                    color: '#fff', fontSize: q(17), padding: `${q(5)} 0`, cursor: 'pointer',
+                    color: '#fff', fontSize: q(18), padding: `${q(6)} 0`, cursor: 'pointer',
                   }}
                 >清空</button>
               </div>
 
-              {/* 7 种水果组合下注（横向网格，每行两个） */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: q(8) }}>
-                {FRUITS.map(fruit => {
-                  const currentBet = betMap[fruit.id] ?? 0;
-                  const hasBet = currentBet > 0;
-                  return (
-                    <div
-                      key={fruit.id}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: q(8),
-                        background: hasBet
-                          ? `linear-gradient(135deg, rgba(120,60,220,0.5), rgba(80,20,160,0.5))`
-                          : 'rgba(0,0,0,0.35)',
-                        border: `1px solid ${hasBet ? 'rgba(180,100,255,0.7)' : 'rgba(255,255,255,0.1)'}`,
-                        borderRadius: q(10), padding: `${q(8)} ${q(10)}`,
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      {/* 水果图标 */}
-                      <img src={fruit.img} alt={fruit.name}
-                        style={{ width: q(44), height: q(44), objectFit: 'contain', flexShrink: 0 }} />
-
-                      {/* 名称 + 倍率 */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: '#e0d0ff', fontSize: q(20), lineHeight: 1.3 }}>{fruit.name}</div>
-                        <div style={{ color: fruit.color, fontSize: q(20), fontWeight: 700 }}>×{fruit.multiplier}</div>
-                      </div>
-
-                      {/* 下注金额控制（加减号放大） */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: q(6) }}>
-                        <button
-                          onClick={() => setBetForFruit(fruit.id, Math.max(0, currentBet - quickBet))}
-                          disabled={isSpinning || currentBet <= 0}
-                          style={{
-                            width: q(52), height: q(52),
-                            background: currentBet > 0 ? 'rgba(255,80,80,0.4)' : 'rgba(80,80,80,0.3)',
-                            border: '1px solid rgba(255,100,100,0.3)',
-                            borderRadius: q(8), color: '#fff', fontSize: q(30),
-                            cursor: currentBet > 0 ? 'pointer' : 'not-allowed',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            lineHeight: 1, flexShrink: 0,
-                          }}
-                        >−</button>
-                        <div style={{
-                          color: hasBet ? '#ffd700' : 'rgba(255,255,255,0.4)',
-                          fontSize: q(22), fontWeight: hasBet ? 700 : 400,
-                          minWidth: q(44), textAlign: 'center',
-                        }}>
-                          {currentBet > 0 ? currentBet : '0'}
-                        </div>
-                        <button
-                          onClick={() => setBetForFruit(fruit.id, Math.min(maxBet, currentBet + quickBet))}
-                          disabled={isSpinning}
-                          style={{
-                            width: q(52), height: q(52),
-                            background: 'rgba(120,60,220,0.5)',
-                            border: '1px solid rgba(180,100,255,0.5)',
-                            borderRadius: q(8), color: '#fff', fontSize: q(30),
-                            cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            lineHeight: 1, flexShrink: 0,
-                          }}
-                        >+</button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* 总投注 + 下注按钮 */}
+              {/* 总投注显示 */}
               {totalBet > 0 && (
                 <div style={{
+                  background: 'rgba(0,0,0,0.4)', borderRadius: q(6), padding: `${q(4)} ${q(6)}`,
                   color: 'rgba(255,255,255,0.7)', fontSize: q(18), textAlign: 'center',
+                  border: '1px solid rgba(255,215,0,0.2)',
                 }}>
                   总计：<span style={{ color: '#ffd700', fontWeight: 700 }}>{totalBet}</span>
                 </div>
               )}
 
+              {/* ── 开始按钮（右侧栏核心，始终可见） ── */}
               <button
                 onClick={handleBet}
                 disabled={isSpinning || totalBet <= 0}
                 style={{
-                  marginTop: q(2),
+                  marginTop: 'auto',
                   background: isSpinning || totalBet <= 0
                     ? 'rgba(80,80,80,0.4)'
                     : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
                   border: 'none', borderRadius: q(10),
-                  color: '#fff', fontSize: q(22), fontWeight: 700,
-                  padding: `${q(12)} 0`, cursor: isSpinning || totalBet <= 0 ? 'not-allowed' : 'pointer',
+                  color: '#fff', fontSize: q(24), fontWeight: 700,
+                  padding: `${q(14)} 0`, cursor: isSpinning || totalBet <= 0 ? 'not-allowed' : 'pointer',
                   boxShadow: isSpinning || totalBet <= 0 ? 'none' : '0 4px 20px rgba(124,58,237,0.6)',
                   transition: 'all 0.2s', letterSpacing: 1,
+                  width: '100%',
                 }}
               >
                 {isSpinning ? '转动中...' : totalBet <= 0 ? '请下注' : '开始'}
               </button>
+
+              {/* 下注说明 */}
+              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: q(16), textAlign: 'center' }}>
+                先选金额，再点水果下注
+              </div>
+
             </div>
+          </div>
+        </div>
+
+        {/* ── 7 种水果下注区（主游戏区下方） ── */}
+        <div style={{
+          margin: `${q(8)} ${q(12)} 0`,
+          background: 'rgba(20,8,50,0.92)',
+          border: '1.5px solid rgba(120,60,220,0.35)',
+          borderRadius: q(14),
+          padding: `${q(10)} ${q(10)}`,
+        }}>
+          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: q(18), marginBottom: q(6), textAlign: 'center' }}>
+            选择水果下注
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: q(6) }}>
+            {FRUITS.map(fruit => {
+              const currentBet = betMap[fruit.id] ?? 0;
+              const hasBet = currentBet > 0;
+              return (
+                <div
+                  key={fruit.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: q(6),
+                    background: hasBet
+                      ? `linear-gradient(135deg, rgba(120,60,220,0.5), rgba(80,20,160,0.5))`
+                      : 'rgba(0,0,0,0.35)',
+                    border: `1px solid ${hasBet ? 'rgba(180,100,255,0.7)' : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: q(10), padding: `${q(7)} ${q(8)}`,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {/* 水果图标 */}
+                  <img src={fruit.img} alt={fruit.name}
+                    style={{ width: q(40), height: q(40), objectFit: 'contain', flexShrink: 0 }} />
+
+                  {/* 名称 + 倍率 */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: '#e0d0ff', fontSize: q(18), lineHeight: 1.3 }}>{fruit.name}</div>
+                    <div style={{ color: fruit.color, fontSize: q(18), fontWeight: 700 }}>×{fruit.multiplier}</div>
+                  </div>
+
+                  {/* 下注金额控制 */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: q(4) }}>
+                    <button
+                      onClick={() => setBetForFruit(fruit.id, Math.max(0, currentBet - quickBet))}
+                      disabled={isSpinning || currentBet <= 0}
+                      style={{
+                        width: q(48), height: q(48),
+                        background: currentBet > 0 ? 'rgba(255,80,80,0.4)' : 'rgba(80,80,80,0.3)',
+                        border: '1px solid rgba(255,100,100,0.3)',
+                        borderRadius: q(8), color: '#fff', fontSize: q(28),
+                        cursor: currentBet > 0 ? 'pointer' : 'not-allowed',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        lineHeight: 1, flexShrink: 0,
+                      }}
+                    >−</button>
+                    <div style={{
+                      color: hasBet ? '#ffd700' : 'rgba(255,255,255,0.4)',
+                      fontSize: q(20), fontWeight: hasBet ? 700 : 400,
+                      minWidth: q(36), textAlign: 'center',
+                    }}>
+                      {currentBet > 0 ? currentBet : '0'}
+                    </div>
+                    <button
+                      onClick={() => setBetForFruit(fruit.id, Math.min(maxBet, currentBet + quickBet))}
+                      disabled={isSpinning}
+                      style={{
+                        width: q(48), height: q(48),
+                        background: 'rgba(120,60,220,0.5)',
+                        border: '1px solid rgba(180,100,255,0.5)',
+                        borderRadius: q(8), color: '#fff', fontSize: q(28),
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        lineHeight: 1, flexShrink: 0,
+                      }}
+                    >+</button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
