@@ -1667,13 +1667,19 @@ export const appRouter = router({
         // 扣除投注金额
         const newGold = currentGold - input.betAmount;
         await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
-        // 预生成每条车道的死亡概率（基于RTP）
-        // 每条车道的存活概率 = (rtp/100)^(1/maxLanes)
+        // 预生成每条车道的存活结果（true=安全, false=死亡）
+        // 每条车道死亡概率随深度递增，确保游戏有真实风险
+        // 基础死亡率由RTP控制：rtp越高存活概率越高
+        // 公式：第 i 条车道死亡率 = baseDeath * (1 + i * 0.15)
+        // baseDeath 由 RTP 决定：rtp=96 -> baseDeath≈0.22, rtp=90 -> baseDeath≈0.28, rtp=80 -> baseDeath≈0.35
         const maxLanes = 8;
-        const survivalPerLane = Math.pow(rtp / 100, 1 / maxLanes);
+        // baseDeath: RTP越高，基础死亡率越低（玩家赢面越大）
+        const baseDeath = 0.5 - (rtp / 100) * 0.28; // rtp=96 -> 0.5-0.2688=0.231; rtp=80 -> 0.5-0.224=0.276
         const laneResults: boolean[] = [];
         for (let i = 0; i < maxLanes; i++) {
-          laneResults.push(Math.random() < survivalPerLane);
+          // 每条车道死亡率随深度递增
+          const deathRate = Math.min(0.65, baseDeath * (1 + i * 0.18));
+          laneResults.push(Math.random() >= deathRate); // true=安全, false=死亡
         }
         return { success: true, laneResults, balanceAfter: newGold, betAmount: input.betAmount };
       }),
