@@ -1752,16 +1752,13 @@ export const appRouter = router({
       return { rtp: parseFloat(s.rtp), minBet: parseFloat(s.minBet), maxBet: parseFloat(s.maxBet), enabled: s.enabled === 1 };
     }),
     /**
-     * Fruit Bomb 水果下注模式
-     * 7种水果，各有不同倍率：
-     * 0=铃铛(x2.5), 1=西瓜(x5), 2=葡萄(x5), 3=苹果(x10), 4=蓝方块(x10), 5=柠檬(x20), 6=LUCKY(x20)
-     * 玩家选择一种水果下注，系统随机开出一种水果，命中则赢得 betAmount * multiplier
-     * 服务端返回 spinSequence（20帧动画序列）用于前端转盘动画
+     * Fruit Bomb 水果机 - 组合投注模式
+     * betMap: { [fruitId]: betAmount } 可同时对多种水果下注
+     * 系统随机开出一种水果，命中的水果获得 betAmount * multiplier
      */
     play: publicProcedure
       .input(z.object({
-        betAmount: z.number().positive(),
-        selectedFruit: z.number().min(0).max(6),
+        betMap: z.record(z.string(), z.number().positive()),
       }))
       .mutation(async ({ ctx, input }) => {
         const playerToken = await getPlayerFromCookie(ctx.req);
@@ -1776,16 +1773,19 @@ export const appRouter = router({
           maxBet = parseFloat(settingsRows[0].maxBet);
           if (!settingsRows[0].enabled) throw new TRPCError({ code: "FORBIDDEN", message: "游戏暂未开放" });
         }
-        if (input.betAmount < minBet || input.betAmount > maxBet)
-          throw new TRPCError({ code: "BAD_REQUEST", message: `投注金额需在 ${minBet}~${maxBet} 之间` });
+        // 计算总投注额
+        const betEntries = Object.entries(input.betMap).map(([k, v]) => ({ fruitId: parseInt(k), amount: v }));
+        const totalBet = betEntries.reduce((s, e) => s + e.amount, 0);
+        if (totalBet < minBet) throw new TRPCError({ code: "BAD_REQUEST", message: `投注金额需至少 ${minBet}` });
+        if (totalBet > maxBet) throw new TRPCError({ code: "BAD_REQUEST", message: `投注金额不能超过 ${maxBet}` });
         const playerRows = await db.select().from(players).where(eq(players.id, playerToken.playerId));
         if (!playerRows.length) throw new TRPCError({ code: "NOT_FOUND" });
         const player = playerRows[0];
         const currentGold = parseFloat(player.gold);
-        if (currentGold < input.betAmount) throw new TRPCError({ code: "BAD_REQUEST", message: "金币不足" });
+        if (currentGold < totalBet) throw new TRPCError({ code: "BAD_REQUEST", message: "金币不足" });
         // 7种水果倍率
         const FRUIT_MULTIPLIERS = [2.5, 5, 5, 10, 10, 20, 20];
-        // 权重：倍率越高出现概率越低，总权重110
+        // 权重：倍率越高出现概率越低
         const BASE_WEIGHTS = [40, 20, 20, 10, 10, 5, 5];
         const rtpFactor = rtp / 96;
         const weights = BASE_WEIGHTS.map(w => w * rtpFactor);
@@ -1797,17 +1797,19 @@ export const appRouter = router({
           rand -= weights[i];
           if (rand <= 0) { winFruit = i; break; }
         }
-        const isWin = winFruit === input.selectedFruit;
-        const multiplier = isWin ? FRUIT_MULTIPLIERS[input.selectedFruit] : 0;
-        const winAmount = isWin ? input.betAmount * multiplier : 0;
-        const netAmount = isWin ? winAmount - input.betAmount : -input.betAmount;
+        // 计算该水果的下注金额（如果有）
+        const winBetAmount = input.betMap[String(winFruit)] ?? 0;
+        const multiplier = winBetAmount > 0 ? FRUIT_MULTIPLIERS[winFruit] : 0;
+        const winAmount = winBetAmount > 0 ? winBetAmount * multiplier : 0;
+        const isWin = winAmount > 0;
+        const netAmount = winAmount - totalBet;
         const newGold = currentGold + netAmount;
         await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
-        // 复用 selectedCell/winCell 字段存储水果索引
+        // 记录游戏（selectedCell 存储 JSON betMap，winCell 存储开奖水果）
         await db.insert(dingdongGames).values({
           playerId: playerToken.playerId,
-          betAmount: input.betAmount.toFixed(2),
-          selectedCell: input.selectedFruit,
+          betAmount: totalBet.toFixed(2),
+          selectedCell: winFruit, // 简化：存开奖水果
           winCell: winFruit,
           isWin: isWin ? 1 : 0,
           multiplier: multiplier.toFixed(2),
@@ -1818,13 +1820,49 @@ export const appRouter = router({
         return {
           isWin,
           winFruit,
-          selectedFruit: input.selectedFruit,
           multiplier,
           winAmount,
           netAmount,
+          totalBet,
           balanceAfter: newGold,
-          // 20帧转盘动画序列，最后一帧是开奖结果
-          spinSequence: [...Array(19).fill(0).map(() => Math.floor(Math.random() * 7)), winFruit],
+          bets: input.betMap,
+        };
+      }),
+    /**
+     * 押大小环节（赢了之后）
+     * 骰子1-3=小，4-6=大，猜中奖金翻倍，猜错清零
+     */
+    playDice: publicProcedure
+      .input(z.object({
+        choice: z.enum(['big', 'small']),
+        winAmount: z.number().positive(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const playerToken = await getPlayerFromCookie(ctx.req);
+        if (!playerToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const playerRows = await db.select().from(players).where(eq(players.id, playerToken.playerId));
+        if (!playerRows.length) throw new TRPCError({ code: "NOT_FOUND" });
+        const player = playerRows[0];
+        const currentGold = parseFloat(player.gold);
+        // 掷骰子
+        const diceValue = Math.floor(Math.random() * 6) + 1;
+        const isSmall = diceValue <= 3;
+        const win = (input.choice === 'small' && isSmall) || (input.choice === 'big' && !isSmall);
+        const finalAmount = win ? input.winAmount * 2 : 0;
+        // 更新余额：原来已经加了 winAmount，现在需要调整
+        // 如果赢：再加一倍 winAmount（总共 2x）
+        // 如果输：扣除 winAmount（归零）
+        const goldDelta = win ? input.winAmount : -input.winAmount;
+        const newGold = currentGold + goldDelta;
+        await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
+        return {
+          win,
+          diceValue,
+          choice: input.choice,
+          finalAmount,
+          balanceAfter: newGold,
         };
       }),
     /** 获取历史记录 */
