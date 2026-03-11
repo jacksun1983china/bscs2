@@ -353,7 +353,7 @@ function ChatPage({
 
   return (
     <div style={{
-      position: 'fixed',
+      position: 'absolute',
       inset: 0,
       background: '#1a1a2e',
       display: 'flex',
@@ -606,6 +606,12 @@ export default function AgentDashboard() {
     else if (agentData === null) navigate('/agent/login');
   }, [agentData]);
 
+  // 设置 agent-mode class（与游戏前台 phone-container 共用竖屏布局）
+  useEffect(() => {
+    document.body.classList.add('agent-mode');
+    return () => { document.body.classList.remove('agent-mode'); };
+  }, []);
+
   // Web Push
   const registerPushMutation = trpc.cs.registerPushSubscription.useMutation();
   const { data: vapidData } = trpc.cs.getVapidPublicKey.useQuery(undefined, { enabled: !!agentData });
@@ -741,14 +747,14 @@ export default function AgentDashboard() {
 
   // 会话列表页
   return (
-    <div style={{
-      height: '100vh',
+    <div className="phone-container" style={{
       display: 'flex',
       flexDirection: 'column',
       background: '#0f0c29',
       color: '#fff',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif',
       overflow: 'hidden',
+      position: 'relative',
     }}>
       {/* 顶部栏（微信风格） */}
       <div style={{

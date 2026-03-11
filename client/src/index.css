@@ -155,6 +155,37 @@ body.admin-mode .phone-container {
   box-shadow: none !important;
 }
 
+/* ── 坐席后台竖屏居中布局 ─────────────────────────────────────── */
+/* agent-mode: 保持 PC 端居中+竖屏，手机端全屏，与游戏前台一致 */
+body.agent-mode {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  background-color: #06030f !important;
+  background-image:
+    radial-gradient(ellipse 60% 80% at 50% 50%, rgba(80, 20, 160, 0.25) 0%, transparent 70%),
+    radial-gradient(ellipse 30% 50% at 10% 50%, rgba(40, 10, 100, 0.3) 0%, transparent 60%),
+    radial-gradient(ellipse 30% 50% at 90% 50%, rgba(40, 10, 100, 0.3) 0%, transparent 60%) !important;
+  height: 100vh !important;
+  overflow: hidden !important;
+}
+body.agent-mode .phone-container {
+  height: 100vh !important;
+  width: calc(100vh * 9 / 16) !important;
+  max-width: 520px !important;
+  box-shadow: 0 0 60px rgba(120, 60, 220, 0.4), 0 0 120px rgba(60, 20, 120, 0.3) !important;
+  overflow: hidden !important;
+  position: relative !important;
+  flex-shrink: 0 !important;
+}
+@media (max-width: 600px) {
+  body.agent-mode .phone-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+  }
+}
+
 /* ── 游戏卡片悬停效果 ────────────────────────────────────────── */
 .game-card {
   cursor: pointer;

@@ -46,6 +46,12 @@ export default function AgentLogin() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
+  // 设置 agent-mode class（竖屏居中布局）
+  useEffect(() => {
+    document.body.classList.add('agent-mode');
+    return () => { document.body.classList.remove('agent-mode'); };
+  }, []);
+
   const loginMutation = trpc.cs.agentLogin.useMutation({
     onSuccess: () => navigate('/agent'),
     onError: (e) => setError(e.message),
@@ -76,14 +82,15 @@ export default function AgentLogin() {
 
   return (
     <div
+      className="phone-container"
       style={{
-        minHeight: '100vh',
         background: 'linear-gradient(160deg, #0f0c29 0%, #1a0a3d 40%, #24243e 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '20px 16px',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        overflowY: 'auto',
       }}
     >
       <div style={{ width: '100%', maxWidth: 400 }}>
