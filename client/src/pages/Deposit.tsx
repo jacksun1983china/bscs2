@@ -1,9 +1,15 @@
 /**
  * Deposit.tsx — 充值页面
- * 严格还原蓝湖 lanhu_deposit 设计稿
- * 布局：TopNav → PlayerInfoCard → 支付方式 → 金额输入框 → 金额网格 → 充值按钮 → BottomNav
+ * 调整内容：
+ * 1. K3/K4图片替换为新版（k3@2x / k4@2x）
+ * 2. 橙色赠送框移到右上角，缩小宽度
+ * 3. 框内金额文字放大居中
+ * 4. 赠送为0时不显示橙色框
+ * 5. 去掉闪烁硬编码
+ * 6. 汉化英文文字
+ * 7. 最小/最大金额从后台读取
  */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import TopNav from '@/components/TopNav';
 import BottomNav from '@/components/BottomNav';
@@ -15,10 +21,9 @@ const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCD
 const CZ = {
   pageBg: CDN + 'k2_6aa5f651.png',
   inputBg: CDN + 'k1_2fbe4f3a.png',
-  cardNormal: CDN + 'k3_0858706d.png',
-  cardSelected: CDN + 'k4_d774f1b4.png',
-  bonus1: CDN + 'icon1_7f3b5cbe.png',
-  bonus2: CDN + 'icon2_093091dc.png',
+  // 新版卡片图片（k3@2x=普通, k4@2x=选中）
+  cardNormal: CDN + 'k3@2x_d574964f.png',
+  cardSelected: CDN + 'k4@2x_d4d6b720.png',
   zhifubao: CDN + 'zhifubao_044b7086.png',
   weixin: CDN + 'weixin_e2f2fba1.png',
   btnChongzhi: CDN + 'btn_chongzhi_f8c2d4a0.png',
@@ -27,18 +32,18 @@ const CZ = {
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 
 const DEFAULT_AMOUNTS = [
-  { amount: 100, bonus: 37 },
-  { amount: 200, bonus: 37 },
-  { amount: 300, bonus: 37 },
-  { amount: 400, bonus: 37 },
-  { amount: 500, bonus: 37 },
-  { amount: 600, bonus: 37 },
-  { amount: 800, bonus: 37 },
-  { amount: 1000, bonus: 37 },
-  { amount: 2000, bonus: 37 },
-  { amount: 3000, bonus: 37 },
-  { amount: 5000, bonus: 37 },
-  { amount: 10000, bonus: 37 },
+  { amount: 100, bonus: 37, gold: 100 },
+  { amount: 200, bonus: 37, gold: 200 },
+  { amount: 300, bonus: 37, gold: 300 },
+  { amount: 400, bonus: 37, gold: 400 },
+  { amount: 500, bonus: 37, gold: 500 },
+  { amount: 600, bonus: 37, gold: 600 },
+  { amount: 800, bonus: 37, gold: 800 },
+  { amount: 1000, bonus: 37, gold: 1000 },
+  { amount: 2000, bonus: 0, gold: 2000 },
+  { amount: 3000, bonus: 0, gold: 3000 },
+  { amount: 5000, bonus: 0, gold: 5000 },
+  { amount: 10000, bonus: 0, gold: 10000 },
 ];
 
 type PayMethod = 'zhifubao' | 'weixin';
@@ -49,9 +54,29 @@ export default function Deposit() {
   const [settingsVisible, setSettingsVisible] = useState(false);
 
   const { data: configsData } = trpc.player.rechargeConfigs.useQuery();
-  const amounts = (configsData && configsData.length > 0)
-    ? configsData.map((c: any) => ({ amount: Number(c.amount), bonus: Number(c.bonusDiamond ?? 0), gold: Number(c.gold), tag: c.tag ?? '' }))
-    : DEFAULT_AMOUNTS;
+
+  const amounts = useMemo(() => {
+    if (configsData && configsData.length > 0) {
+      return configsData.map((c: any) => ({
+        amount: Number(c.amount),
+        bonus: Number(c.bonusDiamond ?? 0),
+        gold: Number(c.gold),
+        tag: c.tag ?? '',
+      }));
+    }
+    return DEFAULT_AMOUNTS;
+  }, [configsData]);
+
+  // 从档位中动态计算最小/最大金额
+  const minAmount = useMemo(() => {
+    if (amounts.length === 0) return 100;
+    return Math.min(...amounts.map(a => a.amount));
+  }, [amounts]);
+
+  const maxAmount = useMemo(() => {
+    if (amounts.length === 0) return 50000;
+    return Math.max(...amounts.map(a => a.amount));
+  }, [amounts]);
 
   return (
     <div
@@ -77,13 +102,14 @@ export default function Deposit() {
         }}
       />
 
-        {/* 顶部固定区：TopNav + PlayerInfoCard，不随内容滚动 */}
+      {/* 顶部固定区：TopNav + PlayerInfoCard */}
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 2, width: '100%' }}>
         <TopNav showLogo={false} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
         <div style={{ padding: `0 ${q(30)}`, marginTop: q(8) }}>
           <PlayerInfoCard />
         </div>
       </div>
+
       {/* 内容滚动区 */}
       <div
         style={{
@@ -97,7 +123,6 @@ export default function Deposit() {
           paddingBottom: q(120),
         }}
       >
-
         {/* 支付方式 */}
         <div style={{ display: 'flex', flexDirection: 'row', gap: q(20), padding: `${q(24)} ${q(30)} 0` }}>
           <div
@@ -124,10 +149,12 @@ export default function Deposit() {
           </div>
         </div>
 
-        {/* 金额提示 */}
+        {/* 充值金额提示（汉化） */}
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', padding: `${q(20)} ${q(30)} 0`, gap: q(16) }}>
-          <span style={{ color: '#fff', fontSize: q(28), fontWeight: 700, whiteSpace: 'nowrap' }}>Deposit Amount</span>
-          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: q(22), whiteSpace: 'nowrap' }}>Min:¥100 Max:¥50000</span>
+          <span style={{ color: '#fff', fontSize: q(28), fontWeight: 700, whiteSpace: 'nowrap' }}>充值金额</span>
+          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: q(22), whiteSpace: 'nowrap' }}>
+            最低：¥{minAmount}&nbsp;&nbsp;最高：¥{maxAmount}
+          </span>
         </div>
 
         {/* 金额输入框 */}
@@ -143,18 +170,59 @@ export default function Deposit() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: q(14), padding: `${q(20)} ${q(30)} 0` }}>
           {amounts.map((item, idx) => {
             const isSelected = selectedAmount === item.amount;
+            const hasBonus = item.bonus > 0;
             return (
-              <div key={idx} onClick={() => setSelectedAmount(item.amount)} style={{ position: 'relative', cursor: 'pointer', aspectRatio: '164/148' }}>
-                <img src={isSelected ? CZ.cardSelected : CZ.cardNormal} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
+              <div
+                key={idx}
+                onClick={() => setSelectedAmount(item.amount)}
+                style={{ position: 'relative', cursor: 'pointer', aspectRatio: '164/148' }}
+              >
+                {/* 卡片背景图 */}
                 <img
-                  src={idx % 2 === 0 ? CZ.bonus1 : CZ.bonus2}
-                  alt={`+${item.bonus}`}
-                  style={{ position: 'absolute', top: q(-4), left: '50%', transform: 'translateX(-50%)', width: '72%', objectFit: 'contain', zIndex: 2 }}
+                  src={isSelected ? CZ.cardSelected : CZ.cardNormal}
+                  alt=""
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }}
                 />
-                <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%', paddingBottom: '18%' }}>
-                  <div>
-                    <span style={{ color: '#fff', fontSize: q(20), fontWeight: 700 }}>￥</span>
-                    <span style={{ color: '#fff', fontSize: q(26), fontWeight: 700 }}>{item.amount}</span>
+
+                {/* 右上角赠送角标（bonus>0才显示） */}
+                {hasBonus && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: q(-6),
+                      right: q(-6),
+                      zIndex: 3,
+                      background: 'linear-gradient(135deg, #ff8c00 0%, #ff4500 100%)',
+                      borderRadius: q(20),
+                      padding: `${q(3)} ${q(8)}`,
+                      minWidth: q(44),
+                      textAlign: 'center',
+                      boxShadow: '0 2px 6px rgba(255,80,0,0.5)',
+                    }}
+                  >
+                    <span style={{ color: '#fff', fontSize: q(18), fontWeight: 700, whiteSpace: 'nowrap' }}>
+                      +{item.bonus}
+                    </span>
+                  </div>
+                )}
+
+                {/* 卡片内容：金额居中放大 */}
+                <div
+                  style={{
+                    position: 'relative',
+                    zIndex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: q(2) }}>
+                    <span style={{ color: isSelected ? '#ffe066' : '#fff', fontSize: q(20), fontWeight: 700 }}>¥</span>
+                    <span style={{ color: isSelected ? '#ffe066' : '#fff', fontSize: q(30), fontWeight: 900 }}>
+                      {item.amount >= 1000 ? `${item.amount / 1000}k` : item.amount}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -180,7 +248,7 @@ export default function Deposit() {
         {/* 充值说明 */}
         <div style={{ padding: `${q(20)} ${q(30)} 0`, color: 'rgba(255,255,255,0.5)', fontSize: q(22), lineHeight: 1.6 }}>
           <p style={{ margin: 0 }}>• 充值金额将实时到账，如有问题请联系客服</p>
-          <p style={{ margin: `${q(8)} 0 0` }}>• 最低充值 ¥100，最高单笔 ¥50000</p>
+          <p style={{ margin: `${q(8)} 0 0` }}>• 最低充值 ¥{minAmount}，最高单笔 ¥{maxAmount}</p>
           <p style={{ margin: `${q(8)} 0 0` }}>• 充值奖励金币将在到账后自动发放</p>
         </div>
       </div>
@@ -188,7 +256,6 @@ export default function Deposit() {
       <div style={{ position: 'relative', zIndex: 10, flexShrink: 0 }}>
         <BottomNav active="chongzhi" />
       </div>
-      {/* 设置弹窗：position:absolute，受 phone-container 约束 */}
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
   );

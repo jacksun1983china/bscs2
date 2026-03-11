@@ -720,3 +720,12 @@
 
 ## 商城PC端宽度问题（2026-03-12）
 - [x] 修复商城页面在PC端宽度≥600px时内容消失的问题（修复Shop.tsx外层div结构和语法错误）
+
+## 充值页面调整 + 三个新页面（2026-03-12）
+- [x] 充值页面（Deposit.tsx）：替换K3/K4图片为新版，橙色赠送框移到右上角，bonus=0时不显示，金额文字放大居中，汉化英文文字，最小/最大金额从档位动态计算
+- [x] 创建 STEAM设置页面（SteamSettings.tsx）：主号设置+副号绑定+提货绑定码生成
+- [x] 创建 安全密码页面（SecurityPassword.tsx）：手机验证码+设置新密码
+- [x] 创建 我的记录页面（MyRecords.tsx）：余额/充值/提货/赠送记录，时间筛选
+- [x] Profile.tsx 菜单项添加跳转（我的记录/STEAM设置/安全密码）
+- [x] App.tsx 注册三个新路由（/steam-settings, /security-password, /my-records）
+- [x] 推送代码到 GitHub 仓库 jacksun1983china/bscs2
