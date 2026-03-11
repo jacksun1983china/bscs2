@@ -26,13 +26,13 @@ const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCD
 
 // ── 7 种水果定义（与服务端索引对应）────────────────────────────
 const FRUITS = [
-  { id: 0, name: '铃铛',   img: `${CDN}/bell_43c3ab93.png`,       multiplier: 2.5,  color: '#f59e0b', weight: 40 },
-  { id: 1, name: '西瓜',   img: `${CDN}/watermelon_f5264fab.png`, multiplier: 5,    color: '#22c55e', weight: 20 },
-  { id: 2, name: '葡萄',   img: `${CDN}/grape_d7bdf199.png`,      multiplier: 5,    color: '#a855f7', weight: 20 },
-  { id: 3, name: '苹果',   img: `${CDN}/apple_6e18be8f.png`,      multiplier: 10,   color: '#84cc16', weight: 10 },
-  { id: 4, name: '蓝宝石', img: `${CDN}/blue_2c52cb20.png`,       multiplier: 10,   color: '#3b82f6', weight: 10 },
-  { id: 5, name: '柠檬',   img: `${CDN}/lemon_91b2d253.png`,      multiplier: 20,   color: '#eab308', weight: 5  },
-  { id: 6, name: 'LUCKY',  img: `${CDN}/lucky_fbe22155.png`,      multiplier: 20,   color: '#ec4899', weight: 5  },
+  { id: 0, name: '铃铛',   img: `${CDN}/bell_42e211b8.png`,       multiplier: 2.5,  color: '#f59e0b', weight: 40 },
+  { id: 1, name: '西瓜',   img: `${CDN}/watermelon_a06e5e29.png`, multiplier: 5,    color: '#22c55e', weight: 20 },
+  { id: 2, name: '葡萄',   img: `${CDN}/grape_41b4f4b0.png`,      multiplier: 5,    color: '#a855f7', weight: 20 },
+  { id: 3, name: '苹果',   img: `${CDN}/apple_3f9ba667.png`,      multiplier: 10,   color: '#84cc16', weight: 10 },
+  { id: 4, name: '蓝宝石', img: `${CDN}/blue_4205add7.png`,       multiplier: 10,   color: '#3b82f6', weight: 10 },
+  { id: 5, name: '柠檬',   img: `${CDN}/lemon_1880cb8f.png`,      multiplier: 20,   color: '#eab308', weight: 5  },
+  { id: 6, name: 'LUCKY',  img: `${CDN}/lucky_a022fbfc.png`,      multiplier: 20,   color: '#ec4899', weight: 5  },
 ];
 
 // 内圈 4×4 静态水果分布
