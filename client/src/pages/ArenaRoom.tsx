@@ -429,13 +429,17 @@ export default function ArenaRoom() {
   const [, navigate] = useLocation();
   const [settingsVisible, setSettingsVisible] = useState(false);
 
+  // 回放模式：用 replayKey 强制重置，支持无限次回放
   const isReplayMode = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('replay') === '1'
     : false;
 
+  const [replayKey, setReplayKey] = useState(0); // 每次点击回放递增，强制重置状态
   const [replayRound, setReplayRound] = useState(0);
-  const replayRoundRef = useRef(0); // 用ref跟踪最新值，避免handleSlotDone闭包捕获旧值
+  const replayRoundRef = useRef(0); // 用ref跟踪最新値，避免handleSlotDone闭包捕获旧値
   const [isReplaying, setIsReplaying] = useState(false);
+  // 回放是否正在等待开场动画完成（线性流程：开场动画 → slot动画）
+  const [replayWaitingIntro, setReplayWaitingIntro] = useState(false);
 
   const [isPresent, setIsPresent] = useState(false);
   const [joinError, setJoinError] = useState('');
@@ -556,8 +560,10 @@ export default function ArenaRoom() {
   });
 
   // ── 触发开场动画 ──
-  const triggerIntro = useCallback((playerList: Array<{ playerId: number; nickname: string; avatar: string; seatNo: number }>) => {
-    if (introShownRef.current || playerList.length < 1) return;
+  // forceReplay=true 时允许重复触发（回放模式每次都需要）
+  const triggerIntro = useCallback((playerList: Array<{ playerId: number; nickname: string; avatar: string; seatNo: number }>, forceReplay = false) => {
+    if (!forceReplay && introShownRef.current) return;
+    if (playerList.length < 1) return;
     introShownRef.current = true;
     setShowIntro(true);
     setSkipIntro(false);
@@ -684,32 +690,56 @@ export default function ArenaRoom() {
     }
   }, [roomDetail?.roundResults]);
 
-  // ── 回放模式：自动开始 ──
+  // ── 回放模式：用 replayKey 控制开始（每次递增 replayKey 就重新开始回放）──
+  // 依赖 replayKey 而非 isReplaying，避免数据刷新时重复触发
+  const replayStartedRef = useRef<number>(-1); // 记录已处理的 replayKey
   useEffect(() => {
-    if (
-      isReplayMode &&
-      !isReplaying &&
-      roomDetail?.roundResults &&
-      roomDetail.roundResults.length > 0 &&
-      roomDetail.players.length > 0
-    ) {
-      setIsReplaying(true);
-      setGameStatus('playing');
-      setGameOverData(null);
-      setRoundResults({});
-      setCurrentRound(1);
-      setCurrentRoundItems({});
-      setSpinning(false);
-      setSpinDoneCount(0);
-      setLiveValues({});
-      // 触发开场动画
-      triggerIntro(roomDetail.players);
-    }
-  }, [isReplayMode, roomDetail?.roundResults, roomDetail?.players]);
+    if (!isReplayMode) return;
+    if (replayKey < 0) return;
+    if (replayStartedRef.current === replayKey) return; // 已处理过这个 key
+    if (!roomDetail?.roundResults || roomDetail.roundResults.length === 0) return;
+    if (!roomDetail.players || roomDetail.players.length === 0) return;
+
+    // 标记已处理
+    replayStartedRef.current = replayKey;
+
+    // 重置所有回放状态
+    setIsReplaying(true);
+    setGameStatus('playing');
+    setGameOverData(null);
+    setRoundResults({});
+    setCurrentRound(1);
+    setCurrentRoundItems({});
+    setSpinning(false);
+    setSpinDoneCount(0);
+    setLiveValues({});
+    setReplayRound(0);
+    replayRoundRef.current = 0;
+
+    // 线性流程：先开场动画，动画完成后再开始 slot
+    // 开场动画内部会调用 onComplete → setShowIntro(false)
+    // 我们在 ArenaIntroAnimation.onComplete 中设置 replayWaitingIntro=false 并启动第一轮
+    setReplayWaitingIntro(true);
+    introShownRef.current = false; // 允许重新触发
+    triggerIntro(roomDetail.players, true);
+  }, [isReplayMode, replayKey, roomDetail?.roundResults, roomDetail?.players]);
+
+  // ── 回放模式：开场动画完成后开始第一轮 ──
+  // replayWaitingIntro=false 且 isReplaying=true 且 replayRound=0 时，延迟启动第一轮
+  useEffect(() => {
+    if (!isReplaying || replayWaitingIntro || replayRound !== 0) return;
+    const timer = setTimeout(() => {
+      replayRoundRef.current = 1;
+      setReplayRound(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [isReplaying, replayWaitingIntro, replayRound]);
 
   // ── 回放模式：每轮推进 ──
+  // 使用 replayRound 和 spinning 作为依赖，确保线性执行
   useEffect(() => {
     if (!isReplaying || !roomDetail?.roundResults) return;
+    if (replayWaitingIntro) return; // 开场动画还未完成，不进行 slot
     const allRoundNos = Array.from(new Set(roomDetail.roundResults.map((r) => r.roundNo))).sort((a, b) => a - b);
     const totalReplayRounds = allRoundNos.length;
     if (replayRound > 0 && replayRound <= totalReplayRounds && !spinning) {
@@ -730,18 +760,7 @@ export default function ArenaRoom() {
       setSpinDoneCount(0);
       setSkipGameAnim(false);
     }
-  }, [isReplaying, replayRound, spinning]);
-
-  // ── 回放模式：第一轮延迟启动 ──
-  useEffect(() => {
-    if (isReplaying && replayRound === 0) {
-      const timer = setTimeout(() => {
-        replayRoundRef.current = 1;
-        setReplayRound(1);
-      }, 800);
-      return () => clearTimeout(timer);
-    }
-  }, [isReplaying, replayRound]);
+  }, [isReplaying, replayRound, spinning, replayWaitingIntro]);
 
   const room = roomDetail?.room;
   const players = roomDetail?.players ?? [];
@@ -789,6 +808,7 @@ export default function ArenaRoom() {
     setGameOverData({ winnerId: winner?.playerId ?? 0, players: overPlayers });
     setGameStatus('finished');
     setIsReplaying(false);
+    setReplayWaitingIntro(false);
     if (winner?.playerId === myPlayerId) playWinFanfare();
     else playLoseTone();
   }, [roomDetail, isReplaying, roundResults, currentRoundItems, players, myPlayerId]);
@@ -1008,7 +1028,13 @@ export default function ArenaRoom() {
             avatar: p?.avatar ?? '001',
           }))}
           skip={skipIntro}
-          onComplete={() => setShowIntro(false)}
+          onComplete={() => {
+            setShowIntro(false);
+            // 回放模式：开场动画完成，解除等待状态，允许 slot 开始
+            if (isReplaying) {
+              setReplayWaitingIntro(false);
+            }
+          }}
         />
       )}
 
@@ -1362,21 +1388,59 @@ export default function ArenaRoom() {
           </div>
         )}
 
-        {/* 返回按钮 */}
+        {/* 返回按鈕 + 再次回放按鈕 */}
         {gameStatus === 'finished' && (
-          <button
-            onClick={() => navigate('/arena')}
-            style={{
-              display: 'block', width: '100%', marginTop: q(20),
-              padding: q(18),
-              background: 'rgba(120,60,220,0.2)',
-              border: '1.5px solid rgba(120,60,220,0.5)',
-              borderRadius: q(12), color: '#c084fc',
-              fontSize: q(28), fontWeight: 700, cursor: 'pointer',
-            }}
-          >
-            返回大厅
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: q(12), marginTop: q(20) }}>
+            {/* 回放模式下显示“再次回放”按鈕 */}
+            {isReplayMode && (
+              <button
+                onClick={() => {
+                  // 递增 replayKey 强制重新开始回放
+                  setReplayKey((k) => k + 1);
+                  // 重置回放相关状态
+                  replayStartedRef.current = -1;
+                  setIsReplaying(false);
+                  setReplayRound(0);
+                  replayRoundRef.current = 0;
+                  setReplayWaitingIntro(false);
+                  introShownRef.current = false;
+                  setShowIntro(false);
+                  setSpinning(false);
+                  setSpinDoneCount(0);
+                  setSkipGameAnim(false);
+                  setGameOverData(null);
+                  setRoundResults({});
+                  setCurrentRound(1);
+                  setCurrentRoundItems({});
+                  setLiveValues({});
+                }}
+                style={{
+                  display: 'block', width: '100%',
+                  padding: q(18),
+                  background: 'linear-gradient(135deg,rgba(96,165,250,0.25),rgba(59,130,246,0.15))',
+                  border: '1.5px solid rgba(96,165,250,0.6)',
+                  borderRadius: q(12), color: '#60a5fa',
+                  fontSize: q(28), fontWeight: 700, cursor: 'pointer',
+                  boxShadow: '0 4px 16px rgba(96,165,250,0.2)',
+                }}
+              >
+                ▶ 再次回放
+              </button>
+            )}
+            <button
+              onClick={() => navigate('/arena')}
+              style={{
+                display: 'block', width: '100%',
+                padding: q(18),
+                background: 'rgba(120,60,220,0.2)',
+                border: '1.5px solid rgba(120,60,220,0.5)',
+                borderRadius: q(12), color: '#c084fc',
+                fontSize: q(28), fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              返回大厅
+            </button>
+          </div>
         )}
       </div>
 

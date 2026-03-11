@@ -433,10 +433,10 @@ export default function Arena() {
       {showCreate && (
         <CreateRoomModal
           onClose={() => setShowCreate(false)}
-          onCreated={(_roomId) => {
-            // 创建房间后直接关闭弹窗返回列表页，不跳转进入房间
+          onCreated={(roomId) => {
+            // 创建房间后跳转进入房间内部
             setShowCreate(false);
-            refetch(); // 刷新房间列表
+            navigate(`/arena/${roomId}`);
           }}
         />
       )}
