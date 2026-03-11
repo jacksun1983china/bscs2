@@ -437,6 +437,7 @@ export default function ArenaRoom() {
   const [replayKey, setReplayKey] = useState(0); // 每次点击回放递增，强制重置状态
   const [replayRound, setReplayRound] = useState(0);
   const replayRoundRef = useRef(0); // 用ref跟踪最新値，避免handleSlotDone闭包捕获旧値
+  const replaySpinStartedRef = useRef(0); // 记录已经启动 slot 的轮次，防止重复触发
   const [isReplaying, setIsReplaying] = useState(false);
   // 回放是否正在等待开场动画完成（线性流程：开场动画 → slot动画）
   const [replayWaitingIntro, setReplayWaitingIntro] = useState(false);
@@ -798,6 +799,7 @@ export default function ArenaRoom() {
     setLiveValues({});
     setReplayRound(0);
     replayRoundRef.current = 0;
+    replaySpinStartedRef.current = 0;
 
     // 线性流程：先开场动画，动画完成后再开始 slot
     // 开场动画内部会调用 onComplete → setShowIntro(false)
@@ -819,13 +821,16 @@ export default function ArenaRoom() {
   }, [isReplaying, replayWaitingIntro, replayRound]);
 
   // ── 回放模式：每轮推进 ──
-  // 使用 replayRound 和 spinning 作为依赖，确保线性执行
+  // 只依赖 replayRound 变化来触发，用 replaySpinStartedRef 防止重复触发同一轮
   useEffect(() => {
     if (!isReplaying || !roomDetail?.roundResults) return;
     if (replayWaitingIntro) return; // 开场动画还未完成，不进行 slot
     const allRoundNos = Array.from(new Set(roomDetail.roundResults.map((r) => r.roundNo))).sort((a, b) => a - b);
     const totalReplayRounds = allRoundNos.length;
-    if (replayRound > 0 && replayRound <= totalReplayRounds && !spinning) {
+    if (replayRound > 0 && replayRound <= totalReplayRounds) {
+      // 防止重复触发：如果这一轮已经启动过 slot，跳过
+      if (replaySpinStartedRef.current === replayRound) return;
+      replaySpinStartedRef.current = replayRound;
       const roundNo = allRoundNos[replayRound - 1];
       const resultsForRound = roomDetail.roundResults.filter((r) => r.roundNo === roundNo);
       const itemMap: typeof currentRoundItems = {};
@@ -843,7 +848,7 @@ export default function ArenaRoom() {
       setSpinDoneCount(0);
       setSkipGameAnim(false);
     }
-  }, [isReplaying, replayRound, spinning, replayWaitingIntro]);
+  }, [isReplaying, replayRound, replayWaitingIntro]);
 
   const room = roomDetail?.room;
   // 玩家列表：优先使用包含机器人的更完整列表

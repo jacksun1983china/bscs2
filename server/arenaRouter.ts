@@ -21,6 +21,7 @@ import {
   boxes,
   boxGoods,
   players,
+  playerItems,
 } from "../drizzle/schema";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { SignJWT, jwtVerify } from "jose";
@@ -402,6 +403,15 @@ export const arenaRouter = router({
           goodsLevel: picked.level,
           goodsValue: String(picked.price),
         });
+        // 真实玩家（playerId > 0）将奖励道具入背包
+        if (rp.playerId > 0) {
+          await db.insert(playerItems).values({
+            playerId: rp.playerId,
+            itemId: picked.id,
+            source: 'arena',
+            status: 0,
+          });
+        }
         results.push({
           playerId: rp.playerId,
           nickname: rp.nickname,
@@ -652,6 +662,15 @@ async function autoSpinAllRounds(roomId: number) {
           goodsLevel: picked.level,
           goodsValue: String(picked.price),
         });
+        // 真实玩家（playerId > 0）将奖励道具入背包
+        if (rp.playerId > 0) {
+          await db.insert(playerItems).values({
+            playerId: rp.playerId,
+            itemId: picked.id,
+            source: 'arena',
+            status: 0,
+          });
+        }
         results.push({
           playerId: rp.playerId,
           nickname: rp.nickname,

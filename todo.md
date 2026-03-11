@@ -634,3 +634,13 @@
 
 ## 竞技场开奖结果弹层布局修复（2026-03-11）
 - [x] 修复开奖结果弹层（本轮开奖结果）超出手机容器范围的问题，确保完全在 phone-container 内显示
+
+## 竞技场回放模式 bug 修复（2026-03-11）
+- [ ] 修复回放模式在第2轮卡住不继续的 bug
+
+## 竞技场奖励入背包 + Bug修复（2026-03-11）
+- [x] 修复历史记录卡片图标破图（CDN链接失效，改用本地 /img/huizhang.png）
+- [x] 修复回放模式第2轮卡住的 bug（移除 spinning 依赖，用 replaySpinStartedRef 防重复触发）
+- [x] 竞技场每轮开箱后，真实玩家（playerId > 0）的奖励道具自动入背包（source='arena'）
+- [x] 修复背包页面字段名不匹配（itemName/itemImageUrl/itemValue）
+- [x] 背包页面添加来源角标（竞技场/Roll房）

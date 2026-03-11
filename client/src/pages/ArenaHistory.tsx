@@ -116,9 +116,9 @@ function RecordCard({ record }: { record: RecordItem }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: q(20), marginBottom: q(12) }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: q(8) }}>
           <img
-            src={`${CDN}/tucheng7_8e3f5c2a.png`}
+            src="/img/huizhang.png"
             alt=""
-            style={{ width: q(32), height: q(32), objectFit: 'contain', opacity: 0.7 }}
+            style={{ width: q(32), height: q(32), objectFit: 'contain', opacity: 0.85 }}
           />
           <span style={{ color: '#9980cc', fontSize: q(22) }}>
             {room.maxPlayers}人对战 · {room.rounds}轮

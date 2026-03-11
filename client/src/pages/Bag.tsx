@@ -84,17 +84,20 @@ export default function Bag() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {data.list.map((item: any) => (
                 <div key={item.id} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(120,60,220,0.3)', background: 'rgba(20,8,50,0.7)' }}>
-                  <div style={{ width: '100%', aspectRatio: '1', overflow: 'hidden', background: 'rgba(50,20,100,0.4)' }}>
-                    {item.imageUrl ? (
-                      <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ width: '100%', aspectRatio: '1', overflow: 'hidden', background: 'rgba(50,20,100,0.4)', position: 'relative' }}>
+                    {item.itemImageUrl ? (
+                      <img src={item.itemImageUrl} alt={item.itemName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>🎁</div>
                     )}
+                    {/* 来源角标 */}
+                    {item.source === 'arena' && <div style={{ position: 'absolute', top: 4, right: 4, color: '#c084fc', fontSize: 9, background: 'rgba(20,8,50,0.85)', borderRadius: 3, padding: '1px 5px', border: '1px solid rgba(192,132,252,0.4)' }}>竞技场</div>}
+                    {item.source === 'roll' && <div style={{ position: 'absolute', top: 4, right: 4, color: '#34d399', fontSize: 9, background: 'rgba(20,8,50,0.85)', borderRadius: 3, padding: '1px 5px', border: '1px solid rgba(52,211,153,0.4)' }}>Roll房</div>}
                   </div>
                   <div style={{ padding: '6px 8px' }}>
-                    <div style={{ color: '#e0d0ff', fontSize: 11, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
-                    <div style={{ color: '#ffd700', fontSize: 11, marginTop: 2 }}>¥{parseFloat(item.value || '0').toFixed(0)}</div>
-                    <div style={{ color: '#666', fontSize: 10, marginTop: 2 }}>{new Date(item.wonAt || item.createdAt).toLocaleDateString('zh-CN')}</div>
+                    <div style={{ color: '#e0d0ff', fontSize: 11, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.itemName || '未知道具'}</div>
+                    <div style={{ color: '#ffd700', fontSize: 11, marginTop: 2 }}>¥{parseFloat(item.itemValue || '0').toFixed(0)}</div>
+                    <div style={{ color: '#666', fontSize: 10, marginTop: 2 }}>{new Date(item.createdAt).toLocaleDateString('zh-CN')}</div>
                   </div>
                 </div>
               ))}
