@@ -110,7 +110,8 @@ async function botPlayAllRounds(roomId: number) {
       .where(and(eq(arenaRoundResults.roomId, roomId), eq(arenaRoundResults.roundNo, roundNo)));
     if (existingResults.length > 0) continue;
 
-    const boxId = boxIds[roundNo - 1];
+    // 循环使用宝箱：若 boxIds 不足 rounds 数，则循环取最后一个
+    const boxId = boxIds[roundNo - 1] ?? boxIds[boxIds.length - 1];
     if (!boxId) continue;
 
     const [box] = await db.select().from(boxes).where(eq(boxes.id, boxId));
@@ -166,8 +167,10 @@ async function botPlayAllRounds(roomId: number) {
     // 广播本轮结果
     broadcastRoundResult(roomId, roundNo, results);
 
-    // 每轮之间延迟2.5秒，让前端有时间播放动画
-    await new Promise((resolve) => setTimeout(resolve, 2500));
+    // 每轮之间延迟5.5秒：slot动画约3秒 + 开奖展示2.2秒 + 0.3秒缓冲
+    if (roundNo < room.rounds) {
+      await new Promise((resolve) => setTimeout(resolve, 5500));
+    }
   }
 
   // 所有轮次完成，计算胜负
@@ -368,12 +371,12 @@ async function checkAndFillRooms() {
 
       // 如果游戏开始了，机器人自动完成所有轮次
       if (gameStarted) {
-        // 延迟3秒后开始开箱（等前端加载游戏房间）
+        // 延迟5秒后开始开箱（开场动画约3.1秒，多留1.9秒缓冲）
         setTimeout(() => {
           botPlayAllRounds(freshRoom.id).catch((err) => {
             console.error(`[ArenaBot] 房间 #${freshRoom.roomNo} 开箱出错:`, err);
           });
-        }, 3000);
+        }, 5000);
       }
     } finally {
       // 无论成功失败，都移除处理标记

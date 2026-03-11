@@ -597,7 +597,7 @@ export default function ArenaRoom() {
   // ── 触发开场动画 ──
   // forceReplay=true 时允许重复触发（回放模式每次都需要）
   const triggerIntro = useCallback((playerList: Array<{ playerId: number; nickname: string; avatar: string; seatNo: number }>, forceReplay = false) => {
-    if (!forceReplay && introShownRef.current) return;
+    if (!forceReplay && introShownRef.current) { return; }
     if (playerList.length < 1) return;
     introShownRef.current = true;
     showIntroRef.current = true; // 实时标记开场动画正在播放
@@ -846,8 +846,15 @@ export default function ArenaRoom() {
   }, [isReplaying, replayRound, spinning, replayWaitingIntro]);
 
   const room = roomDetail?.room;
-  // 观战者在 roomDetail 加载前，使用通过 round_result 缓存的玩家信息
-  const players = (roomDetail?.players ?? []).length > 0 ? (roomDetail?.players ?? []) : spectatorPlayers;
+  // 玩家列表：优先使用包含机器人的更完整列表
+  // roomDetail?.players 可能只有真实玩家（机器人加入后 roomDetail 还未刷新）
+  // spectatorPlayers 从 round_result 中获取，包含所有参与者（含机器人）
+  const players = (() => {
+    const fromRoom = roomDetail?.players ?? [];
+    const fromSpec = spectatorPlayers;
+    // 使用玩家数量更多的列表，确保机器人也被包含
+    return fromRoom.length >= fromSpec.length ? fromRoom : fromSpec;
+  })();
   const maxPlayers = room?.maxPlayers ?? (spectatorPlayers.length > 0 ? spectatorPlayers.length : 2);
   const totalRounds = room?.rounds ?? 1;
 

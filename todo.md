@@ -336,7 +336,7 @@
 - [ ] 首页游戏菜单图标上叠加文字标签（商城/福利/活动/邮件）
 - [ ] 商城页面：对接cs2pifa API（分类+商品列表+搜索筛选+购买）
 - [ ] 记录查询页面（我的记录入口，蓝湖背包空状态页面改造为记录页）
-- [ ] 竞技场制作（房间列表+创建对战+选箱子+老虎机滚动+胜负判定）
+- [x] 竞技场制作（房间列表+创建对战+选箱子+老虎机滚动+胜负判定）
 - [ ] 修复PC端显示：全局居中手机容器，两侧加不喧宾夺主的装饰背景（非纯色）
 
 ## 商城cs2pifa API集成（实时读取，不存库）
@@ -619,3 +619,15 @@
 
 ## 彻底修复 slot 动画不触发（2026-03-11）
 - [x] 重构开场动画与 slot 动画的时序控制：将内联 onComplete 改为 useCallback 稳定引用，防止计时器被重置
+
+## 彻底修复 slot 动画不触发（第三次，2026-03-11）
+- [ ] 全面审查游戏启动全链路：joinRoom → SSE → game_started → round_result → spinning
+- [ ] 修复所有导致 slot 动画不触发的问题
+
+## 竞技场 slot 动画 bug 修复（2026-03-11）
+- [x] 修复 ArenaIntroAnimation 计时器依赖 onComplete 引用导致被重置的问题（改用 useRef 存储回调）
+- [x] 修复 botPlayAllRounds 延迟不足（3000ms < 开场动画 3100ms），改为 5000ms
+- [x] 修复 botPlayAllRounds 轮间延迟不足（2500ms < slot 动画 ~5.2s），改为 5500ms
+- [x] 修复 arenaRouter autoSpinAllRounds 轮间延迟，改为 5500ms
+- [x] 修复 createRoom 重复宝箱 ID 验证失败（inArray 去重后验证）
+- [x] 修复 players 数组不包含机器人玩家导致 slot 无法渲染的问题（优先使用更完整的玩家列表）

@@ -175,12 +175,15 @@ export const arenaRouter = router({
       // 查询玩家信息
       const [player] = await db.select().from(players).where(eq(players.id, session.playerId));
       if (!player) throw new TRPCError({ code: "NOT_FOUND", message: "玩家不存在" });
-      // 查询宝箱价格，计算入场费
-      const boxRows = await db.select().from(boxes).where(inArray(boxes.id, input.boxIds));
-      if (boxRows.length !== input.boxIds.length) {
+      // 查询宝箱价格，计算入场费（允许重复宝箱ID，用 Set 去重后验证）
+      const uniqueBoxIds = Array.from(new Set(input.boxIds));
+      const boxRows = await db.select().from(boxes).where(inArray(boxes.id, uniqueBoxIds));
+      if (boxRows.length !== uniqueBoxIds.length) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "部分宝箱不存在" });
       }
-      const entryFee = boxRows.reduce((s, b) => s + parseFloat(b.price), 0);
+      // 按照 input.boxIds 顺序构建宝箱列表（允许重复）
+      const boxMap = new Map(boxRows.map((b) => [b.id, b]));
+      const entryFee = input.boxIds.reduce((s, bid) => s + parseFloat(boxMap.get(bid)?.price ?? '0'), 0);
       // 检查金币余额
       const gold = parseFloat(player.gold ?? "0");
       if (gold < entryFee) {
@@ -618,7 +621,8 @@ async function autoSpinAllRounds(roomId: number) {
       }));
       broadcastRoundResult(roomId, roundNo, results);
     } else {
-      const boxId = boxIds[roundNo - 1];
+      // 循环使用宝箱：若 boxIds 不足 rounds 数，则循环取最后一个
+      const boxId = boxIds[roundNo - 1] ?? boxIds[boxIds.length - 1];
       if (!boxId) continue;
       const [box] = await db.select().from(boxes).where(eq(boxes.id, boxId));
       if (!box) continue;
@@ -667,9 +671,9 @@ async function autoSpinAllRounds(roomId: number) {
       }
     }
 
-    // 等待客户端动画播放（slot动画约3秒 + 开奖展示1.5秒 = 4.5秒）
+    // 等待客户端动画播放：slot动画约3秒 + 开奖展示2.2秒 + 0.3秒缓冲 = 5.5秒
     if (roundNo < totalRounds) {
-      await new Promise((res) => setTimeout(res, 4500));
+      await new Promise((res) => setTimeout(res, 5500));
     }
   }
 

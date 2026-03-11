@@ -6,8 +6,12 @@
  *   0.9s  — VS 文字弹出 + 霓虹光效
  *   2.6s  — 整体淡出
  *   3.0s  — 自动消失，调用 onComplete（无需点击）
+ *
+ * 关键设计：
+ *   - onComplete 通过 ref 存储，避免 useCallback 引用变化导致计时器被重置
+ *   - 计时器只依赖 skip，不依赖 onComplete
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getAvatarUrl } from '@/lib/assets';
 
 export interface ArenaIntroPlayer {
@@ -26,19 +30,33 @@ type Phase = 'idle' | 'flying' | 'vs' | 'fadeout' | 'done';
 export default function ArenaIntroAnimation({ players, onComplete, skip }: ArenaIntroAnimationProps) {
   const [phase, setPhase] = useState<Phase>('idle');
 
+  // 用 ref 存储最新的 onComplete，避免 useEffect 依赖 onComplete 导致计时器重置
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
   const left = players[0];
   const right = players[1];
 
   useEffect(() => {
-    if (skip) { onComplete(); return; }
+    if (skip) {
+      onCompleteRef.current();
+      return;
+    }
 
     const t1 = setTimeout(() => setPhase('flying'), 50);
     const t2 = setTimeout(() => setPhase('vs'), 900);
     const t3 = setTimeout(() => setPhase('fadeout'), 2600);
-    const t4 = setTimeout(() => { setPhase('done'); onComplete(); }, 3100);
+    const t4 = setTimeout(() => {
+      setPhase('done');
+      onCompleteRef.current();
+    }, 3100);
 
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
-  }, [skip, onComplete]);
+    return () => {
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
+    };
+  }, [skip]); // 只依赖 skip，不依赖 onComplete（通过 ref 访问）
 
   if (phase === 'done') return null;
 
