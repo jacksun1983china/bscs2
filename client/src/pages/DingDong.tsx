@@ -80,6 +80,8 @@ export default function DingDong() {
   const [quickBet, setQuickBet] = useState(10);
 
   const [isSpinning, setIsSpinning] = useState(false);
+  // 用 ref 存储 isSpinning，以便在 RAF 回调中访问（闭包不捕获 state）
+  const isSpinningRef = useRef(false);
 
   // 光标位置（浮点数，表示在外圈的位置）
   const cursorPosRef = useRef<number>(0);
@@ -127,8 +129,8 @@ export default function DingDong() {
             cursorPosRef.current = (cursorPosRef.current + step) % OUTER_RING.length;
             setCursorPos(cursorPosRef.current);
           }
-        } else {
-          // 正常旋转
+        } else if (isSpinningRef.current) {
+          // 旋转中才移动光标（待机状态静止不动）
           cursorPosRef.current = (cursorPosRef.current + speedRef.current * dt) % OUTER_RING.length;
           setCursorPos(cursorPosRef.current);
         }
@@ -184,6 +186,7 @@ export default function DingDong() {
       });
 
       setIsSpinning(false);
+      isSpinningRef.current = false;
 
       const bets = result.bets as Record<number, number>;
       setLastResult({
@@ -198,16 +201,16 @@ export default function DingDong() {
       if (result.isWin) {
         playWin();
         setPendingWinAmount(result.winAmount);
+        // 中奖：先显示光圈动画（showResult），2.5秒后再弹出押大小
         setShowResult(true);
-        // 3秒后进入押大小环节
         setTimeout(() => {
           setShowResult(false);
           setShowDicePhase(true);
-        }, 3000);
+        }, 2500);
       } else {
+        // 未中奖：不显示动画，直接播放失败音效，加快进程
         playLose();
-        setShowResult(true);
-        setTimeout(() => setShowResult(false), 3500);
+        // 不调用 setShowResult(true)，直接结束
       }
 
       await refetchPlayer();
@@ -215,6 +218,7 @@ export default function DingDong() {
     },
     onError: (err) => {
       setIsSpinning(false);
+      isSpinningRef.current = false;
       speedRef.current = 0.008;
       targetPosRef.current = null;
       showAlert(err.message || '下注失败');
@@ -261,6 +265,7 @@ export default function DingDong() {
     if (gold < totalBet) { showAlert('金币不足'); return; }
     if (isSpinning) return;
     setIsSpinning(true);
+    isSpinningRef.current = true;
     setShowResult(false);
     setShowDicePhase(false);
     setDiceResult(null);
@@ -410,10 +415,10 @@ export default function DingDong() {
             }}
           />
 
-          <div style={{ display: 'flex', gap: q(10), position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: q(10), position: 'relative', zIndex: 1 }}>
 
-            {/* ── 左侧：外圈 + 内圈格子 ── */}
-            <div style={{ flex: 1, position: 'relative' }}>
+            {/* ── 转盘区（全宽居中）── */}
+            <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
               {/* 格子容器 */}
               <div style={{
                 display: 'grid',
@@ -554,50 +559,53 @@ export default function DingDong() {
                 })}
               </div>
 
-              {/* 开奖结果浮层 */}
-              {showResult && lastResult && (
+              {/* 中奖庆祝动画浮层（仅中奖时显示） */}
+              {showResult && lastResult && lastResult.isWin && (
                 <div style={{
                   position: 'absolute', inset: 0, zIndex: 20,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'rgba(0,0,0,0.65)',
+                  background: 'rgba(0,0,0,0.72)',
                   borderRadius: q(12),
                   animation: 'fadeInResult 0.3s ease',
                 }}>
+                  {/* 外圈光圈动画 */}
                   <div style={{
-                    background: lastResult.isWin
-                      ? 'linear-gradient(135deg, rgba(22,163,74,0.97), rgba(15,118,50,0.97))'
-                      : 'linear-gradient(135deg, rgba(185,28,28,0.97), rgba(127,29,29,0.97))',
+                    position: 'absolute', inset: q(20),
+                    borderRadius: '50%',
+                    border: '3px solid #ffd700',
+                    boxShadow: '0 0 40px 10px #ffd70066, inset 0 0 40px 10px #ffd70033',
+                    animation: 'winRing 0.8s ease infinite alternate',
+                    pointerEvents: 'none',
+                  }} />
+                  <div style={{
+                    background: 'linear-gradient(135deg, rgba(22,163,74,0.97), rgba(15,118,50,0.97))',
                     borderRadius: q(16), padding: `${q(20)} ${q(28)}`, textAlign: 'center',
-                    border: `2px solid ${lastResult.isWin ? '#22c55e' : '#ef4444'}`,
-                    boxShadow: `0 0 40px ${lastResult.isWin ? '#22c55e66' : '#ef444466'}`,
+                    border: '2px solid #22c55e',
+                    boxShadow: '0 0 60px #22c55e66',
+                    position: 'relative', zIndex: 1,
                   }}>
-                    <div style={{ fontSize: q(50), marginBottom: q(6) }}>
-                      {lastResult.isWin ? '🎉' : '😢'}
+                    <div style={{ fontSize: q(56), marginBottom: q(6), animation: 'bounceWin 0.5s ease infinite alternate' }}>
+                      🎉
                     </div>
-                    <div style={{ color: '#fff', fontSize: q(26), fontWeight: 900, marginBottom: q(4) }}>
-                      {lastResult.isWin ? '恭喜获胜！' : '未中奖'}
+                    <div style={{ color: '#fff', fontSize: q(28), fontWeight: 900, marginBottom: q(6) }}>
+                      恭喜中奖！
                     </div>
-                    {lastResult.isWin && (
-                      <>
-                        <div style={{ color: '#ffd700', fontSize: q(30), fontWeight: 900 }}>
-                          +{lastResult.winAmount.toFixed(2)} 💰
-                        </div>
-                        <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: q(18), marginTop: q(4) }}>
-                          即将进入押大小环节...
-                        </div>
-                      </>
-                    )}
-                    <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: q(20), marginTop: q(6) }}>
-                      开奖：{FRUITS[lastResult.winFruit]?.name}
-                      {lastResult.isWin && ` × ${lastResult.multiplier}`}
+                    <div style={{ color: '#ffd700', fontSize: q(36), fontWeight: 900, marginBottom: q(4) }}>
+                      +{lastResult.winAmount.toFixed(2)} 💰
+                    </div>
+                    <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: q(20), marginTop: q(4) }}>
+                      {FRUITS[lastResult.winFruit]?.name} × {lastResult.multiplier} 倍
+                    </div>
+                    <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: q(18), marginTop: q(6) }}>
+                      即将进入押大小环节...
                     </div>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* ── 右侧：下注面板 ── */}
-            <div style={{ width: q(160), display: 'flex', flexDirection: 'column', gap: q(6) }}>
+            {/* ── 下方：下注面板 ── */}
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: q(8) }}>
 
               {/* 余额 */}
               <div style={{
@@ -646,8 +654,8 @@ export default function DingDong() {
                 >清空</button>
               </div>
 
-              {/* 7 种水果组合下注 */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: q(4) }}>
+              {/* 7 种水果组合下注（横向网格，每行两个） */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: q(8) }}>
                 {FRUITS.map(fruit => {
                   const currentBet = betMap[fruit.id] ?? 0;
                   const hasBet = currentBet > 0;
@@ -655,56 +663,60 @@ export default function DingDong() {
                     <div
                       key={fruit.id}
                       style={{
-                        display: 'flex', alignItems: 'center', gap: q(5),
+                        display: 'flex', alignItems: 'center', gap: q(8),
                         background: hasBet
                           ? `linear-gradient(135deg, rgba(120,60,220,0.5), rgba(80,20,160,0.5))`
                           : 'rgba(0,0,0,0.35)',
                         border: `1px solid ${hasBet ? 'rgba(180,100,255,0.7)' : 'rgba(255,255,255,0.1)'}`,
-                        borderRadius: q(7), padding: `${q(4)} ${q(6)}`,
+                        borderRadius: q(10), padding: `${q(8)} ${q(10)}`,
                         transition: 'all 0.15s',
                       }}
                     >
                       {/* 水果图标 */}
                       <img src={fruit.img} alt={fruit.name}
-                        style={{ width: q(30), height: q(30), objectFit: 'contain', flexShrink: 0 }} />
+                        style={{ width: q(44), height: q(44), objectFit: 'contain', flexShrink: 0 }} />
 
                       {/* 名称 + 倍率 */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: '#e0d0ff', fontSize: q(15), lineHeight: 1.2 }}>{fruit.name}</div>
-                        <div style={{ color: fruit.color, fontSize: q(16), fontWeight: 700 }}>×{fruit.multiplier}</div>
+                        <div style={{ color: '#e0d0ff', fontSize: q(20), lineHeight: 1.3 }}>{fruit.name}</div>
+                        <div style={{ color: fruit.color, fontSize: q(20), fontWeight: 700 }}>×{fruit.multiplier}</div>
                       </div>
 
-                      {/* 下注金额控制 */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: q(2) }}>
-                        <button
-                          onClick={() => setBetForFruit(fruit.id, Math.min(maxBet, currentBet + quickBet))}
-                          disabled={isSpinning}
-                          style={{
-                            width: q(28), height: q(22),
-                            background: 'rgba(120,60,220,0.5)',
-                            border: '1px solid rgba(180,100,255,0.5)',
-                            borderRadius: q(4), color: '#fff', fontSize: q(16),
-                            cursor: 'pointer', lineHeight: 1,
-                          }}
-                        >+</button>
-                        <div style={{
-                          color: hasBet ? '#ffd700' : 'rgba(255,255,255,0.4)',
-                          fontSize: q(16), fontWeight: hasBet ? 700 : 400,
-                          minWidth: q(30), textAlign: 'center',
-                        }}>
-                          {currentBet > 0 ? currentBet : '-'}
-                        </div>
+                      {/* 下注金额控制（加减号放大） */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: q(6) }}>
                         <button
                           onClick={() => setBetForFruit(fruit.id, Math.max(0, currentBet - quickBet))}
                           disabled={isSpinning || currentBet <= 0}
                           style={{
-                            width: q(28), height: q(22),
+                            width: q(52), height: q(52),
                             background: currentBet > 0 ? 'rgba(255,80,80,0.4)' : 'rgba(80,80,80,0.3)',
                             border: '1px solid rgba(255,100,100,0.3)',
-                            borderRadius: q(4), color: '#fff', fontSize: q(16),
-                            cursor: currentBet > 0 ? 'pointer' : 'not-allowed', lineHeight: 1,
+                            borderRadius: q(8), color: '#fff', fontSize: q(30),
+                            cursor: currentBet > 0 ? 'pointer' : 'not-allowed',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            lineHeight: 1, flexShrink: 0,
                           }}
                         >−</button>
+                        <div style={{
+                          color: hasBet ? '#ffd700' : 'rgba(255,255,255,0.4)',
+                          fontSize: q(22), fontWeight: hasBet ? 700 : 400,
+                          minWidth: q(44), textAlign: 'center',
+                        }}>
+                          {currentBet > 0 ? currentBet : '0'}
+                        </div>
+                        <button
+                          onClick={() => setBetForFruit(fruit.id, Math.min(maxBet, currentBet + quickBet))}
+                          disabled={isSpinning}
+                          style={{
+                            width: q(52), height: q(52),
+                            background: 'rgba(120,60,220,0.5)',
+                            border: '1px solid rgba(180,100,255,0.5)',
+                            borderRadius: q(8), color: '#fff', fontSize: q(30),
+                            cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            lineHeight: 1, flexShrink: 0,
+                          }}
+                        >+</button>
                       </div>
                     </div>
                   );
@@ -872,9 +884,28 @@ export default function DingDong() {
               </div>
             )}
 
-            {/* 选择按钮 */}
+            {/* 选择按鈕 */}
             {!diceResult && (
-              <div style={{ display: 'flex', gap: q(16), justifyContent: 'center', marginBottom: q(16) }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: q(12), marginBottom: q(16) }}>
+                {/* 开始按鈕：默认跳过押大小，直接领取 */}
+                <button
+                  onClick={handleDiceSkip}
+                  disabled={diceRolling}
+                  style={{
+                    width: '100%', padding: `${q(18)} 0`,
+                    background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                    border: 'none', borderRadius: q(12),
+                    color: '#fff', fontSize: q(26), fontWeight: 900, cursor: 'pointer',
+                    boxShadow: '0 4px 20px rgba(124,58,237,0.6)',
+                    letterSpacing: 1,
+                  }}
+                >
+                  开始（跳过押大小）
+                </button>
+                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: q(18), textAlign: 'center' }}>
+                  ―――― 或者选择押大小，赢了翻倍 ――――
+                </div>
+                <div style={{ display: 'flex', gap: q(16), justifyContent: 'center' }}>
                 <button
                   onClick={() => handleDiceChoice('small')}
                   disabled={diceRolling}
@@ -908,25 +939,12 @@ export default function DingDong() {
                   <span style={{ fontSize: q(18), fontWeight: 400 }}>4 · 5 · 6</span>
                 </button>
               </div>
+              </div>
             )}
 
-            {/* 跳过 / 关闭 */}
+            {/* 关闭按鈕（已出结果时） */}
             <div style={{ display: 'flex', gap: q(12), justifyContent: 'center' }}>
-              {!diceResult ? (
-                <button
-                  onClick={handleDiceSkip}
-                  disabled={diceRolling}
-                  style={{
-                    padding: `${q(10)} ${q(30)}`,
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: q(10), color: 'rgba(255,255,255,0.7)',
-                    fontSize: q(20), cursor: 'pointer',
-                  }}
-                >
-                  跳过，直接领取
-                </button>
-              ) : (
+              {diceResult ? (
                 <button
                   onClick={handleDiceClose}
                   style={{
@@ -939,7 +957,7 @@ export default function DingDong() {
                 >
                   确认
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
@@ -958,6 +976,14 @@ export default function DingDong() {
         @keyframes winGlow {
           from { box-shadow: 0 0 10px 2px #ffd70066; }
           to   { box-shadow: 0 0 24px 6px #ffd700cc; }
+        }
+        @keyframes winRing {
+          from { box-shadow: 0 0 20px 4px #ffd70044, inset 0 0 20px 4px #ffd70022; opacity: 0.7; }
+          to   { box-shadow: 0 0 60px 16px #ffd700aa, inset 0 0 60px 16px #ffd70055; opacity: 1; }
+        }
+        @keyframes bounceWin {
+          from { transform: scale(1) rotate(-5deg); }
+          to   { transform: scale(1.15) rotate(5deg); }
         }
         @keyframes diceRoll {
           0%   { transform: rotate(-10deg) scale(1.1); }

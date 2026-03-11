@@ -444,6 +444,8 @@ export default function ArenaRoom() {
   const [isPresent, setIsPresent] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
+  // 控制 getRoomDetail 延迟启动，避免与 joinRoom 并发触发 429
+  const [roomDetailEnabled, setRoomDetailEnabled] = useState(false);
 
   // ── 开场碰撞动画状态 ──
   const [showIntro, setShowIntro] = useState(false);
@@ -460,7 +462,7 @@ export default function ArenaRoom() {
   const { data: roomDetail, refetch: refetchRoom } = trpc.arena.getRoomDetail.useQuery(
     { roomId },
     {
-      enabled: roomId > 0,
+      enabled: roomId > 0 && roomDetailEnabled,
       refetchOnWindowFocus: false,
       // 等待状态下每 3 秒轮询一次，兜底 SSE 失效的情况
       // 注意：此处不能引用 gameStatus（后声明），改用 roomDetail 的状态判断
@@ -482,15 +484,22 @@ export default function ArenaRoom() {
     onSuccess: () => {
       setIsPresent(true);
       setJoinLoading(false);
-      refetchRoom();
+      // 延迟 800ms 再启动 getRoomDetail，避免与 joinRoom 并发触发 429
+      setTimeout(() => {
+        setRoomDetailEnabled(true);
+      }, 800);
     },
     onError: (err) => {
       setJoinLoading(false);
       // 房间已满、已不在等待状态（playing/finished）时，不显示错误，让roomDetail的useEffect处理展示
       if (err.message.includes('已满') || err.message.includes('不在等待') || err.message.includes('已不在等待')) {
         setIsPresent(false);
+        // 延迟启用 getRoomDetail，以便显示房间当前状态
+        setTimeout(() => setRoomDetailEnabled(true), 800);
       } else {
         setJoinError(err.message);
+        // 其他错误也要启用 getRoomDetail，让用户能看到房间信息
+        setTimeout(() => setRoomDetailEnabled(true), 800);
       }
     },
   });
