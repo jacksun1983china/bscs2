@@ -1191,10 +1191,10 @@ export const appRouter = router({
         if (input.status) {
           return getAllCsSessions(input.status);
         }
-        // 返回等待中和进行中的会话
+        // 返回所有等待中和进行中的会话（不限制 agentId，坐席可看到所有会话）
         const [waiting, active] = await Promise.all([
           getAllCsSessions("waiting"),
-          getAgentSessions(agentAuth.agentId),
+          getAllCsSessions("active"),
         ]);
         return [...waiting, ...active];
       }),
