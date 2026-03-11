@@ -1,11 +1,13 @@
 /**
  * Bag.tsx — 背包页面（Roll房中奖物品）
  */
+import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { ASSETS } from '@/lib/assets';
 import TopNavComponent from '@/components/TopNav';
 import BottomNavShared from '@/components/BottomNav';
+import SettingsModal from '@/components/SettingsModal';
 
 const TAB_ITEMS = [
   { key: 'wode',     icon: ASSETS.wode,     label: '我的',   route: '/profile' },
@@ -45,6 +47,7 @@ function BottomNav({ active }: { active: string }) {
 
 export default function Bag() {
   const [, navigate] = useLocation();
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const { data: player } = trpc.player.me.useQuery();
   const { data, isLoading } = trpc.player.inventory.useQuery(
     { page: 1, limit: 50 },
@@ -68,7 +71,7 @@ export default function Bag() {
 
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 56, zIndex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', containerType: 'inline-size' }}>
         {/* 顶部导航（公共组件） */}
-        <TopNavComponent showLogo={false} onBackClick={() => navigate('/')} />
+        <TopNavComponent showLogo={false} onBackClick={() => navigate('/')} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
           {isLoading ? (
@@ -107,6 +110,7 @@ export default function Bag() {
       </div>
 
       <BottomNav active="beibao" />
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
   );
 }

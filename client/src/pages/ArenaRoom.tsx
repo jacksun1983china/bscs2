@@ -935,11 +935,13 @@ export default function ArenaRoom() {
             return next2;
           });
 
-          // 开奖展示覆盖层
-          const revealData = resultsForRound.map((r) => {
-            const p = players.find((pl) => pl.playerId === r.playerId);
-            return { nickname: p?.nickname ?? `玩家${r.playerId}`, goodsName: r.goodsName, goodsImage: r.goodsImage, goodsLevel: r.goodsLevel, goodsValue: r.goodsValue };
-          });
+          // 开奖展示覆盖层（按 seatNo 升序，确保左右顺序与玩家卡片一致）
+          const revealData = resultsForRound
+            .map((r) => {
+              const p = players.find((pl) => pl.playerId === r.playerId);
+              return { nickname: p?.nickname ?? `玩家${r.playerId}`, goodsName: r.goodsName, goodsImage: r.goodsImage, goodsLevel: r.goodsLevel, goodsValue: r.goodsValue, _seatNo: p?.seatNo ?? 99 };
+            })
+            .sort((a, b) => a._seatNo - b._seatNo);
           setRevealItems(revealData);
           setShowRoundReveal(true);
 
@@ -988,11 +990,13 @@ export default function ArenaRoom() {
             return next2;
           });
 
-          // 开奖展示覆盖层
-          const revealData = Object.entries(currentRoundItems).map(([pid, item]) => {
-            const p = players.find((pl) => pl.playerId === Number(pid));
-            return { nickname: p?.nickname ?? `玩家${pid}`, goodsName: item.goodsName, goodsImage: item.goodsImage, goodsLevel: item.goodsLevel, goodsValue: item.goodsValue };
-          });
+          // 开奖展示覆盖层（按 seatNo 升序，确保左右顺序与玩家卡片一致）
+          const revealData = Object.entries(currentRoundItems)
+            .map(([pid, item]) => {
+              const p = players.find((pl) => pl.playerId === Number(pid));
+              return { nickname: p?.nickname ?? `玩家${pid}`, goodsName: item.goodsName, goodsImage: item.goodsImage, goodsLevel: item.goodsLevel, goodsValue: item.goodsValue, _seatNo: p?.seatNo ?? 99 };
+            })
+            .sort((a, b) => a._seatNo - b._seatNo);
           setRevealItems(revealData);
           setShowRoundReveal(true);
 

@@ -11,11 +11,13 @@ import { toast } from 'sonner';
 import PlayerInfoBar from '@/components/PlayerInfoBar';
 import BottomNav from '@/components/BottomNav';
 import TopNavComponent from '@/components/TopNav';
+import SettingsModal from '@/components/SettingsModal';
 
 type PayMethod = 'alipay' | 'wechat';
 
 export default function Recharge() {
   const [, navigate] = useLocation();
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const [payMethod, setPayMethod] = useState<PayMethod>('alipay');
   const [selectedConfig, setSelectedConfig] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'recharge' | 'history'>('recharge');
@@ -56,7 +58,7 @@ export default function Recharge() {
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 70, zIndex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden', containerType: 'inline-size' }}>
 
         {/* ── 顶部导航（公共组件） ── */}
-        <TopNavComponent showLogo={false} onBackClick={() => navigate('/')} />
+        <TopNavComponent showLogo={false} onBackClick={() => navigate('/')} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
 
         {/* ── 用户信息区（公共组件）── */}
         <PlayerInfoBar />
@@ -201,6 +203,7 @@ export default function Recharge() {
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 2 }}>
         <BottomNav active="chongzhi" />
       </div>
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
   );
 }

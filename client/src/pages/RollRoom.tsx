@@ -10,6 +10,7 @@ import { trpc } from '@/lib/trpc';
 import BottomNav from '@/components/BottomNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
 import TopNav from '@/components/TopNav';
+import SettingsModal from '@/components/SettingsModal';
 
 // ── px → cqw 转换（基准 750px）──────────────────────────────────
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -259,6 +260,7 @@ export default function RollRoom() {
   const [keyword, setKeyword] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(1);
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   const { data, isLoading } = trpc.roll.list.useQuery(
     { page, limit: 10, filter, keyword },
@@ -295,7 +297,7 @@ export default function RollRoom() {
 
         {/* 顶部固定区（不滚动）：导航栏 + 用户信息卡 */}
         <div style={{ position: 'relative', width: '100%', flexShrink: 0 }}>
-          <TopNav showLogo={false} onBackClick={() => navigate('/')} />
+          <TopNav showLogo={false} onBackClick={() => navigate('/')} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
           {/* 用户信息卡（固定置顶，不随内容滚动） */}
           <PlayerInfoCard style={{ marginTop: q(18) }} />
         </div>
@@ -459,10 +461,12 @@ export default function RollRoom() {
 
       </div>
 
-      {/* 底部导航 - absolute 悖浮在背景图上，不占据 flex 流空间，与背景图叠加无接缝 */}
+      {/* 底部导航 - absolute 悟浮在背景图上，不占据 flex 流空间，与背景图叠加无接缝 */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
         <BottomNav active="" />
       </div>
+      {/* 设置弹窗 */}
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
   );
 }

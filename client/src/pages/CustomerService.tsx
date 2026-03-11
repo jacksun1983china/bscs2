@@ -10,6 +10,7 @@ import { ASSETS, getAvatarUrl } from '@/lib/assets';
 import BottomNav from '@/components/BottomNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
 import TopNav from '@/components/TopNav';
+import SettingsModal from '@/components/SettingsModal';
 
 // ── 消息气泡 ──────────────────────────────────────────────────────
 interface MsgBubbleProps {
@@ -124,6 +125,7 @@ function MsgBubble({ content, senderType, senderName, senderAvatar, createdAt, i
 export default function CustomerService() {
   const [, navigate] = useLocation();
   const [inputText, setInputText] = useState('');
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [lastMsgId, setLastMsgId] = useState<number>(0);
@@ -249,7 +251,7 @@ export default function CustomerService() {
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
         {/* ── 顶部导航（公共组件） ── */}
-        <TopNav showLogo={false} onBackClick={() => navigate('/')} />
+        <TopNav showLogo={false} onBackClick={() => navigate('/')}  onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
 
         {/* ── 用户信息栏 ── */}
         <div style={{ flexShrink: 0, width: '100%' }}>
@@ -420,6 +422,9 @@ export default function CustomerService() {
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
+
+      {/* 设置弹窗 */}
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
   );
 }

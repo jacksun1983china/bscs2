@@ -10,6 +10,7 @@ import { LANHU, getAvatarUrl } from '@/lib/assets';
 import BottomNav from '@/components/BottomNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
 import TopNav from '@/components/TopNav';
+import SettingsModal from '@/components/SettingsModal';
 import { toast } from 'sonner';
 
 // ── px → cqw 转换（基准 750px）──────────────────────────────────
@@ -208,6 +209,7 @@ export default function RollRoomDetail() {
   const params = useParams<{ id: string }>();
   const roomId = parseInt(params.id || '0');
   const [activeTab, setActiveTab] = useState<'prizes' | 'participants'>('prizes');
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   const { data, isLoading, refetch } = trpc.roll.detail.useQuery(
     { id: roomId },
@@ -281,7 +283,7 @@ export default function RollRoomDetail() {
     >
       {/* 顶部固定区（不滚动）：导航栏 + 用户信息卡 */}
       <div style={{ position: 'relative', zIndex: 2, flexShrink: 0 }}>
-        <TopNav showLogo={false} onBackClick={() => navigate('/roll')} />
+        <TopNav showLogo={false} onBackClick={() => navigate('/roll')}  onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
         {/* 用户信息卡 */}
         <PlayerInfoCard style={{ marginTop: q(18) }} />
       </div>
@@ -761,6 +763,9 @@ export default function RollRoomDetail() {
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
         <BottomNav />
       </div>
+
+      {/* 设置弹窗 */}
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
   );
 }

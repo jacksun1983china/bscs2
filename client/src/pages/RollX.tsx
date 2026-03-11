@@ -18,6 +18,7 @@ import TopNav from '@/components/TopNav';
 import { useGameAlert } from '@/components/GameAlert';
 import { useLocation } from 'wouter';
 import { useSound } from '@/hooks/useSound';
+import SettingsModal from '@/components/SettingsModal';
 
 // ── px → cqw 转换（基准 750px）──────────────────────────────────
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -96,7 +97,7 @@ function getGreenClipPath(circlePercent: number, radius: number): string {
 export default function RollX() {
   const [, navigate] = useLocation();
   const { showAlert } = useGameAlert();
-  const { playClick, playWin, playLose, playSpinStop, playBetUp, playBetDown, isMuted, toggleMute } = useSound();
+  const { playClick, playWin, playLose, playSpinStop, playBetUp, playBetDown } = useSound();
 
   // 滑动条索引（0~21）
   const [coeffIndex, setCoeffIndex] = useState(7);
@@ -126,6 +127,7 @@ export default function RollX() {
   const greenPercent = 100 / (360 / greenDegree);
 
   const [wheelSize, setWheelSize] = useState(300);
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -212,34 +214,10 @@ export default function RollX() {
 
       {/* ── 顶部导航 ── */}
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 2, width: '100%' }}>
-        <TopNav showLogo={false} onBackClick={() => navigate('/')} />
+        <TopNav showLogo={false} onBackClick={() => navigate('/')} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
       </div>
 
-      {/* ── 静音按钮（右上角悬浮）── */}
-      <button
-        onClick={() => { toggleMute(); }}
-        style={{
-          position: 'absolute',
-          top: q(60),
-          right: q(20),
-          zIndex: 10,
-          width: q(60),
-          height: q(60),
-          borderRadius: '50%',
-          background: 'rgba(20,8,50,0.85)',
-          border: '1px solid rgba(120,60,220,0.5)',
-          color: '#fff',
-          fontSize: q(28),
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-        }}
-        title={isMuted ? '开启音效' : '静音'}
-      >
-        {isMuted ? '🔇' : '🔊'}
-      </button>
+
 
       {/* ── 内容区 ── */}
       <div
@@ -658,7 +636,9 @@ export default function RollX() {
       {/* ── 底部导航 ── */}
       <BottomNav />
 
-      {/* ── 结果弹窗 ── */}
+      {/* 设置弹窗 */}
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+      {/* 结果弹窗 */}
       {showResult && result && (
         <div
           style={{

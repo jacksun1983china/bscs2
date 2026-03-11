@@ -94,7 +94,28 @@ export default function TopNav({ showLogo = false, onBackClick, style, onSetting
           alt="VIP"
           style={{ width: q(79), height: q(80), cursor: 'pointer', objectFit: 'contain' }}
         />
-
+        {/* 全部按钮 → 点击弹出设置面板（由父页面控制） */}
+        <div
+          onClick={onSettingsOpen}
+          style={{ position: 'relative', cursor: 'pointer' }}
+        >
+          <img
+            src={LANHU.allGamesIcon}
+            alt="全部"
+            style={{ width: q(79), height: q(80), objectFit: 'contain', display: 'block' }}
+          />
+          {settingsOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: -4,
+                borderRadius: '50%',
+                boxShadow: '0 0 12px rgba(180,80,255,0.8)',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

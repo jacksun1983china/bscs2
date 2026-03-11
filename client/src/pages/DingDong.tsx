@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { trpc } from '@/lib/trpc';
 import BottomNav from '@/components/BottomNav';
 import TopNav from '@/components/TopNav';
+import SettingsModal from '@/components/SettingsModal';
 import { useGameAlert } from '@/components/GameAlert';
 import { useLocation } from 'wouter';
 import { useSound } from '@/hooks/useSound';
@@ -73,6 +74,7 @@ export default function DingDong() {
 
   // ── 状态 ──────────────────────────────────────────────────────
   const [innerFruits] = useState<number[]>(() => generateInnerFruits());
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   // 组合投注：每种水果的下注金额（0 = 未下注）
   const [betMap, setBetMap] = useState<Record<number, number>>({});
@@ -390,7 +392,7 @@ export default function DingDong() {
 
       {/* 顶部导航 */}
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 2, width: '100%' }}>
-        <TopNav showLogo={false} onBackClick={() => navigate('/')} />
+        <TopNav showLogo={false} onBackClick={() => navigate('/')}  onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
       </div>
 
       {/* 静音按钮 */}
@@ -1034,6 +1036,9 @@ export default function DingDong() {
           100% { transform: rotate(-10deg) scale(1.1); }
         }
       `}</style>
+
+      {/* 设置弹窗 */}
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
   );
 }
