@@ -1130,8 +1130,8 @@ export default function ArenaRoom() {
               </button>
             )}
 
-            {/* 开始按钮 */}
-            {!spinning && players.length >= maxPlayers && !isReplaying && (
+            {/* 开始按钮：仅当房间内没有机器人时显示（机器人房间由服务端自动开箱，避免并发重复） */}
+            {!spinning && players.length >= maxPlayers && !isReplaying && !players.some(p => p.playerId < 0) && (
               <button
                 onClick={() => spinRound.mutate({ roomId, roundNo: currentRound })}
                 disabled={spinRound.isPending}

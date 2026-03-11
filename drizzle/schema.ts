@@ -1,4 +1,5 @@
 import {
+  bigint,
   decimal,
   int,
   mysqlEnum,
@@ -852,3 +853,37 @@ export const dingdongGames = mysqlTable("dingdongGames", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type DingdongGame = typeof dingdongGames.$inferSelect;
+
+// ── Fruit Bomb 多人游戏轮次表 ────────────────────────────────────────────────
+export const fruitBombRounds = mysqlTable("fruitBombRounds", {
+  id: int("id").autoincrement().primaryKey(),
+  // 开奖水果索引 (0-6)，对应7种水果
+  winFruitIdx: int("winFruitIdx").notNull().default(0),
+  // 状态: betting=下注中, revealing=开奖中, finished=已结束
+  status: varchar("status", { length: 20 }).notNull().default("betting"),
+  // 本轮开始时间（Unix ms）
+  startedAt: bigint("startedAt", { mode: "number" }).notNull(),
+  // 本轮结束时间（Unix ms）
+  finishedAt: bigint("finishedAt", { mode: "number" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type FruitBombRound = typeof fruitBombRounds.$inferSelect;
+
+// ── Fruit Bomb 下注记录表 ────────────────────────────────────────────────────
+export const fruitBombBets = mysqlTable("fruitBombBets", {
+  id: int("id").autoincrement().primaryKey(),
+  roundId: int("roundId").notNull(),
+  playerId: int("playerId").notNull(),
+  playerName: varchar("playerName", { length: 100 }).notNull().default(""),
+  // 下注水果索引 (0-6)
+  fruitIdx: int("fruitIdx").notNull(),
+  betAmount: decimal("betAmount", { precision: 18, scale: 2 }).notNull(),
+  // 倍率（x2.5/x5/x10/x20）
+  multiplier: decimal("multiplier", { precision: 10, scale: 2 }).notNull(),
+  isWin: tinyint("isWin").notNull().default(0),
+  winAmount: decimal("winAmount", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  netAmount: decimal("netAmount", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  balanceAfter: decimal("balanceAfter", { precision: 18, scale: 2 }).notNull().default("0.00"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type FruitBombBet = typeof fruitBombBets.$inferSelect;

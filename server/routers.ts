@@ -70,6 +70,8 @@ import {
   rollxGames,
   rushGames,
   dingdongGames,
+  fruitBombRounds,
+  fruitBombBets,
   skuCategories,
   shopItems,
   shopOrders,

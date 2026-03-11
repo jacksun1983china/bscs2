@@ -266,6 +266,9 @@ export function startBotLoop() {
   }, BOT_CHECK_INTERVAL);
 }
 
+// 正在处理中的房间ID集合，防止并发重复处理
+const processingRooms = new Set<number>();
+
 async function checkAndFillRooms() {
   const db = await getDb();
   if (!db) return;
@@ -278,6 +281,9 @@ async function checkAndFillRooms() {
   const now = Date.now();
 
   for (const room of waitingRooms) {
+    // 跳过正在处理中的房间，防止并发重复加入
+    if (processingRooms.has(room.id)) continue;
+
     // 修复：Number(dateString) 返回 NaN，必须用 new Date() 解析
     const createdAt = room.createdAt instanceof Date ? room.createdAt.getTime() : new Date(room.createdAt).getTime();
     const waitSeconds = (now - createdAt) / 1000;
@@ -285,79 +291,91 @@ async function checkAndFillRooms() {
     // 等待时间未超过阈值，跳过
     if (waitSeconds < BOT_WAIT_THRESHOLD) continue;
 
-    // 需要填充的机器人数量
-    const needed = room.maxPlayers - room.currentPlayers;
+    // 重新从数据库读取最新房间状态（避免使用缓存的旧数据）
+    const [freshRoom] = await db.select().from(arenaRooms).where(eq(arenaRooms.id, room.id));
+    if (!freshRoom || freshRoom.status !== "waiting") continue;
+
+    // 需要填充的机器人数量（使用最新数据）
+    const needed = freshRoom.maxPlayers - freshRoom.currentPlayers;
     if (needed <= 0) continue;
 
-    // 获取房间内已有的机器人ID（负数ID）
-    const existingPlayers = await db
-      .select()
-      .from(arenaRoomPlayers)
-      .where(eq(arenaRoomPlayers.roomId, room.id));
-    const usedBotIds = existingPlayers
-      .map((p) => p.playerId)
-      .filter((id) => id < 0);
+    // 标记该房间正在处理中
+    processingRooms.add(room.id);
 
-    console.log(`[ArenaBot] 房间 #${room.roomNo} 等待 ${waitSeconds.toFixed(0)}s，派遣 ${needed} 个机器人`);
+    try {
+      // 获取房间内已有的机器人ID（负数ID）
+      const existingPlayers = await db
+        .select()
+        .from(arenaRoomPlayers)
+        .where(eq(arenaRoomPlayers.roomId, room.id));
+      const usedBotIds = existingPlayers
+        .map((p) => p.playerId)
+        .filter((id) => id < 0);
 
-    let currentCount = room.currentPlayers;
-    let gameStarted = false;
+      console.log(`[ArenaBot] 房间 #${freshRoom.roomNo} 等待 ${waitSeconds.toFixed(0)}s，派遣 ${needed} 个机器人`);
 
-    for (let i = 0; i < needed; i++) {
-      const bot = pickBot(usedBotIds);
-      usedBotIds.push(bot.id);
+      let currentCount = freshRoom.currentPlayers;
+      let gameStarted = false;
 
-      const seatNo = currentCount + 1;
-      currentCount++;
-      const isFull = currentCount >= room.maxPlayers;
+      for (let i = 0; i < needed; i++) {
+        const bot = pickBot(usedBotIds);
+        usedBotIds.push(bot.id);
 
-      // 插入机器人为参与者
-      await db.insert(arenaRoomPlayers).values({
-        roomId: room.id,
-        playerId: bot.id,
-        nickname: bot.nickname,
-        avatar: bot.avatar,
-        seatNo,
-      });
+        const seatNo = currentCount + 1;
+        currentCount++;
+        const isFull = currentCount >= freshRoom.maxPlayers;
 
-      // 更新房间人数
-      await db
-        .update(arenaRooms)
-        .set({
-          currentPlayers: currentCount,
-          status: isFull ? "playing" : "waiting",
-          currentRound: isFull ? 1 : 0,
-        })
-        .where(eq(arenaRooms.id, room.id));
+        // 插入机器人为参与者
+        await db.insert(arenaRoomPlayers).values({
+          roomId: freshRoom.id,
+          playerId: bot.id,
+          nickname: bot.nickname,
+          avatar: bot.avatar,
+          seatNo,
+        });
 
-      // 广播玩家加入
-      broadcastPlayerJoined(
-        room.id,
-        { playerId: bot.id, nickname: bot.nickname, avatar: bot.avatar, seatNo },
-        null
-      );
+        // 更新房间人数
+        await db
+          .update(arenaRooms)
+          .set({
+            currentPlayers: currentCount,
+            status: isFull ? "playing" : "waiting",
+            currentRound: isFull ? 1 : 0,
+          })
+          .where(eq(arenaRooms.id, freshRoom.id));
 
-      if (isFull) {
-        gameStarted = true;
-        broadcastGameStarted(room.id);
+        // 广播玩家加入
+        broadcastPlayerJoined(
+          freshRoom.id,
+          { playerId: bot.id, nickname: bot.nickname, avatar: bot.avatar, seatNo },
+          null
+        );
+
+        if (isFull) {
+          gameStarted = true;
+          broadcastGameStarted(freshRoom.id);
+        }
+
+        // 机器人加入间隔1秒，更自然
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      // 机器人加入间隔1秒，更自然
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
+      // 广播房间列表更新
+      const summaries = await fetchRoomSummaries();
+      broadcastRoomListUpdate(summaries);
 
-    // 广播房间列表更新
-    const summaries = await fetchRoomSummaries();
-    broadcastRoomListUpdate(summaries);
-
-    // 如果游戏开始了，机器人自动完成所有轮次
-    if (gameStarted) {
-      // 延迟3秒后开始开箱（等前端加载游戏房间）
-      setTimeout(() => {
-        botPlayAllRounds(room.id).catch((err) => {
-          console.error(`[ArenaBot] 房间 #${room.roomNo} 开箱出错:`, err);
-        });
-      }, 3000);
+      // 如果游戏开始了，机器人自动完成所有轮次
+      if (gameStarted) {
+        // 延迟3秒后开始开箱（等前端加载游戏房间）
+        setTimeout(() => {
+          botPlayAllRounds(freshRoom.id).catch((err) => {
+            console.error(`[ArenaBot] 房间 #${freshRoom.roomNo} 开箱出错:`, err);
+          });
+        }, 3000);
+      }
+    } finally {
+      // 无论成功失败，都移除处理标记
+      processingRooms.delete(room.id);
     }
   }
 }
