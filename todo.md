@@ -711,3 +711,12 @@
 - [x] 商城页面：PC端不显示内容（背景图改为 phone-container 内 absolute 定位，不再遮挡内容）
 - [x] 分解后物品未消失：getPlayerInventory 添加 status=0 过滤，已分解物品不再显示
 - [x] 竞技场奖品入背包：代码逻辑确认正确，每轮 insert playerItems status=0
+
+## 坐席聊天详情页返回按钮修复（2026-03-12）
+- [x] 修复坐席聊天详情页左上角返回按钮无法返回会话列表（fetchSessions闭包陈旧引用问题，改用useRef追踪activeSession）
+
+## 背包按钮彻底修复（2026-03-12）
+- [x] 彻底查清背包页三个操作按钮（分解/提货/提货保护）被遮挡无法点击的根本原因并修复（PlayerInfoCard VIP标签溢出遮挡，加pointerEvents:none）
+
+## 商城PC端宽度问题（2026-03-12）
+- [x] 修复商城页面在PC端宽度≥600px时内容消失的问题（修复Shop.tsx外层div结构和语法错误）

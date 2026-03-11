@@ -592,6 +592,9 @@ export default function AgentDashboard() {
   const [agent, setAgent] = useState<Agent | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSession, setActiveSession] = useState<Session | null>(null);
+  const activeSessionRef = useRef<Session | null>(null);
+  // 同步 ref，供 fetchSessions 闭包使用，避免陈旧引用
+  useEffect(() => { activeSessionRef.current = activeSession; }, [activeSession]);
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
@@ -702,9 +705,9 @@ export default function AgentDashboard() {
           });
           return newSessions;
         });
-        // 同步更新当前打开的会话状态
-        if (activeSession) {
-          const updated = (data as any[]).find(s => s.id === activeSession.id);
+        // 同步更新当前打开的会话状态（用 ref 避免陈旧闭包覆盖 null）
+        if (activeSessionRef.current) {
+          const updated = (data as any[]).find(s => s.id === activeSessionRef.current!.id);
           if (updated) setActiveSession(updated);
         }
       }

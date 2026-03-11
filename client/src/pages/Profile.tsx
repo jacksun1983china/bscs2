@@ -234,15 +234,18 @@ export default function Profile() {
             position: 'relative',
             height: q(100),
             cursor: 'pointer',
+            borderRadius: q(20),
+            overflow: 'hidden',
           }}
         >
-          <img src={WD.realNameBg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
+          <img src={WD.menuBg0} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
           <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'row', alignItems: 'center', height: '100%', padding: `0 ${q(25)}` }}>
-          <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500 }}>实名认证</span>
-          <span style={{ color: 'rgba(249,178,255,1)', fontSize: q(22), marginLeft: q(20), flex: 1 }}>
-            {player?.phone ? `${player.phone.slice(0, 3)}****${player.phone.slice(-4)}` : '未认证'}
-          </span>
-          <img src={WD.arrowRight} alt=">" style={{ width: q(10), height: q(19), objectFit: 'contain' }} />
+            <img src={WD.menuIcon2} alt="实名认证" style={{ width: q(72), height: q(72), objectFit: 'contain' }} />
+            <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500, marginLeft: q(20) }}>实名认证</span>
+            <span style={{ color: 'rgba(249,178,255,1)', fontSize: q(22), marginLeft: 'auto' }}>
+              {player?.phone ? `${player.phone.slice(0, 3)}****${player.phone.slice(-4)}` : '未认证'}
+            </span>
+            <img src={WD.arrowRight} alt=">" style={{ width: q(10), height: q(19), marginLeft: q(31), objectFit: 'contain' }} />
           </div>
         </div>
 

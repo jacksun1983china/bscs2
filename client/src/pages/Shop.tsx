@@ -325,26 +325,14 @@ export default function Shop() {
 
   return (
     <div
+      className="phone-container"
       style={{
-        minHeight: '100vh',
         display: 'flex',
-        justifyContent: 'center',
-        background: '#0d0621',
+        flexDirection: 'column',
+        containerType: 'inline-size',
+        position: 'relative',
       }}
     >
-      <div
-        className="phone-container"
-        style={{
-          position: 'relative',
-          width: '100%',
-          maxWidth: 480,
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          containerType: 'inline-size',
-          overflow: 'hidden',
-        }}
-      >
         {/* 背景图 */}
         <img
           src={S.pageBg}
@@ -640,7 +628,6 @@ export default function Shop() {
         {settingsVisible && (
           <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
         )}
-      </div>
     </div>
   );
 }

@@ -171,6 +171,7 @@ export default function PlayerInfoCard({ style }: PlayerInfoCardProps) {
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 2,
+          pointerEvents: 'none',
         }}
       >
         <span
