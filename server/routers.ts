@@ -1742,18 +1742,27 @@ export const appRouter = router({
     /** 获取游戏设置 */
     getSettings: publicProcedure.query(async () => {
       const db = await getDb();
-      if (!db) return { rtp: 96, minBet: 1, maxBet: 10000, enabled: true, gridSize: 16 };
+      if (!db) return { rtp: 96, minBet: 1, maxBet: 10000, enabled: true };
       const rows = await db.select().from(gameSettings).where(eq(gameSettings.gameKey, "dingdong"));
       if (!rows.length) {
         await db.insert(gameSettings).values({ gameKey: "dingdong", rtp: "96.00", minBet: "1.00", maxBet: "10000.00", enabled: 1 });
-        return { rtp: 96, minBet: 1, maxBet: 10000, enabled: true, gridSize: 16 };
+        return { rtp: 96, minBet: 1, maxBet: 10000, enabled: true };
       }
       const s = rows[0];
-      return { rtp: parseFloat(s.rtp), minBet: parseFloat(s.minBet), maxBet: parseFloat(s.maxBet), enabled: s.enabled === 1, gridSize: 16 };
+      return { rtp: parseFloat(s.rtp), minBet: parseFloat(s.minBet), maxBet: parseFloat(s.maxBet), enabled: s.enabled === 1 };
     }),
-    /** 投注并开奖 */
+    /**
+     * Fruit Bomb 水果下注模式
+     * 7种水果，各有不同倍率：
+     * 0=铃铛(x2.5), 1=西瓜(x5), 2=葡萄(x5), 3=苹果(x10), 4=蓝方块(x10), 5=柠檬(x20), 6=LUCKY(x20)
+     * 玩家选择一种水果下注，系统随机开出一种水果，命中则赢得 betAmount * multiplier
+     * 服务端返回 spinSequence（20帧动画序列）用于前端转盘动画
+     */
     play: publicProcedure
-      .input(z.object({ betAmount: z.number().positive(), selectedCell: z.number().min(0).max(15) }))
+      .input(z.object({
+        betAmount: z.number().positive(),
+        selectedFruit: z.number().min(0).max(6),
+      }))
       .mutation(async ({ ctx, input }) => {
         const playerToken = await getPlayerFromCookie(ctx.req);
         if (!playerToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
@@ -1774,28 +1783,49 @@ export const appRouter = router({
         const player = playerRows[0];
         const currentGold = parseFloat(player.gold);
         if (currentGold < input.betAmount) throw new TRPCError({ code: "BAD_REQUEST", message: "金币不足" });
-        // 16格，中奖倍率：1格=16x，4格=4x，8格=2x（按RTP调整）
-        // 简化：随机选1个中奖格，中奖倍率=16*rtp/100
-        const gridSize = 16;
-        const winCell = Math.floor(Math.random() * gridSize);
-        const isWin = winCell === input.selectedCell;
-        const multiplier = isWin ? (gridSize * rtp / 100) : 0;
+        // 7种水果倍率
+        const FRUIT_MULTIPLIERS = [2.5, 5, 5, 10, 10, 20, 20];
+        // 权重：倍率越高出现概率越低，总权重110
+        const BASE_WEIGHTS = [40, 20, 20, 10, 10, 5, 5];
+        const rtpFactor = rtp / 96;
+        const weights = BASE_WEIGHTS.map(w => w * rtpFactor);
+        const totalWeight = weights.reduce((a, b) => a + b, 0);
+        // 按权重随机开奖
+        let rand = Math.random() * totalWeight;
+        let winFruit = 0;
+        for (let i = 0; i < weights.length; i++) {
+          rand -= weights[i];
+          if (rand <= 0) { winFruit = i; break; }
+        }
+        const isWin = winFruit === input.selectedFruit;
+        const multiplier = isWin ? FRUIT_MULTIPLIERS[input.selectedFruit] : 0;
         const winAmount = isWin ? input.betAmount * multiplier : 0;
         const netAmount = isWin ? winAmount - input.betAmount : -input.betAmount;
         const newGold = currentGold + netAmount;
         await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
+        // 复用 selectedCell/winCell 字段存储水果索引
         await db.insert(dingdongGames).values({
           playerId: playerToken.playerId,
           betAmount: input.betAmount.toFixed(2),
-          selectedCell: input.selectedCell,
-          winCell,
+          selectedCell: input.selectedFruit,
+          winCell: winFruit,
           isWin: isWin ? 1 : 0,
           multiplier: multiplier.toFixed(2),
           winAmount: winAmount.toFixed(2),
           netAmount: netAmount.toFixed(2),
           balanceAfter: newGold.toFixed(2),
         });
-        return { isWin, winCell, multiplier, winAmount, netAmount, balanceAfter: newGold, selectedCell: input.selectedCell };
+        return {
+          isWin,
+          winFruit,
+          selectedFruit: input.selectedFruit,
+          multiplier,
+          winAmount,
+          netAmount,
+          balanceAfter: newGold,
+          // 20帧转盘动画序列，最后一帧是开奖结果
+          spinSequence: [...Array(19).fill(0).map(() => Math.floor(Math.random() * 7)), winFruit],
+        };
       }),
     /** 获取历史记录 */
     getHistory: publicProcedure
@@ -1808,7 +1838,18 @@ export const appRouter = router({
         const rows = await db.select().from(dingdongGames)
           .where(eq(dingdongGames.playerId, playerToken.playerId))
           .orderBy(desc(dingdongGames.createdAt)).limit(input.limit);
-        return rows.map(r => ({ id: r.id, betAmount: parseFloat(r.betAmount), selectedCell: r.selectedCell, winCell: r.winCell, isWin: r.isWin === 1, multiplier: parseFloat(r.multiplier), winAmount: parseFloat(r.winAmount), netAmount: parseFloat(r.netAmount), balanceAfter: parseFloat(r.balanceAfter), createdAt: r.createdAt }));
+        return rows.map(r => ({
+          id: r.id,
+          betAmount: parseFloat(r.betAmount),
+          selectedFruit: r.selectedCell,
+          winFruit: r.winCell,
+          isWin: r.isWin === 1,
+          multiplier: parseFloat(r.multiplier),
+          winAmount: parseFloat(r.winAmount),
+          netAmount: parseFloat(r.netAmount),
+          balanceAfter: parseFloat(r.balanceAfter),
+          createdAt: r.createdAt
+        }));
       }),
   }),
 });

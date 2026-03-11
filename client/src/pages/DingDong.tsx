@@ -1,17 +1,16 @@
 /**
- * DingDong.tsx — 丁咚游戏（Fruit Bomb 单人版）
+ * DingDong.tsx — Fruit Bomb 水果机（单人版）
  *
  * 玩法：
- * - 4x4 网格（16格），外圈是水果图标装饰
- * - 玩家选择一个格子并投注
- * - 服务端随机抽取1个中奖格子
- * - 中奖倍率 = 16 * RTP/100（约15.36x）
- * - 开奖动画：逐格揭示，最后揭示选中格和中奖格
+ * - 外圈 20 个格子循环滚动展示水果图标
+ * - 内圈 4×4 格子静态展示水果
+ * - 右侧 7 种水果下注面板，各有不同倍率
+ * - 玩家选择水果 + 输入金额 → 点击下注 → 外圈加速滚动 → 中心展示开奖水果 → 结果
  *
- * 布局：phone-container + cqw 响应式单位（基准 750px）
- * 配色：赛博朋克深紫蓝霓虹风格
+ * 布局：phone-container + cqw 响应式（基准 750px）
+ * 配色：赛博朋克深紫蓝霓虹风格（与项目统一）
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { trpc } from '@/lib/trpc';
 import BottomNav from '@/components/BottomNav';
 import TopNav from '@/components/TopNav';
@@ -22,240 +21,154 @@ import { useSound } from '@/hooks/useSound';
 // ── px → cqw 转换（基准 750px）──────────────────────────────────
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 
-// ── 赛博朋克配色常量 ─────────────────────────────────────────────
-const CYBER = {
-  bg: '#0d0621',
-  bgCard: 'rgba(20,8,50,0.92)',
-  border: 'rgba(120,60,220,0.45)',
-  borderGlow: 'rgba(160,80,255,0.7)',
-  accent: '#c084fc',
-  accentCyan: '#22d3ee',
-  win: '#00f5a0',
-  winGlow: 'rgba(0,245,160,0.5)',
-  lose: '#ff4d6d',
-  loseGlow: 'rgba(255,77,109,0.5)',
-  textPrimary: '#f0e6ff',
-  textSecondary: '#9980cc',
-  textMuted: '#5a4a7a',
-  cellBg: 'rgba(30,12,70,0.9)',
-  cellBorder: 'rgba(100,50,200,0.5)',
-  cellSelected: 'rgba(120,40,220,0.6)',
-  cellWin: 'rgba(0,120,60,0.8)',
-  cellLose: 'rgba(120,0,30,0.6)',
-};
+// ── CDN 素材 URL ─────────────────────────────────────────────────
+const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym';
 
-// ── 水果图标（外圈装饰）─────────────────────────────────────────
-const FRUITS = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍑', '🍒', '🍍', '🥝', '🍈', '🍌', '🍉', '🥭', '🍐', '🫐', '🍏'];
+// ── 7 种水果定义（与服务端索引对应）────────────────────────────
+const FRUITS = [
+  { id: 0, name: '铃铛',   img: `${CDN}/bell_43c3ab93.png`,       multiplier: 2.5,  color: '#f59e0b', weight: 40 },
+  { id: 1, name: '西瓜',   img: `${CDN}/watermelon_f5264fab.png`, multiplier: 5,    color: '#22c55e', weight: 20 },
+  { id: 2, name: '葡萄',   img: `${CDN}/grape_d7bdf199.png`,      multiplier: 5,    color: '#a855f7', weight: 20 },
+  { id: 3, name: '苹果',   img: `${CDN}/apple_6e18be8f.png`,      multiplier: 10,   color: '#84cc16', weight: 10 },
+  { id: 4, name: '蓝宝石', img: `${CDN}/blue_2c52cb20.png`,       multiplier: 10,   color: '#3b82f6', weight: 10 },
+  { id: 5, name: '柠檬',   img: `${CDN}/lemon_91b2d253.png`,      multiplier: 20,   color: '#eab308', weight: 5  },
+  { id: 6, name: 'LUCKY',  img: `${CDN}/lucky_fbe22155.png`,      multiplier: 20,   color: '#ec4899', weight: 5  },
+];
 
-// ── 投注档位 ─────────────────────────────────────────────────────
-const BET_VALUES = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+// 内圈 4×4 静态水果分布
+const INNER_FRUITS = [1, 2, 3, 0, 5, 6, 4, 1, 2, 3, 0, 5, 6, 4, 1, 2];
 
-// ── 游戏状态 ─────────────────────────────────────────────────────
-type GamePhase = 'idle' | 'selected' | 'revealing' | 'result';
+// 外圈 20 格顺时针排列（上6 右4 下6 左4）
+const OUTER_RING: { row: number; col: number }[] = [];
+for (let c = 0; c < 6; c++) OUTER_RING.push({ row: 0, col: c });       // 上行
+for (let r = 1; r <= 4; r++) OUTER_RING.push({ row: r, col: 5 });      // 右列
+for (let c = 5; c >= 0; c--) OUTER_RING.push({ row: 5, col: c });      // 下行
+for (let r = 4; r >= 1; r--) OUTER_RING.push({ row: r, col: 0 });      // 左列
 
-interface CellState {
-  revealed: boolean;
-  isWin: boolean;
-  isSelected: boolean;
-}
+// 快捷下注金额
+const BET_PRESETS = [1, 5, 10, 50, 100, 500];
 
 export default function DingDong() {
   const [, navigate] = useLocation();
   const { showAlert } = useGameAlert();
-  const { playClick, playWin, playLose, playRing, playBetUp, playBetDown, isMuted, toggleMute } = useSound();
+  const { playWin, playLose, playRing, isMuted, toggleMute } = useSound();
 
-  // ── 游戏状态 ─────────────────────────────────────────────────
-  const [phase, setPhase] = useState<GamePhase>('idle');
+  // ── 状态 ──────────────────────────────────────────────────────
+  const [selectedFruit, setSelectedFruit] = useState<number | null>(null);
   const [betAmount, setBetAmount] = useState(10);
-  const [betIdx, setBetIdx] = useState(3);
-  const [selectedCell, setSelectedCell] = useState<number | null>(null);
-  const [cells, setCells] = useState<CellState[]>(Array(16).fill({ revealed: false, isWin: false, isSelected: false }));
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [spinOffset, setSpinOffset] = useState(0);   // 外圈滚动偏移（格数）
+  const [centerFruit, setCenterFruit] = useState<number>(0); // 中心展示水果
+  const [showCenter, setShowCenter] = useState(false);       // 是否显示中心开奖框
   const [lastResult, setLastResult] = useState<{
-    isWin: boolean;
-    winCell: number;
-    multiplier: number;
-    winAmount: number;
-    netAmount: number;
-    balanceAfter: number;
+    isWin: boolean; winFruit: number; multiplier: number;
+    winAmount: number; netAmount: number;
   } | null>(null);
-  const [balance, setBalance] = useState<number | null>(null);
-  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showResult, setShowResult] = useState(false);
 
-  // ── tRPC ─────────────────────────────────────────────────────
-  const { data: playerData, refetch: refetchPlayer } = trpc.player.me.useQuery();
-  const { data: settings } = trpc.dingdong.getSettings.useQuery();
-  const playMut = trpc.dingdong.play.useMutation();
+  // ── 外圈持续滚动动画 ──────────────────────────────────────────
+  const rafRef = useRef<number>(0);
+  const prevTimeRef = useRef<number>(0);
+  const speedRef = useRef<number>(0.015); // 格/ms（慢速）
 
   useEffect(() => {
-    if (playerData?.gold) setBalance(parseFloat(playerData.gold));
-  }, [playerData]);
+    let offset = 0;
+    const loop = (t: number) => {
+      if (prevTimeRef.current) {
+        const dt = t - prevTimeRef.current;
+        offset = (offset + speedRef.current * dt) % OUTER_RING.length;
+        setSpinOffset(offset);
+      }
+      prevTimeRef.current = t;
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
 
-  // ── 选择格子 ─────────────────────────────────────────────────
-  const handleSelectCell = (idx: number) => {
-    if (phase !== 'idle' && phase !== 'selected') return;
-    setSelectedCell(idx);
-    setPhase('selected');
-    setCells(Array(16).fill(null).map((_, i) => ({
-      revealed: false,
-      isWin: false,
-      isSelected: i === idx,
-    })));
-  };
+  // ── tRPC ──────────────────────────────────────────────────────
+  const { data: playerData, refetch: refetchPlayer } = trpc.player.me.useQuery();
+  const { data: settings } = trpc.dingdong.getSettings.useQuery();
+  const { data: history, refetch: refetchHistory } = trpc.dingdong.getHistory.useQuery({ limit: 20 });
 
-  // ── 投注并开奖 ───────────────────────────────────────────────
-  const handlePlay = async () => {
-    if (selectedCell === null) { showAlert('请先选择一个格子'); return; }
-    if (!playerData) { showAlert('请先登录'); return; }
-    if (balance !== null && balance < betAmount) { showAlert('金币不足'); return; }
-
-    setPhase('revealing');
-
-    try {
-      const result = await playMut.mutateAsync({ betAmount, selectedCell });
-      setLastResult(result);
-      setBalance(result.balanceAfter);
-      // 开奖音效
+  const playMut = trpc.dingdong.play.useMutation({
+    onSuccess: async (result) => {
+      // 加速外圈
+      speedRef.current = 0.18;
+      setShowCenter(true);
       playRing();
 
-      // 开奖动画：逐格揭示（非选中、非中奖格先揭示）
-      const revealOrder: number[] = [];
-      for (let i = 0; i < 16; i++) {
-        if (i !== selectedCell && i !== result.winCell) revealOrder.push(i);
-      }
-      // 打乱顺序
-      for (let i = revealOrder.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [revealOrder[i], revealOrder[j]] = [revealOrder[j], revealOrder[i]];
-      }
-
-      // 逐格揭示
-      let delay = 0;
-      const newCells: CellState[] = Array(16).fill(null).map((_, i) => ({
-        revealed: false,
-        isWin: false,
-        isSelected: i === selectedCell,
-      }));
-
-      for (const cellIdx of revealOrder) {
-        const capturedIdx = cellIdx;
-        revealTimerRef.current = setTimeout(() => {
-          newCells[capturedIdx] = { ...newCells[capturedIdx], revealed: true };
-          setCells([...newCells]);
-        }, delay);
-        delay += 60;
+      // 播放 spinSequence 动画
+      const seq = result.spinSequence as number[];
+      for (let i = 0; i < seq.length; i++) {
+        await new Promise<void>(res => setTimeout(() => {
+          setCenterFruit(seq[i]);
+          // 逐渐减速
+          if (i > seq.length * 0.6) {
+            speedRef.current = Math.max(0.015, speedRef.current * 0.88);
+          }
+          res();
+        }, 80 + i * 25));
       }
 
-      // 最后揭示选中格和中奖格
-      revealTimerRef.current = setTimeout(() => {
-        newCells[result.winCell] = { revealed: true, isWin: true, isSelected: result.winCell === selectedCell };
-        newCells[selectedCell] = { revealed: true, isWin: result.isWin, isSelected: true };
-        setCells([...newCells]);
-        setPhase('result');
-        refetchPlayer();
-        // 中奖/未中音效
-        setTimeout(() => {
-          if (result.isWin) playWin(); else playLose();
-        }, 200);
-      }, delay + 200);
+      speedRef.current = 0.015;
+      setIsSpinning(false);
+      setShowCenter(false);
 
-    } catch (e: any) {
-      setPhase('selected');
-      showAlert(e.message || '游戏失败');
-    }
-  };
+      setLastResult({
+        isWin: result.isWin,
+        winFruit: result.winFruit,
+        multiplier: result.multiplier,
+        winAmount: result.winAmount,
+        netAmount: result.netAmount,
+      });
+      setShowResult(true);
+      setTimeout(() => setShowResult(false), 3500);
 
-  // ── 重置游戏 ─────────────────────────────────────────────────
-  const handleReset = () => {
-    if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
-    setPhase('idle');
-    setSelectedCell(null);
-    setLastResult(null);
-    setCells(Array(16).fill({ revealed: false, isWin: false, isSelected: false }));
-    refetchPlayer();
-  };
-
-  // ── 投注金额控制 ─────────────────────────────────────────────
-  const handleBetChange = (dir: 1 | -1) => {
-    const newIdx = Math.max(0, Math.min(BET_VALUES.length - 1, betIdx + dir));
-    setBetIdx(newIdx);
-    setBetAmount(BET_VALUES[newIdx]);
-  };
-
-  // ── 渲染格子 ─────────────────────────────────────────────────
-  const renderCell = (idx: number) => {
-    const cell = cells[idx];
-    const isSelected = selectedCell === idx;
-    const isWinCell = lastResult?.winCell === idx;
-
-    let bg = CYBER.cellBg;
-    let border = CYBER.cellBorder;
-    let glow = '';
-    let content: React.ReactNode = null;
-
-    if (isSelected && !cell.revealed) {
-      bg = CYBER.cellSelected;
-      border = CYBER.accent;
-      glow = `0 0 12px ${CYBER.borderGlow}`;
-      content = <span style={{ fontSize: q(36) }}>⭐</span>;
-    } else if (cell.revealed) {
-      if (cell.isWin) {
-        bg = CYBER.cellWin;
-        border = CYBER.win;
-        glow = `0 0 16px ${CYBER.winGlow}`;
-        content = <span style={{ fontSize: q(40) }}>💎</span>;
-      } else if (isWinCell) {
-        bg = CYBER.cellWin;
-        border = CYBER.win;
-        glow = `0 0 16px ${CYBER.winGlow}`;
-        content = <span style={{ fontSize: q(40) }}>💎</span>;
-      } else if (isSelected) {
-        bg = CYBER.cellLose;
-        border = CYBER.lose;
-        glow = `0 0 12px ${CYBER.loseGlow}`;
-        content = <span style={{ fontSize: q(36) }}>💨</span>;
+      if (result.isWin) {
+        playWin();
+        showAlert(`🎉 恭喜！赢得 ${result.winAmount.toFixed(2)} 金币（${result.multiplier}x）`);
       } else {
-        content = <span style={{ fontSize: q(30), opacity: 0.5 }}>{FRUITS[idx]}</span>;
+        playLose();
       }
-    } else {
-      content = <span style={{ fontSize: q(30), opacity: 0.3 }}>?</span>;
-    }
 
-    return (
-      <div
-        key={idx}
-        onClick={() => handleSelectCell(idx)}
-        style={{
-          width: `calc(25% - ${q(6)})`,
-          aspectRatio: '1',
-          background: bg,
-          border: `1.5px solid ${border}`,
-          borderRadius: q(12),
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: (phase === 'idle' || phase === 'selected') ? 'pointer' : 'default',
-          boxShadow: glow || 'none',
-          transition: 'all 0.2s',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {/* 选中高亮边框动画 */}
-        {isSelected && !cell.revealed && (
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            border: `2px solid ${CYBER.accent}`,
-            borderRadius: q(10),
-            animation: 'borderPulse 1s infinite',
-          }} />
-        )}
-        {content}
-      </div>
-    );
-  };
+      await refetchPlayer();
+      await refetchHistory();
+    },
+    onError: (err) => {
+      setIsSpinning(false);
+      speedRef.current = 0.015;
+      setShowCenter(false);
+      showAlert(err.message || '下注失败');
+    },
+  });
 
-  const multiplier = settings ? (16 * settings.rtp / 100).toFixed(1) : '15.4';
+  const handleBet = useCallback(() => {
+    if (selectedFruit === null) { showAlert('请先选择水果'); return; }
+    if (!playerData) { navigate('/login'); return; }
+    const gold = parseFloat(String(playerData.gold));
+    if (gold < betAmount) { showAlert('金币不足'); return; }
+    if (isSpinning) return;
+    setIsSpinning(true);
+    setShowResult(false);
+    playMut.mutate({ betAmount, selectedFruit });
+  }, [selectedFruit, betAmount, playerData, isSpinning, playMut, navigate, showAlert]);
+
+  const gold = playerData ? parseFloat(String(playerData.gold)) : 0;
+  const minBet = settings?.minBet ?? 1;
+  const maxBet = settings?.maxBet ?? 10000;
+
+  // ── 外圈水果计算 ──────────────────────────────────────────────
+  const outerFruits = OUTER_RING.map((_, i) => {
+    const idx = Math.floor((i + spinOffset + OUTER_RING.length) % OUTER_RING.length);
+    return FRUITS[idx % 7];
+  });
+
+  // 格子尺寸（cqw 单位）
+  const CELL_PX = 84;  // 每格像素（基于750px基准）
+  const GAP_PX = 4;
+  const COLS = 6;
+  const ROWS = 6;
 
   return (
     <div
@@ -265,333 +178,407 @@ export default function DingDong() {
         flexDirection: 'column',
         containerType: 'inline-size',
         position: 'relative',
-        background: CYBER.bg,
+        background: '#0d0621',
         minHeight: '100vh',
       }}
     >
       {/* 全局背景光晕 */}
       <div style={{
-        position: 'fixed',
-        top: 0, left: '50%',
-        transform: 'translateX(-50%)',
+        position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)',
         width: '100%', height: '100%',
         background: 'radial-gradient(ellipse at 50% 20%, rgba(120,40,220,0.18) 0%, transparent 60%)',
-        pointerEvents: 'none',
-        zIndex: 0,
+        pointerEvents: 'none', zIndex: 0,
       }} />
 
-      {/* ── 顶部导航 ── */}
+      {/* 顶部导航 */}
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 2, width: '100%' }}>
         <TopNav showLogo={false} onBackClick={() => navigate('/')} />
       </div>
 
-      {/* ── 静音按钮（右上角悬浮）── */}
+      {/* 静音按钮 */}
       <button
         onClick={toggleMute}
         style={{
-          position: 'absolute',
-          top: q(60),
-          right: q(20),
-          zIndex: 10,
-          width: q(60),
-          height: q(60),
-          borderRadius: '50%',
-          background: 'rgba(20,8,50,0.85)',
-          border: '1px solid rgba(120,60,220,0.5)',
-          color: '#fff',
-          fontSize: q(28),
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+          position: 'absolute', top: q(60), right: q(20), zIndex: 10,
+          width: q(60), height: q(60), borderRadius: '50%',
+          background: 'rgba(20,8,50,0.85)', border: '1px solid rgba(120,60,220,0.5)',
+          color: '#fff', fontSize: q(28), cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
       >
         {isMuted ? '🔇' : '🔊'}
       </button>
 
-      {/* ── 内容区 ── */}
+      {/* 内容区 */}
       <div style={{ flex: 1, overflowY: 'auto', position: 'relative', zIndex: 1, paddingBottom: q(120) }}>
 
         {/* 标题 */}
         <div style={{
-          textAlign: 'center',
-          padding: `${q(16)} 0 ${q(4)}`,
-          color: CYBER.textPrimary,
-          fontSize: q(32),
-          fontWeight: 900,
-          letterSpacing: 2,
-          textShadow: `0 0 20px ${CYBER.borderGlow}`,
+          textAlign: 'center', padding: `${q(12)} 0 ${q(4)}`,
+          color: '#f0e6ff', fontSize: q(30), fontWeight: 900, letterSpacing: 2,
+          textShadow: '0 0 20px rgba(160,80,255,0.7)',
         }}>
-          🎯 丁咚
-        </div>
-        <div style={{
-          textAlign: 'center',
-          color: CYBER.textSecondary,
-          fontSize: q(22),
-          marginBottom: q(8),
-        }}>
-          选1格，中奖倍率 {multiplier}x
+          🍉 水果机
         </div>
 
-        {/* 余额显示 */}
+        {/* 余额 */}
         <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: q(8),
-          marginBottom: q(12),
+          textAlign: 'center', marginBottom: q(8),
+          color: '#ffd700', fontSize: q(26), fontWeight: 700,
         }}>
-          <span style={{ color: CYBER.textSecondary, fontSize: q(22) }}>余额：</span>
-          <span style={{ color: '#ffd700', fontSize: q(28), fontWeight: 700 }}>
-            {balance !== null ? balance.toFixed(2) : '--'}
-          </span>
+          💰 {gold.toFixed(2)}
         </div>
 
-        {/* 结果提示 */}
-        {phase === 'result' && lastResult && (
-          <div style={{
-            margin: `0 ${q(24)} ${q(12)}`,
-            padding: q(16),
-            background: lastResult.isWin
-              ? 'linear-gradient(135deg, rgba(0,80,40,0.9), rgba(0,40,20,0.95))'
-              : 'linear-gradient(135deg, rgba(80,0,20,0.9), rgba(40,0,10,0.95))',
-            border: `1.5px solid ${lastResult.isWin ? CYBER.win : CYBER.lose}`,
-            borderRadius: q(12),
-            textAlign: 'center',
-            boxShadow: `0 0 20px ${lastResult.isWin ? CYBER.winGlow : CYBER.loseGlow}`,
-          }}>
-            <div style={{ fontSize: q(36), marginBottom: q(4) }}>
-              {lastResult.isWin ? '🎉' : '😢'}
-            </div>
-            <div style={{
-              color: lastResult.isWin ? CYBER.win : CYBER.lose,
-              fontSize: q(28),
-              fontWeight: 900,
-            }}>
-              {lastResult.isWin
-                ? `中奖！赢得 ${lastResult.winAmount.toFixed(2)} 金币`
-                : `未中奖，输掉 ${betAmount} 金币`}
-            </div>
-            {lastResult.isWin && (
-              <div style={{ color: CYBER.textSecondary, fontSize: q(20), marginTop: q(4) }}>
-                倍率：{lastResult.multiplier}x
+        {/* ── 主游戏区 ── */}
+        <div style={{
+          margin: `0 ${q(12)}`,
+          background: 'rgba(20,8,50,0.92)',
+          border: '1.5px solid rgba(120,60,220,0.45)',
+          borderRadius: q(16),
+          padding: q(10),
+          boxShadow: '0 0 30px rgba(80,20,160,0.3)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          {/* 背景稻草人装饰 */}
+          <img
+            src={`${CDN}/game_bg_971837a8.png`}
+            alt=""
+            style={{
+              position: 'absolute', bottom: 0, right: 0,
+              height: '60%', opacity: 0.25, pointerEvents: 'none',
+              zIndex: 0,
+            }}
+          />
+
+          <div style={{ display: 'flex', gap: q(10), position: 'relative', zIndex: 1 }}>
+
+            {/* ── 左侧：外圈 + 内圈格子 ── */}
+            <div style={{ flex: 1, position: 'relative' }}>
+              {/* 格子容器 */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${COLS}, ${q(CELL_PX)})`,
+                gridTemplateRows: `repeat(${ROWS}, ${q(CELL_PX)})`,
+                gap: q(GAP_PX),
+                position: 'relative',
+              }}>
+                {/* 外圈格子 */}
+                {OUTER_RING.map((pos, i) => {
+                  const fruit = outerFruits[i];
+                  const isWinCell = showResult && lastResult && fruit.id === lastResult.winFruit;
+                  return (
+                    <div
+                      key={`outer-${i}`}
+                      style={{
+                        gridRow: pos.row + 1,
+                        gridColumn: pos.col + 1,
+                        width: q(CELL_PX), height: q(CELL_PX),
+                        background: isWinCell
+                          ? 'linear-gradient(135deg, rgba(255,215,0,0.35), rgba(255,165,0,0.35))'
+                          : 'linear-gradient(135deg, rgba(30,10,65,0.9), rgba(15,5,40,0.9))',
+                        border: `1.5px solid ${isWinCell ? '#ffd700' : 'rgba(120,60,220,0.5)'}`,
+                        borderRadius: q(8),
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: isWinCell ? '0 0 12px #ffd70088' : 'none',
+                        transition: 'background 0.15s',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <img
+                        src={fruit.img}
+                        alt={fruit.name}
+                        style={{ width: q(CELL_PX * 0.68), height: q(CELL_PX * 0.68), objectFit: 'contain' }}
+                      />
+                    </div>
+                  );
+                })}
+
+                {/* 内圈 4×4 格子（row 1-4, col 1-4） */}
+                {INNER_FRUITS.map((fruitId, idx) => {
+                  const r = Math.floor(idx / 4) + 1; // 1-4
+                  const c = (idx % 4) + 1;           // 1-4
+                  const fruit = FRUITS[fruitId];
+                  return (
+                    <div
+                      key={`inner-${idx}`}
+                      style={{
+                        gridRow: r + 1,
+                        gridColumn: c + 1,
+                        width: q(CELL_PX), height: q(CELL_PX),
+                        background: 'linear-gradient(135deg, rgba(20,8,50,0.95), rgba(10,4,30,0.95))',
+                        border: '1px solid rgba(80,40,160,0.4)',
+                        borderRadius: q(8),
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <img
+                        src={fruit.img}
+                        alt={fruit.name}
+                        style={{ width: q(CELL_PX * 0.62), height: q(CELL_PX * 0.62), objectFit: 'contain', opacity: 0.6 }}
+                      />
+                    </div>
+                  );
+                })}
+
+                {/* 中心开奖动画框（转动时覆盖内圈中央 2×2） */}
+                {showCenter && (
+                  <div style={{
+                    gridRow: '3 / 5',
+                    gridColumn: '3 / 5',
+                    background: 'rgba(0,0,0,0.85)',
+                    border: '2px solid rgba(180,100,255,0.9)',
+                    borderRadius: q(10),
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 0 30px rgba(180,100,255,0.6)',
+                    zIndex: 5,
+                    animation: 'centerPulse 0.5s ease infinite alternate',
+                  }}>
+                    <img
+                      src={FRUITS[centerFruit]?.img}
+                      alt=""
+                      style={{ width: q(CELL_PX * 1.1), height: q(CELL_PX * 1.1), objectFit: 'contain' }}
+                    />
+                    <div style={{ color: '#fff', fontSize: q(18), marginTop: q(2) }}>
+                      {FRUITS[centerFruit]?.name}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* 开奖结果浮层 */}
+              {showResult && lastResult && (
+                <div style={{
+                  position: 'absolute', inset: 0, zIndex: 20,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(0,0,0,0.65)',
+                  borderRadius: q(12),
+                  animation: 'fadeInResult 0.3s ease',
+                }}>
+                  <div style={{
+                    background: lastResult.isWin
+                      ? 'linear-gradient(135deg, rgba(22,163,74,0.97), rgba(15,118,50,0.97))'
+                      : 'linear-gradient(135deg, rgba(185,28,28,0.97), rgba(127,29,29,0.97))',
+                    borderRadius: q(16), padding: `${q(20)} ${q(28)}`, textAlign: 'center',
+                    border: `2px solid ${lastResult.isWin ? '#22c55e' : '#ef4444'}`,
+                    boxShadow: `0 0 40px ${lastResult.isWin ? '#22c55e66' : '#ef444466'}`,
+                  }}>
+                    <div style={{ fontSize: q(50), marginBottom: q(6) }}>
+                      {lastResult.isWin ? '🎉' : '😢'}
+                    </div>
+                    <div style={{ color: '#fff', fontSize: q(26), fontWeight: 900, marginBottom: q(4) }}>
+                      {lastResult.isWin ? '恭喜获胜！' : '未中奖'}
+                    </div>
+                    {lastResult.isWin && (
+                      <div style={{ color: '#ffd700', fontSize: q(30), fontWeight: 900 }}>
+                        +{lastResult.winAmount.toFixed(2)} 💰
+                      </div>
+                    )}
+                    <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: q(20), marginTop: q(6) }}>
+                      开奖：{FRUITS[lastResult.winFruit]?.name}
+                      {lastResult.isWin && ` × ${lastResult.multiplier}`}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── 右侧：下注面板 ── */}
+            <div style={{ width: q(160), display: 'flex', flexDirection: 'column', gap: q(6) }}>
+
+              {/* 余额小显示 */}
+              <div style={{
+                background: 'rgba(0,0,0,0.5)', borderRadius: q(8), padding: `${q(5)} ${q(8)}`,
+                color: '#ffd700', fontSize: q(20), fontWeight: 700, textAlign: 'center',
+                border: '1px solid rgba(255,215,0,0.3)',
+              }}>
+                💰 {gold.toFixed(2)}
+              </div>
+
+              {/* 金额调节 */}
+              <div style={{ display: 'flex', gap: q(4), alignItems: 'center' }}>
+                <button
+                  onClick={() => setBetAmount(prev => Math.max(minBet, Math.floor(prev / 2)))}
+                  disabled={isSpinning}
+                  style={{
+                    flex: 1, background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)', borderRadius: q(6),
+                    color: '#fff', fontSize: q(18), padding: `${q(5)} 0`, cursor: 'pointer',
+                  }}
+                >½</button>
+                <div style={{
+                  flex: 2, background: 'rgba(0,0,0,0.5)', borderRadius: q(6),
+                  color: '#fff', fontSize: q(20), fontWeight: 700, textAlign: 'center',
+                  padding: `${q(5)} 0`, border: '1px solid rgba(120,60,220,0.4)',
+                }}>
+                  {betAmount}
+                </div>
+                <button
+                  onClick={() => setBetAmount(prev => Math.min(maxBet, prev * 2))}
+                  disabled={isSpinning}
+                  style={{
+                    flex: 1, background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)', borderRadius: q(6),
+                    color: '#fff', fontSize: q(18), padding: `${q(5)} 0`, cursor: 'pointer',
+                  }}
+                >×2</button>
+              </div>
+
+              {/* 快捷金额 */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: q(4) }}>
+                {BET_PRESETS.slice(0, 4).map(amt => (
+                  <button
+                    key={amt}
+                    onClick={() => setBetAmount(amt)}
+                    disabled={isSpinning}
+                    style={{
+                      background: betAmount === amt ? 'rgba(120,60,220,0.6)' : 'rgba(255,255,255,0.07)',
+                      border: `1px solid ${betAmount === amt ? 'rgba(180,100,255,0.8)' : 'rgba(255,255,255,0.15)'}`,
+                      borderRadius: q(6), color: '#fff', fontSize: q(18), padding: `${q(4)} 0`, cursor: 'pointer',
+                    }}
+                  >{amt}</button>
+                ))}
+              </div>
+
+              {/* 7 种水果下注按钮 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: q(5) }}>
+                {FRUITS.map(fruit => (
+                  <button
+                    key={fruit.id}
+                    onClick={() => setSelectedFruit(fruit.id)}
+                    disabled={isSpinning}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: q(6),
+                      background: selectedFruit === fruit.id
+                        ? `linear-gradient(135deg, rgba(120,60,220,0.7), rgba(80,20,160,0.7))`
+                        : 'rgba(0,0,0,0.45)',
+                      border: `1.5px solid ${selectedFruit === fruit.id ? 'rgba(180,100,255,0.9)' : 'rgba(255,255,255,0.12)'}`,
+                      borderRadius: q(8), padding: `${q(5)} ${q(8)}`, cursor: 'pointer',
+                      boxShadow: selectedFruit === fruit.id ? `0 0 10px ${fruit.color}55` : 'none',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <img src={fruit.img} alt={fruit.name} style={{ width: q(34), height: q(34), objectFit: 'contain' }} />
+                    <div style={{ flex: 1, textAlign: 'left' }}>
+                      <div style={{ color: '#e0d0ff', fontSize: q(17) }}>{fruit.name}</div>
+                      <div style={{ color: fruit.color, fontSize: q(19), fontWeight: 700 }}>×{fruit.multiplier}</div>
+                    </div>
+                    {selectedFruit === fruit.id && (
+                      <div style={{ color: '#ffd700', fontSize: q(18) }}>✓</div>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* 下注按钮 */}
+              <button
+                onClick={handleBet}
+                disabled={isSpinning || selectedFruit === null}
+                style={{
+                  marginTop: q(4),
+                  background: isSpinning || selectedFruit === null
+                    ? 'rgba(80,80,80,0.4)'
+                    : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                  border: 'none', borderRadius: q(10),
+                  color: '#fff', fontSize: q(22), fontWeight: 700,
+                  padding: `${q(12)} 0`, cursor: isSpinning || selectedFruit === null ? 'not-allowed' : 'pointer',
+                  boxShadow: isSpinning || selectedFruit === null ? 'none' : '0 4px 20px rgba(124,58,237,0.6)',
+                  transition: 'all 0.2s', letterSpacing: 1,
+                }}
+              >
+                {isSpinning ? '转动中...' : selectedFruit === null ? '请选水果' : '下注'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── 历史记录 ── */}
+        <div style={{
+          margin: `${q(12)} ${q(12)} 0`,
+          background: 'rgba(0,0,0,0.4)',
+          border: '1px solid rgba(120,60,220,0.3)',
+          borderRadius: q(12), overflow: 'hidden',
+        }}>
+          {/* Tab 栏 */}
+          <div style={{ display: 'flex', borderBottom: '1px solid rgba(120,60,220,0.3)' }}>
+            {['最新投注', '我的投注', '历史记录'].map((tab, i) => (
+              <div
+                key={tab}
+                style={{
+                  flex: 1, padding: `${q(14)} 0`, textAlign: 'center',
+                  background: i === 1 ? 'rgba(120,60,220,0.25)' : 'transparent',
+                  borderBottom: i === 1 ? '2px solid #7c3aed' : '2px solid transparent',
+                  color: i === 1 ? '#fff' : 'rgba(255,255,255,0.45)',
+                  fontSize: q(22), cursor: 'pointer',
+                }}
+              >
+                {tab}
+              </div>
+            ))}
+          </div>
+
+          {/* 历史列表 */}
+          <div style={{ maxHeight: q(400), overflowY: 'auto' }}>
+            {!history || history.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', padding: `${q(32)} 0`, fontSize: q(22) }}>
+                暂无记录
+              </div>
+            ) : (
+              <>
+                {/* 表头 */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr',
+                  padding: `${q(6)} ${q(16)}`, color: 'rgba(255,255,255,0.4)', fontSize: q(18),
+                }}>
+                  <span>选择</span><span>开奖</span><span>投注</span><span style={{ textAlign: 'right' }}>盈亏</span>
+                </div>
+                {history.map(r => (
+                  <div
+                    key={r.id}
+                    style={{
+                      display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr',
+                      padding: `${q(8)} ${q(16)}`, alignItems: 'center',
+                      borderBottom: '1px solid rgba(255,255,255,0.05)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: q(4) }}>
+                      <img src={FRUITS[r.selectedFruit]?.img} alt="" style={{ width: q(28), height: q(28), objectFit: 'contain' }} />
+                      <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: q(18) }}>{FRUITS[r.selectedFruit]?.name}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: q(4) }}>
+                      <img src={FRUITS[r.winFruit]?.img} alt="" style={{ width: q(28), height: q(28), objectFit: 'contain' }} />
+                      <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: q(18) }}>{FRUITS[r.winFruit]?.name}</span>
+                    </div>
+                    <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: q(20) }}>{r.betAmount.toFixed(2)}</span>
+                    <span style={{
+                      textAlign: 'right', fontSize: q(20), fontWeight: 700,
+                      color: r.netAmount >= 0 ? '#22c55e' : '#ef4444',
+                    }}>
+                      {r.netAmount >= 0 ? '+' : ''}{r.netAmount.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </>
             )}
           </div>
-        )}
-
-        {/* 游戏网格 */}
-        <div style={{
-          margin: `0 ${q(16)}`,
-          padding: q(16),
-          background: CYBER.bgCard,
-          border: `1.5px solid ${CYBER.border}`,
-          borderRadius: q(16),
-          boxShadow: `0 0 30px rgba(80,20,160,0.3)`,
-        }}>
-          {/* 提示文字 */}
-          <div style={{
-            textAlign: 'center',
-            color: phase === 'idle' ? CYBER.textSecondary : phase === 'selected' ? CYBER.accent : CYBER.textMuted,
-            fontSize: q(22),
-            marginBottom: q(12),
-          }}>
-            {phase === 'idle' && '点击选择一个格子'}
-            {phase === 'selected' && `已选第 ${(selectedCell ?? 0) + 1} 格，点击【开奖】`}
-            {phase === 'revealing' && '开奖中...'}
-            {phase === 'result' && (lastResult?.isWin ? '恭喜中奖！' : '再接再厉！')}
-          </div>
-
-          {/* 4x4 网格 */}
-          <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: q(8),
-          }}>
-            {Array(16).fill(null).map((_, idx) => renderCell(idx))}
-          </div>
         </div>
-
-        {/* 投注区域 */}
-        <div style={{
-          margin: `${q(12)} ${q(16)} 0`,
-          padding: q(16),
-          background: CYBER.bgCard,
-          border: `1px solid ${CYBER.border}`,
-          borderRadius: q(12),
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: q(10) }}>
-            <span style={{ color: CYBER.textSecondary, fontSize: q(24) }}>投注金额</span>
-            <span style={{ color: '#ffd700', fontSize: q(28), fontWeight: 700 }}>{betAmount}</span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: q(12) }}>
-            <button
-              onClick={() => handleBetChange(-1)}
-              disabled={phase === 'revealing' || betIdx === 0}
-              style={{
-                width: q(64), height: q(64),
-                background: 'rgba(120,60,220,0.3)',
-                border: `1px solid ${CYBER.border}`,
-                borderRadius: q(8),
-                color: CYBER.textPrimary,
-                fontSize: q(32),
-                cursor: 'pointer',
-                opacity: (phase === 'revealing' || betIdx === 0) ? 0.4 : 1,
-              }}
-            >−</button>
-
-            <div style={{ flex: 1, height: q(8), background: 'rgba(80,40,160,0.5)', borderRadius: q(4), position: 'relative' }}>
-              <div style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                height: '100%',
-                width: `${(betIdx / (BET_VALUES.length - 1)) * 100}%`,
-                background: 'linear-gradient(90deg, #7c3aed, #c084fc)',
-                borderRadius: q(4),
-                transition: 'width 0.2s',
-              }} />
-            </div>
-
-            <button
-              onClick={() => handleBetChange(1)}
-              disabled={phase === 'revealing' || betIdx === BET_VALUES.length - 1}
-              style={{
-                width: q(64), height: q(64),
-                background: 'rgba(120,60,220,0.3)',
-                border: `1px solid ${CYBER.border}`,
-                borderRadius: q(8),
-                color: CYBER.textPrimary,
-                fontSize: q(32),
-                cursor: 'pointer',
-                opacity: (phase === 'revealing' || betIdx === BET_VALUES.length - 1) ? 0.4 : 1,
-              }}
-            >+</button>
-          </div>
-        </div>
-
-        {/* 快捷投注 */}
-        <div style={{
-          margin: `${q(8)} ${q(16)} 0`,
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: q(8),
-        }}>
-          {[1, 5, 10, 50, 100].map(v => (
-            <button
-              key={v}
-              onClick={() => {
-                const idx = BET_VALUES.indexOf(v);
-                if (idx >= 0) { setBetIdx(idx); setBetAmount(v); }
-              }}
-              disabled={phase === 'revealing'}
-              style={{
-                padding: `${q(8)} ${q(20)}`,
-                background: betAmount === v ? 'rgba(120,60,220,0.6)' : 'rgba(30,12,70,0.8)',
-                border: `1px solid ${betAmount === v ? CYBER.accent : CYBER.border}`,
-                borderRadius: q(8),
-                color: betAmount === v ? '#fff' : CYBER.textSecondary,
-                fontSize: q(22),
-                cursor: 'pointer',
-              }}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-
-        {/* 操作按钮 */}
-        <div style={{ margin: `${q(16)} ${q(16)} 0`, display: 'flex', gap: q(12) }}>
-          {(phase === 'idle' || phase === 'selected') && (
-            <button
-              onClick={handlePlay}
-              disabled={selectedCell === null || playMut.isPending}
-              style={{
-                flex: 1,
-                height: q(88),
-                background: selectedCell !== null
-                  ? 'linear-gradient(180deg, #9333ea 0%, #7c3aed 50%, #5b21b6 100%)'
-                  : 'rgba(80,40,160,0.3)',
-                border: selectedCell !== null ? 'none' : `1px solid ${CYBER.border}`,
-                borderRadius: q(12),
-                color: selectedCell !== null ? '#fff' : CYBER.textMuted,
-                fontSize: q(32),
-                fontWeight: 900,
-                cursor: selectedCell !== null ? 'pointer' : 'not-allowed',
-                boxShadow: selectedCell !== null ? '0 4px 20px rgba(124,58,237,0.6)' : 'none',
-                letterSpacing: 2,
-                opacity: playMut.isPending ? 0.7 : 1,
-              }}
-            >
-              {playMut.isPending ? '开奖中...' : '🎯 开奖'}
-            </button>
-          )}
-
-          {phase === 'revealing' && (
-            <div style={{
-              flex: 1,
-              height: q(88),
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: CYBER.accent,
-              fontSize: q(28),
-              fontWeight: 700,
-            }}>
-              开奖中...
-            </div>
-          )}
-
-          {phase === 'result' && (
-            <button
-              onClick={handleReset}
-              style={{
-                flex: 1,
-                height: q(88),
-                background: 'linear-gradient(180deg, #9333ea 0%, #7c3aed 50%, #5b21b6 100%)',
-                border: 'none',
-                borderRadius: q(12),
-                color: '#fff',
-                fontSize: q(32),
-                fontWeight: 900,
-                cursor: 'pointer',
-                boxShadow: '0 4px 20px rgba(124,58,237,0.6)',
-                letterSpacing: 2,
-              }}
-            >
-              🔄 再来一局
-            </button>
-          )}
-        </div>
-
-        {/* 游戏说明 */}
-        <div style={{
-          margin: `${q(12)} ${q(16)} 0`,
-          padding: q(12),
-          background: 'rgba(20,8,50,0.6)',
-          border: `1px solid rgba(120,60,220,0.2)`,
-          borderRadius: q(8),
-          color: CYBER.textMuted,
-          fontSize: q(20),
-          lineHeight: 1.6,
-        }}>
-          <div style={{ color: CYBER.textSecondary, marginBottom: q(4), fontWeight: 600 }}>玩法说明</div>
-          16格中随机1格中奖，选中即赢 {multiplier}x 倍率。先选格子，再点【开奖】。
-        </div>
-
       </div>
 
-      {/* ── 底部导航 ── */}
+      {/* 底部导航 */}
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 2, width: '100%' }}>
-        <BottomNav active="dating" />
+        <BottomNav />
       </div>
 
       <style>{`
-        @keyframes borderPulse {
-          0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(192,132,252,0.6); }
-          50% { opacity: 0.6; box-shadow: 0 0 16px rgba(192,132,252,0.9); }
+        @keyframes fadeInResult {
+          from { opacity: 0; transform: scale(0.85); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes centerPulse {
+          from { box-shadow: 0 0 20px rgba(180,100,255,0.5); }
+          to   { box-shadow: 0 0 40px rgba(180,100,255,0.9); }
         }
       `}</style>
     </div>
