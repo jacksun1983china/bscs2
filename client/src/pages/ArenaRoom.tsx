@@ -459,6 +459,9 @@ export default function ArenaRoom() {
   // 每轮结束后累加，key = playerId, value = 累计价值
   const [liveValues, setLiveValues] = useState<Record<number, number>>({});
 
+  // ── 观战者缓存的玩家信息（在 roomDetail 加载前通过 round_result 获取） ──
+  const [spectatorPlayers, setSpectatorPlayers] = useState<Array<{ playerId: number; nickname: string; avatar: string; seatNo: number }>>([]);
+
   const { data: roomDetail, refetch: refetchRoom } = trpc.arena.getRoomDetail.useQuery(
     { roomId },
     {
@@ -602,6 +605,9 @@ export default function ArenaRoom() {
       case 'round_result': {
         const results = msg.results as any[];
         const roundNo = msg.roundNo as number;
+        // 确保 gameStatus 为 playing（观战者可能在 roomDetail 加载前收到此消息）
+        setGameStatus('playing');
+        setCurrentRound(roundNo);
         setRoundResults((prev) => {
           const enriched = results.map((r: any) => ({ ...r }));
           return { ...prev, [roundNo]: enriched };
@@ -628,6 +634,15 @@ export default function ArenaRoom() {
         setSpinning(true);
         setSpinDoneCount(0);
         setSkipGameAnim(false);
+        // 缓存玩家信息（观战者在 roomDetail 加载前也能正确显示玩家名称）
+        if (results.length > 0 && results[0].seatNo !== undefined) {
+          setSpectatorPlayers(results.map((r: any) => ({
+            playerId: r.playerId,
+            nickname: r.nickname ?? `玩家${r.seatNo}`,
+            avatar: r.avatar ?? '001',
+            seatNo: r.seatNo,
+          })));
+        }
         break;
       }
       case 'game_over': {
@@ -659,8 +674,8 @@ export default function ArenaRoom() {
       const status = roomDetail.room.status as 'waiting' | 'playing' | 'finished' | 'cancelled';
       if (status === 'playing') {
         setGameStatus('playing');
-        setIsPresent(true);
-        // 触发开场动画
+        // 不强制设置 isPresent，保留原有状态（参与者=true, 观战者=false）
+        // 触发开场动画（参与者和观战者都要看）
         if (roomDetail.players.length >= 2) {
           triggerIntro(roomDetail.players);
         }
@@ -782,8 +797,9 @@ export default function ArenaRoom() {
   }, [isReplaying, replayRound, spinning, replayWaitingIntro]);
 
   const room = roomDetail?.room;
-  const players = roomDetail?.players ?? [];
-  const maxPlayers = room?.maxPlayers ?? 2;
+  // 观战者在 roomDetail 加载前，使用通过 round_result 缓存的玩家信息
+  const players = (roomDetail?.players ?? []).length > 0 ? (roomDetail?.players ?? []) : spectatorPlayers;
+  const maxPlayers = room?.maxPlayers ?? (spectatorPlayers.length > 0 ? spectatorPlayers.length : 2);
   const totalRounds = room?.rounds ?? 1;
 
   const myPlayerId = roomDetail?.myPlayerId ?? 0;
@@ -1081,6 +1097,15 @@ export default function ArenaRoom() {
             <span style={{ color: '#9ca3af', fontSize: q(22) }}>
               {gameStatus === 'waiting' ? '等待中' : gameStatus === 'playing' ? `第 ${currentRound}/${totalRounds} 轮` : '已结束'}
             </span>
+            {/* 观战标识：非参与者且游戏进行中 */}
+            {!isPresent && gameStatus === 'playing' && (
+              <span style={{
+                background: 'rgba(59,130,246,0.2)',
+                border: '1px solid rgba(96,165,250,0.6)',
+                borderRadius: q(8), padding: `${q(4)} ${q(12)}`,
+                color: '#60a5fa', fontSize: q(20), fontWeight: 600,
+              }}>👁 观战</span>
+            )}
           </div>
         </div>
 
@@ -1184,8 +1209,8 @@ export default function ArenaRoom() {
               </button>
             )}
 
-            {/* 开始按钮：仅当房间内没有机器人时显示（机器人房间由服务端自动开箱，避免并发重复） */}
-            {!spinning && players.length >= maxPlayers && !isReplaying && !players.some(p => p.playerId < 0) && (
+            {/* 开始按钮：仅参与者且没有机器人时显示（机器人房间由服务端自动开箱，避免并发重复） */}
+            {!spinning && isPresent && players.length >= maxPlayers && !isReplaying && !players.some(p => p.playerId < 0) && (
               <button
                 onClick={() => spinRound.mutate({ roomId, roundNo: currentRound })}
                 disabled={spinRound.isPending}

@@ -637,9 +637,9 @@ async function autoSpinAllRounds(roomId: number) {
       }
     }
 
-    // 等待客户端动画播放（slot动画约3秒 + 开奖展示2.2秒 = 5.2秒，留余量用6秒）
+    // 等待客户端动画播放（slot动画约3秒 + 开奖展示1.5秒 = 4.5秒）
     if (roundNo < totalRounds) {
-      await new Promise((res) => setTimeout(res, 6000));
+      await new Promise((res) => setTimeout(res, 4500));
     }
   }
 

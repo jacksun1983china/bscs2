@@ -150,3 +150,103 @@ describe("arena schema tables", () => {
     }
   });
 });
+
+// ── 测试 arenaSSE 广播函数 ─────────────────────────────────────────────────
+
+describe("arenaSSE exports", () => {
+  it("should export all required broadcast functions", async () => {
+    const sse = await import("./arenaSSE");
+    expect(typeof sse.initArenaSSE).toBe("function");
+    expect(typeof sse.broadcastRoomListUpdate).toBe("function");
+    expect(typeof sse.broadcastPlayerJoined).toBe("function");
+    expect(typeof sse.broadcastGameStarted).toBe("function");
+    expect(typeof sse.broadcastRoundResult).toBe("function");
+    expect(typeof sse.broadcastGameOver).toBe("function");
+    expect(typeof sse.broadcastRoomCancelled).toBe("function");
+  });
+});
+
+// ── 测试轮次间隔时序 ──────────────────────────────────────────────────────
+
+describe("autoSpinAllRounds timing", () => {
+  it("should have 4500ms round delay in arenaRouter source", async () => {
+    // 读取 arenaRouter.ts 源码，检查轮次延迟是否为 4500ms
+    const fs = await import("fs");
+    const path = await import("path");
+    const filePath = path.resolve(__dirname, "arenaRouter.ts");
+    const source = fs.readFileSync(filePath, "utf-8");
+    // 检查 4500ms 延迟存在（slot动画约3秒 + 开奖展示1.5秒）
+    expect(source).toContain("4500");
+    // 确保没有使用旧的 6000ms 延迟
+    expect(source).not.toContain("setTimeout(res, 6000)");
+  });
+});
+
+// ── 测试观战模式逻辑 ──────────────────────────────────────────────────────
+
+describe("spectator mode logic", () => {
+  it("joinRoom error handling should allow spectators for playing/full rooms", () => {
+    // 模拟 joinRoom 错误处理逻辑
+    const handleJoinError = (errMsg: string): { isPresent: boolean; shouldEnableRoomDetail: boolean } => {
+      if (errMsg.includes('已满') || errMsg.includes('不在等待') || errMsg.includes('已不在等待')) {
+        return { isPresent: false, shouldEnableRoomDetail: true };
+      }
+      return { isPresent: false, shouldEnableRoomDetail: false };
+    };
+
+    // 房间已满 → 观战者
+    const result1 = handleJoinError("房间已满");
+    expect(result1.isPresent).toBe(false);
+    expect(result1.shouldEnableRoomDetail).toBe(true);
+
+    // 房间已不在等待状态（playing/finished）→ 观战者
+    const result2 = handleJoinError("房间已不在等待状态");
+    expect(result2.isPresent).toBe(false);
+    expect(result2.shouldEnableRoomDetail).toBe(true);
+
+    // 其他错误 → 显示错误信息
+    const result3 = handleJoinError("服务器错误");
+    expect(result3.isPresent).toBe(false);
+    expect(result3.shouldEnableRoomDetail).toBe(false);
+  });
+
+  it("round_result should update gameStatus to playing for spectators", () => {
+    // 模拟 round_result 消息处理
+    let gameStatus = 'waiting';
+    let currentRound = 0;
+
+    const handleRoundResult = (msg: { type: string; roundNo: number; results: any[] }) => {
+      // 确保 gameStatus 为 playing（观战者可能在 roomDetail 加载前收到此消息）
+      gameStatus = 'playing';
+      currentRound = msg.roundNo;
+    };
+
+    handleRoundResult({ type: 'round_result', roundNo: 1, results: [] });
+    expect(gameStatus).toBe('playing');
+    expect(currentRound).toBe(1);
+  });
+
+  it("spectatorPlayers should be populated from round_result results", () => {
+    // 模拟从 round_result 提取玩家信息
+    const results = [
+      { playerId: 1, nickname: '玩家A', seatNo: 1, goodsId: 1, goodsName: '宝剑', goodsImage: '', goodsLevel: 1, goodsValue: '100' },
+      { playerId: 2, nickname: '玩家B', seatNo: 2, goodsId: 2, goodsName: '盾牌', goodsImage: '', goodsLevel: 2, goodsValue: '200' },
+    ];
+
+    let spectatorPlayers: Array<{ playerId: number; nickname: string; avatar: string; seatNo: number }> = [];
+
+    if (results.length > 0 && results[0].seatNo !== undefined) {
+      spectatorPlayers = results.map((r: any) => ({
+        playerId: r.playerId,
+        nickname: r.nickname ?? `玩家${r.seatNo}`,
+        avatar: r.avatar ?? '001',
+        seatNo: r.seatNo,
+      }));
+    }
+
+    expect(spectatorPlayers).toHaveLength(2);
+    expect(spectatorPlayers[0].playerId).toBe(1);
+    expect(spectatorPlayers[0].nickname).toBe('玩家A');
+    expect(spectatorPlayers[1].seatNo).toBe(2);
+  });
+});

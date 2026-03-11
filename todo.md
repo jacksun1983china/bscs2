@@ -586,3 +586,12 @@
 - [x] 查找游戏开始后卡在“等待开始”的原因：服务端没有自动执行轮次，需客户端主动调用 spinRound
 - [x] 修复：服务端在游戏开始后自动执行所有轮次（autoSpinAllRounds）
 - [x] 修复：收到 game_started 后立即触发开场动画，不等 roomDetail 刷新
+
+## 竞技场轮次间隔+观战模式（2026-03-11）
+- [x] 调整轮次间隔：将 ROUND_DELAY_MS 调整为 4500ms（slot动画约3秒 + 开奖展示1.5秒）
+- [x] 观战模式：非参与玩家进入正在进行的房间时，实时显示对战进度（slot 动画）
+- [x] 观战模式：区分"参与者"和"观战者"两种身份，观战者不显示开箱按钮
+- [x] 观战模式：观战者收到 round_result 广播时也触发 slot 动画
+- [x] 观战模式：房间信息栏显示"👁 观战"标识
+- [x] 观战模式：修复竞态条件（round_result 到达时自动设置 gameStatus=playing）
+- [x] 观战模式：从 round_result 缓存玩家信息（spectatorPlayers），在 roomDetail 加载前也能渲染 slot
