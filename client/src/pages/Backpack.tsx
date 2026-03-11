@@ -238,20 +238,19 @@ export default function Backpack() {
           settingsOpen={settingsVisible}
         />
 
-        {/* ── 个人信息卡（悬停，负margin-top让卡片压在内容区上方） ── */}
+        {/* ── 个人信息卡（悬停，负 margin-top让卡片压在内容区上方） ── */}
         <PlayerInfoCard
           style={{
             marginTop: q(-10),
             position: 'relative',
-            zIndex: 10,
+            zIndex: 1,
           }}
         />
-
         {/* ── 操作按钮行（分解 / 提货 / 提货保护），三态图 ── */}
         <div
           style={{
             position: 'relative',
-            zIndex: 20,
+            zIndex: 5,
             width: q(750),
             height: q(113),
             backgroundImage: `url(${B.actionBarBg})`,
@@ -261,16 +260,19 @@ export default function Backpack() {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: q(20),
+            gap: q(12),
             marginTop: q(-8),
+            padding: `0 ${q(10)}`,
+            boxSizing: 'border-box',
           }}
         >
           {/* 分解按钮 */}
           <div
             onClick={handleDecompose}
             style={{
-              width: q(220),
+              flex: 1,
               height: q(81),
+              maxWidth: q(230),
               backgroundImage: `url(${B.decomposeBtn})`,
               backgroundSize: '100% 100%',
               backgroundRepeat: 'no-repeat',
@@ -295,8 +297,9 @@ export default function Backpack() {
           <div
             onClick={handlePickup}
             style={{
-              width: q(220),
+              flex: 1,
               height: q(81),
+              maxWidth: q(230),
               backgroundImage: `url(${B.pickupBtn})`,
               backgroundSize: '100% 100%',
               backgroundRepeat: 'no-repeat',
@@ -321,8 +324,9 @@ export default function Backpack() {
           <div
             onClick={handleProtect}
             style={{
-              width: q(220),
+              flex: 1,
               height: q(81),
+              maxWidth: q(230),
               backgroundImage: `url(${B.protectBtn})`,
               backgroundSize: '100% 100%',
               backgroundRepeat: 'no-repeat',

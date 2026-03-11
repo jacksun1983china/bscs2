@@ -735,13 +735,23 @@ export default function AgentDashboard() {
   // 如果有打开的会话，显示聊天详情页
   if (activeSession && agent) {
     return (
-      <ChatPage
-        session={activeSession}
-        agent={agent}
-        onBack={() => { setActiveSession(null); fetchSessions(); }}
-        onAccept={() => acceptMutation.mutate({ sessionId: activeSession.id })}
-        onClose={() => closeMutation.mutate({ sessionId: activeSession.id })}
-      />
+      <div className="phone-container" style={{
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#0f0c29',
+        color: '#fff',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif',
+        overflow: 'hidden',
+        position: 'relative',
+      }}>
+        <ChatPage
+          session={activeSession}
+          agent={agent}
+          onBack={() => { setActiveSession(null); fetchSessions(); }}
+          onAccept={() => acceptMutation.mutate({ sessionId: activeSession.id })}
+          onClose={() => closeMutation.mutate({ sessionId: activeSession.id })}
+        />
+      </div>
     );
   }
 

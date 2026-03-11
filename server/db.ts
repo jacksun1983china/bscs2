@@ -576,11 +576,11 @@ export async function getPlayerInventory(playerId: number, page: number = 1, lim
       })
       .from(playerItems)
       .leftJoin(boxGoods, eq(playerItems.itemId, boxGoods.id))
-      .where(eq(playerItems.playerId, playerId))
+      .where(and(eq(playerItems.playerId, playerId), eq(playerItems.status, 0)))
       .orderBy(desc(playerItems.createdAt))
       .limit(limit)
       .offset(offset),
-    db.select({ count: sql<number>`count(*)` }).from(playerItems).where(eq(playerItems.playerId, playerId)),
+    db.select({ count: sql<number>`count(*)` }).from(playerItems).where(and(eq(playerItems.playerId, playerId), eq(playerItems.status, 0))),
   ]);
   return { list, total: Number(countResult[0]?.count ?? 0) };
 }

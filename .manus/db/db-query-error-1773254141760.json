@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT p.id as player_id, p.phone, p.nickname,\n       pi.id as item_id, pi.itemName, pi.status, pi.source, pi.createdAt\nFROM players p\nLEFT JOIN playerItems pi ON pi.playerId = p.id\nWHERE p.phone = '18526239983'\nORDER BY pi.createdAt DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute \nSELECT p.id as player_id, p.phone, p.nickname,\n       pi.id as item_id, pi.itemName, pi.status, pi.source, pi.createdAt\nFROM players p\nLEFT JOIN playerItems pi ON pi.playerId = p.id\nWHERE p.phone = '18526239983'\nORDER BY pi.createdAt DESC\nLIMIT 20;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 'pi.itemname' in 'field list'"
+  ]
+}

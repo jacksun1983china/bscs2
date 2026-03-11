@@ -1,0 +1,15 @@
+{
+  "query": "SELECT id, phone, nickname FROM players WHERE phone = '18526239983' LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT id, phone, nickname FROM players WHERE phone = '18526239983' LIMIT 1;",
+  "rows": [
+    {
+      "id": "1",
+      "phone": "18526239983",
+      "nickname": "用户9983"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tphone\tnickname\n1\t18526239983\t用户9983\n",
+  "stderr": "",
+  "execution_time_ms": 1645
+}

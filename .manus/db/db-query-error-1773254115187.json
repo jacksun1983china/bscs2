@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT p.id as player_id, p.phone, p.nickname,\n       pi.id as item_id, pi.item_name, pi.status, pi.source, pi.created_at\nFROM players p\nLEFT JOIN player_items pi ON pi.player_id = p.id\nWHERE p.phone = '18526239983'\nORDER BY pi.created_at DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute \nSELECT p.id as player_id, p.phone, p.nickname,\n       pi.id as item_id, pi.item_name, pi.status, pi.source, pi.created_at\nFROM players p\nLEFT JOIN player_items pi ON pi.player_id = p.id\nWHERE p.phone = '18526239983'\nORDER BY pi.created_at DESC\nLIMIT 20;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 2: Table 'f39rghmccdkvuc3rbx8cym.player_items' doesn't exist"
+  ]
+}

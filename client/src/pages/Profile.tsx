@@ -231,22 +231,19 @@ export default function Profile() {
         <div
           style={{
             margin: `${q(11)} ${q(30)} 0`,
+            position: 'relative',
             height: q(100),
-            background: 'rgba(5,4,18,0.85)',
-            borderRadius: q(20),
-            border: '1px solid rgba(80,40,160,0.3)',
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            padding: `0 ${q(25)}`,
             cursor: 'pointer',
           }}
         >
+          <img src={WD.realNameBg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'row', alignItems: 'center', height: '100%', padding: `0 ${q(25)}` }}>
           <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500 }}>实名认证</span>
           <span style={{ color: 'rgba(249,178,255,1)', fontSize: q(22), marginLeft: q(20), flex: 1 }}>
             {player?.phone ? `${player.phone.slice(0, 3)}****${player.phone.slice(-4)}` : '未认证'}
           </span>
           <img src={WD.arrowRight} alt=">" style={{ width: q(10), height: q(19), objectFit: 'contain' }} />
+          </div>
         </div>
 
         {/* 音乐音效行 */}
@@ -255,15 +252,10 @@ export default function Profile() {
             margin: `${q(11)} ${q(30)} 0`,
             position: 'relative',
             height: q(100),
-            background: 'rgba(5,4,18,0.85)',
-            borderRadius: q(20),
-            border: '1px solid rgba(80,40,160,0.3)',
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            padding: `0 ${q(25)}`,
           }}
         >
+          <img src={WD.musicBg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'row', alignItems: 'center', height: '100%', padding: `0 ${q(25)}` }}>
           <img src={WD.musicIcon} alt="音乐" style={{ width: q(50), height: q(50), objectFit: 'contain' }} />
           <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500, marginLeft: q(16) }}>音乐</span>
           {/* 音乐开关 */}
@@ -319,6 +311,7 @@ export default function Profile() {
               background: '#fff',
               transition: 'left 0.3s',
             }} />
+          </div>
           </div>
         </div>
 

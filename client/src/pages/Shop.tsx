@@ -350,11 +350,9 @@ export default function Shop() {
           src={S.pageBg}
           alt=""
           style={{
-            position: 'fixed',
-            top: 0, left: '50%',
-            transform: 'translateX(-50%)',
+            position: 'absolute',
+            top: 0, left: 0,
             width: '100%',
-            maxWidth: 480,
             height: '100%',
             objectFit: 'cover',
             zIndex: 0,

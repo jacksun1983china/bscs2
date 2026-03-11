@@ -704,3 +704,10 @@
 - [ ] 后端 API：player.recycleItem（回收道具换金币）
 - [ ] 坐席工作台：添加历史会话 Tab（已结束的会话列表）
 - [ ] 管理后台坐席管理：添加查看坐席历史会话功能
+
+## UI/逻辑修复（2026-03-12 第二轮）
+- [x] 背包页面：三个操作按钮被遮挡问题（降低 PlayerInfoCard zIndex，按钮改 flex:1 自适应避免截断）
+- [x] 我的页面：分享招募/实名认证/音乐音效三个条目使用正确背景图（与我的记录一致）
+- [x] 商城页面：PC端不显示内容（背景图改为 phone-container 内 absolute 定位，不再遮挡内容）
+- [x] 分解后物品未消失：getPlayerInventory 添加 status=0 过滤，已分解物品不再显示
+- [x] 竞技场奖品入背包：代码逻辑确认正确，每轮 insert playerItems status=0

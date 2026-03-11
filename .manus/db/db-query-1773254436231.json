@@ -1,0 +1,106 @@
+{
+  "query": "\nSELECT pi.id, pi.source, pi.status, pi.recycleGold, pi.createdAt, bg.name as itemName\nFROM players p\nJOIN playerItems pi ON pi.playerId = p.id\nLEFT JOIN boxGoods bg ON bg.id = pi.itemId\nWHERE p.phone = '18526239983'\nORDER BY pi.status, pi.createdAt DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute \nSELECT pi.id, pi.source, pi.status, pi.recycleGold, pi.createdAt, bg.name as itemName\nFROM players p\nJOIN playerItems pi ON pi.playerId = p.id\nLEFT JOIN boxGoods bg ON bg.id = pi.itemId\nWHERE p.phone = '18526239983'\nORDER BY pi.status, pi.createdAt DESC;\n",
+  "rows": [
+    {
+      "id": "1",
+      "source": "box",
+      "status": "2",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "沙漠之鹰 纵横波涛 (崭新出厂)"
+    },
+    {
+      "id": "2",
+      "source": "roll",
+      "status": "2",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "Tec-9 银装素裹 (略有磨损"
+    },
+    {
+      "id": "3",
+      "source": "box",
+      "status": "2",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "格洛克 18 型 核子反应"
+    },
+    {
+      "id": "4",
+      "source": "roll",
+      "status": "2",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": " 消音型 血虎"
+    },
+    {
+      "id": "5",
+      "source": "box",
+      "status": "2",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "格洛克 18 型 蓝色裂纹"
+    },
+    {
+      "id": "6",
+      "source": "roll",
+      "status": "2",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "加利尔 AR（StatTrak™"
+    },
+    {
+      "id": "7",
+      "source": "box",
+      "status": "2",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "沙漠之鹰  纳迦蛇神 "
+    },
+    {
+      "id": "8",
+      "source": "box",
+      "status": "2",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "MP9  噬裂 "
+    },
+    {
+      "id": "9",
+      "source": "roll",
+      "status": "2",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "SG 553（StatTrak™"
+    },
+    {
+      "id": "10",
+      "source": "box",
+      "status": "2",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "Tec-9  坍雪寒裘 "
+    },
+    {
+      "id": "11",
+      "source": "box",
+      "status": "2",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "沙漠之鹰  巨蟒冲击 "
+    },
+    {
+      "id": "12",
+      "source": "roll",
+      "status": "2",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-10 13:08:52",
+      "itemName": "加利尔 AR（StatTrak™"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsource\tstatus\trecycleGold\tcreatedAt\titemName\n1\tbox\t2\t0.00\t2026-03-10 13:08:52\t沙漠之鹰 纵横波涛 (崭新出厂)\n2\troll\t2\t0.00\t2026-03-10 13:08:52\tTec-9 银装素裹 (略有磨损\n3\tbox\t2\t0.00\t2026-03-10 13:08:52\t格洛克 18 型 核子反应\n4\troll\t2\t0.00\t2026-03-10 13:08:52\t 消音型 血虎\n5\tbox\t2\t0.00\t2026-03-10 13:08:52\t格洛克 18 型 蓝色裂纹\n6\troll\t2\t0.00\t2026-03-10 13:08:52\t加利尔 AR（StatTrak™\n7\tbox\t2\t0.00\t2026-03-10 13:08:52\t沙漠之鹰  纳迦蛇神 \n8\tbox\t2\t0.00\t2026-03-10 13:08:52\tMP9  噬裂 \n9\troll\t2\t0.00\t2026-03-10 13:08:52\tSG 553（StatTrak™\n10\tbox\t2\t0.00\t2026-03-10 13:08:52\tTec-9  坍雪寒裘 \n11\tbox\t2\t0.00\t2026-03-10 13:08:52\t沙漠之鹰  巨蟒冲击 \n12\troll\t2\t0.00\t2026-03-10 13:08:52\t加利尔 AR（StatTrak™\n",
+  "stderr": "",
+  "execution_time_ms": 1603
+}
