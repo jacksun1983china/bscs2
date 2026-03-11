@@ -631,6 +631,12 @@ export async function updateCsAgent(id: number, data: Partial<CsAgent>) {
   await db.update(csAgents).set(data).where(eq(csAgents.id, id));
 }
 
+export async function deleteCsAgent(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(csAgents).where(eq(csAgents.id, id));
+}
+
 // ── 会话管理 ──────────────────────────────────────────────────────
 export async function createCsSession(playerId: number, title: string = "") {
   const db = await getDb();

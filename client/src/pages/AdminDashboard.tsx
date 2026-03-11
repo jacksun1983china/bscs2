@@ -18,6 +18,7 @@ import { AdminSettings } from './admin/AdminSettings';
 import { AdminRechargeConfigs } from './admin/AdminRechargeConfigs';
 import AdminShop from './admin/AdminShop';
 import { AdminArena } from './admin/AdminArena';
+import { AdminAgents } from './admin/AdminAgents';
 
 // ── 国际化文本 ──────────────────────────────────────────────────
 const I18N = {
@@ -39,6 +40,7 @@ const I18N = {
     categories: '分类管理',
     boxes: '宝箱管理',
     finance: '财务统计',
+    agents: '坐席管理',
     settings: '系统设置',
     totalPlayers: '总玩家数',
     activeToday: '今日活跃',
@@ -151,6 +153,7 @@ const I18N = {
     categories: 'Categories',
     boxes: 'Box Config',
     finance: 'Finance',
+    agents: 'Agent Mgmt',
     settings: 'Settings',
     totalPlayers: 'Total Players',
     activeToday: 'Active Today',
@@ -499,9 +502,9 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
 }
 
 // ── 主仪表盘 ────────────────────────────────────────────────────
-const MENU_KEYS = ['players', 'games', 'rollRooms', 'arena', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'settings'] as const;
+const MENU_KEYS = ['players', 'games', 'rollRooms', 'arena', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'agents', 'settings'] as const;
 const MENU_ICONS: Record<string, string> = {
-  players: '👥', games: '🎮', rollRooms: '🎲', arena: '🏟️', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', settings: '⚙️',
+  players: '👥', games: '🎮', rollRooms: '🎲', arena: '🏟️', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', agents: '🎧', settings: '⚙️',
 };
 
 export default function AdminDashboard() {
@@ -774,6 +777,8 @@ export default function AdminDashboard() {
           {activeMenu === 'finance' && <AdminFinance lang={lang} />}
           {/* 系统设置 */}
           {activeMenu === 'settings' && <AdminSettings lang={lang} t={t} />}
+          {/* 坐席管理 */}
+          {activeMenu === 'agents' && <AdminAgents lang={lang} />}
           {/* 玩家管理（默认） */}
           {activeMenu === 'players' && <>
 

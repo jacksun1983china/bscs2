@@ -1,0 +1,90 @@
+{
+  "query": "SELECT id, name, username, password, enabled, status FROM csAgents LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT id, name, username, password, enabled, status FROM csAgents LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "测试客服",
+      "username": "test_agent_1773086880955",
+      "password": "test123456",
+      "enabled": "1",
+      "status": "online"
+    },
+    {
+      "id": "2",
+      "name": "会话测试客服",
+      "username": "session_agent_1773086883447",
+      "password": "test123456",
+      "enabled": "1",
+      "status": "offline"
+    },
+    {
+      "id": "30001",
+      "name": "测试客服",
+      "username": "test_agent_1773117263773",
+      "password": "test123456",
+      "enabled": "1",
+      "status": "online"
+    },
+    {
+      "id": "30002",
+      "name": "会话测试客服",
+      "username": "session_agent_1773117266150",
+      "password": "test123456",
+      "enabled": "1",
+      "status": "offline"
+    },
+    {
+      "id": "60001",
+      "name": "测试客服",
+      "username": "test_agent_1773138445611",
+      "password": "test123456",
+      "enabled": "1",
+      "status": "online"
+    },
+    {
+      "id": "60002",
+      "name": "会话测试客服",
+      "username": "session_agent_1773138448202",
+      "password": "test123456",
+      "enabled": "1",
+      "status": "offline"
+    },
+    {
+      "id": "60003",
+      "name": "测试客服",
+      "username": "test_agent_1773141474689",
+      "password": "test123456",
+      "enabled": "1",
+      "status": "online"
+    },
+    {
+      "id": "60004",
+      "name": "会话测试客服",
+      "username": "session_agent_1773141477001",
+      "password": "test123456",
+      "enabled": "1",
+      "status": "offline"
+    },
+    {
+      "id": "90001",
+      "name": "测试客服",
+      "username": "test_agent_1773166202805",
+      "password": "test123456",
+      "enabled": "1",
+      "status": "online"
+    },
+    {
+      "id": "90002",
+      "name": "会话测试客服",
+      "username": "session_agent_1773166205285",
+      "password": "test123456",
+      "enabled": "1",
+      "status": "offline"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tusername\tpassword\tenabled\tstatus\n1\t测试客服\ttest_agent_1773086880955\ttest123456\t1\tonline\n2\t会话测试客服\tsession_agent_1773086883447\ttest123456\t1\toffline\n30001\t测试客服\ttest_agent_1773117263773\ttest123456\t1\tonline\n30002\t会话测试客服\tsession_agent_1773117266150\ttest123456\t1\toffline\n60001\t测试客服\ttest_agent_1773138445611\ttest123456\t1\tonline\n60002\t会话测试客服\tsession_agent_1773138448202\ttest123456\t1\toffline\n60003\t测试客服\ttest_agent_1773141474689\ttest123456\t1\tonline\n60004\t会话测试客服\tsession_agent_1773141477001\ttest123456\t1\toffline\n90001\t测试客服\ttest_agent_1773166202805\ttest123456\t1\tonline\n90002\t会话测试客服\tsession_agent_1773166205285\ttest123456\t1\toffline\n",
+  "stderr": "",
+  "execution_time_ms": 1622
+}

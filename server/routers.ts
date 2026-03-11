@@ -19,6 +19,7 @@ import {
   createPlayer,
   createRollRoom,
   createSmsCode,
+  deleteCsAgent,
   deleteCsQuickReply,
   drawRollRoom,
   getActiveSessionByPlayer,
@@ -1310,28 +1311,52 @@ export const appRouter = router({
       return getCsAgentList();
     }),
 
-    /** 管理员：创建坐席 */
+    /** 管理员：创建坐席（简化：显示名+账号+密码） */
     adminCreateAgent: protectedProcedure
-      .input(z.object({ name: z.string().min(1), username: z.string().min(3), password: z.string().min(6), maxSessions: z.number().default(5) }))
+      .input(z.object({
+        name: z.string().min(1).max(50),
+        username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/, '账号只能包含字母、数字、下划线'),
+        password: z.string().min(6).max(50),
+      }))
       .mutation(async ({ input, ctx }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
         const existing = await getCsAgentByUsername(input.username);
         if (existing) throw new TRPCError({ code: "BAD_REQUEST", message: "账号已存在" });
-        return createCsAgent({ name: input.name, username: input.username, password: input.password, maxSessions: input.maxSessions });
+        return createCsAgent({ name: input.name, username: input.username, password: input.password });
       }),
 
-    /** 管理员：更新坐席 */
+    /** 管理员：更新坐席（显示名或重置密码） */
     adminUpdateAgent: protectedProcedure
-      .input(z.object({ id: z.number(), name: z.string().optional(), password: z.string().optional(), maxSessions: z.number().optional(), enabled: z.boolean().optional() }))
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).max(50).optional(),
+        password: z.string().min(6).max(50).optional(),
+      }))
       .mutation(async ({ input, ctx }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
         const { id, ...data } = input;
         const updateData: any = {};
         if (data.name) updateData.name = data.name;
         if (data.password) updateData.password = data.password;
-        if (data.maxSessions !== undefined) updateData.maxSessions = data.maxSessions;
-        if (data.enabled !== undefined) updateData.enabled = data.enabled ? 1 : 0;
         await updateCsAgent(id, updateData);
+        return { success: true };
+      }),
+
+    /** 管理员：启用/停用坐席 */
+    adminToggleAgent: protectedProcedure
+      .input(z.object({ id: z.number(), enabled: z.boolean() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        await updateCsAgent(input.id, { enabled: input.enabled ? 1 : 0 } as any);
+        return { success: true };
+      }),
+
+    /** 管理员：删除坐席 */
+    adminDeleteAgent: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        await deleteCsAgent(input.id);
         return { success: true };
       }),
 
