@@ -3,6 +3,7 @@
  * 按蓝湖 lanhu_anquanmima 设计稿还原
  * 功能：手机验证码 + 设置新安全密码
  */
+import { PageSlideIn } from '@/components/PageTransition';
 import { useState, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
@@ -75,7 +76,8 @@ export default function SecurityPassword() {
   };
 
   return (
-    <div
+<PageSlideIn>
+        <div
       className="phone-container"
       style={{
         display: 'flex',
@@ -308,5 +310,6 @@ export default function SecurityPassword() {
 
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
+    </PageSlideIn>
   );
 }

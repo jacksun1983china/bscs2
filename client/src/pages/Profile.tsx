@@ -3,6 +3,7 @@
  * 严格还原蓝湖 lanhu_wode 设计稿
  * 布局：TopNav → PlayerInfoCard → VIP卡片 → 分享招募行 → 功能菜单列表 → 实名认证 → 音乐音效 → 退出登录 → BottomNav
  */
+import { PageSlideIn } from '@/components/PageTransition';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
@@ -72,10 +73,12 @@ export default function Profile() {
     { icon: WD.menuIcon0, bg: WD.menuBg0, label: '我的记录', sub: '资产明细', onClick: () => navigate('/my-records') },
     { icon: WD.menuIcon1, bg: WD.menuBg1, label: 'STEAM', sub: '已绑定', onClick: () => navigate('/steam-settings') },
     { icon: WD.menuIcon2, bg: WD.menuBg2, label: '安全密码', sub: '已设置', onClick: () => navigate('/security-password') },
+    { icon: WD.menuIcon0, bg: WD.menuBg1, label: '邮件', sub: '站内信', onClick: () => navigate('/mailbox') },
   ];
 
   return (
-    <div
+<PageSlideIn>
+        <div
       className="phone-container"
       style={{
         display: 'flex',
@@ -352,5 +355,6 @@ export default function Profile() {
       {/* 设置弹窗：position:absolute，受 phone-container 约束 */}
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
+    </PageSlideIn>
   );
 }

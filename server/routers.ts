@@ -59,7 +59,7 @@ import {
 } from "./db";
 import { storagePut } from "./storage";
 import { SignJWT, jwtVerify } from "jose";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
 import {
   banners,
   boxGoods,
@@ -250,8 +250,35 @@ export const appRouter = router({
         if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
         return getPlayerMessages(session.playerId, input.page, input.limit);
       }),
-
-    /** 充值档位列表 */
+    /** 标记邮件已读 */
+    markMessageRead: publicProcedure
+      .input(z.object({ id: z.number().optional(), all: z.boolean().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { messages: messagesTable } = await import("../drizzle/schema");
+        if (input.all) {
+          await db.update(messagesTable).set({ isRead: 1 }).where(eq(messagesTable.playerId, session.playerId));
+        } else if (input.id) {
+          await db.update(messagesTable).set({ isRead: 1 }).where(and(eq(messagesTable.id, input.id), eq(messagesTable.playerId, session.playerId)));
+        }
+        return { success: true };
+      }),
+    /** 删除邮件 */
+    deleteMessage: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { messages: messagesTable } = await import("../drizzle/schema");
+        await db.delete(messagesTable).where(and(eq(messagesTable.id, input.id), eq(messagesTable.playerId, session.playerId)));
+        return { success: true };
+      }),
+    /** 充値档位列表 */
     rechargeConfigs: publicProcedure.query(async () => {
       return getRechargeConfigs();
     }),
@@ -415,6 +442,27 @@ export const appRouter = router({
       const db = await getDb();
       if (!db) return [];
       return db.select().from(broadcasts).where(eq(broadcasts.status, 1)).orderBy(broadcasts.sort);
+    }),
+    // VIP等级配置（公开查询，用于VIP界面展示）
+    vipConfigs: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      const { vipConfigs: vipConfigsTable } = await import('../drizzle/schema');
+      const { asc } = await import('drizzle-orm');
+      const rows = await db.select().from(vipConfigsTable).orderBy(asc(vipConfigsTable.level));
+      // 如果数据库中没有数据，返回默认配置
+      if (rows.length === 0) {
+        return Array.from({ length: 11 }, (_, i) => ({
+          id: i,
+          level: i,
+          name: i === 0 ? 'VIP0' : `VIP${i}`,
+          requiredPoints: i === 0 ? 0 : i * 1000,
+          rechargeBonus: '0.00',
+          privileges: null,
+          createdAt: new Date(),
+        }));
+      }
+      return rows;
     }),
   }),
 
@@ -943,6 +991,37 @@ export const appRouter = router({
           await db.update(siteSettings).set({ value: input.value, description: input.description ?? existing[0].description }).where(eq(siteSettings.settingKey, input.key));
         } else {
           await db.insert(siteSettings).values({ settingKey: input.key, value: input.value, description: input.description ?? "" });
+        }
+        return { success: true };
+      }),
+    // VIP等级配置管理
+    updateVipConfig: protectedProcedure
+      .input(z.object({
+        level: z.number().min(0).max(10),
+        requiredPoints: z.number().min(0),
+        rechargeBonus: z.string(),
+        privileges: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { vipConfigs } = await import("../drizzle/schema");
+        const existing = await db.select().from(vipConfigs).where(eq(vipConfigs.level, input.level));
+        if (existing.length > 0) {
+          await db.update(vipConfigs).set({
+            requiredPoints: input.requiredPoints,
+            rechargeBonus: input.rechargeBonus,
+            privileges: input.privileges ?? null,
+          }).where(eq(vipConfigs.level, input.level));
+        } else {
+          await db.insert(vipConfigs).values({
+            level: input.level,
+            name: input.level === 0 ? 'VIP0' : `VIP${input.level}`,
+            requiredPoints: input.requiredPoints,
+            rechargeBonus: input.rechargeBonus,
+            privileges: input.privileges ?? null,
+          });
         }
         return { success: true };
       }),

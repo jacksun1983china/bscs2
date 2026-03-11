@@ -2,6 +2,7 @@
  * Arena.tsx — 竞技场房间列表页
  * 布局：顶部导航 → 玩家信息卡 → 创建房间按钮 → 房间列表（WebSocket实时刷新）→ 底部导航
  */
+import { PageSlideIn } from '@/components/PageTransition';
 import { useState, useCallback, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
@@ -343,7 +344,8 @@ export default function Arena() {
   // joinRoom 逻辑移到 ArenaRoom.tsx 内部处理（进入时自动判断是否已在房间）
 
   return (
-    <div className="phone-container" style={{ display: 'flex', flexDirection: 'column', containerType: 'inline-size', position: 'relative' }}>
+<PageSlideIn>
+        <div className="phone-container" style={{ display: 'flex', flexDirection: 'column', containerType: 'inline-size', position: 'relative' }}>
       {/* 背景 */}
       <img
         src="https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/bg_98756154.png"
@@ -449,5 +451,6 @@ export default function Arena() {
       {/* 设置弹窗 */}
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
+    </PageSlideIn>
   );
 }

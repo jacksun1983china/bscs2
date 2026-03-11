@@ -7,6 +7,7 @@
  * 背景图：absolute 覆盖整个容器（参考首页写法）
  * 基准：750px 宽，使用 cqw 响应式单位
  */
+import { PageSlideIn } from '@/components/PageTransition';
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { LANHU } from '@/lib/assets';
@@ -85,7 +86,8 @@ export default function Share() {
     : weeklyStats.filter(r => r.weekStart < currentWeekStart);
 
   return (
-    <div
+<PageSlideIn>
+        <div
       className="phone-container"
       style={{
         background: '#0d0621',
@@ -402,5 +404,6 @@ export default function Share() {
       <BottomNav active="fenxiang" />
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
+    </PageSlideIn>
   );
 }

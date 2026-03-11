@@ -3,6 +3,7 @@
  * 按蓝湖 lanhu_wodejilu 设计稿还原
  * 功能：余额记录/充值记录/提货记录/赠送记录，支持时间筛选
  */
+import { PageSlideIn } from '@/components/PageTransition';
 import { useState, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
@@ -65,7 +66,8 @@ export default function MyRecords() {
   }, [rechargeData, timeFilter]);
 
   return (
-    <div
+<PageSlideIn>
+        <div
       className="phone-container"
       style={{
         display: 'flex',
@@ -276,5 +278,6 @@ export default function MyRecords() {
         </div>
       </div>
     </div>
+    </PageSlideIn>
   );
 }

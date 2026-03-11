@@ -9,6 +9,7 @@
  * 6. 汉化英文文字
  * 7. 最小/最大金额从后台读取
  */
+import { PageSlideIn } from '@/components/PageTransition';
 import { useState, useMemo } from 'react';
 import { trpc } from '@/lib/trpc';
 import TopNav from '@/components/TopNav';
@@ -79,7 +80,8 @@ export default function Deposit() {
   }, [amounts]);
 
   return (
-    <div
+<PageSlideIn>
+        <div
       className="phone-container"
       style={{
         display: 'flex',
@@ -258,5 +260,6 @@ export default function Deposit() {
       </div>
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
+    </PageSlideIn>
   );
 }

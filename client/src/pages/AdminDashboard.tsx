@@ -19,6 +19,7 @@ import { AdminRechargeConfigs } from './admin/AdminRechargeConfigs';
 import AdminShop from './admin/AdminShop';
 import { AdminArena } from './admin/AdminArena';
 import { AdminAgents } from './admin/AdminAgents';
+import { AdminVipConfigs } from './admin/AdminVipConfigs';
 
 // ── 国际化文本 ──────────────────────────────────────────────────
 const I18N = {
@@ -84,6 +85,7 @@ const I18N = {
     total: '共',
     records: '条记录',
     shop: '商城管理',
+    vipManage: 'VIP配置',
     // Roll房
      rollRooms: '竹战房管理',
     arena: '竞技场管理',
@@ -197,6 +199,7 @@ const I18N = {
     total: 'Total',
     records: 'records',
     shop: 'Shop Mgmt',
+    vipManage: 'VIP Config',
     rollRooms: 'Roll Rooms',
     arena: 'Arena Mgmt',
     createRollRoom: 'Create Roll Room',
@@ -502,9 +505,9 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
 }
 
 // ── 主仪表盘 ────────────────────────────────────────────────────
-const MENU_KEYS = ['players', 'games', 'rollRooms', 'arena', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'agents', 'settings'] as const;
+const MENU_KEYS = ['players', 'games', 'rollRooms', 'arena', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'vipManage', 'agents', 'settings'] as const;
 const MENU_ICONS: Record<string, string> = {
-  players: '👥', games: '🎮', rollRooms: '🎲', arena: '🏟️', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', agents: '🎧', settings: '⚙️',
+  players: '👥', games: '🎮', rollRooms: '🎲', arena: '🏟️', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', vipManage: '👑', agents: '🎧', settings: '⚙️',
 };
 
 export default function AdminDashboard() {
@@ -779,6 +782,8 @@ export default function AdminDashboard() {
           {activeMenu === 'settings' && <AdminSettings lang={lang} t={t} />}
           {/* 坐席管理 */}
           {activeMenu === 'agents' && <AdminAgents lang={lang} />}
+          {/* VIP配置管理 */}
+          {activeMenu === 'vipManage' && <AdminVipConfigs lang={lang} />}
           {/* 玩家管理（默认） */}
           {activeMenu === 'players' && <>
 

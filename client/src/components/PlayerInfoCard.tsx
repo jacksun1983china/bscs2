@@ -11,6 +11,7 @@
  */
 import { LANHU, getAvatarUrl } from '@/lib/assets';
 import { trpc } from '@/lib/trpc';
+import { useLocation } from 'wouter';
 
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -22,6 +23,7 @@ interface PlayerInfoCardProps {
 
 export default function PlayerInfoCard({ style }: PlayerInfoCardProps) {
   const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
+  const [, navigate] = useLocation();
 
   return (
     <div
@@ -138,6 +140,7 @@ export default function PlayerInfoCard({ style }: PlayerInfoCardProps) {
       </div>
       {/* 头像框 absolute left:0 top:32px, 160×179px, z-index:1 */}
       <div
+        onClick={() => navigate('/profile')}
         style={{
           position: 'absolute',
           left: 0, top: q(32),
@@ -147,6 +150,7 @@ export default function PlayerInfoCard({ style }: PlayerInfoCardProps) {
           backgroundRepeat: 'no-repeat',
           backgroundSize: `${q(171)} ${q(179)}`,
           zIndex: 1,
+          cursor: 'pointer',
         }}
       >
         {player && (

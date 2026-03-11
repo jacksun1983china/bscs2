@@ -729,3 +729,10 @@
 - [x] Profile.tsx 菜单项添加跳转（我的记录/STEAM设置/安全密码）
 - [x] App.tsx 注册三个新路由（/steam-settings, /security-password, /my-records）
 - [x] 推送代码到 GitHub 仓库 jacksun1983china/bscs2
+
+## 剩余任务开发（2026-03-12 第二批）
+- [x] 任务6：公共组件头像点击跳转我的页面（PlayerInfoCard/PlayerInfoBar头像加onClick）
+- [x] 任务7：全局Loading页面 + 所有页面入场动效（滑动入场等）- [x] 任务10：VIP界面（点击顶部VIP图标进入，VIP0-10共兦11级，充値金额升级，后台可控阈值）
+- [x] 任务4：邮件界面（自行设计，赛博朋克风格）
+-- [x] 任务8：水果机布局优化（全屏宽度、投注区下移、去掉公格改赛博朋克女性图像）
+- [ ] 任务9：Turbo Games Vortex复刻（下载素材、100%复刻规则/特效，首页第六入口，后台RTP控制）

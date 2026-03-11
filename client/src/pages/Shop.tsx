@@ -3,6 +3,7 @@
  * 商品列表实时从 cs2pifa API 读取，不存数据库
  * 玩家购买时扣除 shopCoin，写入 shopOrders 订单表
  */
+import { PageSlideIn } from '@/components/PageTransition';
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import BottomNav from '@/components/BottomNav';
@@ -324,7 +325,8 @@ export default function Shop() {
   };
 
   return (
-    <div
+<PageSlideIn>
+        <div
       className="phone-container"
       style={{
         display: 'flex',
@@ -629,5 +631,6 @@ export default function Shop() {
           <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
         )}
     </div>
+    </PageSlideIn>
   );
 }

@@ -2,6 +2,7 @@
  * Backpack.tsx — 背包页面（蓝湖 lanhu_beibao 设计稿还原）
  * 布局：公共顶部导航 → 个人信息卡（悬停） → 操作按钮行 → 赠送提示栏 → 搜索排序栏 → 物品2列网格 → 底部操作栏 → 底部导航
  */
+import { PageSlideIn } from '@/components/PageTransition';
 import { useState, useCallback } from 'react';
 import { trpc } from '@/lib/trpc';
 import BottomNav from '@/components/BottomNav';
@@ -194,7 +195,8 @@ export default function Backpack() {
   };
 
   return (
-    <div
+<PageSlideIn>
+        <div
       className="phone-container"
       style={{
         display: 'flex',
@@ -919,5 +921,6 @@ export default function Backpack() {
         </div>
       )}
     </div>
+    </PageSlideIn>
   );
 }

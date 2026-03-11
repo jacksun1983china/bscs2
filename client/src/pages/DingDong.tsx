@@ -364,11 +364,16 @@ export default function DingDong() {
   // ── 光标位置计算 ──────────────────────────────────────────────
   const cursorIndex = Math.round(cursorPos) % OUTER_RING.length;
 
-  // 格子尺寸（缩小以适配左侧栏）
-  const CELL_PX = 72;
-  const GAP_PX = 3;
+  // 格子尺寸（放大到接近全屏宽度）
+  // 750px 宽度，去掉左右 padding(12*2=24)，6列格子+5间隙
+  // (750 - 24) / (6 + 5*3/CELL_PX) ≈ 108
+  const CELL_PX = 108;
+  const GAP_PX = 4;
   const COLS = 6;
   const ROWS = 6;
+
+  // 赛博朋克女性图像（内圈背景）
+  const CYBERPUNK_GIRL = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/cyberpunk_girl_slotmachine-kNUUEuc2FTpoTvCYoEu3QK.webp';
 
   return (
     <div
@@ -425,32 +430,22 @@ export default function DingDong() {
           </div>
         </div>
 
-        {/* ── 主游戏区 ── */}
+        {/* ── 主游戏区（转盘） ── */}
         <div style={{
-          margin: `0 ${q(12)}`,
+          margin: `0 ${q(8)}`,
           background: 'rgba(20,8,50,0.92)',
           border: '1.5px solid rgba(120,60,220,0.45)',
           borderRadius: q(16),
-          padding: q(10),
+          padding: q(8),
           boxShadow: '0 0 30px rgba(80,20,160,0.3)',
           position: 'relative',
           overflow: 'hidden',
         }}>
-          {/* 背景装饰 */}
-          <img
-            src={`${CDN}/game_bg_971837a8.png`}
-            alt=""
-            style={{
-              position: 'absolute', bottom: 0, right: 0,
-              height: '60%', opacity: 0.25, pointerEvents: 'none',
-              zIndex: 0,
-            }}
-          />
 
-          {/* ── 左右两栏布局：左侧转盘 + 右侧控制区 ── */}
-          <div style={{ display: 'flex', gap: q(10), position: 'relative', zIndex: 1, alignItems: 'flex-start' }}>
+          {/* ── 转盘区（全宽居中） ── */}
+          <div style={{ display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
 
-            {/* ── 左侧：转盘区 ── */}
+            {/* ── 转盘区 ── */}
             <div style={{ flexShrink: 0, position: 'relative' }}>
               {/* 格子容器 */}
               <div style={{
@@ -563,33 +558,37 @@ export default function DingDong() {
                   );
                 })}
 
-                {/* 内圈 4×4 格子（row 1-4, col 1-4） */}
-                {innerFruits.map((fruitId, idx) => {
-                  const r = Math.floor(idx / 4) + 1;
-                  const c = (idx % 4) + 1;
-                  const fruit = FRUITS[fruitId];
-                  return (
-                    <div
-                      key={`inner-${idx}`}
-                      style={{
-                        gridRow: r + 1,
-                        gridColumn: c + 1,
-                        width: q(CELL_PX), height: q(CELL_PX),
-                        background: 'linear-gradient(135deg, rgba(20,8,50,0.95), rgba(10,4,30,0.95))',
-                        border: '1px solid rgba(80,40,160,0.4)',
-                        borderRadius: q(8),
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <img
-                        src={fruit.img}
-                        alt={fruit.name}
-                        style={{ width: q(CELL_PX * 0.62), height: q(CELL_PX * 0.62), objectFit: 'contain', opacity: 0.6 }}
-                      />
-                    </div>
-                  );
-                })}
+                {/* 内圈赛博朋克女性图像（占据 4×4 格子区域） */}
+                <div
+                  style={{
+                    gridRow: '2 / 6',
+                    gridColumn: '2 / 6',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderRadius: q(12),
+                    border: '2px solid rgba(120,60,220,0.6)',
+                    boxShadow: '0 0 20px rgba(120,60,220,0.4), inset 0 0 20px rgba(0,0,0,0.5)',
+                  }}
+                >
+                  <img
+                    src={CYBERPUNK_GIRL}
+                    alt="赛博朋克女性"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block',
+                    }}
+                  />
+                  {/* 边缘霉光动画 */}
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    borderRadius: q(12),
+                    boxShadow: 'inset 0 0 30px rgba(120,60,220,0.3)',
+                    pointerEvents: 'none',
+                    animation: 'innerGlow 2s ease infinite alternate',
+                  }} />
+                </div>
               </div>
 
               {/* 中奖庆祝动画浮层（仅中奖时显示） */}
@@ -637,86 +636,72 @@ export default function DingDong() {
               )}
             </div>
 
-            {/* ── 右侧：控制区（快捷金额 + 全押/清空 + 开始按钮） ── */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: q(8), minWidth: 0 }}>
-
-              {/* 快捷金额选择（2×2） */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: q(4) }}>
-                {BET_PRESETS.map(amt => (
-                  <button
-                    key={amt}
-                    onClick={() => setQuickBet(amt)}
-                    disabled={isSpinning}
-                    style={{
-                      background: quickBet === amt ? 'rgba(120,60,220,0.6)' : 'rgba(255,255,255,0.07)',
-                      border: `1px solid ${quickBet === amt ? 'rgba(180,100,255,0.8)' : 'rgba(255,255,255,0.15)'}`,
-                      borderRadius: q(6), color: '#fff', fontSize: q(20), padding: `${q(6)} 0`, cursor: 'pointer',
-                    }}
-                  >{amt}</button>
-                ))}
-              </div>
-
-              {/* 全押 / 清空 按钮 */}
-              <div style={{ display: 'flex', gap: q(4) }}>
-                <button
-                  onClick={handleBetAll}
-                  disabled={isSpinning}
-                  style={{
-                    flex: 1, background: 'rgba(120,60,220,0.4)',
-                    border: '1px solid rgba(180,100,255,0.5)', borderRadius: q(6),
-                    color: '#fff', fontSize: q(18), padding: `${q(6)} 0`, cursor: 'pointer',
-                  }}
-                >全押</button>
-                <button
-                  onClick={handleClearBets}
-                  disabled={isSpinning}
-                  style={{
-                    flex: 1, background: 'rgba(255,255,255,0.07)',
-                    border: '1px solid rgba(255,255,255,0.15)', borderRadius: q(6),
-                    color: '#fff', fontSize: q(18), padding: `${q(6)} 0`, cursor: 'pointer',
-                  }}
-                >清空</button>
-              </div>
-
-              {/* 总投注显示 */}
-              {totalBet > 0 && (
-                <div style={{
-                  background: 'rgba(0,0,0,0.4)', borderRadius: q(6), padding: `${q(4)} ${q(6)}`,
-                  color: 'rgba(255,255,255,0.7)', fontSize: q(18), textAlign: 'center',
-                  border: '1px solid rgba(255,215,0,0.2)',
-                }}>
-                  总计：<span style={{ color: '#ffd700', fontWeight: 700 }}>{totalBet}</span>
-                </div>
-              )}
-
-              {/* ── 开始按钮（右侧栏核心，始终可见） ── */}
-              <button
-                onClick={handleBet}
-                disabled={isSpinning || totalBet <= 0}
-                style={{
-                  marginTop: 'auto',
-                  background: isSpinning || totalBet <= 0
-                    ? 'rgba(80,80,80,0.4)'
-                    : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-                  border: 'none', borderRadius: q(10),
-                  color: '#fff', fontSize: q(24), fontWeight: 700,
-                  padding: `${q(14)} 0`, cursor: isSpinning || totalBet <= 0 ? 'not-allowed' : 'pointer',
-                  boxShadow: isSpinning || totalBet <= 0 ? 'none' : '0 4px 20px rgba(124,58,237,0.6)',
-                  transition: 'all 0.2s', letterSpacing: 1,
-                  width: '100%',
-                }}
-              >
-                {isSpinning ? '转动中...' : totalBet <= 0 ? '请下注' : '开始'}
-              </button>
-
-              {/* 下注说明 */}
-              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: q(16), textAlign: 'center' }}>
-                先选金额，再点水果下注
-              </div>
-
-            </div>
           </div>
         </div>
+
+        {/* ── 投注控制区（转盘下方） ── */}
+        <div style={{
+          margin: `${q(8)} ${q(8)} 0`,
+          background: 'rgba(20,8,50,0.92)',
+          border: '1.5px solid rgba(120,60,220,0.35)',
+          borderRadius: q(14),
+          padding: `${q(10)} ${q(12)}`,
+        }}>
+          {/* 快捷金额 + 全押/清空 + 总计 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: q(8), marginBottom: q(8) }}>
+            {BET_PRESETS.map(amt => (
+              <button
+                key={amt}
+                onClick={() => setQuickBet(amt)}
+                disabled={isSpinning}
+                style={{
+                  background: quickBet === amt ? 'rgba(120,60,220,0.7)' : 'rgba(255,255,255,0.07)',
+                  border: `1px solid ${quickBet === amt ? 'rgba(180,100,255,0.9)' : 'rgba(255,255,255,0.15)'}`,
+                  borderRadius: q(8), color: '#fff', fontSize: q(22),
+                  padding: `${q(8)} ${q(12)}`, cursor: 'pointer',
+                  fontWeight: quickBet === amt ? 700 : 400,
+                  minWidth: q(52),
+                }}
+              >{amt}</button>
+            ))}
+            <button onClick={handleBetAll} disabled={isSpinning} style={{
+              background: 'rgba(120,60,220,0.4)', border: '1px solid rgba(180,100,255,0.5)',
+              borderRadius: q(8), color: '#fff', fontSize: q(20), padding: `${q(8)} ${q(14)}`, cursor: 'pointer',
+            }}>全押</button>
+            <button onClick={handleClearBets} disabled={isSpinning} style={{
+              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: q(8), color: '#fff', fontSize: q(20), padding: `${q(8)} ${q(14)}`, cursor: 'pointer',
+            }}>清空</button>
+            {totalBet > 0 && (
+              <div style={{ color: '#ffd700', fontSize: q(20), fontWeight: 700, marginLeft: 'auto', flexShrink: 0 }}>
+                总: {totalBet}
+              </div>
+            )}
+          </div>
+
+          {/* 开始按钮（全宽，显眼） */}
+          <button
+            onClick={handleBet}
+            disabled={isSpinning || totalBet <= 0}
+            style={{
+              width: '100%',
+              background: isSpinning || totalBet <= 0
+                ? 'rgba(80,80,80,0.4)'
+                : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+              border: 'none', borderRadius: q(12),
+              color: '#fff', fontSize: q(28), fontWeight: 900,
+              padding: `${q(16)} 0`, cursor: isSpinning || totalBet <= 0 ? 'not-allowed' : 'pointer',
+              boxShadow: isSpinning || totalBet <= 0 ? 'none' : '0 4px 24px rgba(124,58,237,0.7)',
+              transition: 'all 0.2s', letterSpacing: 2,
+            }}
+          >
+            {isSpinning ? '转动中...' : totalBet <= 0 ? '请先下注' : '开 始'}
+          </button>
+          <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: q(18), textAlign: 'center', marginTop: q(6) }}>
+            先选金额，再点水果下注
+          </div>
+        </div>
+
 
         {/* ── 7 种水果下注区（主游戏区下方） ── */}
         <div style={{
@@ -1034,6 +1019,10 @@ export default function DingDong() {
           0%   { transform: rotate(-10deg) scale(1.1); }
           50%  { transform: rotate(10deg) scale(0.9); }
           100% { transform: rotate(-10deg) scale(1.1); }
+        }
+        @keyframes innerGlow {
+          from { box-shadow: inset 0 0 20px rgba(120,60,220,0.2); }
+          to   { box-shadow: inset 0 0 40px rgba(0,200,255,0.35); }
         }
       `}</style>
 

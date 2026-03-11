@@ -3,6 +3,7 @@
  * 按蓝湖 lanhu_steamshezhi 设计稿还原
  * 功能：主号设置、副号绑定、提货绑定码生成
  */
+import { PageSlideIn } from '@/components/PageTransition';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
@@ -49,7 +50,8 @@ export default function SteamSettings() {
   };
 
   return (
-    <div
+<PageSlideIn>
+        <div
       className="phone-container"
       style={{
         display: 'flex',
@@ -346,5 +348,6 @@ export default function SteamSettings() {
 
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
+    </PageSlideIn>
   );
 }

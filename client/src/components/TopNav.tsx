@@ -92,6 +92,7 @@ export default function TopNav({ showLogo = false, onBackClick, style, onSetting
         <img
           src={LANHU.vipIcon}
           alt="VIP"
+          onClick={() => navigate('/vip')}
           style={{ width: q(79), height: q(80), cursor: 'pointer', objectFit: 'contain' }}
         />
         {/* 全部按钮 → 点击弹出设置面板（由父页面控制） */}

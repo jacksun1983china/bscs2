@@ -3,6 +3,7 @@
  * 严格按照蓝湖设计稿还原，接入动态数据（去掉硬编码）
  * 设计稿基准：750px宽
  */
+import { PageSlideIn } from '@/components/PageTransition';
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
@@ -275,6 +276,7 @@ export default function RollRoom() {
   };
 
   return (
+    <PageSlideIn>
     <div
       className="phone-container"
       style={{
@@ -468,5 +470,6 @@ export default function RollRoom() {
       {/* 设置弹窗 */}
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </div>
+    </PageSlideIn>
   );
 }
