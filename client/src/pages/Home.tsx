@@ -162,7 +162,7 @@ export default function Home() {
         >
           {/* LOGO */}
           <img
-            src={ASSETS.logok}
+            src={ASSETS.bdcs2Logo}
             alt="logo"
             style={{
               width: '45%',
