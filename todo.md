@@ -735,13 +735,13 @@
 - [x] 任务7：全局Loading页面 + 所有页面入场动效（滑动入场等）- [x] 任务10：VIP界面（点击顶部VIP图标进入，VIP0-10共兦11级，充値金额升级，后台可控阈值）
 - [x] 任务4：邮件界面（自行设计，赛博朋克风格）
 -- [x] 任务8：水果机布局优化（全屏宽度、投注区下移、去掉公格改赛博朋克女性图像）
-- [ ] 任务9：Turbo Games Vortex复刻（下载素材、100%复刻规则/特效，首页第六入口，后台RTP控制）
+- [x] 任务9：Turbo Games Vortex复刻（下载素材、100%复刻规则/特效，首页第六入口，后台RTP控制）
 
 ## 任务9：Turbo Games Vortex复刻（2026-03-12 第三批）
-- [ ] 研究Vortex游戏规则、玩法分析
-- [ ] 生成游戏美术素材（背景、按钮、特效图）
-- [ ] 后端：vortexGames表+tRPC接口（投注、开奖、RTP控制、记录）
-- [ ] 前端：Vortex.tsx游戏页面（完整规则+动效+音效）
-- [ ] 首页第六入口（GameMenuList添加Vortex）
-- [ ] 管理后台：Vortex RTP控制面板
-- [ ] App.tsx注册/vortex路由
+- [x] 研究Vortex游戏规则、玩法分析
+- [x] 生成游戏美术素材（背景、按鈕、特效图）
+- [x] 后端：vortexGames表+tRPC接口（投注、开奖、RTP控制、记录）
+- [x] 前端：Vortex.tsx游戏页面（完整规则+动效+音效）
+- [x] 首页第六入口（GameMenuList添加Vortex）
+- [x] 管理后台：Vortex RTP控制面板
+- [x] App.tsx注册/vortex路由

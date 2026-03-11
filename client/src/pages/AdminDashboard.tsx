@@ -20,6 +20,7 @@ import AdminShop from './admin/AdminShop';
 import { AdminArena } from './admin/AdminArena';
 import { AdminAgents } from './admin/AdminAgents';
 import { AdminVipConfigs } from './admin/AdminVipConfigs';
+import { AdminVortexConfig } from './admin/AdminVortexConfig';
 
 // ── 国际化文本 ──────────────────────────────────────────────────
 const I18N = {
@@ -42,6 +43,7 @@ const I18N = {
     boxes: '宝箱管理',
     finance: '财务统计',
     agents: '坐席管理',
+    vortexAdmin: 'Vortex配置',
     settings: '系统设置',
     totalPlayers: '总玩家数',
     activeToday: '今日活跃',
@@ -156,6 +158,7 @@ const I18N = {
     boxes: 'Box Config',
     finance: 'Finance',
     agents: 'Agent Mgmt',
+    vortexAdmin: 'Vortex Config',
     settings: 'Settings',
     totalPlayers: 'Total Players',
     activeToday: 'Active Today',
@@ -505,9 +508,9 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
 }
 
 // ── 主仪表盘 ────────────────────────────────────────────────────
-const MENU_KEYS = ['players', 'games', 'rollRooms', 'arena', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'vipManage', 'agents', 'settings'] as const;
+const MENU_KEYS = ['players', 'games', 'rollRooms', 'arena', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'vipManage', 'agents', 'vortexAdmin', 'settings'] as const;
 const MENU_ICONS: Record<string, string> = {
-  players: '👥', games: '🎮', rollRooms: '🎲', arena: '🏟️', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', vipManage: '👑', agents: '🎧', settings: '⚙️',
+  players: '👥', games: '🎮', rollRooms: '🎲', arena: '🏠️', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', vipManage: '👑', agents: '🎧', vortexAdmin: '🌀', settings: '⚙️',
 };
 
 export default function AdminDashboard() {
@@ -667,7 +670,7 @@ export default function AdminDashboard() {
                 key={key}
                 onClick={() => {
                   setActiveMenu(key);
-                  if (!['players', 'games', 'rollRooms', 'arena', 'banners', 'rebate', 'categories', 'boxes', 'rechargeConfigs', 'finance', 'settings'].includes(key)) toast.info(t.featureSoon);
+                  if (!['players', 'games', 'rollRooms', 'arena', 'banners', 'rebate', 'categories', 'boxes', 'rechargeConfigs', 'finance', 'settings', 'vortexAdmin', 'vipManage', 'agents', 'shop'].includes(key)) toast.info(t.featureSoon);
                 }}
                 title={!sidebarOpen ? label : undefined}
                 style={{
@@ -803,6 +806,8 @@ export default function AdminDashboard() {
           {activeMenu === 'agents' && <AdminAgents lang={lang} />}
           {/* VIP配置管理 */}
           {activeMenu === 'vipManage' && <AdminVipConfigs lang={lang} />}
+          {/* Vortex游戏配置 */}
+          {activeMenu === 'vortexAdmin' && <AdminVortexConfig />}
           {/* 玩家管理（默认） */}
           {activeMenu === 'players' && <>
 

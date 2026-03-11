@@ -1034,9 +1034,46 @@ export const appRouter = router({
         }
         return { success: true };
       }),
+
+    /** 更新 Vortex 游戏配置（RTP、投注范围） */
+    updateVortexConfig: publicProcedure
+      .input(z.object({
+        rtp: z.number().min(50).max(99),
+        minBet: z.number().positive(),
+        maxBet: z.number().positive(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // 验证管理员 cookie
+        const adminToken = ctx.req.cookies?.bdcs2_admin_token;
+        if (!adminToken) throw new TRPCError({ code: 'UNAUTHORIZED', message: '无权限' });
+        try {
+          await jwtVerify(adminToken, JWT_SECRET);
+        } catch {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: '无效的管理员令牌' });
+        }
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        try {
+          const [existing] = await (db as any).execute('SELECT id FROM vortexConfig LIMIT 1');
+          if (existing && existing.length > 0) {
+            await (db as any).execute(
+              'UPDATE vortexConfig SET rtp = ?, minBet = ?, maxBet = ? WHERE id = ?',
+              [input.rtp, input.minBet, input.maxBet, existing[0].id]
+            );
+          } else {
+            await (db as any).execute(
+              'INSERT INTO vortexConfig (rtp, minBet, maxBet, enabled) VALUES (?, ?, ?, 1)',
+              [input.rtp, input.minBet, input.maxBet]
+            );
+          }
+          return { success: true };
+        } catch (e) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: String(e) });
+        }
+      }),
   }),
 
-  // ── ROLL-X 幸运转盘游戏 ──────────────────────────────────────────────
+  // ── ROLL-X 幸运转盘游戏 ──────────────────────────────────
   rollx: router({
     /** 获取游戏设置（最小/最大倍率、最小/最大投注额、是否启用） */
     getSettings: publicProcedure.query(async () => {
@@ -2152,6 +2189,219 @@ export const appRouter = router({
           balanceAfter: parseFloat(r.balanceAfter),
           createdAt: r.createdAt
         }));
+      }),
+  }),
+
+  // ── Vortex 游戏路由 ──────────────────────────────────────────────
+  vortex: router({
+    /** 获取游戏配置（RTP、投注范围等） */
+    getConfig: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return { rtp: 96, minBet: 1, maxBet: 1000, enabled: true };
+      try {
+        const [rows] = await (db as any).execute('SELECT * FROM vortexConfig ORDER BY id DESC LIMIT 1');
+        if (!rows || rows.length === 0) return { rtp: 96, minBet: 1, maxBet: 1000, enabled: true };
+        const cfg = rows[0];
+        return {
+          rtp: cfg.rtp,
+          minBet: parseFloat(cfg.minBet),
+          maxBet: parseFloat(cfg.maxBet),
+          enabled: cfg.enabled === 1,
+        };
+      } catch {
+        return { rtp: 96, minBet: 1, maxBet: 1000, enabled: true };
+      }
+    }),
+
+    /**
+     * 旋转一次，返回本次旋转结果
+     * 游戏逻辑：
+     * - 每次旋转产生一个元素：fire/earth/water/wind/skull/bonus
+     * - fire/earth/water：对应轨道格子+1，倍率累积
+     * - wind：不填充，不影响倍率
+     * - skull：所有轨道退后1格
+     * - bonus：特殊奖励，直接给20.5x
+     * RTP通过控制各元素出现概率实现
+     */
+    spin: publicProcedure
+      .input(z.object({
+        betAmount: z.number().positive(),
+        // 当前轨道状态（前端传入，后端用于计算）
+        trackState: z.object({
+          fire: z.number().min(0).max(8),
+          earth: z.number().min(0).max(8),
+          water: z.number().min(0).max(8),
+        }),
+        // 当前累积倍率
+        currentMultiplier: z.number().min(0),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const playerToken = await getPlayerFromCookie(ctx.req);
+        if (!playerToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+        // 获取RTP配置
+        let rtp = 96;
+        try {
+          const [rows] = await (db as any).execute('SELECT rtp FROM vortexConfig ORDER BY id DESC LIMIT 1');
+          if (rows && rows.length > 0) rtp = rows[0].rtp;
+        } catch {}
+
+        // 验证投注金额
+        const playerRows = await db.select().from(players).where(eq(players.id, playerToken.playerId));
+        if (!playerRows.length) throw new TRPCError({ code: "NOT_FOUND" });
+        const player = playerRows[0];
+        const currentGold = parseFloat(player.gold);
+        if (currentGold < input.betAmount) throw new TRPCError({ code: "BAD_REQUEST", message: "金币不足" });
+
+        // 元素权重（基于RTP调整）
+        // 元素：fire, earth, water, wind, skull, bonus
+        // RTP越高，fire/earth/water出现概率越高，skull越少
+        const rtpFactor = rtp / 96;
+        const BASE_WEIGHTS = {
+          fire:  25 * rtpFactor,
+          earth: 25 * rtpFactor,
+          water: 25 * rtpFactor,
+          wind:  15,
+          skull: 8 / rtpFactor,
+          bonus: 2 * rtpFactor,
+        };
+        const totalW = Object.values(BASE_WEIGHTS).reduce((a, b) => a + b, 0);
+        let rand = Math.random() * totalW;
+        let element: 'fire' | 'earth' | 'water' | 'wind' | 'skull' | 'bonus' = 'wind';
+        for (const [el, w] of Object.entries(BASE_WEIGHTS)) {
+          rand -= w;
+          if (rand <= 0) { element = el as any; break; }
+        }
+
+        // 计算新的轨道状态
+        const TRACK_MAX = 8; // 每条轨道最大格子数
+        let newTrack = { ...input.trackState };
+        let bonusTriggered = false;
+        let bonusMultiplier = 0;
+
+        if (element === 'fire' || element === 'earth' || element === 'water') {
+          newTrack[element] = Math.min(newTrack[element] + 1, TRACK_MAX);
+          if (newTrack[element] === TRACK_MAX) {
+            bonusTriggered = true;
+            bonusMultiplier = 20.5;
+          }
+        } else if (element === 'skull') {
+          // 所有轨道退后1格
+          newTrack.fire = Math.max(0, newTrack.fire - 1);
+          newTrack.earth = Math.max(0, newTrack.earth - 1);
+          newTrack.water = Math.max(0, newTrack.water - 1);
+        } else if (element === 'bonus') {
+          bonusTriggered = true;
+          bonusMultiplier = 20.5;
+        }
+
+        // 计算当前倍率（基于轨道进度）
+        // 轨道倍率表（从外到内）
+        const TRACK_MULTIPLIERS = [1.55, 2.5, 3.9, 4.85, 7.5, 10, 16, 20.5];
+        const fireMultiplier = newTrack.fire > 0 ? TRACK_MULTIPLIERS[newTrack.fire - 1] : 0;
+        const earthMultiplier = newTrack.earth > 0 ? TRACK_MULTIPLIERS[newTrack.earth - 1] : 0;
+        const waterMultiplier = newTrack.water > 0 ? TRACK_MULTIPLIERS[newTrack.water - 1] : 0;
+        const totalMultiplier = fireMultiplier + earthMultiplier + waterMultiplier + (bonusTriggered ? bonusMultiplier : 0);
+
+        return {
+          element,
+          newTrack,
+          multiplier: totalMultiplier,
+          bonusTriggered,
+          bonusMultiplier,
+          fireMultiplier,
+          earthMultiplier,
+          waterMultiplier,
+        };
+      }),
+
+    /**
+     * Cash Out - 结算当前赢额
+     */
+    cashOut: publicProcedure
+      .input(z.object({
+        betAmount: z.number().positive(),
+        multiplier: z.number().min(0),
+        trackState: z.object({
+          fire: z.number().min(0).max(8),
+          earth: z.number().min(0).max(8),
+          water: z.number().min(0).max(8),
+        }),
+        isPartial: z.boolean().optional().default(false),
+        partialRatio: z.number().min(0).max(1).optional().default(0.5),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const playerToken = await getPlayerFromCookie(ctx.req);
+        if (!playerToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+        const playerRows = await db.select().from(players).where(eq(players.id, playerToken.playerId));
+        if (!playerRows.length) throw new TRPCError({ code: "NOT_FOUND" });
+        const player = playerRows[0];
+        const currentGold = parseFloat(player.gold);
+
+        const winAmount = input.betAmount * input.multiplier;
+        const payoutAmount = input.isPartial ? winAmount * input.partialRatio : winAmount;
+        const netAmount = payoutAmount - input.betAmount;
+        const newGold = currentGold - input.betAmount + payoutAmount;
+
+        // 更新余额
+        await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
+
+        // 记录投注
+        await (db as any).execute(
+          `INSERT INTO vortexBets (userId, playerName, betAmount, multiplier, winAmount, netAmount, balanceAfter, resultData, isWin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            playerToken.playerId,
+            player.nickname || '',
+            input.betAmount.toFixed(2),
+            input.multiplier.toFixed(2),
+            payoutAmount.toFixed(2),
+            netAmount.toFixed(2),
+            newGold.toFixed(2),
+            JSON.stringify(input.trackState),
+            payoutAmount > 0 ? 1 : 0,
+          ]
+        );
+
+        return {
+          success: true,
+          winAmount: payoutAmount,
+          netAmount,
+          balanceAfter: newGold,
+          isPartial: input.isPartial,
+        };
+      }),
+
+    /** 获取历史记录 */
+    getHistory: publicProcedure
+      .input(z.object({ limit: z.number().default(20) }))
+      .query(async ({ ctx, input }) => {
+        const playerToken = await getPlayerFromCookie(ctx.req);
+        if (!playerToken) return [];
+        const db = await getDb();
+        if (!db) return [];
+        try {
+          const [rows] = await (db as any).execute(
+            `SELECT * FROM vortexBets WHERE userId = ? ORDER BY createdAt DESC LIMIT ?`,
+            [playerToken.playerId, input.limit]
+          );
+          return (rows as any[]).map((r: any) => ({
+            id: r.id,
+            betAmount: parseFloat(r.betAmount),
+            multiplier: parseFloat(r.multiplier),
+            winAmount: parseFloat(r.winAmount),
+            netAmount: parseFloat(r.netAmount),
+            balanceAfter: parseFloat(r.balanceAfter),
+            isWin: r.isWin === 1,
+            createdAt: r.createdAt,
+          }));
+        } catch {
+          return [];
+        }
       }),
   }),
 });
