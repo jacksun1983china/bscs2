@@ -1,0 +1,26 @@
+{
+  "name": "YouMe 坐席系统",
+  "short_name": "坐席系统",
+  "description": "YouMe 游戏平台客服坐席工作台",
+  "start_url": "/agent",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0621",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "/img/logok.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img/logok.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "productivity"],
+  "lang": "zh-CN"
+}

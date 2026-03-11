@@ -1,13 +1,27 @@
 /**
- * AgentDashboard.tsx — 客服坐席工作台
- * 功能：会话列表 + 实时聊天回复 + 快捷回复 + 坐席状态管理
+ * AgentDashboard.tsx — 客服坐席工作台（重新设计）
+ * 功能：会话列表 + 实时聊天回复 + 快捷回复 + 坐席状态管理 + 浏览器推送通知
+ * 移动端友好，现代化 UI
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { getAvatarUrl } from '@/lib/assets';
 
-// ── 类型定义 ──────────────────────────────────────────────────────
+// -- 工具函数 ------------------------------------------------------
+/** 将 Base64 URL 编码的 VAPID 公钥转换为 Uint8Array */
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// -- 类型定义 ------------------------------------------------------
 interface Session {
   id: number;
   playerId: number;
@@ -43,22 +57,33 @@ interface Agent {
   maxSessions: number;
 }
 
-// ── 消息气泡（坐席视角） ──────────────────────────────────────────
-function AgentMsgBubble({ msg }: { msg: Message }) {
+// -- 工具函数 ------------------------------------------------------
+function formatTime(date: Date | null) {
+  if (!date) return '';
+  const d = new Date(date);
+  const now = new Date();
+  const diff = now.getTime() - d.getTime();
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+  if (diff < 86400000) return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+}
+
+// -- 消息气泡 ------------------------------------------------------
+function MsgBubble({ msg }: { msg: Message }) {
   const isAgent = msg.senderType === 'agent';
   const isSystem = msg.senderType === 'system';
   const timeStr = new Date(msg.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
   if (isSystem) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
         <div
           style={{
-            background: 'rgba(80,40,160,0.25)',
-            border: '1px solid rgba(120,60,220,0.2)',
+            background: 'rgba(255,255,255,0.06)',
             borderRadius: 20,
-            padding: '3px 12px',
-            color: 'rgba(180,150,255,0.6)',
+            padding: '4px 14px',
+            color: 'rgba(200,180,255,0.5)',
             fontSize: 11,
           }}
         >
@@ -77,55 +102,61 @@ function AgentMsgBubble({ msg }: { msg: Message }) {
       style={{
         display: 'flex',
         flexDirection: isAgent ? 'row-reverse' : 'row',
-        alignItems: 'flex-start',
+        alignItems: 'flex-end',
         gap: 8,
-        margin: '8px 12px',
+        margin: '6px 12px',
       }}
     >
+      {/* 头像 */}
       <div
         style={{
-          width: 32,
-          height: 32,
+          width: 34,
+          height: 34,
           borderRadius: '50%',
           overflow: 'hidden',
           flexShrink: 0,
-          border: `2px solid ${isAgent ? 'rgba(192,132,252,0.5)' : 'rgba(120,60,220,0.4)'}`,
+          border: `2px solid ${isAgent ? 'rgba(124,58,237,0.6)' : 'rgba(255,255,255,0.15)'}`,
         }}
       >
         <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </div>
+
+      {/* 内容 */}
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: isAgent ? 'flex-end' : 'flex-start',
-          maxWidth: 'calc(100% - 80px)',
+          maxWidth: 'calc(100% - 90px)',
+          gap: 3,
         }}
       >
         <div
           style={{
             display: 'flex',
             gap: 6,
-            marginBottom: 3,
-            flexDirection: isAgent ? 'row-reverse' : 'row',
             alignItems: 'center',
+            flexDirection: isAgent ? 'row-reverse' : 'row',
           }}
         >
-          <span style={{ color: 'rgba(180,150,255,0.6)', fontSize: 11 }}>{msg.senderName}</span>
-          <span style={{ color: 'rgba(120,100,180,0.4)', fontSize: 10 }}>{timeStr}</span>
+          <span style={{ color: 'rgba(200,180,255,0.6)', fontSize: 11, fontWeight: 600 }}>
+            {msg.senderName}
+          </span>
+          <span style={{ color: 'rgba(150,130,200,0.4)', fontSize: 10 }}>{timeStr}</span>
         </div>
         <div
           style={{
-            padding: '8px 12px',
-            borderRadius: isAgent ? '14px 4px 14px 14px' : '4px 14px 14px 14px',
+            padding: '10px 14px',
+            borderRadius: isAgent ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
             background: isAgent
-              ? 'linear-gradient(135deg, rgba(108,103,255,0.85) 0%, rgba(32,0,162,0.9) 100%)'
-              : 'rgba(30,15,60,0.85)',
-            border: `1px solid ${isAgent ? 'rgba(108,103,255,0.5)' : 'rgba(80,40,120,0.4)'}`,
+              ? 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)'
+              : 'rgba(255,255,255,0.08)',
+            border: isAgent ? 'none' : '1px solid rgba(255,255,255,0.1)',
             color: '#fff',
-            fontSize: 13,
+            fontSize: 14,
             lineHeight: 1.5,
             wordBreak: 'break-word',
+            boxShadow: isAgent ? '0 4px 12px rgba(124,58,237,0.3)' : 'none',
           }}
         >
           {msg.content}
@@ -135,7 +166,126 @@ function AgentMsgBubble({ msg }: { msg: Message }) {
   );
 }
 
-// ── 主工作台 ──────────────────────────────────────────────────────
+// -- 会话列表项 ------------------------------------------------------
+function SessionItem({
+  session,
+  isActive,
+  isWaiting,
+  onClick,
+  onAccept,
+}: {
+  session: Session;
+  isActive: boolean;
+  isWaiting: boolean;
+  onClick: () => void;
+  onAccept?: () => void;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        padding: '12px 14px',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        cursor: 'pointer',
+        background: isActive
+          ? 'rgba(124,58,237,0.2)'
+          : 'transparent',
+        borderLeft: `3px solid ${isActive ? '#7c3aed' : 'transparent'}`,
+        transition: 'all 0.15s',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* 头像 */}
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: '50%',
+            background: isWaiting
+              ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+              : 'linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 18,
+            flexShrink: 0,
+            boxShadow: isWaiting ? '0 0 12px rgba(245,158,11,0.4)' : 'none',
+          }}
+        >
+          👤
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+            <span style={{ color: '#fff', fontSize: 14, fontWeight: 600 }}>
+              用户 #{session.playerId}
+            </span>
+            <span style={{ color: 'rgba(180,150,255,0.45)', fontSize: 11 }}>
+              {formatTime(session.lastMessageAt)}
+            </span>
+          </div>
+          <div
+            style={{
+              color: 'rgba(180,150,255,0.55)',
+              fontSize: 12,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {session.lastMessage || (isWaiting ? '⏳ 等待接入...' : '暂无消息')}
+          </div>
+        </div>
+
+        {/* 未读数 */}
+        {session.agentUnread > 0 && (
+          <div
+            style={{
+              background: '#ef4444',
+              borderRadius: '50%',
+              minWidth: 20,
+              height: 20,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 11,
+              fontWeight: 700,
+              color: '#fff',
+              flexShrink: 0,
+              padding: '0 4px',
+            }}
+          >
+            {session.agentUnread > 9 ? '9+' : session.agentUnread}
+          </div>
+        )}
+      </div>
+
+      {/* 接入按钮 */}
+      {isWaiting && onAccept && (
+        <button
+          onClick={e => { e.stopPropagation(); onAccept(); }}
+          style={{
+            marginTop: 8,
+            width: '100%',
+            background: 'linear-gradient(135deg, rgba(74,222,128,0.25) 0%, rgba(22,163,74,0.35) 100%)',
+            border: '1px solid rgba(74,222,128,0.5)',
+            borderRadius: 8,
+            color: '#4ade80',
+            fontSize: 13,
+            fontWeight: 700,
+            padding: '6px 0',
+            cursor: 'pointer',
+            letterSpacing: 0.5,
+          }}
+        >
+          ✅ 接入会话
+        </button>
+      )}
+    </div>
+  );
+}
+
+// -- 主工作台 ------------------------------------------------------
 export default function AgentDashboard() {
   const [, navigate] = useLocation();
   const [agent, setAgent] = useState<Agent | null>(null);
@@ -147,6 +297,9 @@ export default function AgentDashboard() {
   const [sending, setSending] = useState(false);
   const [quickReplies, setQuickReplies] = useState<any[]>([]);
   const [showQuickReply, setShowQuickReply] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
 
@@ -164,16 +317,93 @@ export default function AgentDashboard() {
   const { data: quickRepliesData } = trpc.cs.getQuickReplies.useQuery(undefined, {
     enabled: !!agentData,
   });
-
   useEffect(() => {
     if (quickRepliesData) setQuickReplies(quickRepliesData);
   }, [quickRepliesData]);
 
+  // Web Push 订阅相关
+  const registerPushMutation = trpc.cs.registerPushSubscription.useMutation();
+  const { data: vapidData } = trpc.cs.getVapidPublicKey.useQuery(undefined, { enabled: !!agentData });
+
+  // 注册 Service Worker 并请求推送权限
+  useEffect(() => {
+    if (!agentData) return;
+
+    // 注册 Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/agent-sw.js', { scope: '/' })
+        .then(reg => {
+          console.log('[SW] Registered:', reg.scope);
+        })
+        .catch(err => {
+          console.warn('[SW] Registration failed:', err);
+        });
+    }
+
+    // 请求通知权限
+    if ('Notification' in window) {
+      if (Notification.permission === 'granted') {
+        setNotifEnabled(true);
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(perm => {
+          setNotifEnabled(perm === 'granted');
+        });
+      }
+    }
+  }, [agentData]);
+
+  // 当 VAPID 公钥和通知权限就绪后，订阅 Web Push
+  useEffect(() => {
+    if (!agentData || !notifEnabled || !vapidData?.publicKey) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+    async function subscribePush() {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        // 检查是否已有订阅
+        const existing = await reg.pushManager.getSubscription();
+        if (existing) {
+          setPushSubscribed(true);
+          return;
+        }
+        // 创建新订阅
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidData!.publicKey),
+        });
+        const subJson = sub.toJSON();
+        await registerPushMutation.mutateAsync({
+          endpoint: subJson.endpoint!,
+          p256dh: (subJson.keys as any)?.p256dh || '',
+          auth: (subJson.keys as any)?.auth || '',
+          deviceLabel: navigator.userAgent.slice(0, 100),
+        });
+        setPushSubscribed(true);
+        console.log('[WebPush] Subscribed successfully');
+      } catch (err) {
+        console.warn('[WebPush] Subscribe failed:', err);
+      }
+    }
+
+    subscribePush();
+  }, [agentData, notifEnabled, vapidData]);
+
+  // 发送浏览器通知
+  const sendBrowserNotif = useCallback((title: string, body: string) => {
+    if (!notifEnabled || document.visibilityState === 'visible') return;
+    try {
+      new Notification(title, {
+        body,
+        icon: '/img/logok.png',
+        badge: '/img/logok.png',
+        tag: 'cs-message',
+      });
+    } catch {}
+  }, [notifEnabled]);
+
   // 接入会话
   const acceptMutation = trpc.cs.agentAcceptSession.useMutation({
-    onSuccess: () => {
-      fetchSessions();
-    },
+    onSuccess: () => fetchSessions(),
   });
 
   // 发送消息
@@ -213,9 +443,19 @@ export default function AgentDashboard() {
   const fetchSessions = useCallback(async () => {
     try {
       const data = await utils.cs.agentGetSessions.fetch({});
-      if (data) setSessions(data as any);
+      if (data) {
+        setSessions(prev => {
+          const newSessions = data as any[];
+          // 检测新的等待会话，发送通知
+          const prevWaiting = new Set(prev.filter(s => s.status === 'waiting').map(s => s.id));
+          newSessions.filter(s => s.status === 'waiting' && !prevWaiting.has(s.id)).forEach(s => {
+            sendBrowserNotif('新客服请求', `用户 #${s.playerId} 正在等待接入`);
+          });
+          return newSessions;
+        });
+      }
     } catch {}
-  }, []);
+  }, [sendBrowserNotif]);
 
   // 获取消息
   const fetchMessages = useCallback(async (sessionId: number, afterId?: number) => {
@@ -257,6 +497,12 @@ export default function AgentDashboard() {
         setMessages(prev => {
           const existingIds = new Set(prev.map((m: any) => m.id));
           const newMsgs = (msgs as any[]).filter(m => !existingIds.has(m.id));
+          if (newMsgs.length > 0) {
+            const last = newMsgs[newMsgs.length - 1];
+            if (last.senderType === 'player') {
+              sendBrowserNotif('新消息', `用户 #${last.senderId}: ${last.content.slice(0, 40)}`);
+            }
+          }
           return [...prev, ...newMsgs];
         });
         setLastMsgId((msgs[msgs.length - 1] as any).id);
@@ -264,7 +510,7 @@ export default function AgentDashboard() {
       }
     }, 2000);
     return () => clearInterval(t);
-  }, [activeSessionId, lastMsgId, fetchMessages]);
+  }, [activeSessionId, lastMsgId, fetchMessages, sendBrowserNotif]);
 
   const scrollToBottom = () => {
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -283,8 +529,13 @@ export default function AgentDashboard() {
   const waitingSessions = sessions.filter(s => s.status === 'waiting');
   const activeSessions = sessions.filter(s => s.status === 'active' && s.agentId === agent?.id);
 
-  const statusColors = { online: '#4ade80', busy: '#f59e0b', offline: '#6b7280' };
-  const statusLabels = { online: '在线', busy: '忙碌', offline: '离线' };
+  const statusConfig = {
+    online: { color: '#4ade80', label: '在线', glow: 'rgba(74,222,128,0.5)' },
+    busy: { color: '#f59e0b', label: '忙碌', glow: 'rgba(245,158,11,0.5)' },
+    offline: { color: '#6b7280', label: '离线', glow: 'rgba(107,114,128,0.3)' },
+  };
+
+  const totalUnread = sessions.reduce((sum, s) => sum + (s.agentUnread || 0), 0);
 
   return (
     <div
@@ -292,69 +543,123 @@ export default function AgentDashboard() {
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        background: '#0d0621',
+        background: '#0f0c29',
         color: '#fff',
-        fontFamily: 'system-ui, sans-serif',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        overflow: 'hidden',
       }}
     >
-      {/* ── 顶部工具栏 ── */}
+      {/* -- 顶部工具栏 -- */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          padding: '0 16px',
+          padding: '0 14px',
           height: 56,
-          background: 'linear-gradient(135deg, rgba(30,10,65,0.98) 0%, rgba(15,5,40,0.98) 100%)',
-          borderBottom: '1px solid rgba(120,60,220,0.35)',
-          gap: 12,
+          background: 'rgba(255,255,255,0.04)',
+          backdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          gap: 10,
           flexShrink: 0,
+          zIndex: 10,
         }}
       >
+        {/* 侧边栏切换（移动端） */}
+        <button
+          onClick={() => setShowSidebar(v => !v)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#c084fc',
+            fontSize: 20,
+            cursor: 'pointer',
+            padding: '4px 6px',
+            borderRadius: 8,
+            position: 'relative' as const,
+          }}
+        >
+          ☰
+          {totalUnread > 0 && (
+            <span
+              style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                background: '#ef4444',
+                borderRadius: '50%',
+                width: 14,
+                height: 14,
+                fontSize: 9,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {totalUnread > 9 ? '9+' : totalUnread}
+            </span>
+          )}
+        </button>
+
         {/* Logo */}
         <div
           style={{
-            fontSize: 16,
-            fontWeight: 900,
+            fontSize: 15,
+            fontWeight: 800,
             background: 'linear-gradient(135deg, #c084fc 0%, #7c3aed 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
-            letterSpacing: 1,
+            letterSpacing: 0.5,
           }}
         >
-          BDCS2 客服系统
+          🎧 客服工作台
         </div>
 
         <div style={{ flex: 1 }} />
 
-        {/* 坐席信息 */}
-        {agent && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: statusColors[agent.status],
-                boxShadow: `0 0 6px ${statusColors[agent.status]}`,
-              }}
-            />
-            <span style={{ color: '#e0d0ff', fontSize: 13 }}>{agent.name}</span>
-            <span style={{ color: 'rgba(180,150,255,0.5)', fontSize: 12 }}>
-              ({agent.activeSessionCount}/{agent.maxSessions})
-            </span>
+        {/* 通知状态 */}
+        <div
+          title={notifEnabled ? '推送通知已开启' : '推送通知未开启'}
+          style={{
+            fontSize: 18,
+            opacity: notifEnabled ? 1 : 0.4,
+            cursor: 'pointer',
+          }}
+          onClick={() => {
+            if (!notifEnabled && 'Notification' in window) {
+              Notification.requestPermission().then(p => setNotifEnabled(p === 'granted'));
+            }
+          }}
+        >
+          {notifEnabled ? '🔔' : '🔕'}
+        </div>
 
-            {/* 状态切换 */}
+        {/* 坐席状态 */}
+        {agent && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            background: statusConfig[agent.status].color,
+            boxShadow: `0 0 8px ${statusConfig[agent.status].glow}`,
+            animation: agent.status === 'online' ? 'pulse 2s ease-in-out infinite' : 'none',
+          } as React.CSSProperties}
+            />
+            <span style={{ color: '#e0d0ff', fontSize: 13, fontWeight: 600 }}>{agent.name}</span>
             <select
               value={agent.status}
               onChange={e => updateStatusMutation.mutate({ status: e.target.value as any })}
               style={{
-                background: 'rgba(30,10,65,0.8)',
-                border: '1px solid rgba(120,60,220,0.4)',
-                borderRadius: 6,
-                color: '#e0d0ff',
+                background: 'rgba(255,255,255,0.07)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 8,
+                color: statusConfig[agent.status].color,
                 fontSize: 12,
-                padding: '3px 6px',
+                padding: '4px 8px',
                 cursor: 'pointer',
+                fontWeight: 600,
               }}
             >
               <option value="online">在线</option>
@@ -368,58 +673,81 @@ export default function AgentDashboard() {
         <button
           onClick={() => logoutMutation.mutate()}
           style={{
-            background: 'rgba(220,38,38,0.2)',
-            border: '1px solid rgba(220,38,38,0.4)',
+            background: 'rgba(239,68,68,0.12)',
+            border: '1px solid rgba(239,68,68,0.3)',
             borderRadius: 8,
-            color: '#f87171',
+            color: '#fca5a5',
             fontSize: 12,
-            padding: '5px 12px',
+            padding: '5px 10px',
             cursor: 'pointer',
+            fontWeight: 600,
           }}
         >
           退出
         </button>
       </div>
 
-      {/* ── 主内容区 ── */}
+      {/* -- 主内容区 -- */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-        {/* ── 左侧会话列表 ── */}
+        {/* -- 左侧会话列表 -- */}
         <div
           style={{
-            width: 280,
+            width: showSidebar ? 280 : 0,
             flexShrink: 0,
-            borderRight: '1px solid rgba(120,60,220,0.25)',
+            borderRight: '1px solid rgba(255,255,255,0.07)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
+            transition: 'width 0.25s ease',
+            background: 'rgba(255,255,255,0.02)',
           }}
         >
+          {/* 统计条 */}
+          <div
+            style={{
+              padding: '10px 14px',
+              borderBottom: '1px solid rgba(255,255,255,0.07)',
+              display: 'flex',
+              gap: 12,
+            }}
+          >
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ color: '#f59e0b', fontSize: 18, fontWeight: 800 }}>{waitingSessions.length}</div>
+              <div style={{ color: 'rgba(180,150,255,0.5)', fontSize: 10 }}>等待中</div>
+            </div>
+            <div style={{ width: 1, background: 'rgba(255,255,255,0.08)' }} />
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ color: '#4ade80', fontSize: 18, fontWeight: 800 }}>{activeSessions.length}</div>
+              <div style={{ color: 'rgba(180,150,255,0.5)', fontSize: 10 }}>进行中</div>
+            </div>
+            <div style={{ width: 1, background: 'rgba(255,255,255,0.08)' }} />
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ color: '#c084fc', fontSize: 18, fontWeight: 800 }}>
+                {agent ? `${agent.activeSessionCount}/${agent.maxSessions}` : '-'}
+              </div>
+              <div style={{ color: 'rgba(180,150,255,0.5)', fontSize: 10 }}>容量</div>
+            </div>
+          </div>
+
           {/* 等待接入 */}
           {waitingSessions.length > 0 && (
             <div>
               <div
                 style={{
-                  padding: '8px 12px',
+                  padding: '8px 14px',
                   fontSize: 11,
                   color: '#f59e0b',
                   fontWeight: 700,
-                  background: 'rgba(245,158,11,0.08)',
-                  borderBottom: '1px solid rgba(245,158,11,0.15)',
+                  background: 'rgba(245,158,11,0.06)',
+                  borderBottom: '1px solid rgba(245,158,11,0.12)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
+                  letterSpacing: 0.5,
                 }}
               >
-                <div
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: '#f59e0b',
-                    animation: 'pulse 1.5s ease-in-out infinite',
-                  }}
-                />
+                <span style={{ animation: 'pulse 1.5s ease-in-out infinite', display: 'inline-block' }}>●</span>
                 等待接入 ({waitingSessions.length})
               </div>
               {waitingSessions.map(s => (
@@ -432,6 +760,7 @@ export default function AgentDashboard() {
                     setActiveSessionId(s.id);
                     setMessages([]);
                     setLastMsgId(0);
+                    if (window.innerWidth < 640) setShowSidebar(false);
                   }}
                   onAccept={() => acceptMutation.mutate({ sessionId: s.id })}
                 />
@@ -442,26 +771,28 @@ export default function AgentDashboard() {
           {/* 我的会话 */}
           <div
             style={{
-              padding: '8px 12px',
+              padding: '8px 14px',
               fontSize: 11,
               color: '#4ade80',
               fontWeight: 700,
-              background: 'rgba(74,222,128,0.06)',
-              borderBottom: '1px solid rgba(74,222,128,0.12)',
+              background: 'rgba(74,222,128,0.04)',
+              borderBottom: '1px solid rgba(74,222,128,0.1)',
+              letterSpacing: 0.5,
             }}
           >
-            我的会话 ({activeSessions.length})
+            ● 我的会话 ({activeSessions.length})
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {activeSessions.length === 0 && (
               <div
                 style={{
-                  padding: 24,
+                  padding: '32px 16px',
                   textAlign: 'center',
-                  color: 'rgba(180,150,255,0.4)',
+                  color: 'rgba(180,150,255,0.35)',
                   fontSize: 13,
                 }}
               >
+                <div style={{ fontSize: 32, marginBottom: 10 }}>💬</div>
                 暂无进行中的会话
               </div>
             )}
@@ -475,72 +806,92 @@ export default function AgentDashboard() {
                   setActiveSessionId(s.id);
                   setMessages([]);
                   setLastMsgId(0);
+                  if (window.innerWidth < 640) setShowSidebar(false);
                 }}
               />
             ))}
           </div>
         </div>
 
-        {/* ── 右侧聊天区 ── */}
+        {/* -- 右侧聊天区 -- */}
         {activeSessionId && activeSession ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
             {/* 会话标题栏 */}
             <div
               style={{
                 padding: '10px 16px',
-                borderBottom: '1px solid rgba(120,60,220,0.25)',
+                borderBottom: '1px solid rgba(255,255,255,0.07)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
-                background: 'rgba(20,8,50,0.6)',
+                background: 'rgba(255,255,255,0.03)',
                 flexShrink: 0,
               }}
             >
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: '50%',
+                  background: activeSession.status === 'waiting'
+                    ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                    : 'linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 18,
+                  flexShrink: 0,
+                }}
+              >
+                👤
+              </div>
               <div style={{ flex: 1 }}>
-                <div style={{ color: '#fff', fontSize: 14, fontWeight: 600 }}>
+                <div style={{ color: '#fff', fontSize: 15, fontWeight: 700 }}>
                   用户 #{activeSession.playerId}
                 </div>
                 <div
                   style={{
                     fontSize: 11,
                     color: activeSession.status === 'active' ? '#4ade80' : '#f59e0b',
-                    marginTop: 2,
+                    marginTop: 1,
                   }}
                 >
                   {activeSession.status === 'active' ? '● 进行中' : '● 等待接入'}
                 </div>
               </div>
 
-              {/* 接入按钮（等待中） */}
+              {/* 接入按钮 */}
               {activeSession.status === 'waiting' && (
                 <button
                   onClick={() => acceptMutation.mutate({ sessionId: activeSessionId })}
                   style={{
                     background: 'linear-gradient(135deg, #4ade80 0%, #16a34a 100%)',
                     border: 'none',
-                    borderRadius: 8,
+                    borderRadius: 10,
                     color: '#fff',
                     fontSize: 13,
                     fontWeight: 700,
-                    padding: '6px 16px',
+                    padding: '8px 16px',
                     cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(74,222,128,0.4)',
                   }}
                 >
-                  接入会话
+                  ✅ 接入
                 </button>
               )}
 
-              {/* 关闭按钮 */}
+              {/* 结束按钮 */}
               {activeSession.status === 'active' && (
                 <button
                   onClick={() => closeMutation.mutate({ sessionId: activeSessionId })}
                   style={{
-                    background: 'rgba(220,38,38,0.2)',
-                    border: '1px solid rgba(220,38,38,0.4)',
-                    borderRadius: 8,
-                    color: '#f87171',
-                    fontSize: 12,
-                    padding: '5px 12px',
+                    background: 'rgba(239,68,68,0.12)',
+                    border: '1px solid rgba(239,68,68,0.3)',
+                    borderRadius: 10,
+                    color: '#fca5a5',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    padding: '7px 14px',
                     cursor: 'pointer',
                   }}
                 >
@@ -555,11 +906,24 @@ export default function AgentDashboard() {
                 flex: 1,
                 overflowY: 'auto',
                 padding: '8px 0',
-                background: 'rgba(5,4,18,0.4)',
+                background: 'rgba(0,0,0,0.15)',
               }}
             >
+              {messages.length === 0 && (
+                <div
+                  style={{
+                    padding: '40px 20px',
+                    textAlign: 'center',
+                    color: 'rgba(180,150,255,0.35)',
+                    fontSize: 13,
+                  }}
+                >
+                  <div style={{ fontSize: 32, marginBottom: 10 }}>💬</div>
+                  暂无消息记录
+                </div>
+              )}
               {messages.map((msg: any) => (
-                <AgentMsgBubble key={msg.id} msg={msg} />
+                <MsgBubble key={msg.id} msg={msg} />
               ))}
               <div ref={chatEndRef} />
             </div>
@@ -568,32 +932,35 @@ export default function AgentDashboard() {
             {showQuickReply && quickReplies.length > 0 && (
               <div
                 style={{
-                  maxHeight: 200,
+                  maxHeight: 180,
                   overflowY: 'auto',
-                  background: 'rgba(20,8,50,0.95)',
-                  borderTop: '1px solid rgba(120,60,220,0.3)',
-                  padding: '8px 12px',
+                  background: 'rgba(15,12,41,0.98)',
+                  borderTop: '1px solid rgba(255,255,255,0.08)',
+                  padding: '10px 14px',
                 }}
               >
-                <div style={{ fontSize: 11, color: 'rgba(180,150,255,0.5)', marginBottom: 6 }}>快捷回复</div>
+                <div style={{ fontSize: 11, color: 'rgba(180,150,255,0.5)', marginBottom: 8, fontWeight: 600 }}>
+                  ⚡ 快捷回复
+                </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {quickReplies.map((qr: any) => (
-                    <div
+                    <button
                       key={qr.id}
                       onClick={() => handleSend(qr.content)}
                       style={{
-                        background: 'rgba(80,40,160,0.4)',
-                        border: '1px solid rgba(120,60,220,0.4)',
+                        background: 'rgba(124,58,237,0.2)',
+                        border: '1px solid rgba(124,58,237,0.4)',
                         borderRadius: 8,
-                        padding: '4px 10px',
+                        padding: '5px 12px',
                         fontSize: 12,
-                        color: '#e0d0ff',
+                        color: '#c084fc',
                         cursor: 'pointer',
+                        fontWeight: 500,
                         transition: 'all 0.15s',
                       }}
                     >
                       {qr.title}
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -603,28 +970,35 @@ export default function AgentDashboard() {
             <div
               style={{
                 padding: '10px 12px',
-                background: 'rgba(15,6,40,0.98)',
-                borderTop: '1px solid rgba(120,60,220,0.25)',
+                background: 'rgba(15,12,41,0.98)',
+                borderTop: '1px solid rgba(255,255,255,0.07)',
                 flexShrink: 0,
               }}
             >
               {activeSession.status !== 'active' ? (
-                <div style={{ textAlign: 'center', color: 'rgba(180,150,255,0.4)', fontSize: 13, padding: '8px 0' }}>
+                <div
+                  style={{
+                    textAlign: 'center',
+                    color: 'rgba(180,150,255,0.4)',
+                    fontSize: 13,
+                    padding: '10px 0',
+                  }}
+                >
                   请先接入会话才能发送消息
                 </div>
               ) : (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                  {/* 快捷回复按钮 */}
+                  {/* 快捷回复 */}
                   <button
                     onClick={() => setShowQuickReply(v => !v)}
                     style={{
-                      width: 36,
-                      height: 36,
-                      background: showQuickReply ? 'rgba(124,58,237,0.4)' : 'rgba(60,30,100,0.4)',
-                      border: `1px solid ${showQuickReply ? 'rgba(124,58,237,0.6)' : 'rgba(80,40,120,0.4)'}`,
-                      borderRadius: 8,
+                      width: 38,
+                      height: 38,
+                      background: showQuickReply ? 'rgba(124,58,237,0.35)' : 'rgba(255,255,255,0.06)',
+                      border: `1px solid ${showQuickReply ? 'rgba(124,58,237,0.6)' : 'rgba(255,255,255,0.1)'}`,
+                      borderRadius: 10,
                       color: '#c084fc',
-                      fontSize: 16,
+                      fontSize: 18,
                       cursor: 'pointer',
                       flexShrink: 0,
                       display: 'flex',
@@ -645,43 +1019,48 @@ export default function AgentDashboard() {
                         handleSend();
                       }
                     }}
-                    placeholder="输入回复内容... (Enter发送, Shift+Enter换行)"
+                    placeholder="输入回复内容... (Enter发送)"
                     rows={2}
                     style={{
                       flex: 1,
-                      background: 'rgba(30,10,65,0.8)',
-                      border: '1.5px solid rgba(120,60,220,0.4)',
-                      borderRadius: 10,
-                      padding: '8px 12px',
+                      background: 'rgba(255,255,255,0.07)',
+                      border: '1.5px solid rgba(255,255,255,0.1)',
+                      borderRadius: 12,
+                      padding: '9px 12px',
                       color: '#fff',
-                      fontSize: 13,
+                      fontSize: 14,
                       resize: 'none',
                       outline: 'none',
                       lineHeight: 1.5,
                       fontFamily: 'inherit',
+                      transition: 'border-color 0.2s',
                     }}
+                    onFocus={e => (e.target.style.borderColor = 'rgba(124,58,237,0.7)')}
+                    onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
                   />
 
                   <button
                     onClick={() => handleSend()}
                     disabled={!inputText.trim() || sending}
                     style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 10,
+                      width: 42,
+                      height: 42,
+                      borderRadius: 12,
                       background: inputText.trim() && !sending
-                        ? 'linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)'
-                        : 'rgba(60,30,100,0.4)',
-                      border: `1.5px solid ${inputText.trim() ? 'rgba(124,58,237,0.6)' : 'rgba(80,40,120,0.3)'}`,
+                        ? 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)'
+                        : 'rgba(255,255,255,0.06)',
+                      border: 'none',
                       cursor: inputText.trim() && !sending ? 'pointer' : 'not-allowed',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0,
+                      boxShadow: inputText.trim() && !sending ? '0 4px 12px rgba(124,58,237,0.4)' : 'none',
+                      transition: 'all 0.2s',
                     }}
                   >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M2 8L14 2L8 14L7 9L2 8Z" fill="white" />
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                      <path d="M2 9L16 2L9 16L8 10L2 9Z" fill="white" opacity={inputText.trim() && !sending ? 1 : 0.3} />
                     </svg>
                   </button>
                 </div>
@@ -699,141 +1078,50 @@ export default function AgentDashboard() {
               justifyContent: 'center',
               gap: 16,
               color: 'rgba(180,150,255,0.4)',
+              background: 'rgba(0,0,0,0.1)',
             }}
           >
-            <div style={{ fontSize: 48 }}>💬</div>
-            <div style={{ fontSize: 16 }}>请从左侧选择或接入一个会话</div>
-            <div style={{ fontSize: 13 }}>
-              等待接入: {waitingSessions.length} | 我的会话: {activeSessions.length}
+            <div style={{ fontSize: 56 }}>🎧</div>
+            <div style={{ fontSize: 17, fontWeight: 600, color: 'rgba(200,180,255,0.6)' }}>
+              客服工作台
             </div>
+            <div style={{ fontSize: 13, textAlign: 'center', lineHeight: 1.8 }}>
+              等待接入: <span style={{ color: '#f59e0b', fontWeight: 700 }}>{waitingSessions.length}</span> 个会话
+              <br />
+              我的会话: <span style={{ color: '#4ade80', fontWeight: 700 }}>{activeSessions.length}</span> 个
+            </div>
+            {waitingSessions.length > 0 && (
+              <button
+                onClick={() => setShowSidebar(true)}
+                style={{
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  border: 'none',
+                  borderRadius: 12,
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  padding: '10px 24px',
+                  cursor: 'pointer',
+                  boxShadow: '0 6px 20px rgba(245,158,11,0.4)',
+                }}
+              >
+                查看等待队列 ({waitingSessions.length})
+              </button>
+            )}
           </div>
         )}
       </div>
 
       <style>{`
         @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.9); }
         }
+        textarea::placeholder { color: rgba(180,150,255,0.3); }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.3); border-radius: 2px; }
       `}</style>
-    </div>
-  );
-}
-
-// ── 会话列表项 ──────────────────────────────────────────────────────
-function SessionItem({
-  session,
-  isActive,
-  isWaiting,
-  onClick,
-  onAccept,
-}: {
-  session: Session;
-  isActive: boolean;
-  isWaiting: boolean;
-  onClick: () => void;
-  onAccept?: () => void;
-}) {
-  const timeStr = session.lastMessageAt
-    ? new Date(session.lastMessageAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-    : '';
-
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        padding: '10px 12px',
-        borderBottom: '1px solid rgba(80,40,120,0.2)',
-        cursor: 'pointer',
-        background: isActive
-          ? 'linear-gradient(135deg, rgba(80,40,160,0.4) 0%, rgba(40,20,80,0.5) 100%)'
-          : 'transparent',
-        borderLeft: isActive ? '3px solid #7c3aed' : '3px solid transparent',
-        transition: 'all 0.15s',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {/* 头像占位 */}
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, rgba(80,40,160,0.6) 0%, rgba(40,20,80,0.8) 100%)',
-            border: '1.5px solid rgba(120,60,220,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 14,
-            flexShrink: 0,
-          }}
-        >
-          👤
-        </div>
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: '#e0d0ff', fontSize: 13, fontWeight: 600 }}>
-              用户 #{session.playerId}
-            </span>
-            <span style={{ color: 'rgba(120,100,180,0.5)', fontSize: 10 }}>{timeStr}</span>
-          </div>
-          <div
-            style={{
-              color: 'rgba(180,150,255,0.5)',
-              fontSize: 11,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              marginTop: 2,
-            }}
-          >
-            {session.lastMessage || '暂无消息'}
-          </div>
-        </div>
-
-        {/* 未读数 */}
-        {session.agentUnread > 0 && (
-          <div
-            style={{
-              background: '#ef4444',
-              borderRadius: '50%',
-              width: 18,
-              height: 18,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 10,
-              fontWeight: 700,
-              color: '#fff',
-              flexShrink: 0,
-            }}
-          >
-            {session.agentUnread > 9 ? '9+' : session.agentUnread}
-          </div>
-        )}
-      </div>
-
-      {/* 接入按钮 */}
-      {isWaiting && onAccept && (
-        <button
-          onClick={e => { e.stopPropagation(); onAccept(); }}
-          style={{
-            marginTop: 6,
-            width: '100%',
-            background: 'linear-gradient(135deg, rgba(74,222,128,0.3) 0%, rgba(22,163,74,0.4) 100%)',
-            border: '1px solid rgba(74,222,128,0.5)',
-            borderRadius: 6,
-            color: '#4ade80',
-            fontSize: 12,
-            fontWeight: 700,
-            padding: '4px 0',
-            cursor: 'pointer',
-          }}
-        >
-          接入会话
-        </button>
-      )}
     </div>
   );
 }

@@ -113,6 +113,20 @@
       "when": 1773206034782,
       "tag": "0015_daily_zaran",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1773245510593,
+      "tag": "0016_flat_impossible_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1773246626754,
+      "tag": "0017_eager_lockjaw",
+      "breakpoints": true
     }
   ]
 }

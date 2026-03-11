@@ -679,3 +679,10 @@
 - [ ] Android APK：Capacitor 封装
 - [ ] Android APK：集成 FCM 推送通知
 - [ ] 推送代码到 GitHub（https://github.com/jacksun1983china/bscs2）
+
+## 坐席系统 PWA 化（2026-03-12）
+- [x] 创建 manifest.json（坐席 App 图标、名称、全屏模式）
+- [x] 创建 Service Worker（离线缓存、Web Push 推送通知）
+- [x] 后端生成 VAPID 密鑰，添加 Web Push 订阅 API
+- [x] 坐席登录页添加"安装到手机"引导提示
+- [x] 坐席工作台添加推送订阅按鈕

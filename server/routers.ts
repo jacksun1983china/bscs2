@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { arenaRouter } from "./arenaRouter";
+import { sendPushToAgent } from "./webPush";
 import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -76,6 +77,7 @@ import {
   shopItems,
   shopOrders,
   players,
+  agentPushSubscriptions,
 } from "../drizzle/schema";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
@@ -1048,6 +1050,20 @@ export const appRouter = router({
             senderName: "系统",
             content: "您好！欢迎使用在线客服。请描述您的问题，我们将尽快为您服务。",
           });
+          // 向所有在线坐席发送新会话通知
+          const playerInfo = await getPlayerById(player.playerId);
+          const playerName = playerInfo?.nickname || `用户${player.phone.slice(-4)}`;
+          const onlineAgents = await getCsAgentList();
+          for (const agent of onlineAgents) {
+            if (agent.status === 'online' || agent.status === 'busy') {
+              sendPushToAgent(agent.id, {
+                title: '新客服请求',
+                body: `${playerName} 正在等待接入`,
+                tag: 'cs-new-session',
+                data: { url: '/agent' },
+              }).catch(() => {});
+            }
+          }
         }
         return session;
       }),
@@ -1091,6 +1107,19 @@ export const appRouter = router({
           msgType: input.msgType,
         });
         await updateSessionLastMessage(input.sessionId, input.content, 1, 0);
+        // 如果会话已分配坐席，向坐席发送 Web Push 推送
+        if (session.agentId) {
+          const playerName = playerInfo?.nickname || `用户${player.phone.slice(-4)}`;
+          const msgPreview = input.msgType === 'text'
+            ? input.content.slice(0, 60)
+            : '[\u56fe\u7247\u6d88\u606f]';
+          sendPushToAgent(session.agentId, {
+            title: `\u65b0\u6d88\u606f\uff1a${playerName}`,
+            body: msgPreview,
+            tag: `cs-session-${input.sessionId}`,
+            data: { url: '/agent', sessionId: input.sessionId },
+          }).catch(() => {}); // 推送失败不影响主流程
+        }
         return msg;
       }),
 
@@ -1254,6 +1283,19 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    /** 注册 FCM 推送 Token */
+    registerFcmToken: publicProcedure
+      .input(z.object({ fcmToken: z.string().min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        const agentAuth = await getAgentFromCookie(ctx.req);
+        if (!agentAuth) throw new TRPCError({ code: "UNAUTHORIZED" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await db.update(csAgents)
+          .set({ fcmToken: input.fcmToken, lastActiveAt: new Date() })
+          .where(eq(csAgents.id, agentAuth.agentId));
+        return { success: true };
+      }),
     /** 获取快捷回复 */
     getQuickReplies: publicProcedure.query(async ({ ctx }) => {
       const agentAuth = await getAgentFromCookie(ctx.req);
@@ -1315,6 +1357,57 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
         await deleteCsQuickReply(input.id);
+        return { success: true };
+      }),
+
+    /** 获取 VAPID 公钥（前端订阅推送用） */
+    getVapidPublicKey: publicProcedure.query(() => {
+      return { publicKey: process.env.VAPID_PUBLIC_KEY || '' };
+    }),
+
+    /** 注册 Web Push 订阅 */
+    registerPushSubscription: publicProcedure
+      .input(z.object({
+        endpoint: z.string().url(),
+        p256dh: z.string(),
+        auth: z.string(),
+        deviceLabel: z.string().default(''),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const agentAuth = await getAgentFromCookie(ctx.req);
+        if (!agentAuth) throw new TRPCError({ code: 'UNAUTHORIZED' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        // 如果已存在相同 endpoint 则更新，否则插入
+        const existing = await db.select().from(agentPushSubscriptions)
+          .where(eq(agentPushSubscriptions.endpoint, input.endpoint))
+          .limit(1);
+        if (existing.length > 0) {
+          await db.update(agentPushSubscriptions)
+            .set({ p256dh: input.p256dh, auth: input.auth, deviceLabel: input.deviceLabel })
+            .where(eq(agentPushSubscriptions.endpoint, input.endpoint));
+        } else {
+          await db.insert(agentPushSubscriptions).values({
+            agentId: agentAuth.agentId,
+            endpoint: input.endpoint,
+            p256dh: input.p256dh,
+            auth: input.auth,
+            deviceLabel: input.deviceLabel,
+          });
+        }
+        return { success: true };
+      }),
+
+    /** 取消 Web Push 订阅 */
+    unregisterPushSubscription: publicProcedure
+      .input(z.object({ endpoint: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const agentAuth = await getAgentFromCookie(ctx.req);
+        if (!agentAuth) throw new TRPCError({ code: 'UNAUTHORIZED' });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        await db.delete(agentPushSubscriptions)
+          .where(eq(agentPushSubscriptions.endpoint, input.endpoint));
         return { success: true };
       }),
   }),

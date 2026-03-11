@@ -453,6 +453,10 @@ export const csAgents = mysqlTable("csAgents", {
   maxSessions: int("maxSessions").notNull().default(5),
   /** 是否启用 */
   enabled: tinyint("enabled").notNull().default(1),
+  /** FCM 推送 Token（安卣 App 注册） */
+  fcmToken: varchar("fcmToken", { length: 500 }).notNull().default(""),
+  /** 最后活跃时间 */
+  lastActiveAt: timestamp("lastActiveAt").defaultNow(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -887,3 +891,20 @@ export const fruitBombBets = mysqlTable("fruitBombBets", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type FruitBombBet = typeof fruitBombBets.$inferSelect;
+
+// ── Web Push 订阅表（坐席系统推送通知）────────────────────────────────────────
+export const agentPushSubscriptions = mysqlTable("agentPushSubscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  // 关联坐席 ID
+  agentId: int("agentId").notNull(),
+  // Web Push 订阅端点 URL
+  endpoint: varchar("endpoint", { length: 500 }).notNull(),
+  // 订阅密钥
+  p256dh: varchar("p256dh", { length: 200 }).notNull(),
+  auth: varchar("auth", { length: 100 }).notNull(),
+  // 设备标识
+  deviceLabel: varchar("deviceLabel", { length: 200 }).default(""),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().onUpdateNow(),
+});
+export type AgentPushSubscription = typeof agentPushSubscriptions.$inferSelect;
