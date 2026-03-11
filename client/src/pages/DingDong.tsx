@@ -88,7 +88,7 @@ export default function DingDong() {
   const [cursorPos, setCursorPos] = useState<number>(0);
   const rafRef = useRef<number>(0);
   const prevTimeRef = useRef<number>(0);
-  const speedRef = useRef<number>(0.008); // 格/ms（慢速）
+  const speedRef = useRef<number>(0.015); // 格/ms（待机慢速）
   const targetPosRef = useRef<number | null>(null); // 目标停止位置
 
   // 开奖结果
@@ -121,7 +121,7 @@ export default function DingDong() {
             cursorPosRef.current = target;
             setCursorPos(target);
             targetPosRef.current = null;
-            speedRef.current = 0.008;
+            speedRef.current = 0.015;
           } else {
             // 减速
             const slowFactor = Math.max(0.15, dist / OUTER_RING.length);
@@ -150,7 +150,7 @@ export default function DingDong() {
   const playMut = trpc.dingdong.play.useMutation({
     onSuccess: async (result) => {
       // 加速光标
-      speedRef.current = 0.22;
+      speedRef.current = 0.18;
       playRing();
 
       // 计算目标停止位置（开奖水果在外圈的某个格子）
@@ -219,7 +219,7 @@ export default function DingDong() {
     onError: (err) => {
       setIsSpinning(false);
       isSpinningRef.current = false;
-      speedRef.current = 0.008;
+      speedRef.current = 0.015;
       targetPosRef.current = null;
       showAlert(err.message || '下注失败');
     },
