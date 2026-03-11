@@ -24,6 +24,18 @@ const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }>
   offline: { label: '离线', color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
 };
 
+interface Session {
+  id: number;
+  status: string;
+  title: string;
+  playerId: number | null;
+  agentId: number | null;
+  lastMessage: string | null;
+  lastMessageAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 interface Props {
   lang: 'zh' | 'en';
 }
@@ -51,6 +63,14 @@ export function AdminAgents({ lang }: Props) {
 
   // 删除确认
   const [deleteId, setDeleteId] = useState<number | null>(null);
+
+  // 历史会话弹窗
+  const [historyAgent, setHistoryAgent] = useState<Agent | null>(null);
+  const [historyPage, setHistoryPage] = useState(1);
+  const { data: historySessions = [], isLoading: historyLoading } = trpc.cs.adminGetAllSessions.useQuery(
+    { agentId: historyAgent?.id, page: historyPage, limit: 15 },
+    { enabled: !!historyAgent }
+  );
 
   const createMutation = trpc.cs.adminCreateAgent.useMutation({
     onSuccess: () => {
@@ -311,6 +331,21 @@ export function AdminAgents({ lang }: Props) {
                           ✏️ {isZh ? '编辑' : 'Edit'}
                         </button>
                         <button
+                          onClick={() => { setHistoryAgent(agent); setHistoryPage(1); }}
+                          style={{
+                            background: 'rgba(14,165,233,0.12)',
+                            border: '1px solid rgba(14,165,233,0.3)',
+                            borderRadius: 8,
+                            color: '#7dd3fc',
+                            fontSize: 12,
+                            padding: '5px 10px',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                          }}
+                        >
+                          📊 {isZh ? '历史' : 'History'}
+                        </button>
+                        <button
                           onClick={() => setDeleteId(agent.id)}
                           style={{
                             background: 'rgba(239,68,68,0.1)',
@@ -499,6 +534,115 @@ export function AdminAgents({ lang }: Props) {
                 }}
               >
                 {isZh ? '取消' : 'Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 历史会话弹窗 */}
+      {historyAgent && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          padding: 16,
+        }}>
+          <div style={{
+            background: 'linear-gradient(160deg, #0d1b2a 0%, #0f0c29 100%)',
+            border: '1px solid rgba(14,165,233,0.3)',
+            borderRadius: 20,
+            padding: '24px',
+            width: '100%',
+            maxWidth: 600,
+            maxHeight: '80vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+          }}>
+            {/* 弹窗标题 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ color: '#fff', fontSize: 16, fontWeight: 800, margin: 0 }}>
+                  📊 {isZh ? `${historyAgent.name} 的历史会话` : `${historyAgent.name}'s History`}
+                </h3>
+                <p style={{ color: 'rgba(125,211,252,0.5)', fontSize: 12, margin: '4px 0 0' }}>
+                  @{historyAgent.username}
+                </p>
+              </div>
+              <button
+                onClick={() => setHistoryAgent(null)}
+                style={{
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 8, color: 'rgba(180,150,255,0.7)', fontSize: 18, width: 36, height: 36,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* 会话列表 */}
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {historyLoading ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(125,211,252,0.4)', fontSize: 14 }}>
+                  {isZh ? '加载中...' : 'Loading...'}
+                </div>
+              ) : (historySessions as Session[]).length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'rgba(125,211,252,0.3)', fontSize: 14 }}>
+                  {isZh ? '暂无历史会话记录' : 'No history sessions'}
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      {['ID', isZh ? '玩家' : 'Player', isZh ? '状态' : 'Status', isZh ? '最后消息' : 'Last Msg', isZh ? '时间' : 'Time'].map(h => (
+                        <th key={h} style={{ padding: '8px 10px', color: 'rgba(125,211,252,0.5)', fontSize: 11, fontWeight: 600, textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(historySessions as Session[]).map(s => (
+                      <tr key={s.id}>
+                        <td style={{ padding: '10px', color: 'rgba(125,211,252,0.5)', fontSize: 12, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>#{s.id}</td>
+                        <td style={{ padding: '10px', color: '#e0d0ff', fontSize: 13, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{s.title || `ID:${s.playerId}`}</td>
+                        <td style={{ padding: '10px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <span style={{
+                            background: s.status === 'closed' ? 'rgba(107,114,128,0.15)' : s.status === 'active' ? 'rgba(74,222,128,0.12)' : 'rgba(245,158,11,0.12)',
+                            color: s.status === 'closed' ? '#9ca3af' : s.status === 'active' ? '#4ade80' : '#f59e0b',
+                            borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 600,
+                          }}>
+                            {s.status === 'closed' ? (isZh ? '已结束' : 'Closed') : s.status === 'active' ? (isZh ? '进行中' : 'Active') : (isZh ? '等待中' : 'Waiting')}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px', color: 'rgba(180,150,255,0.6)', fontSize: 12, borderBottom: '1px solid rgba(255,255,255,0.04)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {s.lastMessage || '-'}
+                        </td>
+                        <td style={{ padding: '10px', color: 'rgba(125,211,252,0.4)', fontSize: 11, borderBottom: '1px solid rgba(255,255,255,0.04)', whiteSpace: 'nowrap' }}>
+                          {new Date(s.updatedAt).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* 分页 */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 8 }}>
+              <button
+                onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                disabled={historyPage === 1}
+                style={{ padding: '6px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: historyPage === 1 ? 'rgba(255,255,255,0.2)' : '#fff', cursor: historyPage === 1 ? 'not-allowed' : 'pointer', fontSize: 13 }}
+              >
+                {isZh ? '上一页' : 'Prev'}
+              </button>
+              <span style={{ color: 'rgba(125,211,252,0.5)', fontSize: 13 }}>{isZh ? `第 ${historyPage} 页` : `Page ${historyPage}`}</span>
+              <button
+                onClick={() => setHistoryPage(p => p + 1)}
+                disabled={(historySessions as Session[]).length < 15}
+                style={{ padding: '6px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: (historySessions as Session[]).length < 15 ? 'rgba(255,255,255,0.2)' : '#fff', cursor: (historySessions as Session[]).length < 15 ? 'not-allowed' : 'pointer', fontSize: 13 }}
+              >
+                {isZh ? '下一页' : 'Next'}
               </button>
             </div>
           </div>

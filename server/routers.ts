@@ -26,6 +26,7 @@ import {
   getAdminRollRoomList,
   getAllCsSessions,
   getAgentSessions,
+  getSessionsByAgentId,
   getCsAgentById,
   getCsAgentByUsername,
   getCsAgentList,
@@ -78,6 +79,7 @@ import {
   shopItems,
   shopOrders,
   players,
+  playerItems,
   agentPushSubscriptions,
 } from "../drizzle/schema";
 
@@ -261,6 +263,58 @@ export const appRouter = router({
         const session = await getPlayerFromCookie(ctx.req);
         if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
         return getPlayerRechargeOrders(session.playerId, input.page, input.limit);
+      }),
+
+    /** 提取道具（status 0→1） */
+    extractItem: publicProcedure
+      .input(z.object({ ids: z.array(z.number()).min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接失败" });
+        // 只能提取自己的、状态为 0（待处理）的道具
+        const items = await db.select().from(playerItems)
+          .where(eq(playerItems.playerId, session.playerId));
+        const validIds = items
+          .filter(i => input.ids.includes(i.id) && i.status === 0)
+          .map(i => i.id);
+        if (validIds.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "没有可提取的道具" });
+        for (const id of validIds) {
+          await db.update(playerItems)
+            .set({ status: 1, extractedAt: new Date() })
+            .where(eq(playerItems.id, id));
+        }
+        return { success: true, count: validIds.length };
+      }),
+
+    /** 回收道具（status 0→2，金币返还给玩家） */
+    recycleItem: publicProcedure
+      .input(z.object({ ids: z.array(z.number()).min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接失败" });
+        // 只能回收自己的、状态为 0（待处理）的道具
+        const items = await db.select({ id: playerItems.id, recycleGold: playerItems.recycleGold, status: playerItems.status, playerId: playerItems.playerId })
+          .from(playerItems)
+          .where(eq(playerItems.playerId, session.playerId));
+        const validItems = items.filter(i => input.ids.includes(i.id) && i.status === 0);
+        if (validItems.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "没有可回收的道具" });
+        const totalGold = validItems.reduce((s, i) => s + Number(i.recycleGold ?? 0), 0);
+        for (const item of validItems) {
+          await db.update(playerItems)
+            .set({ status: 2 })
+            .where(eq(playerItems.id, item.id));
+        }
+        // 金币返还给玩家
+        if (totalGold > 0) {
+          await db.update(players)
+            .set({ gold: sql`gold + ${totalGold}` })
+            .where(eq(players.id, session.playerId));
+        }
+        return { success: true, count: validItems.length, goldReturned: totalGold };
       }),
 
     /** 更新个人资料（昵称+头像ID） */
@@ -1184,12 +1238,13 @@ export const appRouter = router({
 
     /** 坐席：获取所有待处理/进行中会话 */
     agentGetSessions: publicProcedure
-      .input(z.object({ status: z.string().optional() }))
+      .input(z.object({ status: z.string().optional(), page: z.number().min(1).default(1), limit: z.number().default(20) }))
       .query(async ({ input, ctx }) => {
         const agentAuth = await getAgentFromCookie(ctx.req);
         if (!agentAuth) throw new TRPCError({ code: "UNAUTHORIZED" });
-        if (input.status) {
-          return getAllCsSessions(input.status);
+        if (input.status === 'closed') {
+          // 历史会话：分页返回
+          return getAllCsSessions('closed', input.page, input.limit);
         }
         // 返回所有等待中和进行中的会话（不限制 agentId，坐席可看到所有会话）
         const [waiting, active] = await Promise.all([
@@ -1362,10 +1417,13 @@ export const appRouter = router({
 
     /** 管理员：获取所有会话 */
     adminGetAllSessions: protectedProcedure
-      .input(z.object({ status: z.string().optional() }))
+      .input(z.object({ status: z.string().optional(), agentId: z.number().optional(), page: z.number().min(1).default(1), limit: z.number().default(20) }))
       .query(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-        return getAllCsSessions(input.status);
+        if (input.agentId) {
+          return getSessionsByAgentId(input.agentId, input.status, input.page, input.limit);
+        }
+        return getAllCsSessions(input.status, input.page, input.limit);
       }),
 
     /** 管理员：添加快捷回复 */

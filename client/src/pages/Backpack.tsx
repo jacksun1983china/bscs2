@@ -8,6 +8,7 @@ import BottomNav from '@/components/BottomNav';
 import TopNav from '@/components/TopNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
 import SettingsModal from '@/components/SettingsModal';
+import { toast } from 'sonner';
 
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym';
 const B = {
@@ -89,6 +90,7 @@ interface InventoryItem {
   itemQuality: number | null;
   itemValue: string | null;
   source: string;
+  status: number;
   createdAt: Date;
 }
 
@@ -97,12 +99,37 @@ export default function Backpack() {
   const [sortBy, setSortBy] = useState<'price' | 'time'>('time');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [settingsVisible, setSettingsVisible] = useState(false);
+  // 弹窗状态
+  const [confirmModal, setConfirmModal] = useState<{ type: 'extract' | 'recycle' | null }>({ type: null });
+  const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
 
   const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
+  const utils = trpc.useUtils();
   const { data: inventoryData, isLoading } = trpc.player.inventory.useQuery(
     { page: 1, limit: 50 },
     { staleTime: 10_000 }
   );
+
+  const extractMutation = trpc.player.extractItem.useMutation({
+    onSuccess: (data) => {
+      toast.success(`成功提取 ${data.count} 件道具`);
+      setSelectedIds(new Set());
+      setConfirmModal({ type: null });
+      utils.player.inventory.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const recycleMutation = trpc.player.recycleItem.useMutation({
+    onSuccess: (data) => {
+      toast.success(`成功回收 ${data.count} 件道具，获得 ${data.goldReturned} 金币`);
+      setSelectedIds(new Set());
+      setConfirmModal({ type: null });
+      utils.player.inventory.invalidate();
+      utils.player.me.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const rawItems: InventoryItem[] = (inventoryData?.list ?? []) as InventoryItem[];
   const total = inventoryData?.total ?? 0;
@@ -139,23 +166,32 @@ export default function Backpack() {
 
   const handleDecompose = useCallback(() => {
     if (!hasSelected) return;
-    alert(`确认分解 ${selectedIds.size} 件物品？（功能开发中）`);
-  }, [hasSelected, selectedIds]);
+    setConfirmModal({ type: 'recycle' });
+  }, [hasSelected]);
 
   const handlePickup = useCallback(() => {
     if (!hasSelected) return;
-    alert(`确认提货 ${selectedIds.size} 件物品？（功能开发中）`);
-  }, [hasSelected, selectedIds]);
+    setConfirmModal({ type: 'extract' });
+  }, [hasSelected]);
 
   const handleProtect = useCallback(() => {
     if (!hasSelected) return;
-    alert(`确认开启提货保护？（功能开发中）`);
-  }, [hasSelected, selectedIds]);
+    toast.info('提货保护功能即将上线');
+  }, [hasSelected]);
 
   const handleGift = useCallback(() => {
     if (!hasSelected) return;
-    alert(`确认赠送 ${selectedIds.size} 件物品？（功能开发中）`);
-  }, [hasSelected, selectedIds]);
+    toast.info('赠送功能即将上线');
+  }, [hasSelected]);
+
+  const handleConfirmAction = () => {
+    const ids = Array.from(selectedIds);
+    if (confirmModal.type === 'extract') {
+      extractMutation.mutate({ ids });
+    } else if (confirmModal.type === 'recycle') {
+      recycleMutation.mutate({ ids });
+    }
+  };
 
   return (
     <div
@@ -760,6 +796,124 @@ export default function Backpack() {
       <BottomNav active="beibao" />
 
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+
+      {/* 提取/回收确认弹窗 */}
+      {confirmModal.type && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onClick={() => setConfirmModal({ type: null })}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(135deg,#1a0840,#2d0f6b)',
+              border: '1.5px solid rgba(160,80,255,0.6)',
+              borderRadius: 16,
+              padding: '28px 24px',
+              width: '80%',
+              maxWidth: 320,
+              boxShadow: '0 0 40px rgba(120,40,220,0.5)',
+            }}
+          >
+            <div style={{ color: '#fff', fontSize: 18, fontWeight: 700, marginBottom: 12, textAlign: 'center' }}>
+              {confirmModal.type === 'extract' ? '确认提货' : '确认分解'}
+            </div>
+            <div style={{ color: '#c0a0ff', fontSize: 14, marginBottom: 8, textAlign: 'center' }}>
+              {confirmModal.type === 'extract'
+                ? `确认提取已选的 ${selectedIds.size} 件道具？`
+                : `确认分解已选的 ${selectedIds.size} 件道具？`
+              }
+            </div>
+            {confirmModal.type === 'recycle' && (
+              <div style={{ color: '#ffd700', fontSize: 13, marginBottom: 16, textAlign: 'center' }}>
+                将获得 {selectedValue.toFixed(0)} 金币
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+              <button
+                onClick={() => setConfirmModal({ type: null })}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 8,
+                  background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#ccc', fontSize: 15, cursor: 'pointer',
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleConfirmAction}
+                disabled={extractMutation.isPending || recycleMutation.isPending}
+                style={{
+                  flex: 1, padding: '10px 0', borderRadius: 8,
+                  background: 'linear-gradient(135deg,#8b2be2,#c084fc)',
+                  border: 'none', color: '#fff', fontSize: 15, fontWeight: 700,
+                  cursor: 'pointer', opacity: (extractMutation.isPending || recycleMutation.isPending) ? 0.6 : 1,
+                }}
+              >
+                {(extractMutation.isPending || recycleMutation.isPending) ? '处理中...' : '确认'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 道具详情弹窗 */}
+      {detailItem && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onClick={() => setDetailItem(null)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(135deg,#1a0840,#2d0f6b)',
+              border: '1.5px solid rgba(160,80,255,0.6)',
+              borderRadius: 16,
+              padding: '24px',
+              width: '80%',
+              maxWidth: 320,
+              boxShadow: '0 0 40px rgba(120,40,220,0.5)',
+              textAlign: 'center',
+            }}
+          >
+            <img
+              src={detailItem.itemImageUrl ?? B.itemPlaceholder}
+              alt={detailItem.itemName ?? ''}
+              style={{ width: 120, height: 120, objectFit: 'contain', borderRadius: 12, marginBottom: 12 }}
+            />
+            <div style={{ color: '#fff', fontSize: 18, fontWeight: 700, marginBottom: 6 }}>
+              {detailItem.itemName ?? '未知道具'}
+            </div>
+            <div style={{ color: '#ffd700', fontSize: 14, marginBottom: 6 }}>
+              价値：{Number(detailItem.itemValue ?? 0).toFixed(0)} 金币
+            </div>
+            <div style={{ color: '#c0a0ff', fontSize: 12, marginBottom: 6 }}>
+              来源：{detailItem.source === 'arena' ? '竞技场' : detailItem.source === 'roll' ? 'Roll房' : '开箱'}
+            </div>
+            <div style={{ color: '#888', fontSize: 12, marginBottom: 16 }}>
+              状态：{detailItem.status === 0 ? '待处理' : detailItem.status === 1 ? '已提取' : '已回收'}
+            </div>
+            <button
+              onClick={() => setDetailItem(null)}
+              style={{
+                padding: '10px 40px', borderRadius: 8,
+                background: 'linear-gradient(135deg,#8b2be2,#c084fc)',
+                border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              关闭
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

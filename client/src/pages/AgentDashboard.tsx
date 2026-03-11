@@ -595,6 +595,8 @@ export default function AgentDashboard() {
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
+  const [historyPage, setHistoryPage] = useState(1);
   const utils = trpc.useUtils();
 
   const { data: agentData, refetch: refetchAgent } = trpc.cs.agentMe.useQuery(undefined, { retry: false });
@@ -607,6 +609,12 @@ export default function AgentDashboard() {
   // Web Push
   const registerPushMutation = trpc.cs.registerPushSubscription.useMutation();
   const { data: vapidData } = trpc.cs.getVapidPublicKey.useQuery(undefined, { enabled: !!agentData });
+
+  // 历史会话
+  const { data: historySessions, isLoading: historyLoading } = trpc.cs.agentGetSessions.useQuery(
+    { status: 'closed', page: historyPage, limit: 20 },
+    { enabled: !!agentData && activeTab === 'history', staleTime: 10_000 }
+  );
 
   useEffect(() => {
     if (!agentData) return;
@@ -886,73 +894,159 @@ export default function AgentDashboard() {
         )}
       </div>
 
+      {/* Tab 切换 */}
+      <div style={{
+        display: 'flex',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        flexShrink: 0,
+      }}>
+        {(['active', 'history'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => { setActiveTab(tab); if (tab === 'history') setHistoryPage(1); }}
+            style={{
+              flex: 1,
+              height: 40,
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === tab ? '2px solid #07c160' : '2px solid transparent',
+              color: activeTab === tab ? '#07c160' : 'rgba(255,255,255,0.4)',
+              fontSize: 14,
+              fontWeight: activeTab === tab ? 700 : 400,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            {tab === 'active' ? `进行中${sessions.length > 0 ? ` (${sessions.length})` : ''}` : '历史会话'}
+          </button>
+        ))}
+      </div>
+
       {/* 会话列表 */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {/* 等待接入分组 */}
-        {waitingSessions.length > 0 && (
+        {activeTab === 'active' ? (
           <>
-            <div style={{
-              padding: '8px 16px',
-              fontSize: 12,
-              color: '#f59e0b',
-              fontWeight: 600,
-              background: 'rgba(245,158,11,0.05)',
-              borderBottom: '1px solid rgba(245,158,11,0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}>
-              <span style={{ animation: 'blink 1.2s ease-in-out infinite', display: 'inline-block' }}>●</span>
-              等待接入 ({waitingSessions.length})
-            </div>
-            {waitingSessions.map(s => (
-              <SessionListItem
-                key={s.id}
-                session={s}
-                onClick={() => setActiveSession(s)}
-              />
-            ))}
-          </>
-        )}
+            {/* 等待接入分组 */}
+            {waitingSessions.length > 0 && (
+              <>
+                <div style={{
+                  padding: '8px 16px',
+                  fontSize: 12,
+                  color: '#f59e0b',
+                  fontWeight: 600,
+                  background: 'rgba(245,158,11,0.05)',
+                  borderBottom: '1px solid rgba(245,158,11,0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}>
+                  <span style={{ animation: 'blink 1.2s ease-in-out infinite', display: 'inline-block' }}>●</span>
+                  等待接入 ({waitingSessions.length})
+                </div>
+                {waitingSessions.map(s => (
+                  <SessionListItem key={s.id} session={s} onClick={() => setActiveSession(s)} />
+                ))}
+              </>
+            )}
 
-        {/* 进行中分组 */}
-        {activeSessions.length > 0 && (
+            {/* 进行中分组 */}
+            {activeSessions.length > 0 && (
+              <>
+                <div style={{
+                  padding: '8px 16px',
+                  fontSize: 12,
+                  color: '#07c160',
+                  fontWeight: 600,
+                  background: 'rgba(7,193,96,0.04)',
+                  borderBottom: '1px solid rgba(7,193,96,0.08)',
+                }}>
+                  ● 进行中 ({activeSessions.length})
+                </div>
+                {activeSessions.map(s => (
+                  <SessionListItem key={s.id} session={s} onClick={() => setActiveSession(s)} />
+                ))}
+              </>
+            )}
+
+            {/* 空状态 */}
+            {sessions.length === 0 && (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '80px 20px',
+                gap: 12,
+                color: 'rgba(255,255,255,0.25)',
+              }}>
+                <div style={{ fontSize: 56 }}>💬</div>
+                <div style={{ fontSize: 16, fontWeight: 600 }}>暂无会话</div>
+                <div style={{ fontSize: 13 }}>等待玩家发起客服请求</div>
+              </div>
+            )}
+          </>
+        ) : (
+          /* 历史会话列表 */
           <>
-            <div style={{
-              padding: '8px 16px',
-              fontSize: 12,
-              color: '#07c160',
-              fontWeight: 600,
-              background: 'rgba(7,193,96,0.04)',
-              borderBottom: '1px solid rgba(7,193,96,0.08)',
-            }}>
-              ● 进行中 ({activeSessions.length})
-            </div>
-            {activeSessions.map(s => (
-              <SessionListItem
-                key={s.id}
-                session={s}
-                onClick={() => setActiveSession(s)}
-              />
-            ))}
+            {historyLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '40px', color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
+                加载中...
+              </div>
+            ) : !historySessions || historySessions.length === 0 ? (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '80px 20px',
+                gap: 12,
+                color: 'rgba(255,255,255,0.25)',
+              }}>
+                <div style={{ fontSize: 56 }}>📂</div>
+                <div style={{ fontSize: 16, fontWeight: 600 }}>暂无历史会话</div>
+              </div>
+            ) : (
+              <>
+                {(historySessions as Session[]).map(s => (
+                  <SessionListItem key={s.id} session={s} onClick={() => setActiveSession(s)} />
+                ))}
+                {/* 分页 */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 12, padding: '12px 16px' }}>
+                  <button
+                    onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                    disabled={historyPage === 1}
+                    style={{
+                      padding: '6px 16px',
+                      borderRadius: 8,
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      background: 'transparent',
+                      color: historyPage === 1 ? 'rgba(255,255,255,0.2)' : '#fff',
+                      cursor: historyPage === 1 ? 'not-allowed' : 'pointer',
+                      fontSize: 13,
+                    }}
+                  >
+                    上一页
+                  </button>
+                  <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, lineHeight: '32px' }}>第 {historyPage} 页</span>
+                  <button
+                    onClick={() => setHistoryPage(p => p + 1)}
+                    disabled={(historySessions?.length ?? 0) < 20}
+                    style={{
+                      padding: '6px 16px',
+                      borderRadius: 8,
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      background: 'transparent',
+                      color: (historySessions?.length ?? 0) < 20 ? 'rgba(255,255,255,0.2)' : '#fff',
+                      cursor: (historySessions?.length ?? 0) < 20 ? 'not-allowed' : 'pointer',
+                      fontSize: 13,
+                    }}
+                  >
+                    下一页
+                  </button>
+                </div>
+              </>
+            )}
           </>
-        )}
-
-        {/* 空状态 */}
-        {sessions.length === 0 && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '80px 20px',
-            gap: 12,
-            color: 'rgba(255,255,255,0.25)',
-          }}>
-            <div style={{ fontSize: 56 }}>💬</div>
-            <div style={{ fontSize: 16, fontWeight: 600 }}>暂无会话</div>
-            <div style={{ fontSize: 13 }}>等待玩家发起客服请求</div>
-          </div>
         )}
       </div>
 

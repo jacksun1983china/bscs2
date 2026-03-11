@@ -676,17 +676,20 @@ export async function getActiveSessionByPlayer(playerId: number) {
   return rows[0] ?? null;
 }
 
-export async function getAllCsSessions(status?: string) {
+export async function getAllCsSessions(status?: string, page: number = 1, limit: number = 50) {
   const db = await getDb();
   if (!db) return [];
+  const offset = (page - 1) * limit;
   if (status) {
     return db
       .select()
       .from(csSessions)
       .where(eq(csSessions.status, status as any))
-      .orderBy(desc(csSessions.updatedAt));
+      .orderBy(desc(csSessions.updatedAt))
+      .limit(limit)
+      .offset(offset);
   }
-  return db.select().from(csSessions).orderBy(desc(csSessions.updatedAt));
+  return db.select().from(csSessions).orderBy(desc(csSessions.updatedAt)).limit(limit).offset(offset);
 }
 
 export async function getAgentSessions(agentId: number) {
@@ -697,6 +700,22 @@ export async function getAgentSessions(agentId: number) {
     .from(csSessions)
     .where(and(eq(csSessions.agentId, agentId), inArray(csSessions.status, ["active", "waiting"])))
     .orderBy(desc(csSessions.updatedAt));
+}
+
+export async function getSessionsByAgentId(agentId: number, status?: string, page: number = 1, limit: number = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  const offset = (page - 1) * limit;
+  const conditions = status
+    ? and(eq(csSessions.agentId, agentId), eq(csSessions.status, status as any))
+    : eq(csSessions.agentId, agentId);
+  return db
+    .select()
+    .from(csSessions)
+    .where(conditions)
+    .orderBy(desc(csSessions.updatedAt))
+    .limit(limit)
+    .offset(offset);
 }
 
 export async function assignSessionToAgent(sessionId: number, agentId: number) {
