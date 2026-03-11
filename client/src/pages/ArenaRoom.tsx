@@ -455,7 +455,16 @@ export default function ArenaRoom() {
 
   const { data: roomDetail, refetch: refetchRoom } = trpc.arena.getRoomDetail.useQuery(
     { roomId },
-    { enabled: roomId > 0, refetchOnWindowFocus: false }
+    {
+      enabled: roomId > 0,
+      refetchOnWindowFocus: false,
+      // 等待状态下每 3 秒轮询一次，兜底 SSE 失效的情况
+      // 注意：此处不能引用 gameStatus（后声明），改用 roomDetail 的状态判断
+      refetchInterval: (query) => {
+        const data = query.state.data as { room?: { status?: string } } | undefined;
+        return data?.room?.status === 'waiting' || !data ? 3000 : false;
+      },
+    }
   );
 
   // 获取所有笱子的道具列表，用于卷轴动画

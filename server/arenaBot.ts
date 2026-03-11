@@ -344,6 +344,7 @@ async function checkAndFillRooms() {
           })
           .where(eq(arenaRooms.id, freshRoom.id));
 
+        console.log(`[ArenaBot] 机器人 ${bot.nickname}(id=${bot.id}) 已加入房间 #${freshRoom.roomNo}，当前人数 ${currentCount}/${freshRoom.maxPlayers}`);
         // 广播玩家加入
         broadcastPlayerJoined(
           freshRoom.id,
@@ -353,6 +354,7 @@ async function checkAndFillRooms() {
 
         if (isFull) {
           gameStarted = true;
+          console.log(`[ArenaBot] 房间 #${freshRoom.roomNo} 已满员，广播游戏开始`);
           broadcastGameStarted(freshRoom.id);
         }
 
