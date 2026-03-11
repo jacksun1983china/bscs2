@@ -503,6 +503,15 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    // 验证管理员cookie是否有效
+    verify: publicProcedure
+      .query(async ({ ctx }) => {
+        if (!ctx.user || ctx.user.role !== 'admin') {
+          return { valid: false };
+        }
+        return { valid: true, account: ctx.user.name || 'admin' };
+      }),
+
     // 玩家管理
     playerList: protectedProcedure
       .input(z.object({ page: z.number().min(1).default(1), limit: z.number().min(1).max(100).default(15), keyword: z.string().optional(), status: z.number().optional(), vipLevel: z.number().optional() }))

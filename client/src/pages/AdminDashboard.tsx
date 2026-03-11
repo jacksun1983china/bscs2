@@ -514,28 +514,47 @@ export default function AdminDashboard() {
   const [lang, setLang] = useState<'zh' | 'en'>('zh');
   const t = I18N[lang];
 
-  // 管理员登录状态（本地 session）
+  // 管理员登录状态
   const [adminAccount, setAdminAccount] = useState<string | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
 
-  // 检查本地 session
+  // 同时验证后端cookie是否有效
+  const verifyQuery = trpc.admin.verify.useQuery(undefined, {
+    enabled: !sessionChecked,
+    retry: false,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5 * 60 * 1000, // 每5分钟自动验证一次
+  });
+
   useEffect(() => {
     document.body.classList.add('admin-mode');
-    try {
-      const raw = localStorage.getItem('bdcs2_admin_session');
-      if (raw) {
-        const sess = JSON.parse(raw);
-        // session 有效期 8 小时
-        if (sess.loginAt && Date.now() - sess.loginAt < 8 * 3600 * 1000) {
-          setAdminAccount(sess.account);
-        } else {
-          localStorage.removeItem('bdcs2_admin_session');
-        }
-      }
-    } catch { /* ignore */ }
-    setSessionChecked(true);
     return () => { document.body.classList.remove('admin-mode'); };
   }, []);
+
+  // 当verify查询完成时，根据后端结果决定登录状态
+  useEffect(() => {
+    if (verifyQuery.isLoading) return;
+    if (verifyQuery.data?.valid) {
+      // 后端cookie有效，更新localStorage和登录状态
+      const account = verifyQuery.data.account || 'admin';
+      localStorage.setItem('bdcs2_admin_session', JSON.stringify({ account, loginAt: Date.now() }));
+      setAdminAccount(account);
+    } else {
+      // 后端cookie失效，清除本地session并要求重新登录
+      localStorage.removeItem('bdcs2_admin_session');
+      setAdminAccount(null);
+    }
+    setSessionChecked(true);
+  }, [verifyQuery.isLoading, verifyQuery.data]);
+
+  // 当verify查询失败时，清除session
+  useEffect(() => {
+    if (verifyQuery.error) {
+      localStorage.removeItem('bdcs2_admin_session');
+      setAdminAccount(null);
+      setSessionChecked(true);
+    }
+  }, [verifyQuery.error]);
 
   const logoutMutation = trpc.admin.logout.useMutation({
     onSuccess: () => {
