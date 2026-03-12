@@ -83,6 +83,7 @@ export default function UncrossableRush() {
   const [currentLane, setCurrentLane] = useState(0); // 当前在第几条车道（0=起点）
   const [laneResults, setLaneResults] = useState<boolean[]>([]); // true=存活
   const [currentMultiplier, setCurrentMultiplier] = useState(0);
+  const [sessionId, setSessionId] = useState<number | null>(null); // 服务端会话ID
   const [balance, setBalance] = useState<number | null>(null);
   const [lastResult, setLastResult] = useState<{ win: boolean; amount: number; multiplier: number } | null>(null);
 
@@ -150,6 +151,7 @@ export default function UncrossableRush() {
       setBalance(result.balanceAfter);
       setCurrentLane(0);
       setCurrentMultiplier(0);
+      setSessionId(result.sessionId); // 存储服务端会话ID
       setPhase('playing');
       setLastResult(null);
     } catch (e: any) {
@@ -172,13 +174,14 @@ export default function UncrossableRush() {
       setPhase('dead');
       playLose(); // 死亡音效
       try {
-        const result = await endGameMut.mutateAsync({
-          betAmount,
-          lanesReached: newLane,
-          isDead: true,
-          finalMultiplier: 0,
-        });
-        setBalance(result.balanceAfter);
+        if (sessionId) {
+          const result = await endGameMut.mutateAsync({
+            sessionId,
+            lanesReached: newLane,
+            isDead: true,
+          });
+          setBalance(result.balanceAfter);
+        }
         setLastResult({ win: false, amount: -betAmount, multiplier: 0 });
       } catch {}
     } else {
@@ -204,14 +207,14 @@ export default function UncrossableRush() {
     }
     setPhase('cashed');
     try {
+      if (!sessionId) { showAlert('游戏会话丢失，请重新开始'); return; }
       const result = await endGameMut.mutateAsync({
-        betAmount,
+        sessionId,
         lanesReached,
         isDead: false,
-        finalMultiplier,
       });
       setBalance(result.balanceAfter);
-      setLastResult({ win: true, amount: result.winAmount, multiplier: finalMultiplier });
+      setLastResult({ win: true, amount: result.winAmount, multiplier: result.finalMultiplier });
       playWin(); // 收手中奖音效
       await refetchPlayer();
     } catch (e: any) {

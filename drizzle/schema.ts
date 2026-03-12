@@ -1,6 +1,7 @@
 import {
   bigint,
   decimal,
+  index,
   int,
   mysqlEnum,
   mysqlTable,
@@ -125,7 +126,12 @@ export const playerItems = mysqlTable("playerItems", {
   /** 回收金币数 */
   recycleGold: decimal("recycleGold", { precision: 15, scale: 2 }).notNull().default("0.00"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  // 按玩家ID查询背包
+  playerIdIdx: index("playerItems_playerId_idx").on(t.playerId),
+  // 按状态查询待处理道具
+  statusIdx: index("playerItems_status_idx").on(t.status),
+}));
 
 export type PlayerItem = typeof playerItems.$inferSelect;
 
@@ -157,11 +163,11 @@ export const rechargeOrders = mysqlTable("rechargeOrders", {
   /** 订单号 */
   orderNo: varchar("orderNo", { length: 64 }).notNull().unique(),
   playerId: int("playerId").notNull(),
-  /** 充值金额 */
+  /** 充値金额 */
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   /** 获得金币 */
   gold: decimal("gold", { precision: 15, scale: 2 }).notNull(),
-  /** 赠送钻石 */
+  /** 赠送钒石 */
   bonusDiamond: decimal("bonusDiamond", { precision: 15, scale: 2 }).notNull().default("0.00"),
   /** 支付方式：alipay/wechat/manual */
   payMethod: varchar("payMethod", { length: 50 }).notNull().default("manual"),
@@ -171,7 +177,14 @@ export const rechargeOrders = mysqlTable("rechargeOrders", {
   remark: varchar("remark", { length: 255 }).notNull().default(""),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ({
+  // 按玩家ID查询充値记录
+  playerIdIdx: index("rechargeOrders_playerId_idx").on(t.playerId),
+  // 按状态查询待审批订单
+  statusIdx: index("rechargeOrders_status_idx").on(t.status),
+  // 按创建时间排序
+  createdAtIdx: index("rechargeOrders_createdAt_idx").on(t.createdAt),
+}));
 
 export type RechargeOrder = typeof rechargeOrders.$inferSelect;
 
@@ -226,7 +239,14 @@ export const goldLogs = mysqlTable("goldLogs", {
   /** 关联ID（订单ID等） */
   refId: int("refId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  // 按玩家ID查询流水记录（高频）
+  playerIdIdx: index("goldLogs_playerId_idx").on(t.playerId),
+  // 按类型查询（管理后台统计）
+  typeIdx: index("goldLogs_type_idx").on(t.type),
+  // 按创建时间排序查询
+  createdAtIdx: index("goldLogs_createdAt_idx").on(t.createdAt),
+}));
 
 export type GoldLog = typeof goldLogs.$inferSelect;
 
@@ -916,3 +936,20 @@ export const agentPushSubscriptions = mysqlTable("agentPushSubscriptions", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull().onUpdateNow(),
 });
 export type AgentPushSubscription = typeof agentPushSubscriptions.$inferSelect;
+
+// ── 过马路游戏待结算会话表（服务端存储 laneResults，防止前端伪造倍率）────────────────
+export const rushPendingSessions = mysqlTable("rushPendingSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 玩家ID */
+  playerId: int("playerId").notNull(),
+  /** 投注金额 */
+  betAmount: decimal("betAmount", { precision: 18, scale: 2 }).notNull(),
+  /** 服务端预生成的每条车道存活结果（JSON数组，true=安全, false=死亡） */
+  laneResults: varchar("laneResults", { length: 255 }).notNull(),
+  /** 对应的倍率数组（JSON数组） */
+  laneMultipliers: varchar("laneMultipliers", { length: 255 }).notNull(),
+  /** 会话是否已结算（防止重复结算） */
+  settled: tinyint("settled").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type RushPendingSession = typeof rushPendingSessions.$inferSelect;

@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
+import { toast } from 'sonner';
 
 const STATUS_MAP: Record<number, { label: string; labelEn: string; color: string }> = {
   0: { label: '待支付', labelEn: 'Pending', color: '#f59e0b' },
@@ -28,11 +29,31 @@ export function AdminFinance({ lang }: AdminFinanceProps) {
   const [keyword, setKeyword] = useState('');
   const [searchKw, setSearchKw] = useState('');
 
+  const utils = trpc.useUtils();
   const { data: stats, isLoading: statsLoading } = trpc.admin.financeStats.useQuery();
   const { data: ordersData, isLoading: ordersLoading } = trpc.admin.financeOrders.useQuery(
     { page, limit: 15, status: statusFilter, keyword: searchKw },
     { enabled: tab === 'orders' }
   );
+  const [rejectId, setRejectId] = useState<number | null>(null);
+  const [rejectRemark, setRejectRemark] = useState('');
+  const approveMut = trpc.admin.approveRechargeOrder.useMutation({
+    onSuccess: (data) => {
+      toast.success(`审批成功！订单 ${data.orderNo} 已到账 ${data.goldAdded} 金币`);
+      utils.admin.financeOrders.invalidate();
+      utils.admin.financeStats.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const rejectMut = trpc.admin.rejectRechargeOrder.useMutation({
+    onSuccess: (data) => {
+      toast.success(`订单 ${data.orderNo} 已拒绝`);
+      setRejectId(null);
+      setRejectRemark('');
+      utils.admin.financeOrders.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const totalPages = ordersData ? Math.ceil(ordersData.total / 15) : 1;
 
@@ -252,7 +273,7 @@ export function AdminFinance({ lang }: AdminFinanceProps) {
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
                   <thead>
                     <tr style={{ background: 'rgba(120,60,220,0.1)', borderBottom: '1px solid rgba(120,60,220,0.2)' }}>
-                      {[t.orderNo, t.player, t.amount, t.gold, t.payMethod, t.status, t.time].map(h => (
+                      {[t.orderNo, t.player, t.amount, t.gold, t.payMethod, t.status, t.time, lang === 'zh' ? '操作' : 'Action'].map(h => (
                         <th key={h} style={{ padding: '10px 14px', textAlign: 'left', color: 'rgba(180,150,255,0.8)', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
                       ))}
                     </tr>
@@ -282,6 +303,21 @@ export function AdminFinance({ lang }: AdminFinanceProps) {
                         </td>
                         <td style={{ padding: '10px 14px', color: 'rgba(180,150,255,0.6)', fontSize: 11, whiteSpace: 'nowrap' }}>
                           {new Date(order.createdAt).toLocaleString()}
+                        </td>
+                        <td style={{ padding: '10px 14px' }}>
+                          {order.status === 0 && (
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button
+                                onClick={() => approveMut.mutate({ id: order.id })}
+                                disabled={approveMut.isPending}
+                                style={{ padding: '4px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', background: '#10b981', color: '#fff', border: 'none' }}
+                              >{lang === 'zh' ? '审批' : 'Approve'}</button>
+                              <button
+                                onClick={() => { setRejectId(order.id); setRejectRemark(''); }}
+                                style={{ padding: '4px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', background: '#ef4444', color: '#fff', border: 'none' }}
+                              >{lang === 'zh' ? '拒绝' : 'Reject'}</button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -367,6 +403,46 @@ export function AdminFinance({ lang }: AdminFinanceProps) {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* 拒绝原因弹窗 */}
+      {rejectId !== null && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #1e0a41 0%, #0f0528 100%)',
+            border: '1px solid rgba(120,60,220,0.5)', borderRadius: 16,
+            padding: 28, width: 360, boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+          }}>
+            <h3 style={{ color: '#fff', margin: '0 0 16px', fontSize: 16 }}>
+              {lang === 'zh' ? '填写拒绝原因' : 'Rejection Reason'}
+            </h3>
+            <textarea
+              value={rejectRemark}
+              onChange={e => setRejectRemark(e.target.value)}
+              placeholder={lang === 'zh' ? '请输入拒绝原因...' : 'Enter rejection reason...'}
+              rows={4}
+              style={{
+                width: '100%', background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(120,60,220,0.4)', borderRadius: 8,
+                padding: 12, color: '#fff', fontSize: 13, resize: 'vertical', boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => { setRejectId(null); setRejectRemark(''); }}
+                style={{ padding: '8px 20px', borderRadius: 8, fontSize: 13, cursor: 'pointer', background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(120,60,220,0.3)' }}
+              >{lang === 'zh' ? '取消' : 'Cancel'}</button>
+              <button
+                onClick={() => rejectMut.mutate({ id: rejectId, remark: rejectRemark })}
+                disabled={!rejectRemark.trim() || rejectMut.isPending}
+                style={{ padding: '8px 20px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', background: '#ef4444', color: '#fff', border: 'none', opacity: !rejectRemark.trim() ? 0.5 : 1 }}
+              >{lang === 'zh' ? '确认拒绝' : 'Confirm Reject'}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -817,3 +817,20 @@
 
 ## 坐席系统PWA修复
 - [x] 修复坐席系统在安卓PWA/桌面图标打开时显示在手机框内的问题（应全屏显示）
+
+## 代码审查修复任务（2026-03-12）
+### P0 安全修复- [x] Rush游戏：服务端存储laneResults，endGame时服务端重算finalMultiplier，不信任前端传値值- [x] Vortex游戏：cashOut时服务端根据trackState重算totalMultiplier，不信任前端传値值
+- [x] 短信验证码：添加60秒发送冷却限制（防刷），生产环境接入真实SMS（开发环境保留模拟）
+### P1 功能修复
+- [x] 管理员密码：未配置环境变量时启动报错提示，添加登录失败次数限制（5次锁定）
+- [x] 充値流程：前端创建充値订单（player.createRechargeOrder）
+- [x] 充値流程：管理员审批接口（admin.approveRecharge / admin.rejectRecharge + 金币日志）
+- [x] 充値流程：AdminFinance页面添加审批按鈕（通过/拒绝）
+- [ ] 余额记录页：添加description备注字段展示 + 点击详情弹窗
+### P2 性能优化
+- [x] 前端路由懒加载（React.lazy + Suspense）
+- [x] 数据库索引：goldLogs/arenaRoomPlayers/arenaRoundResults等表添加索引
+- [x] 速率限制中间件（express-rate-limit）
+### P3 代码质量
+- [x] 统一adminProcedure中间件，替换散落的role检查
+- [ ] routers.ts拆分为多个子路由文件

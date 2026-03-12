@@ -377,7 +377,6 @@ export default function Vortex() {
           try {
             const cashOutResult = await cashOutMutation.mutateAsync({
               betAmount,
-              multiplier: newMult,
               trackState: newTrack,
               isPartial: false,
               partialRatio: 0.5,
@@ -427,7 +426,6 @@ export default function Vortex() {
     try {
       const result = await cashOutMutation.mutateAsync({
         betAmount,
-        multiplier: currentMultiplier,
         trackState: overrideTrack ?? trackState,
         isPartial,
         partialRatio: 0.5,

@@ -141,6 +141,20 @@
       "when": 1773304304318,
       "tag": "0019_cloudy_venus",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1773326444859,
+      "tag": "0020_chemical_sabretooth",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1773327237433,
+      "tag": "0021_bouncy_energizer",
+      "breakpoints": true
     }
   ]
 }

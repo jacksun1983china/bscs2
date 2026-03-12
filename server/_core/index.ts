@@ -14,6 +14,7 @@ import { autoSpinAllRounds } from "../arenaRouter";
 import { getDb } from "../db";
 import { arenaRooms } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { generalApiLimit, gameActionLimit, smsLimit, adminLoginLimit } from "./rateLimit";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -40,6 +41,22 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  // 速率限制中间件
+  // 游戏操作接口：每 IP 每秒 10 次（防止脚本刷分）
+  app.use("/api/trpc/game.", gameActionLimit);
+  app.use("/api/trpc/rush.", gameActionLimit);
+  app.use("/api/trpc/vortex.", gameActionLimit);
+  app.use("/api/trpc/rollx.", gameActionLimit);
+  app.use("/api/trpc/dingdong.", gameActionLimit);
+  app.use("/api/trpc/fruitBomb.", gameActionLimit);
+  // 短信接口：每 IP 每 5 分钟 3 次
+  app.use("/api/trpc/player.sendSmsCode", smsLimit);
+  // 管理员登录：每 IP 每 15 分钟 10 次
+  app.use("/api/trpc/admin.login", adminLoginLimit);
+  // 通用 API 限制：每 IP 每分钟 120 次
+  app.use("/api/trpc", generalApiLimit);
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API

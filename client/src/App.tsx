@@ -1,68 +1,103 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
+import { lazy, Suspense } from "react";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+
+// ── 核心页面（首屏必须，同步加载）──────────────────────────────
+import NotFound from "@/pages/NotFound";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import AdminDashboard from "./pages/AdminDashboard";
-import RollRoom from "./pages/RollRoom";
-import RollRoomDetail from "./pages/RollRoomDetail";
-import Profile from "./pages/Profile";
-import Share from "./pages/Share";
-import Bag from "./pages/Bag";
-import Backpack from "./pages/Backpack";
-import Recharge from "./pages/Recharge";
-import Deposit from "./pages/Deposit";
-import RollX from "./pages/RollX";
-import CustomerService from "./pages/CustomerService";
-import AgentLogin from "./pages/AgentLogin";
-import AgentDashboard from "./pages/AgentDashboard";
-import Shop from "./pages/Shop";
-import Arena from "./pages/Arena";
-import ArenaRoom from "./pages/ArenaRoom";
-import ArenaHistory from "./pages/ArenaHistory";
-import UncrossableRush from "./pages/UncrossableRush";
-import DingDong from "./pages/DingDong";
-import Vortex from "./pages/Vortex";
-import MyRecords from "./pages/MyRecords";
-import VipPage from "./pages/VipPage";
-import Mailbox from "./pages/Mailbox";
+
+// ── 其余页面懒加载（按需加载，减少首屏 JS 体积）────────────────
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const RollRoom = lazy(() => import("./pages/RollRoom"));
+const RollRoomDetail = lazy(() => import("./pages/RollRoomDetail"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Share = lazy(() => import("./pages/Share"));
+const Bag = lazy(() => import("./pages/Bag"));
+const Backpack = lazy(() => import("./pages/Backpack"));
+const Recharge = lazy(() => import("./pages/Recharge"));
+const Deposit = lazy(() => import("./pages/Deposit"));
+const RollX = lazy(() => import("./pages/RollX"));
+const CustomerService = lazy(() => import("./pages/CustomerService"));
+const AgentLogin = lazy(() => import("./pages/AgentLogin"));
+const AgentDashboard = lazy(() => import("./pages/AgentDashboard"));
+const Shop = lazy(() => import("./pages/Shop"));
+const Arena = lazy(() => import("./pages/Arena"));
+const ArenaRoom = lazy(() => import("./pages/ArenaRoom"));
+const ArenaHistory = lazy(() => import("./pages/ArenaHistory"));
+const UncrossableRush = lazy(() => import("./pages/UncrossableRush"));
+const DingDong = lazy(() => import("./pages/DingDong"));
+const Vortex = lazy(() => import("./pages/Vortex"));
+const MyRecords = lazy(() => import("./pages/MyRecords"));
+const VipPage = lazy(() => import("./pages/VipPage"));
+const Mailbox = lazy(() => import("./pages/Mailbox"));
+
+/** 全局页面切换 Loading 占位 */
+function PageLoader() {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#0d0621",
+      }}
+    >
+      <div
+        style={{
+          width: 40,
+          height: 40,
+          border: "3px solid rgba(120,60,220,0.3)",
+          borderTop: "3px solid #a855f7",
+          borderRadius: "50%",
+          animation: "spin 0.8s linear infinite",
+        }}
+      />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 function Router() {
   return (
-    <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/login"} component={Login} />
-      <Route path={"/admin"} component={AdminDashboard} />
-      {/* 游戏页面 */}
-      <Route path={"/arena"} component={Arena} />
-      <Route path={"/arena/:id"} component={ArenaRoom} />
-      <Route path={"/arena-history"} component={ArenaHistory} />
-      <Route path={"/rollx"} component={RollX} />
-      <Route path={"/rush"} component={UncrossableRush} />
-      <Route path={"/dingdong"} component={DingDong} />
-      <Route path={"/vortex"} component={Vortex} />
-      <Route path={"/roll"} component={RollRoom} />
-      <Route path={"/roll/:id"} component={RollRoomDetail} />
-      {/* 底部导航页面 */}
-      <Route path={"/profile"} component={Profile} />
-      <Route path={"/share"} component={Share} />
-      <Route path={"/bag"} component={Bag} />
-      <Route path={"/backpack"} component={Backpack} />
-      <Route path={"/recharge"} component={Deposit} />
-      <Route path={"/shop"} component={Shop} />
-      {/* 个人设置页面 */}
-      <Route path={"/my-records"} component={MyRecords} />
-      <Route path={"/vip"} component={VipPage} />
-      <Route path={"/mailbox"} component={Mailbox} />
-      {/* 客服系统 */}
-      <Route path={"/kefu"} component={CustomerService} />
-      <Route path={"/agent/login"} component={AgentLogin} />
-      <Route path={"/agent"} component={AgentDashboard} />
-      <Route path={"/404"} component={NotFound} />
-      <Route component={NotFound} />
-    </Switch>
+    <Suspense fallback={<PageLoader />}>
+      <Switch>
+        <Route path={"/"} component={Home} />
+        <Route path={"/login"} component={Login} />
+        <Route path={"/admin"} component={AdminDashboard} />
+        {/* 游戏页面 */}
+        <Route path={"/arena"} component={Arena} />
+        <Route path={"/arena/:id"} component={ArenaRoom} />
+        <Route path={"/arena-history"} component={ArenaHistory} />
+        <Route path={"/rollx"} component={RollX} />
+        <Route path={"/rush"} component={UncrossableRush} />
+        <Route path={"/dingdong"} component={DingDong} />
+        <Route path={"/vortex"} component={Vortex} />
+        <Route path={"/roll"} component={RollRoom} />
+        <Route path={"/roll/:id"} component={RollRoomDetail} />
+        {/* 底部导航页面 */}
+        <Route path={"/profile"} component={Profile} />
+        <Route path={"/share"} component={Share} />
+        <Route path={"/bag"} component={Bag} />
+        <Route path={"/backpack"} component={Backpack} />
+        <Route path={"/recharge"} component={Deposit} />
+        <Route path={"/shop"} component={Shop} />
+        {/* 个人设置页面 */}
+        <Route path={"/my-records"} component={MyRecords} />
+        <Route path={"/vip"} component={VipPage} />
+        <Route path={"/mailbox"} component={Mailbox} />
+        {/* 客服系统 */}
+        <Route path={"/kefu"} component={CustomerService} />
+        <Route path={"/agent/login"} component={AgentLogin} />
+        <Route path={"/agent"} component={AgentDashboard} />
+        <Route path={"/404"} component={NotFound} />
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 

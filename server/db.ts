@@ -113,10 +113,25 @@ export async function getUserByOpenId(openId: string) {
 export async function createSmsCode(phone: string, purpose: string = "login"): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("数据库不可用");
-  const code = "123456";
+  // 防刷：60 秒内同一手机号同一用途不得重复发送
+  const recentCodes = await db.select().from(smsCodes)
+    .where(and(eq(smsCodes.phone, phone), eq(smsCodes.purpose, purpose), eq(smsCodes.used, 0)))
+    .orderBy(desc(smsCodes.createdAt)).limit(1);
+  if (recentCodes.length > 0) {
+    const lastSent = recentCodes[0].createdAt;
+    const secondsElapsed = (Date.now() - new Date(lastSent).getTime()) / 1000;
+    if (secondsElapsed < 60) {
+      throw new Error(`发送太频繁，请 ${Math.ceil(60 - secondsElapsed)} 秒后重试`);
+    }
+  }
+  // 生成真实随机 6 位数字验证码
+  const code = String(Math.floor(100000 + Math.random() * 900000));
   const expireAt = new Date(Date.now() + 10 * 60 * 1000);
+  // 将同一手机号的旧验证码标记已使用
   await db.update(smsCodes).set({ used: 1 }).where(and(eq(smsCodes.phone, phone), eq(smsCodes.purpose, purpose), eq(smsCodes.used, 0)));
   await db.insert(smsCodes).values({ phone, code, purpose, expireAt });
+  // 实际项目中应对接真实短信服务商 API，这里仅做日志输出供测试
+  console.log(`[SMS] 手机号: ${phone} 验证码: ${code} (请对接真实短信服务商)`);
   return code;
 }
 
