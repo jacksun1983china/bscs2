@@ -460,8 +460,8 @@ export default function ArenaRoom() {
   const [skipIntro, setSkipIntro] = useState(false);
   const introShownRef = useRef(false); // 防止重复触发
   const showIntroRef = useRef(false); // 实时跟踪 showIntro 状态，供事件处理函数读取
-  // 开场动画期间到达的 round_result 缓存，动画结束后再触发
-  const pendingSpinRef = useRef<{ itemMap: Record<number, { goodsId: number; goodsName: string; goodsImage: string; goodsLevel: number; goodsValue: string }>; roundNo: number } | null>(null);
+  // 开场动画期间到达的 round_result 缓存队列，动画结束后按顺序触发
+  const pendingSpinRef = useRef<Array<{ itemMap: Record<number, { goodsId: number; goodsName: string; goodsImage: string; goodsLevel: number; goodsValue: string }>; roundNo: number }>>([]);
 
   // ── 跳过游戏动画状态 ──
   const [skipGameAnim, setSkipGameAnim] = useState(false);
@@ -697,8 +697,8 @@ export default function ArenaRoom() {
         }
         setCurrentRoundItems(itemMap);
         if (showIntroRef.current) {
-          // 开场动画正在播放，缓存结果，动画结束后再触发 slot
-          pendingSpinRef.current = { itemMap, roundNo };
+          // 开场动画正在播放，将结果加入队列，动画结束后按顺序触发 slot
+          pendingSpinRef.current.push({ itemMap, roundNo });
           // 不设置 spinning=true，避免在开场动画期间在后台播放动画
         } else {
           // 开场动画已结束，直接触发 slot 动画
@@ -1060,7 +1060,18 @@ export default function ArenaRoom() {
 
           setTimeout(() => {
             setShowRoundReveal(false);
-            if (currentRound < totalRounds) {
+            // 检查队列中是否有待处理的轮次（服务器恢复时快速广播的多轮结果）
+            if (pendingSpinRef.current.length > 0) {
+              const nextPending = pendingSpinRef.current[0];
+              pendingSpinRef.current = pendingSpinRef.current.slice(1);
+              setTimeout(() => {
+                setCurrentRoundItems(nextPending.itemMap);
+                setCurrentRound(nextPending.roundNo);
+                setSpinning(true);
+                setSpinDoneCount(0);
+                setSkipGameAnim(false);
+              }, 100);
+            } else if (currentRound < totalRounds) {
               setCurrentRound((r) => r + 1);
               setCurrentRoundItems({});
             }
@@ -1079,10 +1090,11 @@ export default function ArenaRoom() {
     if (isReplaying) {
       setReplayWaitingIntro(false);
     }
-    // 实时模式：如果开场动画期间有缓存的 round_result，现在触发 slot 动画
-    if (pendingSpinRef.current) {
-      const pending = pendingSpinRef.current;
-      pendingSpinRef.current = null;
+    // 实时模式：如果开场动画期间有缓存的 round_result，现在触发第一轮 slot 动画
+    if (pendingSpinRef.current.length > 0) {
+      // 取队列中第一个（最早到达的轮次）
+      const pending = pendingSpinRef.current[0];
+      pendingSpinRef.current = pendingSpinRef.current.slice(1);
       // 延迟 100ms 确保 React 状态已更新
       setTimeout(() => {
         setCurrentRoundItems(pending.itemMap);

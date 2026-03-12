@@ -21,6 +21,7 @@ import { AdminArena } from './admin/AdminArena';
 import { AdminAgents } from './admin/AdminAgents';
 import { AdminVipConfigs } from './admin/AdminVipConfigs';
 import { AdminVortexConfig } from './admin/AdminVortexConfig';
+import { AdminGoldLogs } from './admin/AdminGoldLogs';
 
 // ── 国际化文本 ──────────────────────────────────────────────────
 const I18N = {
@@ -42,6 +43,7 @@ const I18N = {
     categories: '分类管理',
     boxes: '宝箱管理',
     finance: '财务统计',
+    goldLogs: '金币流水',
     agents: '坐席管理',
     vortexAdmin: 'Vortex配置',
     settings: '系统设置',
@@ -157,6 +159,7 @@ const I18N = {
     categories: 'Categories',
     boxes: 'Box Config',
     finance: 'Finance',
+    goldLogs: 'Gold Logs',
     agents: 'Agent Mgmt',
     vortexAdmin: 'Vortex Config',
     settings: 'Settings',
@@ -508,9 +511,9 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
 }
 
 // ── 主仪表盘 ────────────────────────────────────────────────────
-const MENU_KEYS = ['players', 'games', 'rollRooms', 'arena', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'vipManage', 'agents', 'vortexAdmin', 'settings'] as const;
+const MENU_KEYS = ['players', 'games', 'rollRooms', 'arena', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'goldLogs', 'vipManage', 'agents', 'vortexAdmin', 'settings'] as const;
 const MENU_ICONS: Record<string, string> = {
-  players: '👥', games: '🎮', rollRooms: '🎲', arena: '🏠️', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', vipManage: '👑', agents: '🎧', vortexAdmin: '🌀', settings: '⚙️',
+  players: '👥', games: '🎮', rollRooms: '🎲', arena: '🏠️', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', goldLogs: '📊', vipManage: '👑', agents: '🎧', vortexAdmin: '🌀', settings: '⚙️',
 };
 
 export default function AdminDashboard() {
@@ -670,7 +673,7 @@ export default function AdminDashboard() {
                 key={key}
                 onClick={() => {
                   setActiveMenu(key);
-                  if (!['players', 'games', 'rollRooms', 'arena', 'banners', 'rebate', 'categories', 'boxes', 'rechargeConfigs', 'finance', 'settings', 'vortexAdmin', 'vipManage', 'agents', 'shop'].includes(key)) toast.info(t.featureSoon);
+                  if (!['players', 'games', 'rollRooms', 'arena', 'banners', 'rebate', 'categories', 'boxes', 'rechargeConfigs', 'finance', 'goldLogs', 'settings', 'vortexAdmin', 'vipManage', 'agents', 'shop'].includes(key)) toast.info(t.featureSoon);
                 }}
                 title={!sidebarOpen ? label : undefined}
                 style={{
@@ -800,6 +803,7 @@ export default function AdminDashboard() {
           {activeMenu === 'shop' && <AdminShop />}
           {/* 财务统计 */}
           {activeMenu === 'finance' && <AdminFinance lang={lang} />}
+          {activeMenu === 'goldLogs' && <AdminGoldLogs />}
           {/* 系统设置 */}
           {activeMenu === 'settings' && <AdminSettings lang={lang} t={t} />}
           {/* 坐席管理 */}

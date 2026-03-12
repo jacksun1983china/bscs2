@@ -606,7 +606,7 @@ export const arenaRouter = router({
  * 每轮之间延迟 1.5 秒，给客户端动画播放时间。
  * 前端只需监听 round_result 和 game_over 广播即可。
  */
-async function autoSpinAllRounds(roomId: number) {
+export async function autoSpinAllRounds(roomId: number) {
   const db = await getDb();
   if (!db) return;
   const [room] = await db.select().from(arenaRooms).where(eq(arenaRooms.id, roomId));
@@ -628,7 +628,7 @@ async function autoSpinAllRounds(roomId: number) {
       .from(arenaRoundResults)
       .where(and(eq(arenaRoundResults.roomId, roomId), eq(arenaRoundResults.roundNo, roundNo)));
     if (existing.length > 0) {
-      // 已有结果，广播给可能错过的客户端
+      // 已有结果，广播给可能错过的客户端，不等待动画时间
       const results = existing.map((r) => ({
         playerId: r.playerId,
         nickname: roomPlayers.find((p) => p.playerId === r.playerId)?.nickname ?? '',
@@ -640,6 +640,7 @@ async function autoSpinAllRounds(roomId: number) {
         goodsValue: r.goodsValue,
       }));
       broadcastRoundResult(roomId, roundNo, results);
+      continue; // 已完成的轮次跳过等待
     } else {
       // 循环使用宝箱：若 boxIds 不足 rounds 数，则循环取最后一个
       const boxId = boxIds[roundNo - 1] ?? boxIds[boxIds.length - 1];

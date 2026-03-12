@@ -10,6 +10,10 @@ import { serveStatic, setupVite } from "./vite";
 import { initArenaWs } from "../arenaWs";
 import { initArenaSSE } from "../arenaSSE";
 import { startBotLoop } from "../arenaBot";
+import { autoSpinAllRounds } from "../arenaRouter";
+import { getDb } from "../db";
+import { arenaRooms } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -68,6 +72,29 @@ async function startServer() {
 
   // 启动竞技场机器人自动填充服务
   startBotLoop();
+
+  // 服务器启动时恢复所有进行中的竞技场游戏
+  // 防止服务器重启导致 autoSpinAllRounds 任务丢失
+  setTimeout(async () => {
+    try {
+      const db = await getDb();
+      if (!db) return;
+      const playingRooms = await db
+        .select({ id: arenaRooms.id })
+        .from(arenaRooms)
+        .where(eq(arenaRooms.status, 'playing'));
+      if (playingRooms.length > 0) {
+        console.log(`[Arena] Recovering ${playingRooms.length} playing room(s) after server restart...`);
+        for (const room of playingRooms) {
+          autoSpinAllRounds(room.id).catch((err) => {
+            console.error(`[Arena] Failed to recover room ${room.id}:`, err);
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[Arena] Error recovering playing rooms:', err);
+    }
+  }, 2000); // 延迟2秒，等待SSE服务完全就绪
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);

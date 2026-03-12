@@ -1185,12 +1185,77 @@ export const appRouter = router({
           }
           return { success: true };
         } catch (e) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: String(e) });
+           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: String(e) });
         }
       }),
+    /** 管理后台：查询玩家金币流水 */
+    adminGoldLogs: protectedProcedure
+      .input(z.object({
+        playerId: z.number().optional(),
+        type: z.string().optional(),
+        timeRange: z.enum(["all", "today", "yesterday", "week7", "month"]).default("all"),
+        page: z.number().min(1).default(1),
+        limit: z.number().default(20),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const db = await getDb();
+        if (!db) return { list: [], total: 0 };
+        const { goldLogs: goldLogsTable } = await import("../drizzle/schema");
+        const { gte, lte } = await import("drizzle-orm");
+        const conditions: any[] = [];
+        if (input.playerId) conditions.push(eq(goldLogsTable.playerId, input.playerId));
+        if (input.type) conditions.push(eq(goldLogsTable.type, input.type));
+        const now = new Date();
+        if (input.timeRange === "today") {
+          const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+          conditions.push(gte(goldLogsTable.createdAt, start));
+        } else if (input.timeRange === "yesterday") {
+          const yesterday = new Date(now);
+          yesterday.setDate(yesterday.getDate() - 1);
+          const start = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0);
+          const end = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59);
+          conditions.push(gte(goldLogsTable.createdAt, start));
+          conditions.push(lte(goldLogsTable.createdAt, end));
+        } else if (input.timeRange === "week7") {
+          const start = new Date(now);
+          start.setDate(start.getDate() - 6);
+          start.setHours(0, 0, 0, 0);
+          conditions.push(gte(goldLogsTable.createdAt, start));
+        } else if (input.timeRange === "month") {
+          const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+          conditions.push(gte(goldLogsTable.createdAt, start));
+        }
+        const where = conditions.length > 0 ? and(...conditions) : undefined;
+        const offset = (input.page - 1) * input.limit;
+        const [list, countResult] = await Promise.all([
+          db.select().from(goldLogsTable).where(where).orderBy(desc(goldLogsTable.createdAt)).limit(input.limit).offset(offset),
+          db.select({ count: sql<number>`count(*)` }).from(goldLogsTable).where(where),
+        ]);
+        const playerIds = Array.from(new Set(list.map(r => r.playerId)));
+        let playerMap: Record<number, { nickname: string; phone: string }> = {};
+        if (playerIds.length > 0) {
+          const playerRows = await db.select({ id: players.id, nickname: players.nickname, phone: players.phone }).from(players).where(sql`${players.id} IN (${sql.join(playerIds.map(id => sql`${id}`), sql`, `)})`);
+          for (const p of playerRows) playerMap[p.id] = { nickname: p.nickname || '', phone: p.phone || '' };
+        }
+        return {
+          list: list.map(r => ({
+            id: r.id,
+            playerId: r.playerId,
+            playerNickname: playerMap[r.playerId]?.nickname || '',
+            playerPhone: playerMap[r.playerId]?.phone || '',
+            amount: parseFloat(String(r.amount)),
+            balance: parseFloat(String(r.balance)),
+            type: r.type,
+            description: r.description,
+            refId: r.refId,
+            createdAt: r.createdAt,
+          })),
+          total: Number(countResult[0]?.count ?? 0),
+        };
+      }),
   }),
-
-  // ── ROLL-X 幸运转盘游戏 ──────────────────────────────────
+  // ── ROLL-X 幸运转盘游戏 ──────────────────────────
   rollx: router({
     /** 获取游戏设置（最小/最大倍率、最小/最大投注额、是否启用） */
     getSettings: publicProcedure.query(async () => {

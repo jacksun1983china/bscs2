@@ -61,6 +61,7 @@ export default function MyRecords() {
   const [activeTab, setActiveTab] = useState(0);
   const [timeFilter, setTimeFilter] = useState(0);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [detailRecord, setDetailRecord] = useState<any>(null);
 
   // 余额记录（金币流水）
   const { data: goldLogsData, isLoading: goldLogsLoading } = trpc.player.goldLogs.useQuery(
@@ -247,25 +248,37 @@ export default function MyRecords() {
                 goldLogsList.map((r: any, i: number) => (
                   <div
                     key={r.id ?? i}
+                    onClick={() => setDetailRecord(r)}
                     style={{
                       display: 'flex',
-                      alignItems: 'center',
-                      padding: `${q(20)} ${q(20)}`,
+                      flexDirection: 'column',
+                      padding: `${q(16)} ${q(20)}`,
                       borderBottom: '1px solid rgba(120,60,220,0.15)',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s',
                     }}
                   >
-                    <span style={{ flex: 2, color: 'rgba(255,255,255,0.7)', fontSize: q(20) }}>
-                      {new Date(r.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <span style={{ flex: 1.5, color: '#c084fc', fontSize: q(20), textAlign: 'center' }}>
-                      {getTypeLabel(r.type)}
-                    </span>
-                    <span style={{ flex: 1.5, color: amountColor(r.amount), fontSize: q(22), textAlign: 'center', fontWeight: 600 }}>
-                      {formatAmount(r.amount)}
-                    </span>
-                    <span style={{ flex: 1, color: '#ffd700', fontSize: q(20), textAlign: 'right' }}>
-                      {Number(r.balance).toFixed(0)}
-                    </span>
+                    {/* 主行：时间 + 类型 + 金额 + 余额 */}
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <span style={{ flex: 2, color: 'rgba(255,255,255,0.7)', fontSize: q(20) }}>
+                        {new Date(r.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span style={{ flex: 1.5, color: '#c084fc', fontSize: q(20), textAlign: 'center' }}>
+                        {getTypeLabel(r.type)}
+                      </span>
+                      <span style={{ flex: 1.5, color: amountColor(r.amount), fontSize: q(22), textAlign: 'center', fontWeight: 600 }}>
+                        {formatAmount(r.amount)}
+                      </span>
+                      <span style={{ flex: 1, color: '#ffd700', fontSize: q(20), textAlign: 'right' }}>
+                        {Number(r.balance).toFixed(0)}
+                      </span>
+                    </div>
+                    {/* 备注行（如果有description） */}
+                    {r.description ? (
+                      <div style={{ marginTop: q(6), color: 'rgba(255,255,255,0.4)', fontSize: q(18), paddingLeft: q(2) }}>
+                        {r.description}
+                      </div>
+                    ) : null}
                   </div>
                 ))
               ) : activeTab === 1 && rechargeList.length > 0 ? (
