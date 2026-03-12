@@ -66,7 +66,8 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
-  // 构建卷轴条目：随机打乱 + 重复多次，末尾放目标物品
+  // 构建卷轴条目：目标放在第一格，后面跟随机条目
+  // 滚动方向：从上往下（translateY 从负大到 0）
   const buildReel = useCallback((target: typeof finalItem, items: typeof reelItems) => {
     if (!target) return [];
     const pool = items.length > 0 ? items : [
@@ -74,16 +75,15 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
       { id: 1, name: '稀有装备', imageUrl: '', goodsLevel: 2 },
       { id: 2, name: '普通道具', imageUrl: '', goodsLevel: 3 },
       { id: 3, name: '回收物品', imageUrl: '', goodsLevel: 4 },
-      { id: 4, name: '神秘宝箱', imageUrl: '', goodsLevel: 2 },
+      { id: 4, name: '神秘宝笱', imageUrl: '', goodsLevel: 2 },
       { id: 5, name: '限定皮肤', imageUrl: '', goodsLevel: 1 },
     ];
-    // 重复 5 轮随机条目，最后一格是目标
+    // 目标放在第一格，后面跟 30 个随机条目
     const reel: Array<{ id: number; name: string; imageUrl: string; goodsLevel: number }> = [];
+    reel.push({ id: target.goodsId, name: target.goodsName, imageUrl: target.goodsImage, goodsLevel: target.goodsLevel });
     for (let i = 0; i < 30; i++) {
       reel.push(pool[Math.floor(Math.random() * pool.length)]);
     }
-    // 最后放目标物品
-    reel.push({ id: target.goodsId, name: target.goodsName, imageUrl: target.goodsImage, goodsLevel: target.goodsLevel });
     return reel;
   }, []);
 
@@ -115,23 +115,25 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
       setReel(newReel);
       setShowFinal(false);
       setDisplayItem(null);
-      // 重置到顶部（无动画）
-      setTransition('none');
-      setTranslateY(0);
 
-      // 下一帧开始滚动到倒数第2格（目标前一格），使用 cubic-bezier 减速
+      // 目标在第一格（index=0）
+      // 滚动方向：从上往下（卷轴从底部开始，向上滚到顶部）
+      // 初始位置：把卷轴放到最底部（展示最后一格）
       const totalItems = newReel.length;
-      // 目标在最后一格（index = totalItems - 1），视口中心显示 index=0
-      // 需要滚动到目标格居中：translateY = -(targetIndex * REEL_ITEM_PX)
-      const targetIndex = totalItems - 1;
-      const finalY = -(targetIndex * REEL_ITEM_PX);
-      // 先快速滚到目标前一格（无弹性），再弹性回弹到目标
-      const preY = -((targetIndex - 1) * REEL_ITEM_PX);
+      const startY = -((totalItems - 1) * REEL_ITEM_PX); // 卷轴展示最后一格
+      const finalY = 0; // 目标：展示第一格（目标物品）
+      const preY = -(1 * REEL_ITEM_PX); // 先停到目标后一格（弹性起点）
 
-      // 第一阶段：快速加速滚动（2.2s，ease-in-out）
+      // 重置到底部（无动画）
+      setTransition('none');
+      setTranslateY(startY);
+
+      // 第一阶段：快速加速向上滚动（2.2s，从底部滚到目标前一格）
       requestAnimationFrame(() => {
-        setTransition(`transform 2.2s cubic-bezier(0.25, 0.1, 0.1, 1.0)`);
-        setTranslateY(preY);
+        requestAnimationFrame(() => {
+          setTransition(`transform 2.2s cubic-bezier(0.25, 0.1, 0.1, 1.0)`);
+          setTranslateY(preY);
+        });
       });
 
       // 第二阶段：弹性停止到目标（0.4s，弹性曲线）
@@ -140,10 +142,11 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
         setTranslateY(finalY);
         playSlotStop(finalItem.goodsLevel);
 
-        // 动画结束后展示最终结果
+        // 动画结束后展示最终结果（同步更新两个状态确保一致）
         timerRef.current = setTimeout(() => {
+          const itemToShow = finalItem; // 单独引用确保闭包捕获正确结果
+          setDisplayItem(itemToShow);
           setShowFinal(true);
-          setDisplayItem(finalItem);
           onDone?.();
         }, 450);
       }, 2200);
