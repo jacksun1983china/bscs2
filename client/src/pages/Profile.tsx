@@ -11,6 +11,7 @@ import TopNav from '@/components/TopNav';
 import BottomNav from '@/components/BottomNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
 import SettingsModal from '@/components/SettingsModal';
+import SteamSettingsModal from '@/pages/SteamSettings';
 
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
 
@@ -63,6 +64,7 @@ export default function Profile() {
   const [musicOn, setMusicOn] = useState(true);
   const [sfxOn, setSfxOn] = useState(true);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [steamVisible, setSteamVisible] = useState(false);
 
   const { data: player } = trpc.player.me.useQuery();
   const logoutMutation = trpc.player.logout.useMutation({
@@ -71,7 +73,7 @@ export default function Profile() {
 
   const menuItems = [
     { icon: WD.menuIcon0, bg: WD.menuBg0, label: '我的记录', sub: '资产明细', onClick: () => navigate('/my-records') },
-    { icon: WD.menuIcon1, bg: WD.menuBg1, label: 'STEAM', sub: '已绑定', onClick: () => navigate('/steam-settings') },
+    { icon: WD.menuIcon1, bg: WD.menuBg1, label: 'STEAM', sub: '已绑定', onClick: () => setSteamVisible(true) },
     { icon: WD.menuIcon2, bg: WD.menuBg2, label: '安全密码', sub: '已设置', onClick: () => navigate('/security-password') },
     { icon: WD.menuIcon0, bg: WD.menuBg1, label: '邮件', sub: '站内信', onClick: () => navigate('/mailbox') },
   ];
@@ -354,6 +356,7 @@ export default function Profile() {
       </div>
       {/* 设置弹窗：position:absolute，受 phone-container 约束 */}
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+      <SteamSettingsModal visible={steamVisible} onClose={() => setSteamVisible(false)} />
     </div>
     </PageSlideIn>
   );

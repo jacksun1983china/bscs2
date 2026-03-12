@@ -26,7 +26,6 @@ import ArenaHistory from "./pages/ArenaHistory";
 import UncrossableRush from "./pages/UncrossableRush";
 import DingDong from "./pages/DingDong";
 import Vortex from "./pages/Vortex";
-import SteamSettings from "./pages/SteamSettings";
 import SecurityPassword from "./pages/SecurityPassword";
 import MyRecords from "./pages/MyRecords";
 import VipPage from "./pages/VipPage";
@@ -55,7 +54,6 @@ function Router() {
       <Route path={"/recharge"} component={Deposit} />
       <Route path={"/shop"} component={Shop} />
       {/* 个人设置页面 */}
-      <Route path={"/steam-settings"} component={SteamSettings} />
       <Route path={"/security-password"} component={SecurityPassword} />
       <Route path={"/my-records"} component={MyRecords} />
       <Route path={"/vip"} component={VipPage} />
