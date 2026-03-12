@@ -27,9 +27,15 @@ const VIP_ICONS: Record<number, string> = {
 };
 
 // VIP0 灰色图标（SVG，上下居中显示 VIP0 文字）
-function Vip0Icon({ size = 80 }: { size?: number }) {
+function Vip0Icon({ size = '80px' }: { size?: string | number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none">
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 80 80"
+      fill="none"
+      style={{ display: 'block', flexShrink: 0 }}
+    >
       <circle cx="40" cy="40" r="38" stroke="#555" strokeWidth="2" fill="rgba(40,40,60,0.8)" />
       {/* VIP 和 0 合并为一行，垂直居中 */}
       <text
@@ -161,7 +167,7 @@ export default function VipPage() {
                 {/* VIP 图标 */}
                 <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {currentLevel === 0 ? (
-                    <Vip0Icon size={parseInt(q(100))} />
+                    <Vip0Icon size={q(100)} />
                   ) : (
                     <img
                       src={VIP_ICONS[currentLevel]}
@@ -282,7 +288,7 @@ export default function VipPage() {
                         justifyContent: 'center',
                       }}>
                         {level === 0 ? (
-                          <Vip0Icon size={parseInt(q(64))} />
+                          <Vip0Icon size={q(64)} />
                         ) : (
                           <img
                             src={VIP_ICONS[level]}
