@@ -3,7 +3,7 @@
  * 布局：公共顶部导航 → 个人信息卡（悬停） → 操作按钮行 → 赠送提示栏 → 搜索排序栏 → 物品2列网格 → 底部操作栏 → 底部导航
  */
 import { PageSlideIn } from '@/components/PageTransition';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { trpc } from '@/lib/trpc';
 import BottomNav from '@/components/BottomNav';
 import TopNav from '@/components/TopNav';
@@ -105,12 +105,60 @@ export default function Backpack() {
   const [confirmModal, setConfirmModal] = useState<{ type: 'extract' | 'recycle' | null }>({ type: null });
   const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
 
+  // 无限滚动状态
+  const [page, setPage] = useState(1);
+  const [allItems, setAllItems] = useState<InventoryItem[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const PAGE_SIZE = 20;
+
   const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
   const utils = trpc.useUtils();
   const { data: inventoryData, isLoading } = trpc.player.inventory.useQuery(
-    { page: 1, limit: 50 },
+    { page, limit: PAGE_SIZE },
     { staleTime: 10_000 }
   );
+
+  // 追加新数据
+  useEffect(() => {
+    if (!inventoryData) return;
+    const newItems = (inventoryData.list ?? []) as InventoryItem[];
+    if (page === 1) {
+      setAllItems(newItems);
+    } else {
+      setAllItems(prev => [...prev, ...newItems]);
+    }
+    setHasMore(newItems.length >= PAGE_SIZE);
+    setLoadingMore(false);
+  }, [inventoryData, page]);
+
+  // 搜索/筛选/排序变化时重置
+  const prevSearchRef = useRef(searchText);
+  const prevSourceRef = useRef(sourceFilter);
+  const prevSortRef = useRef(sortBy);
+  useEffect(() => {
+    if (prevSearchRef.current !== searchText || prevSourceRef.current !== sourceFilter || prevSortRef.current !== sortBy) {
+      setPage(1);
+      setAllItems([]);
+      setHasMore(true);
+      prevSearchRef.current = searchText;
+      prevSourceRef.current = sourceFilter;
+      prevSortRef.current = sortBy;
+    }
+  }, [searchText, sourceFilter, sortBy]);
+
+  // 滚动监听
+  const handleScroll = useCallback(() => {
+    if (!hasMore || loadingMore || isLoading) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    if (scrollHeight - scrollTop - clientHeight < 100) {
+      setLoadingMore(true);
+      setPage(prev => prev + 1);
+    }
+  }, [hasMore, loadingMore, isLoading]);
 
   const extractMutation = trpc.player.extractItem.useMutation({
     onSuccess: (data) => {
@@ -133,10 +181,9 @@ export default function Backpack() {
     onError: (err) => toast.error(err.message),
   });
 
-  const rawItems: InventoryItem[] = (inventoryData?.list ?? []) as InventoryItem[];
   const total = inventoryData?.total ?? 0;
 
-  const filteredItems = rawItems
+  const filteredItems = allItems
     .filter(item => !searchText || (item.itemName ?? '').includes(searchText))
     .filter(item => {
       if (sourceFilter === 'all') return true;
@@ -234,6 +281,8 @@ export default function Backpack() {
 
       {/* 内容层 */}
       <div
+        ref={scrollRef}
+        onScroll={handleScroll}
         style={{
           position: 'relative',
           zIndex: 1,
@@ -582,6 +631,18 @@ export default function Backpack() {
                 margin: `${q(20)} 0 0 ${q(22)}`,
               }}
             >
+              {/* 加载更多 / 全部加载完毕 提示 */}
+              {loadingMore && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: `${q(24)} 0`, gridColumn: '1 / -1' }}>
+                  <div style={{ width: q(36), height: q(36), border: `${q(3)} solid rgba(192,132,252,0.3)`, borderTop: `${q(3)} solid #c084fc`, borderRadius: '50%', animation: 'spin 1s linear infinite', marginRight: q(10) }} />
+                  <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: q(22) }}>加载更多...</span>
+                </div>
+              )}
+              {!hasMore && allItems.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: `${q(24)} 0`, gridColumn: '1 / -1' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: q(20) }}>— 已加载全部物品 —</span>
+                </div>
+              )}
               {filteredItems.map((item, idx) => {
                 const isSelected = selectedIds.has(item.id);
                 const isRightCol = idx % 2 === 1;
@@ -995,6 +1056,12 @@ export default function Backpack() {
         </div>
       )}
     </div>
+    <style>{`
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    `}</style>
     </PageSlideIn>
   );
 }
