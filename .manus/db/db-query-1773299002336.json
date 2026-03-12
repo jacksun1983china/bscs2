@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `rollRoomPrizes` ADD COLUMN IF NOT EXISTS `prizeType` ENUM('coin', 'item') NOT NULL DEFAULT 'coin'; ALTER TABLE `rollRoomPrizes` ADD COLUMN IF NOT EXISTS `itemCategory` VARCHAR(50) NOT NULL DEFAULT 'roll';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute ALTER TABLE `rollRoomPrizes` ADD COLUMN IF NOT EXISTS `prizeType` ENUM('coin', 'item') NOT NULL DEFAULT 'coin'; ALTER TABLE `rollRoomPrizes` ADD COLUMN IF NOT EXISTS `itemCategory` VARCHAR(50) NOT NULL DEFAULT 'roll';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3200
+}

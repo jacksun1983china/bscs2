@@ -469,16 +469,55 @@ export async function drawRollRoom(roomId: number, designatedWinners?: { prizeId
     const amount = parseFloat(prizeInfo.value as string);
     actualPaidValue += amount;
     actualPaidCount++;
-    if (prizeInfo.coinType === "shopCoin") {
+
+    if ((prizeInfo as any).prizeType === 'item') {
+      // 道具奖品：写入玩家背包
+      // 先尝试在 items 表中查找同名道具
+      let existingItem = await db.select().from(items)
+        .where(eq(items.name, prizeInfo.name)).limit(1);
+      let itemId: number;
+      if (existingItem.length > 0) {
+        itemId = existingItem[0].id;
+      } else {
+        // 创建新道具记录
+        const inserted = await db.insert(items).values({
+          name: prizeInfo.name,
+          imageUrl: prizeInfo.imageUrl || '',
+          value: prizeInfo.value,
+          quality: 'common',
+          type: 'skin',
+          game: 'ROLL',
+          status: 1,
+        });
+        itemId = (inserted as any).insertId;
+      }
+      // 写入玩家背包
+      await db.insert(playerItems).values({
+        playerId: w.playerId,
+        itemId,
+        source: 'roll',
+        status: 0,
+      });
+      await db.insert(messages).values({
+        playerId: w.playerId, title: 'Roll房道具奖品',
+        content: `恭喜您，您在ROLL房活动《${room[0].title}》获得道具『${prizeInfo.name}』，已入背包，请前往背包页面查看。`,
+        type: 'roll', refId: roomId,
+      });
+    } else if (prizeInfo.coinType === "shopCoin") {
       await db.update(players).set({ shopCoin: sql`shopCoin + ${amount}` }).where(eq(players.id, w.playerId));
+      await db.insert(messages).values({
+        playerId: w.playerId, title: "Roll房参与结果",
+        content: `恭喜您，您在ROLL房活动《${room[0].title}》获得${prizeInfo.name}，价値：${prizeInfo.value}。`,
+        type: "roll", refId: roomId,
+      });
     } else {
       await db.update(players).set({ gold: sql`gold + ${amount}` }).where(eq(players.id, w.playerId));
+      await db.insert(messages).values({
+        playerId: w.playerId, title: "Roll房参与结果",
+        content: `恭喜您，您在ROLL房活动《${room[0].title}》获得${prizeInfo.name}，价値：${prizeInfo.value}。`,
+        type: "roll", refId: roomId,
+      });
     }
-    await db.insert(messages).values({
-      playerId: w.playerId, title: "Roll房参与结果",
-      content: `恭喜您，您在ROLL房活动《${room[0].title}》获得${prizeInfo.name}，价值：${prizeInfo.value}。`,
-      type: "roll", refId: roomId,
-    });
   }
   for (const p of realPlayers) {
     if (!usedPlayerIds.has(p.playerId)) {

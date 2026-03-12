@@ -744,3 +744,8 @@
 - [x] 首页第六入口（GameMenuList添加Vortex）
 - [x] 管理后台：Vortex RTP控制面板
 - [x] App.tsx注册/vortex路由
+
+## Vortex 游戏改进（2026-03-12）
+- [x] Vortex 色彩弧形动画进场效果（渐入/扫描动画，不要突然冒出）
+- [x] Vortex 旋转/赢钱/骷髅三种音效
+- [x] ROLL 房结束后道具入背包逻辑

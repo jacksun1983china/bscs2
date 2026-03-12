@@ -127,6 +127,13 @@
       "when": 1773246626754,
       "tag": "0017_eager_lockjaw",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1773298981292,
+      "tag": "0018_striped_felicia_hardy",
+      "breakpoints": true
     }
   ]
 }

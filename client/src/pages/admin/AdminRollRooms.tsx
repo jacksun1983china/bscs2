@@ -75,7 +75,7 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
     startTime: '', endTime: '', threshold: '', maxPlayers: '100',
     exchangeType: 'mall_coin', botCount: '0',
   });
-  const [prizes, setPrizes] = useState([{ name: '', amount: '', quantity: '1', imageUrl: '' }]);
+  const [prizes, setPrizes] = useState([{ name: '', amount: '', quantity: '1', imageUrl: '', prizeType: 'coin' as 'coin' | 'item' }]);
   const [winners, setWinners] = useState(['']);
   const [uploading, setUploading] = useState(false);
   const avatarRef = useRef<HTMLInputElement>(null);
@@ -131,7 +131,7 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
       endAt: form.endTime,
       threshold: parseFloat(form.threshold),
       maxParticipants: parseInt(form.maxPlayers) || 100,
-      prizes: validPrizes.map(p => ({ name: p.name, value: parseFloat(p.amount), quantity: parseInt(p.quantity) || 1, coinType: (form.exchangeType === 'gold' ? 'gold' : 'shopCoin') as 'shopCoin' | 'gold', imageBase64: undefined })),
+      prizes: validPrizes.map(p => ({ name: p.name, value: parseFloat(p.amount), quantity: parseInt(p.quantity) || 1, coinType: (form.exchangeType === 'gold' ? 'gold' : 'shopCoin') as 'shopCoin' | 'gold', imageBase64: undefined, prizeType: p.prizeType as 'coin' | 'item', itemCategory: 'roll' })),
     });
   };
 
@@ -213,12 +213,12 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
         <div style={{ marginTop: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <label style={{ ...labelStyle, marginBottom: 0, fontSize: 14, color: '#a78bfa' }}>奖品列表 *</label>
-            <button onClick={() => setPrizes(ps => [...ps, { name: '', amount: '', quantity: '1', imageUrl: '' }])} style={{ padding: '4px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', background: 'rgba(123,47,255,0.2)', color: '#a78bfa', border: '1px solid rgba(123,47,255,0.35)' }}>
+            <button onClick={() => setPrizes(ps => [...ps, { name: '', amount: '', quantity: '1', imageUrl: '', prizeType: 'coin' as 'coin' | 'item' }])} style={{ padding: '4px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', background: 'rgba(123,47,255,0.2)', color: '#a78bfa', border: '1px solid rgba(123,47,255,0.35)' }}>
               + {t.addPrize}
             </button>
           </div>
           {prizes.map((prize, idx) => (
-            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr auto', gap: 8, marginBottom: 8, alignItems: 'flex-end' }}>
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 0.8fr 1.5fr auto', gap: 8, marginBottom: 8, alignItems: 'flex-end' }}>
               <div>
                 {idx === 0 && <label style={labelStyle}>{t.prizeName}</label>}
                 <input style={inputStyle} value={prize.name} onChange={e => setPrizes(ps => ps.map((p, i) => i === idx ? { ...p, name: e.target.value } : p))} placeholder="奖品名称" />
@@ -230,6 +230,13 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
               <div>
                 {idx === 0 && <label style={labelStyle}>{t.prizeQty}</label>}
                 <input style={inputStyle} type="number" value={prize.quantity} onChange={e => setPrizes(ps => ps.map((p, i) => i === idx ? { ...p, quantity: e.target.value } : p))} min="1" />
+              </div>
+              <div>
+                {idx === 0 && <label style={labelStyle}>类型</label>}
+                <select style={{ ...inputStyle, cursor: 'pointer' }} value={prize.prizeType} onChange={e => setPrizes(ps => ps.map((p, i) => i === idx ? { ...p, prizeType: e.target.value as 'coin' | 'item' } : p))}>
+                  <option value="coin">💰 货币</option>
+                  <option value="item">🎁 道具</option>
+                </select>
               </div>
               <div>
                 {idx === 0 && <label style={labelStyle}>{t.prizeImage}</label>}

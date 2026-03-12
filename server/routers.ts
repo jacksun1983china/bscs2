@@ -677,6 +677,8 @@ export const appRouter = router({
           quantity: z.number().min(1).default(1),
           coinType: z.enum(["shopCoin", "gold"]).default("shopCoin"),
           imageBase64: z.string().optional(),
+          prizeType: z.enum(["coin", "item"]).default("coin"),
+          itemCategory: z.string().default("roll"),
         })),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -696,7 +698,7 @@ export const appRouter = router({
             const { url } = await storagePut(key, buffer, "image/jpeg");
             imageUrl = url;
           }
-          return { name: p.name, value: p.value.toFixed(2), quantity: p.quantity, coinType: p.coinType, imageUrl };
+          return { name: p.name, value: p.value.toFixed(2), quantity: p.quantity, coinType: p.coinType, imageUrl, prizeType: p.prizeType, itemCategory: p.itemCategory };
         }));
         const roomId = await createRollRoom({
           title: input.title, avatarUrl,

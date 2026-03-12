@@ -330,6 +330,10 @@ export const rollRoomPrizes = mysqlTable("rollRoomPrizes", {
   quantity: int("quantity").notNull().default(1),
   /** 奖品类型：shopCoin=商城币 gold=平台币 */
   coinType: mysqlEnum("coinType", ["shopCoin", "gold"]).notNull().default("shopCoin"),
+  /** 奖品大类：coin=货币奖品 item=道具奖品 */
+  prizeType: mysqlEnum("prizeType", ["coin", "item"]).notNull().default("coin"),
+  /** 道具分类（仅 prizeType=item 时有效）：arena=竞技场道具 roll=Roll房道具 box=开笱道具 */
+  itemCategory: varchar("itemCategory", { length: 50 }).notNull().default("roll"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

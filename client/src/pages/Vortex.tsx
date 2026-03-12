@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
+import { useSound } from '@/hooks/useSound';
 
 // ── CDN 素材 ──────────────────────────────────────────────────────────────────
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym';
@@ -58,6 +59,9 @@ function OrbitTrack({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
   const rotationRef = useRef(0);
+  // 弧形扫描动画进度：每个轨道的新增格子动画进度 0→1
+  const arcAnimRef = useRef<{ fire: number; earth: number; water: number }>({ fire: 1, earth: 1, water: 1 });
+  const prevTrackRef = useRef<TrackState>({ fire: 0, earth: 0, water: 0 });
 
   // 轨道颜色
   const TRACK_COLORS = {
@@ -65,6 +69,19 @@ function OrbitTrack({
     earth: '#4caf50',
     water: '#2196f3',
   };
+
+  // 当 trackState 变化时，检测新增格子并重置动画进度
+  useEffect(() => {
+    const prev = prevTrackRef.current;
+    const keys: Array<'fire' | 'earth' | 'water'> = ['fire', 'earth', 'water'];
+    keys.forEach(k => {
+      if (trackState[k] > prev[k]) {
+        // 新增了格子，重置该轨道的动画进度
+        arcAnimRef.current[k] = 0;
+      }
+    });
+    prevTrackRef.current = { ...trackState };
+  }, [trackState]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -87,8 +104,21 @@ function OrbitTrack({
     };
     const outerRadius = radii[4];
 
+    // 弧形扫描动画缓动函数（easeOutCubic）
+    function easeOut(t: number) {
+      return 1 - Math.pow(1 - t, 3);
+    }
+
     function drawFrame() {
       ctx!.clearRect(0, 0, W, H);
+
+      // 推进动画进度（每帧+0.045，大约400ms完成）
+      const keys: Array<'fire' | 'earth' | 'water'> = ['fire', 'earth', 'water'];
+      keys.forEach(k => {
+        if (arcAnimRef.current[k] < 1) {
+          arcAnimRef.current[k] = Math.min(1, arcAnimRef.current[k] + 0.045);
+        }
+      });
 
       // 外圈背景（深色）
       ctx!.beginPath();
@@ -103,25 +133,41 @@ function OrbitTrack({
         { key: 'water', radius: trackRadii.water, color: TRACK_COLORS.water, filled: trackState.water },
       ];
 
-      tracks.forEach(({ radius, color, filled }) => {
+      tracks.forEach(({ key, radius, color, filled }) => {
         const trackWidth = 22;
         const segments = TRACK_MAX;
         const gap = 0.04; // 弧度间隙
+        // 最新一格的动画进度（其他格子已经完成）
+        const animProgress = easeOut(arcAnimRef.current[key]);
 
         for (let i = 0; i < segments; i++) {
           const startAngle = (i / segments) * Math.PI * 2 - Math.PI / 2 + gap / 2;
-          const endAngle = ((i + 1) / segments) * Math.PI * 2 - Math.PI / 2 - gap / 2;
+          const fullEndAngle = ((i + 1) / segments) * Math.PI * 2 - Math.PI / 2 - gap / 2;
+
+          // 对最新一格（filled-1）应用扫描动画
+          const isNewest = (i === filled - 1);
+          const endAngle = isNewest
+            ? startAngle + (fullEndAngle - startAngle) * animProgress
+            : fullEndAngle;
 
           ctx!.beginPath();
-          ctx!.arc(cx, cy, radius, startAngle, endAngle);
-          ctx!.arc(cx, cy, radius - trackWidth, endAngle, startAngle, true);
+          if (isNewest && animProgress < 1) {
+            // 扫描展开动画：只画已展开的部分
+            ctx!.arc(cx, cy, radius, startAngle, endAngle);
+            ctx!.arc(cx, cy, radius - trackWidth, endAngle, startAngle, true);
+          } else {
+            ctx!.arc(cx, cy, radius, startAngle, fullEndAngle);
+            ctx!.arc(cx, cy, radius - trackWidth, fullEndAngle, startAngle, true);
+          }
           ctx!.closePath();
 
           if (i < filled) {
             // 已填充的格子
-            ctx!.fillStyle = color;
+            const alpha = isNewest ? animProgress : 1;
+            const hexAlpha = Math.round(alpha * 255).toString(16).padStart(2, '0');
+            ctx!.fillStyle = color + hexAlpha;
             ctx!.shadowColor = color;
-            ctx!.shadowBlur = 8;
+            ctx!.shadowBlur = isNewest ? 8 * animProgress : 8;
           } else {
             // 未填充的格子
             ctx!.fillStyle = 'rgba(60,50,80,0.6)';
@@ -258,6 +304,8 @@ export default function Vortex() {
   const [gameStarted, setGameStarted] = useState(false); // 是否已开始（扣了投注）
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 音效
+  const { playWin, playLose, playSpinStop, playClick, startBgm } = useSound();
 
   // tRPC hooks
   const playerQuery = trpc.player.me.useQuery();
@@ -316,11 +364,14 @@ export default function Vortex() {
       // 处理特殊元素
       if (result.element === 'skull') {
         setGameMessage('💀 骷髅！所有轨道退后1格');
+        playLose(); // 骷髅音效
       } else if (result.element === 'wind') {
         setGameMessage('💨 风，继续旋转...');
+        playSpinStop(); // 风元素音效
       } else if (result.bonusTriggered) {
         setBonusTriggered(true);
         setGameMessage(`🎉 BONUS！获得 ${result.bonusMultiplier}x 奖励！`);
+        playWin(); // Bonus 大奖音效
         // 自动触发 Cash Out
         setTimeout(() => {
           handleCashOut(false, newPayout, newTrack);
@@ -328,6 +379,7 @@ export default function Vortex() {
       } else {
         const elName = ELEMENT_CONFIG[result.element as Element]?.label || result.element;
         setGameMessage(`${elName} +${result.multiplier.toFixed(2)}x`);
+        playSpinStop(); // 旋转停止音效
       }
 
       // 更新余额（扣除投注，不加赢额，赢额在CashOut时结算）
@@ -363,6 +415,7 @@ export default function Vortex() {
 
       if (result.success) {
         setBalance(result.balanceAfter);
+        playWin(); // Cash Out 赢錢音效
         if (isPartial) {
           setGameMessage(`💰 提取了 ${result.winAmount.toFixed(2)} 金币，继续游戏！`);
           // 部分提取后重置轨道
@@ -387,12 +440,14 @@ export default function Vortex() {
     }
   }, [payout, betAmount, currentMultiplier, trackState, cashOutMutation, playerQuery]);
 
-  // 按住旋转按钮
+  // 按住旋转按鈕
   const handleHoldStart = useCallback(() => {
     if (isSpinning) return;
+    startBgm(); // 首次点击启动 BGM
+    playClick(); // 按鈕点击音效
     setIsHolding(true);
     doSpin();
-  }, [isSpinning, doSpin]);
+  }, [isSpinning, doSpin, startBgm, playClick]);
 
   const handleHoldEnd = useCallback(() => {
     setIsHolding(false);
