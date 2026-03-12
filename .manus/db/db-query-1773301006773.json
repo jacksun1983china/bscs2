@@ -1,0 +1,16 @@
+{
+  "query": "SHOW TABLES LIKE 'vortex%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SHOW TABLES LIKE 'vortex%';",
+  "rows": [
+    {
+      "Tables_in_f39rghmcCDkVuc3rBX8cym (vortex%)": "vortexBets"
+    },
+    {
+      "Tables_in_f39rghmcCDkVuc3rBX8cym (vortex%)": "vortexConfig"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_f39rghmcCDkVuc3rBX8cym (vortex%)\nvortexBets\nvortexConfig\n",
+  "stderr": "",
+  "execution_time_ms": 1847
+}

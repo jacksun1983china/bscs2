@@ -1,0 +1,28 @@
+{
+  "query": "SHOW CREATE TABLE vortexBets;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SHOW CREATE TABLE vortexBets;",
+  "rows": [
+    {
+      "Table": "vortexBets",
+      "Create Table": "CREATE TABLE `vortexBets` ("
+    }
+  ],
+  "messages": [
+    "  `id` int NOT NULL AUTO_INCREMENT,",
+    "  `userId` int NOT NULL,",
+    "  `playerName` varchar(100) NOT NULL DEFAULT '',",
+    "  `betAmount` decimal(18,2) NOT NULL,",
+    "  `multiplier` decimal(10,2) NOT NULL DEFAULT '0.00',",
+    "  `winAmount` decimal(18,2) NOT NULL DEFAULT '0.00',",
+    "  `netAmount` decimal(18,2) NOT NULL DEFAULT '0.00',",
+    "  `balanceAfter` decimal(18,2) NOT NULL DEFAULT '0.00',",
+    "  `resultData` text DEFAULT NULL,",
+    "  `isWin` tinyint NOT NULL DEFAULT '0',",
+    "  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"
+  ],
+  "stdout": "Table\tCreate Table\nvortexBets\tCREATE TABLE `vortexBets` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `userId` int NOT NULL,\n  `playerName` varchar(100) NOT NULL DEFAULT '',\n  `betAmount` decimal(18,2) NOT NULL,\n  `multiplier` decimal(10,2) NOT NULL DEFAULT '0.00',\n  `winAmount` decimal(18,2) NOT NULL DEFAULT '0.00',\n  `netAmount` decimal(18,2) NOT NULL DEFAULT '0.00',\n  `balanceAfter` decimal(18,2) NOT NULL DEFAULT '0.00',\n  `resultData` text DEFAULT NULL,\n  `isWin` tinyint NOT NULL DEFAULT '0',\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin\n",
+  "stderr": "",
+  "execution_time_ms": 1593
+}

@@ -1,0 +1,43 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'vortexBets' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'vortexBets' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "userId"
+    },
+    {
+      "COLUMN_NAME": "playerName"
+    },
+    {
+      "COLUMN_NAME": "betAmount"
+    },
+    {
+      "COLUMN_NAME": "multiplier"
+    },
+    {
+      "COLUMN_NAME": "winAmount"
+    },
+    {
+      "COLUMN_NAME": "netAmount"
+    },
+    {
+      "COLUMN_NAME": "balanceAfter"
+    },
+    {
+      "COLUMN_NAME": "resultData"
+    },
+    {
+      "COLUMN_NAME": "isWin"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nuserId\nplayerName\nbetAmount\nmultiplier\nwinAmount\nnetAmount\nbalanceAfter\nresultData\nisWin\ncreatedAt\n",
+  "stderr": "",
+  "execution_time_ms": 1529
+}

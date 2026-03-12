@@ -749,3 +749,8 @@
 - [x] Vortex 色彩弧形动画进场效果（渐入/扫描动画，不要突然冒出）
 - [x] Vortex 旋转/赢钱/骷髅三种音效
 - [x] ROLL 房结束后道具入背包逻辑
+
+## Vortex 修复和汉化（2026-03-12 第四批）
+- [x] 修复 vortexBets 表 INSERT 错误（字段匹配确认正常）
+- [x] 修复 wild（wind/skull/bonus）图片丢失（重新生成并上传CDN）
+- [x] Vortex 界面完全汉化（CASH OUT→提现、HOLD TO SPIN→按住旋转、Part Pay→部分提现、BONUS→奖励、OFFICIAL GAME→官方游戏）

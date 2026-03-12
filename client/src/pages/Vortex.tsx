@@ -12,12 +12,12 @@ import { useSound } from '@/hooks/useSound';
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym';
 const ASSETS = {
   bg: `${CDN}/background_f7445440.webp`,
-  elementFire: `${CDN}/element-fire_4963f3ce.png`,
-  elementEarth: `${CDN}/element-earth_87dfd32a.png`,
-  elementWater: `${CDN}/element-water_7f78c667.png`,
-  elementWind: `${CDN}/element-wind_46f0c12b.png`,
-  elementSkull: `${CDN}/element-skull_4e888a16.png`,
-  elementBonus: `${CDN}/element-bonus_b74c5896.png`,
+  elementFire: `${CDN}/element-fire_23f47a9c.png`,
+  elementEarth: `${CDN}/element-earth_ef6941d8.png`,
+  elementWater: `${CDN}/element-water_bfce70a4.png`,
+  elementWind: `${CDN}/element-wind_3ec84dc0.png`,
+  elementSkull: `${CDN}/element-skull_b9001ddb.png`,
+  elementBonus: `${CDN}/element-bonus_11bf7c8a.png`,
   logo: `${CDN}/logo_540c18cd.png`,
 };
 
@@ -211,7 +211,7 @@ function OrbitTrack({
       const innerLabels = [
         { text: '+20.5X', angle: -Math.PI / 4, r: trackRadii.earth - 11, color: '#ffd700' },
         { text: '+7X',    angle: Math.PI / 4,  r: trackRadii.water - 11, color: '#aaffaa' },
-        { text: 'BONUS',  angle: -Math.PI * 3 / 4, r: trackRadii.fire - 11, color: '#ff9900' },
+        { text: '奖励',  angle: -Math.PI * 3 / 4, r: trackRadii.fire - 11, color: '#ff9900' },
       ];
       ctx!.font = `bold ${W * 0.022}px Arial`;
       innerLabels.forEach(({ text, angle, r, color }) => {
@@ -553,7 +553,7 @@ export default function Vortex() {
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             textShadow: 'none',
           }}>VORTEX</div>
-          <div style={{ fontSize: 10, color: '#7c3aed', letterSpacing: 4, marginTop: -4 }}>OFFICIAL GAME</div>
+          <div style={{ fontSize: 10, color: '#7c3aed', letterSpacing: 4, marginTop: -4 }}>官方游戏</div>
         </div>
 
         {/* 同心圆轨道 */}
@@ -698,8 +698,8 @@ export default function Vortex() {
                 transition: 'all 0.2s',
               }}
             >
-              <span>CASH</span>
-              <span>OUT</span>
+              <span>提</span>
+              <span>现</span>
             </button>
 
             {/* HOLD TO SPIN */}
@@ -727,8 +727,8 @@ export default function Vortex() {
               }}
             >
               <span style={{ fontSize: 22 }}>🌀</span>
-              <span style={{ fontSize: 10 }}>HOLD TO</span>
-              <span style={{ fontSize: 10 }}>SPIN</span>
+              <span style={{ fontSize: 10 }}>按住</span>
+              <span style={{ fontSize: 10 }}>旋转</span>
             </button>
 
             {/* Part Payout */}
@@ -747,8 +747,8 @@ export default function Vortex() {
               }}
             >
               <span style={{ fontSize: 18 }}>↩</span>
-              <span>Part</span>
-              <span>Pay</span>
+              <span>部分</span>
+              <span>提现</span>
             </button>
           </div>
 
@@ -757,7 +757,7 @@ export default function Vortex() {
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           }}>
             <div>
-              <div style={{ fontSize: 11, color: '#888' }}>Payout</div>
+              <div style={{ fontSize: 11, color: '#888' }}>奖励金额</div>
               <div style={{
                 fontSize: 18, fontWeight: 700,
                 color: payout > 0 ? '#ffd700' : '#666',
@@ -782,7 +782,7 @@ export default function Vortex() {
                   cursor: 'pointer', fontSize: 12,
                 }}
               >
-                AUTO {autoMode ? 'ON' : 'OFF'}
+                自动 {autoMode ? '开' : '关'}
               </button>
             </div>
           </div>
@@ -865,8 +865,8 @@ export default function Vortex() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
               {[
                 { icon: '🌀', title: '旋转轮盘', desc: '用火、土、水元素提升倍率' },
-                { icon: '💰', title: 'Cash Out', desc: '点击提取赢得的金额，或用 Part Payout 取部分继续游戏' },
-                { icon: '🎉', title: 'Bonus Cash Out', desc: '填满任意元素的最后一格后，自动触发 20.5x 奖励' },
+                { icon: '💰', title: '提现', desc: '点击提取赢得的金额，或用「部分提现」取部分继续游戏' },
+                { icon: '🎉', title: '奖励提现', desc: '填满任意元素的最后一格后，自动触发 20.5x 奖励' },
                 { icon: '⚠️', title: '投注限制', desc: '只有在游戏区域清空时才能修改投注金额' },
               ].map(item => (
                 <div key={item.title} style={{
