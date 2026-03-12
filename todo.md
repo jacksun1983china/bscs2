@@ -792,3 +792,7 @@
 - [x] 后端 routers.ts：新增 player.setPassword（验证码校验 + 保存 safePassword 字段）
 - [x] SecurityPassword.tsx：接入真实 API（sendSecurityCode + setPassword），去除硬编码 123456
 - [x] 新增 server/player.modal.test.ts：7 个单元测试全部通过
+
+## 游戏菜单调整（2026-03-12）
+- [x] 移除游戏菜单中的 Vortex 按钮（左侧功能标签 + 右侧游戏卡片均已删除）
+
