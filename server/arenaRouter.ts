@@ -13,7 +13,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, publicProcedure } from "./_core/trpc";
-import { getDb } from "./db";
+import { getDb, insertGoldLog } from "./db";
 import {
   arenaRooms,
   arenaRoomPlayers,
@@ -195,6 +195,8 @@ export const arenaRouter = router({
         .update(players)
         .set({ gold: (gold - entryFee).toFixed(2) })
         .where(eq(players.id, session.playerId));
+      // 记录金币日志（创建竞技场房间入场费）
+      await insertGoldLog(session.playerId, -entryFee, gold - entryFee, 'arena', `竞技场入场费（创建房间）`);
       // 创建房间
       let roomNo = genRoomNo();
       // 确保房间号唯一
@@ -310,6 +312,10 @@ export const arenaRouter = router({
           })
           .where(eq(arenaRooms.id, input.roomId));
       });
+
+      // 记录金币日志（加入竞技场房间入场费）
+      const goldAfterJoin = parseFloat((await (await getDb())!.select().from(players).where(eq(players.id, session.playerId)).then(r => r[0]?.gold ?? '0')));
+      await insertGoldLog(session.playerId, -entryFee, goldAfterJoin, 'arena', `竞技场入场费（加入房间）`);
 
       // 事务外广播事件
       broadcastPlayerJoined(
@@ -458,6 +464,8 @@ export const arenaRouter = router({
         if (p) {
           const newGold = (parseFloat(p.gold ?? "0") + entryFee).toFixed(2);
           await db.update(players).set({ gold: newGold }).where(eq(players.id, rp.playerId));
+          // 记录金币日志（竞技场房间取消退款）
+          await insertGoldLog(rp.playerId, entryFee, parseFloat(newGold), 'arena', `竞技场房间取消退款`);
         }
       }
       await db.update(arenaRooms).set({ status: "cancelled" }).where(eq(arenaRooms.id, input.roomId));
@@ -488,6 +496,8 @@ export const arenaRouter = router({
       if (p) {
         const newGold = (parseFloat(p.gold ?? "0") + entryFee).toFixed(2);
         await db.update(players).set({ gold: newGold }).where(eq(players.id, session.playerId));
+        // 记录金币日志（主动离开竞技场房间退款）
+        await insertGoldLog(session.playerId, entryFee, parseFloat(newGold), 'arena', `竞技场离开房间退款`);
       }
       // 删除玩家记录
       await db.delete(arenaRoomPlayers)
@@ -735,14 +745,16 @@ async function finishGame(roomId: number, db: Awaited<ReturnType<typeof getDb>>,
       .update(arenaRoomPlayers)
       .set({ totalValue, isWinner })
       .where(eq(arenaRoomPlayers.id, rp.id));
-    // 赢家获得所有物品价值（以金币形式发放）
+    // 赢家获得所有物品价値（以金币形式发放）
     if (isWinner) {
       const [p] = await db.select().from(players).where(eq(players.id, rp.playerId));
       if (p) {
-        // 总奖励 = 所有玩家的总价值之和
+        // 总奖励 = 所有玩家的总价値之和
         const totalPrize = Object.values(valueMap).reduce((s, v) => s + v, 0);
         const newGold = (parseFloat(p.gold ?? "0") + totalPrize).toFixed(2);
         await db.update(players).set({ gold: newGold }).where(eq(players.id, rp.playerId));
+        // 记录金币日志（竞技场获得奖励）
+        await insertGoldLog(rp.playerId, totalPrize, parseFloat(newGold), 'arena', `竞技场获得奖励（房间${roomId}）`);
       }
     }
   }

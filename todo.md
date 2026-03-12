@@ -64,7 +64,7 @@
 - [ ] 添加 recharge_orders 表（充值订单）
 - [ ] 添加 recharge_configs 表（充值档位配置）
 - [ ] 添加 invite_records 表（招募记录）
-- [ ] 添加 gold_logs 表（金币流水）
+- [x] 添加 gold_logs 表（金币流水）
 - [ ] 添加 banners 表（轮播图配置）
 - [ ] 添加 broadcasts 表（广播消息）
 - [ ] 添加 vip_configs 表（VIP等级配置）
@@ -796,3 +796,8 @@
 ## 游戏菜单调整（2026-03-12）
 - [x] 移除游戏菜单中的 Vortex 按钮（左侧功能标签 + 右侧游戏卡片均已删除）
 
+
+## 余额记录功能
+- [x] 在arenaRouter.ts中添加金币日志记录（创建房间/加入房间/取消退款/离开退款/获得奖励）
+- [x] 在routers.ts中添加金币日志记录（rollx/rush/dingdong/vortex/recycleItem）
+- [x] 更新MyRecords.tsx前端页面（tab使用btn1/btn2图片样式、余额记录数据展示、时间筛选）

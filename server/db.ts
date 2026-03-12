@@ -30,6 +30,7 @@ import {
   rollRoomPrizes,
   rollRooms,
   rollWinners,
+  goldLogs,
   smsCodes,
   users,
   weeklyCommissionStats,
@@ -851,4 +852,75 @@ export async function deleteCsQuickReply(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.update(csQuickReplies).set({ status: 0 }).where(eq(csQuickReplies.id, id));
+}
+
+// ── 金币流水日志 ──────────────────────────────────────────────────────
+/**
+ * 插入一条金币变动日志
+ * @param playerId 玩家ID
+ * @param amount 变动金额（正为增加，负为减少）
+ * @param balance 变动后余额
+ * @param type 类型：recharge/win/lose/recycle/extract/gift/admin/arena/rollx/vortex/roll
+ * @param description 描述
+ * @param refId 关联ID（订单ID等，可选）
+ */
+export async function insertGoldLog(
+  playerId: number,
+  amount: number,
+  balance: number,
+  type: string,
+  description: string,
+  refId?: number
+) {
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await db.insert(goldLogs).values({
+      playerId,
+      amount: amount.toFixed(2),
+      balance: balance.toFixed(2),
+      type,
+      description,
+      refId: refId ?? null,
+    });
+  } catch (e) {
+    // 日志插入失败不影响主流程
+    console.warn('[GoldLog] 插入失败:', e);
+  }
+}
+
+/**
+ * 查询玩家金币流水日志
+ * @param playerId 玩家ID
+ * @param opts 分页和时间筛选
+ */
+export async function getGoldLogs(
+  playerId: number,
+  opts: { page: number; limit: number; type?: string; startTime?: Date; endTime?: Date }
+) {
+  const db = await getDb();
+  if (!db) return { list: [], total: 0 };
+  const { page, limit, type, startTime, endTime } = opts;
+  const offset = (page - 1) * limit;
+  const conditions: any[] = [eq(goldLogs.playerId, playerId)];
+  if (type) conditions.push(eq(goldLogs.type, type));
+  if (startTime) conditions.push(gte(goldLogs.createdAt, startTime));
+  if (endTime) conditions.push(sql`${goldLogs.createdAt} <= ${endTime}`);
+  const where = and(...conditions);
+  const [list, countResult] = await Promise.all([
+    db.select().from(goldLogs).where(where).orderBy(desc(goldLogs.createdAt)).limit(limit).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(goldLogs).where(where),
+  ]);
+  return {
+    list: list.map(r => ({
+      id: r.id,
+      amount: parseFloat(String(r.amount)),
+      balance: parseFloat(String(r.balance)),
+      type: r.type,
+      description: r.description,
+      refId: r.refId,
+      createdAt: r.createdAt,
+    })),
+    total: Number(countResult[0]?.count ?? 0),
+  };
 }

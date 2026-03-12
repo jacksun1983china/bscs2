@@ -56,6 +56,8 @@ import {
   updateSessionLastMessage,
   verifySmsCode,
   withdrawCommission,
+  insertGoldLog,
+  getGoldLogs,
 } from "./db";
 import { storagePut } from "./storage";
 import { SignJWT, jwtVerify } from "jose";
@@ -340,6 +342,10 @@ export const appRouter = router({
           await db.update(players)
             .set({ gold: sql`gold + ${totalGold}` })
             .where(eq(players.id, session.playerId));
+          // 记录金币流水
+          const afterRows = await db.select({ gold: players.gold }).from(players).where(eq(players.id, session.playerId));
+          const afterGold = afterRows.length ? parseFloat(afterRows[0].gold) : 0;
+          await insertGoldLog(session.playerId, totalGold, afterGold, 'recycle', `回收 ${validItems.length} 件道具，获得 ${totalGold.toFixed(2)} 金币`);
         }
         return { success: true, count: validItems.length, goldReturned: totalGold };
       }),
@@ -441,11 +447,39 @@ export const appRouter = router({
         if (!valid) throw new TRPCError({ code: "BAD_REQUEST", message: "验证码无效或已过期" });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接失败" });
-        await db.update(players).set({ safePassword: input.password }).where(eq(players.id, session.playerId));
+         await db.update(players).set({ safePassword: input.password }).where(eq(players.id, session.playerId));
         return { success: true };
       }),
-  }),
 
+    /** 查询金币流水日志 */
+    goldLogs: publicProcedure
+      .input(z.object({
+        page: z.number().min(1).default(1),
+        limit: z.number().default(20),
+        type: z.string().optional(),
+        timeRange: z.enum(["all", "today", "yesterday", "week7"]).default("all"),
+      }))
+      .query(async ({ input, ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        let startTime: Date | undefined;
+        let endTime: Date | undefined;
+        const now = new Date();
+        if (input.timeRange === "today") {
+          startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        } else if (input.timeRange === "yesterday") {
+          const yesterday = new Date(now);
+          yesterday.setDate(yesterday.getDate() - 1);
+          startTime = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0);
+          endTime = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59);
+        } else if (input.timeRange === "week7") {
+          startTime = new Date(now);
+          startTime.setDate(startTime.getDate() - 6);
+          startTime.setHours(0, 0, 0, 0);
+        }
+        return getGoldLogs(session.playerId, { page: input.page, limit: input.limit, type: input.type, startTime, endTime });
+      }),
+  }),
   // ── Roll房 ──────────────────────────────────────────────────
   roll: router({
     /** 获取Roll房列表 */
@@ -1215,6 +1249,8 @@ export const appRouter = router({
         const newGold = currentGold + netAmount;
         // 更新玩家余额
         await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
+        // 记录金币流水
+        await insertGoldLog(playerToken.playerId, netAmount, newGold, 'rollx', isWin ? `ROLL-X 赢得 ${winAmount.toFixed(2)} 金币` : `ROLL-X 投注 ${input.betAmount.toFixed(2)} 金币`);
         // 记录游戏日志
         await db.insert(rollxGames).values({
           playerId: playerToken.playerId,
@@ -2053,6 +2089,8 @@ export const appRouter = router({
         // 扣除投注金额
         const newGold = currentGold - input.betAmount;
         await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
+        // 记录金币流水
+        await insertGoldLog(playerToken.playerId, -input.betAmount, newGold, 'rush', `过马路投注 ${input.betAmount.toFixed(2)} 金币`);
         // 预生成每条车道的存活结果（true=安全, false=死亡）
         // 每条车道死亡概率随深度递增，确保游戏有真实风险
         // 基础死亡率由RTP控制：rtp越高存活概率越高
@@ -2094,6 +2132,8 @@ export const appRouter = router({
         }
         const newGold = currentGold + winAmount;
         await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
+        // 记录金币流水（结算）
+        if (winAmount > 0) await insertGoldLog(playerToken.playerId, winAmount, newGold, 'rush', `过马路赢得 ${winAmount.toFixed(2)} 金币`);
         await db.insert(rushGames).values({
           playerId: playerToken.playerId,
           betAmount: input.betAmount.toFixed(2),
@@ -2189,6 +2229,8 @@ export const appRouter = router({
         const netAmount = winAmount - totalBet;
         const newGold = currentGold + netAmount;
         await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
+        // 记录金币流水
+        await insertGoldLog(playerToken.playerId, netAmount, newGold, 'dingdong', isWin ? `丁和大作赢得 ${winAmount.toFixed(2)} 金币` : `丁和大作投注 ${totalBet.toFixed(2)} 金币`);
         // 记录游戏（selectedCell 存储 JSON betMap，winCell 存储开奖水果）
         await db.insert(dingdongGames).values({
           playerId: playerToken.playerId,
@@ -2241,6 +2283,8 @@ export const appRouter = router({
         const goldDelta = win ? input.winAmount : -input.winAmount;
         const newGold = currentGold + goldDelta;
         await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
+        // 记录金币流水
+        await insertGoldLog(playerToken.playerId, goldDelta, newGold, 'dingdong', win ? `丁和大作骰子翻倍 +${finalAmount.toFixed(2)} 金币` : `丁和大作骰子失败 -${input.winAmount.toFixed(2)} 金币`);
         return {
           win,
           diceValue,
@@ -2436,9 +2480,10 @@ export const appRouter = router({
         const netAmount = payoutAmount - input.betAmount;
         const newGold = currentGold - input.betAmount + payoutAmount;
 
-        // 更新余额
+         // 更新余额
         await db.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
-
+        // 记录金币流水
+        await insertGoldLog(playerToken.playerId, netAmount, newGold, 'vortex', netAmount >= 0 ? `Vortex 赢得 ${payoutAmount.toFixed(2)} 金币` : `Vortex 投注 ${input.betAmount.toFixed(2)} 金币`);
         // 记录投注
         await (db as any).execute(
           `INSERT INTO vortexBets (userId, playerName, betAmount, multiplier, winAmount, netAmount, balanceAfter, resultData, isWin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
