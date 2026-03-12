@@ -408,7 +408,7 @@ export default function RollX() {
           {/* 倍率滑动条 */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: q(8) }}>
-              <span style={{ color: CYBER.textSecondary, fontSize: q(24), letterSpacing: 1 }}>MULTIPLIER</span>
+              <span style={{ color: CYBER.textSecondary, fontSize: q(24), letterSpacing: 1 }}>倍率</span>
               <span style={{ color: CYBER.accent, fontSize: q(30), fontWeight: 700, textShadow: `0 0 8px rgba(192,132,252,0.6)` }}>{multiplier}x</span>
             </div>
             <div style={{ position: 'relative', height: q(14) }}>
@@ -683,7 +683,7 @@ export default function RollX() {
                 : `-${(Math.abs(result.netAmount) / 100).toFixed(2)}`}
             </div>
             <div style={{ color: CYBER.textSecondary, fontSize: 14, marginBottom: 20 }}>
-              Balance: {(result.balanceAfter / 100).toFixed(2)}
+              余额：{(result.balanceAfter / 100).toFixed(2)}
             </div>
             <button
               onClick={() => setShowResult(false)}

@@ -98,6 +98,7 @@ interface InventoryItem {
 export default function Backpack() {
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<'price' | 'time'>('time');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'box' | 'arena' | 'roll'>('all');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [settingsVisible, setSettingsVisible] = useState(false);
   // 弹窗状态
@@ -137,6 +138,13 @@ export default function Backpack() {
 
   const filteredItems = rawItems
     .filter(item => !searchText || (item.itemName ?? '').includes(searchText))
+    .filter(item => {
+      if (sourceFilter === 'all') return true;
+      if (sourceFilter === 'box') return item.source === 'box' || item.source === 'unbox';
+      if (sourceFilter === 'arena') return item.source === 'arena';
+      if (sourceFilter === 'roll') return item.source === 'roll';
+      return true;
+    })
     .sort((a, b) =>
       sortBy === 'price'
         ? Number(b.itemValue ?? 0) - Number(a.itemValue ?? 0)
@@ -399,6 +407,54 @@ export default function Backpack() {
             />
           </div>
 
+          {/* 来源筛选 Tab */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'row',
+              gap: q(12),
+              margin: `${q(12)} 0 0 ${q(24)}`,
+              width: q(702),
+            }}
+          >
+            {(['all', 'box', 'arena', 'roll'] as const).map(src => {
+              const labels = { all: '全部', box: '开筱', arena: '竞技场', roll: 'Roll房' };
+              const isActive = sourceFilter === src;
+              return (
+                <div
+                  key={src}
+                  onClick={() => { setSourceFilter(src); setSelectedIds(new Set()); }}
+                  style={{
+                    flex: 1,
+                    height: q(52),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: q(10),
+                    background: isActive
+                      ? 'linear-gradient(135deg, rgba(120,40,200,0.9), rgba(180,80,255,0.9))'
+                      : 'rgba(30,10,70,0.7)',
+                    border: isActive
+                      ? '1.5px solid rgba(180,80,255,0.8)'
+                      : '1px solid rgba(120,60,200,0.3)',
+                    cursor: 'pointer',
+                    boxShadow: isActive ? '0 0 10px rgba(180,80,255,0.4)' : 'none',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <span style={{
+                    color: isActive ? '#fff' : 'rgba(180,150,255,0.7)',
+                    fontSize: q(22),
+                    fontWeight: isActive ? 700 : 400,
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {labels[src]}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
           {/* 搜索+排序栏 */}
           <div
             style={{
@@ -650,6 +706,23 @@ export default function Backpack() {
                         <span style={{ color: '#fff', fontSize: q(20), lineHeight: 1 }}>✓</span>
                       </div>
                     )}
+
+                    {/* 详情按鈕（左下角） */}
+                    <div
+                      onClick={e => { e.stopPropagation(); setDetailItem(item); }}
+                      style={{
+                        position: 'absolute',
+                        bottom: q(50),
+                        left: q(8),
+                        background: 'rgba(0,0,0,0.55)',
+                        borderRadius: q(8),
+                        padding: `${q(2)} ${q(10)}`,
+                        cursor: 'pointer',
+                        zIndex: 10,
+                      }}
+                    >
+                      <span style={{ color: 'rgba(200,170,255,1)', fontSize: q(18), fontWeight: 600 }}>详情</span>
+                    </div>
                   </div>
                 );
               })}

@@ -286,21 +286,32 @@ function RoomCard({ room, onClick }: RoomCardProps) {
         </div>
       </div>
 
-      {/* 底部：轮数信息 */}
+        {/* 底部：轮数信息 */}
       <div style={{
         marginTop: q(12), paddingTop: q(10),
         borderTop: '1px solid rgba(120,60,220,0.2)',
         display: 'flex', alignItems: 'center', gap: q(20),
       }}>
         <span style={{ color: '#9ca3af', fontSize: q(22) }}>
-          🎁 {room.rounds} 轮开箱
+          🎁 {room.rounds} 轮开笱
         </span>
         <span style={{ color: '#9ca3af', fontSize: q(22) }}>
           👥 {room.maxPlayers} 人对战
         </span>
-        <span style={{ color: '#c084fc', fontSize: q(22), marginLeft: 'auto' }}>
-          {room.status === 'waiting' ? '等待中 ›' : room.status === 'playing' ? '进行中' : '已结束'}
-        </span>
+        {room.status === 'finished' ? (
+          <span style={{
+            color: '#60a5fa', fontSize: q(22), marginLeft: 'auto',
+            background: 'rgba(96,165,250,0.15)',
+            border: '1px solid rgba(96,165,250,0.4)',
+            borderRadius: q(12), padding: `${q(4)} ${q(12)}`,
+          }}>
+            ▶ 查看回放
+          </span>
+        ) : (
+          <span style={{ color: '#c084fc', fontSize: q(22), marginLeft: 'auto' }}>
+            {room.status === 'waiting' ? '等待中 ›' : '进行中'}
+          </span>
+        )}
       </div>
     </div>
   );

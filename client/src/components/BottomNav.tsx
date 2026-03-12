@@ -7,6 +7,7 @@
  */
 import { useLocation } from 'wouter';
 import { LANHU } from '@/lib/assets';
+import { useSound } from '@/hooks/useSound';
 
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -18,6 +19,12 @@ interface BottomNavProps {
 
 export default function BottomNav({ active: _active }: BottomNavProps) {
   const [, navigate] = useLocation();
+  const { playClick } = useSound();
+
+  const go = (path: string) => {
+    playClick();
+    navigate(path);
+  };
 
   return (
     <div
@@ -38,7 +45,7 @@ export default function BottomNav({ active: _active }: BottomNavProps) {
     >
       {/* 我的 */}
       <div
-        onClick={() => navigate('/profile')}
+        onClick={() => go('/profile')}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           width: q(60), marginLeft: q(65), cursor: 'pointer', flexShrink: 0, gap: q(4),
@@ -54,7 +61,7 @@ export default function BottomNav({ active: _active }: BottomNavProps) {
 
       {/* 分享 */}
       <div
-        onClick={() => navigate('/share')}
+        onClick={() => go('/share')}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           width: q(60), marginLeft: q(76), cursor: 'pointer', flexShrink: 0, gap: q(4),
@@ -70,7 +77,7 @@ export default function BottomNav({ active: _active }: BottomNavProps) {
 
       {/* 背包（跳过大厅中心位置） */}
       <div
-        onClick={() => navigate('/backpack')}
+        onClick={() => go('/backpack')}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           width: q(60), marginLeft: q(244), cursor: 'pointer', flexShrink: 0, gap: q(4),
@@ -86,7 +93,7 @@ export default function BottomNav({ active: _active }: BottomNavProps) {
 
       {/* 充值 */}
       <div
-        onClick={() => navigate('/recharge')}
+        onClick={() => go('/recharge')}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           width: q(60), marginLeft: q(69), cursor: 'pointer', flexShrink: 0, gap: q(4),
@@ -104,7 +111,7 @@ export default function BottomNav({ active: _active }: BottomNavProps) {
       <img
         src={LANHU.hallIcon}
         alt="大厅"
-        onClick={() => navigate('/')}
+        onClick={() => go('/')}
         style={{
           position: 'absolute', left: q(300), top: q(-37),
           width: q(151), height: q(124), objectFit: 'contain', cursor: 'pointer',

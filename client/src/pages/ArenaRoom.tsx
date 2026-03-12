@@ -102,6 +102,13 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
     }
   }, [skipAnim]);
 
+  // 修复：spinning=true 但 finalItem=null 时，立即调用 onDone 避免卡住
+  useEffect(() => {
+    if (spinning && !finalItem && !skipAnim) {
+      onDone?.();
+    }
+  }, [spinning, finalItem]);
+
   useEffect(() => {
     if (spinning && finalItem && !skipAnim) {
       const newReel = buildReel(finalItem, reelItems);
@@ -866,6 +873,29 @@ export default function ArenaRoom() {
   const myPlayerId = roomDetail?.myPlayerId ?? 0;
   const isCreator = room ? room.creatorId === myPlayerId : false;
 
+  // ── 发送弹幕 ──
+  const handleSendDanmaku = useCallback(async () => {
+    const text = danmakuInput.trim();
+    if (!text || danmakuSending) return;
+    setDanmakuSending(true);
+    try {
+      const myPlayer = players.find(p => p.playerId === myPlayerId);
+      const nickname = myPlayer?.nickname ?? '观战者';
+      const avatar = myPlayer?.avatar ?? '001';
+      await fetch('/api/arena/danmaku', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ roomId, nickname, avatar, text }),
+      });
+      setDanmakuInput('');
+    } catch (e) {
+      console.error('[Danmaku] send error:', e);
+    } finally {
+      setDanmakuSending(false);
+    }
+  }, [danmakuInput, danmakuSending, players, myPlayerId, roomId]);
+
   // ── 跳过所有动画，直接计算并展示最终结果 ──
   const handleSkipAll = useCallback(() => {
     if (!roomDetail) return;
@@ -1408,6 +1438,31 @@ export default function ArenaRoom() {
                     </span>
                   </div>
                 )}
+                {/* 道具入背包提示 */}
+                {(() => {
+                  const myData = gameOverData?.players.find((p) => p.playerId === myPlayerId);
+                  if (!myData) return null;
+                  // 计算当前玩家获得的道具数量（每轮一件，共 totalRounds 轮）
+                  const itemCount = totalRounds;
+                  return (
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: q(8),
+                      marginTop: q(10),
+                      background: 'rgba(34,197,94,0.15)',
+                      border: '1px solid rgba(34,197,94,0.4)',
+                      borderRadius: q(20),
+                      padding: `${q(6)} ${q(20)}`,
+                      boxShadow: '0 0 12px rgba(34,197,94,0.2)',
+                    }}>
+                      <span style={{ fontSize: q(28) }}>🎒</span>
+                      <span style={{ color: '#22c55e', fontSize: q(22), fontWeight: 700 }}>
+                        {itemCount} 件道具已入背包
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
               <div style={{ display: 'flex', gap: q(12) }}>
                 {sortedPlayers.map((p) => (
@@ -1615,6 +1670,46 @@ export default function ArenaRoom() {
           </div>
         )}
       </div>
+
+      {/* 弹幕发送输入框：游戏进行中显示 */}
+      {(gameStatus === 'playing' || gameStatus === 'finished') && (
+        <div style={{
+          position: 'relative', zIndex: 10,
+          padding: `${q(8)} ${q(12)}`,
+          background: 'rgba(13,6,33,0.9)',
+          borderTop: '1px solid rgba(120,60,220,0.3)',
+          display: 'flex', gap: q(8), alignItems: 'center',
+        }}>
+          <input
+            value={danmakuInput}
+            onChange={e => setDanmakuInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && danmakuInput.trim()) handleSendDanmaku(); }}
+            placeholder="发弹幕..."
+            maxLength={30}
+            style={{
+              flex: 1, background: 'rgba(30,12,60,0.8)',
+              border: '1px solid rgba(120,60,220,0.4)',
+              borderRadius: q(20), padding: `${q(10)} ${q(16)}`,
+              color: '#e0d0ff', fontSize: q(24), outline: 'none',
+            }}
+          />
+          <button
+            onClick={handleSendDanmaku}
+            disabled={danmakuSending || !danmakuInput.trim()}
+            style={{
+              background: danmakuInput.trim() ? 'linear-gradient(135deg,#7c3aed,#c084fc)' : 'rgba(120,60,220,0.2)',
+              border: 'none', borderRadius: q(20),
+              padding: `${q(10)} ${q(20)}`,
+              color: '#fff', fontSize: q(24), fontWeight: 700,
+              cursor: danmakuInput.trim() ? 'pointer' : 'not-allowed',
+              opacity: danmakuSending ? 0.6 : 1,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {danmakuSending ? '...' : '发送'}
+          </button>
+        </div>
+      )}
 
       {/* 底部导航 */}
       <div style={{ position: 'relative', zIndex: 2 }}>
