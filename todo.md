@@ -840,3 +840,10 @@
 
 ## Vortex 中心垂直 Slot 滚轮（2026-03-12）
 - [x] 将 OrbitTrack 中心圆区域改为1列垂直滚动 slot（图标从上往下滚动，减速停在目标图标，其余轨道不变）
+
+## Vortex 动画时序修复（2026-03-12）
+- [ ] 修复 Vortex 动画时序：slot 滚轮完全停止后，才触发外圈轨道动画（现在结果立刻显示，slot 还没停）
+
+## Vortex cashOut 报错修复（2026-03-12）
+- [x] 创建 vortexBets 数据库表（cashOut 时 INSERT 报表不存在错误）
+- [x] 修复 Vortex 动画时序：slot 滚轮完全停止后才触发外圈轨道动画

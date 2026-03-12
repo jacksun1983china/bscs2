@@ -53,10 +53,12 @@ const ELEMENT_CONFIG: Record<Element, { label: string; color: string; icon: stri
 function SlotColumn({
   isSpinning,
   targetElement,
+  onSpinComplete,
   size = 56,
 }: {
   isSpinning: boolean;
   targetElement: Element | null;
+  onSpinComplete?: () => void;
   size?: number;
 }) {
   const ELEMENTS: Element[] = ['fire', 'earth', 'water', 'wind', 'skull', 'bonus'];
@@ -144,6 +146,8 @@ function SlotColumn({
           // 最终停在精确位置
           setOffsetY(adjustedTarget % (totalH * 3));
           stateRef.current = 'idle';
+          // 通知父组件 slot 已完全停止
+          onSpinComplete?.();
         }
       };
       rafRef.current = requestAnimationFrame(stopLoop);
@@ -468,6 +472,8 @@ export default function Vortex() {
   const [isHolding, setIsHolding] = useState(false);
   const [spinningElement, setSpinningElement] = useState<Element | null>(null);
   const [lastElement, setLastElement] = useState<Element | null>(null);
+  // pendingTrackState: slot 停止前暂存的轨道状态，等 slot 停止后再应用
+  const pendingTrackRef = useRef<TrackState | null>(null);
   const [bonusTriggered, setBonusTriggered] = useState(false);
   const [gameMessage, setGameMessage] = useState('');
   const [showHowToPlay, setShowHowToPlay] = useState(false);
@@ -524,9 +530,9 @@ export default function Vortex() {
       setSpinningElement(result.element as Element);
       setLastElement(result.element as Element);
 
-      // 更新轨道状态
+      // 更新轨道状态（暂存，等 slot 停止后再应用）
       const newTrack = result.newTrack as TrackState;
-      setTrackState(newTrack);
+      pendingTrackRef.current = newTrack;
 
       // 更新倍率
       const newMult = result.multiplier;
@@ -767,6 +773,13 @@ export default function Vortex() {
               isSpinning={isSpinning}
               targetElement={lastElement}
               size={56}
+              onSpinComplete={() => {
+                // slot 完全停止后，再应用轨道状态，触发外圈动画
+                if (pendingTrackRef.current) {
+                  setTrackState(pendingTrackRef.current);
+                  pendingTrackRef.current = null;
+                }
+              }}
             />
           </div>
         </div>
