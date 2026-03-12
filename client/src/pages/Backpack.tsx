@@ -853,7 +853,7 @@ export default function Backpack() {
                 whiteSpace: 'nowrap',
               }}
             >
-              |&nbsp;{selectedIds.size}/{Math.min(50, filteredItems.length)}件
+              |&nbsp;{selectedIds.size}/{filteredItems.length}件
             </span>
 
             {/* 金币图标 + 总价值 */}

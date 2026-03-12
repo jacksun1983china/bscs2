@@ -512,6 +512,59 @@ export const appRouter = router({
         }
         return getGoldLogs(session.playerId, { page: input.page, limit: input.limit, type: input.type, startTime, endTime });
       }),
+
+    /** 提货记录（status=1 已提取的道具列表） */
+    extractLogs: publicProcedure
+      .input(z.object({
+        page: z.number().min(1).default(1),
+        limit: z.number().default(20),
+      }))
+      .query(async ({ input, ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) return { list: [], total: 0 };
+        const offset = (input.page - 1) * input.limit;
+        const [list, countResult] = await Promise.all([
+          db.select({
+            id: playerItems.id,
+            itemId: playerItems.itemId,
+            source: playerItems.source,
+            status: playerItems.status,
+            extractedAt: playerItems.extractedAt,
+            createdAt: playerItems.createdAt,
+            itemName: boxGoods.name,
+            itemImageUrl: boxGoods.imageUrl,
+            itemQuality: boxGoods.level,
+            itemValue: boxGoods.price,
+          })
+            .from(playerItems)
+            .leftJoin(boxGoods, eq(playerItems.itemId, boxGoods.id))
+            .where(and(eq(playerItems.playerId, session.playerId), eq(playerItems.status, 1)))
+            .orderBy(desc(playerItems.extractedAt))
+            .limit(input.limit)
+            .offset(offset),
+          db.select({ count: sql<number>`count(*)` }).from(playerItems)
+            .where(and(eq(playerItems.playerId, session.playerId), eq(playerItems.status, 1))),
+        ]);
+        return {
+          list: list.map(r => ({ ...r, itemValue: parseFloat(String(r.itemValue ?? '0')) })),
+          total: Number(countResult[0]?.count ?? 0),
+        };
+      }),
+
+    /** 赠送记录（暂无赠送功能，返回空列表） */
+    giftLogs: publicProcedure
+      .input(z.object({
+        page: z.number().min(1).default(1),
+        limit: z.number().default(20),
+      }))
+      .query(async ({ input, ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        // 赠送功能尚未实现，返回空列表
+        return { list: [], total: 0 };
+      }),
   }),
   // ── Roll房 ──────────────────────────────────────────────────
   roll: router({

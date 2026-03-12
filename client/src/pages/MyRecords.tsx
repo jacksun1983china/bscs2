@@ -2,7 +2,7 @@
  * MyRecords.tsx — 我的记录页面
  * 按蓝湖 lanhu_wodejilu 设计稿还原
  * 功能：余额记录/充值记录/提货记录/赠送记录，支持时间筛选
- * 优化：无限滚动（余额/充值记录均支持）、余额记录详情弹窗、空状态引导按钮
+ * 优化：无限滚动、余额/充值记录详情弹窗、提货/赠送记录真实数据
  */
 import { PageSlideIn } from '@/components/PageTransition';
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -42,7 +42,7 @@ const TYPE_LABELS: Record<string, string> = {
   arena: '竞技场',
   rollx: 'ROLL-X',
   vortex: 'Vortex',
-  dingdong: '丁和大作',
+  dingdong: '丁咚大作战',
   rush: '过马路',
   recycle: '回收道具',
   recharge: '充值',
@@ -57,13 +57,21 @@ function getTypeLabel(type: string) {
   return TYPE_LABELS[type] || type;
 }
 
-// 余额记录详情弹窗
-function GoldLogDetailModal({ record, onClose }: { record: any; onClose: () => void }) {
-  if (!record) return null;
-  const amount = Number(record.amount);
-  const balance = Number(record.balance);
-  const date = new Date(record.createdAt);
+const RECHARGE_STATUS_LABELS: Record<number, { label: string; color: string }> = {
+  0: { label: '待审核', color: '#f59e0b' },
+  1: { label: '已完成', color: '#4ade80' },
+  2: { label: '已拒绝', color: '#f87171' },
+};
 
+const QUALITY_LABELS: Record<number, { label: string; color: string }> = {
+  1: { label: '传说', color: '#f5c842' },
+  2: { label: '稀有', color: '#c084fc' },
+  3: { label: '普通', color: '#9ca3af' },
+  4: { label: '回收', color: '#6b7280' },
+};
+
+// 底部详情弹窗通用容器
+function DetailModal({ onClose, title, children }: { onClose: () => void; title: string; children: React.ReactNode }) {
   return (
     <div
       onClick={onClose}
@@ -94,48 +102,11 @@ function GoldLogDetailModal({ record, onClose }: { record: any; onClose: () => v
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: q(24) }}>
           <div style={{ width: q(80), height: q(8), borderRadius: q(4), background: 'rgba(255,255,255,0.2)' }} />
         </div>
-
         {/* 标题 */}
         <div style={{ textAlign: 'center', marginBottom: q(32) }}>
-          <span style={{ color: '#c084fc', fontSize: q(30), fontWeight: 700 }}>流水详情</span>
+          <span style={{ color: '#c084fc', fontSize: q(30), fontWeight: 700 }}>{title}</span>
         </div>
-
-        {/* 金额 */}
-        <div style={{
-          textAlign: 'center',
-          marginBottom: q(36),
-          padding: `${q(24)} 0`,
-          borderBottom: '1px solid rgba(120,60,220,0.2)',
-        }}>
-          <div style={{ color: amountColor(amount), fontSize: q(56), fontWeight: 900, lineHeight: 1.1 }}>
-            {formatAmount(amount)}
-          </div>
-          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: q(22), marginTop: q(8) }}>金币</div>
-        </div>
-
-        {/* 详情列表 */}
-        {[
-          { label: '类型', value: getTypeLabel(record.type) },
-          { label: '余额', value: `${balance.toFixed(2)} 金币` },
-          { label: '时间', value: date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) },
-          ...(record.description ? [{ label: '备注', value: record.description }] : []),
-          ...(record.refId ? [{ label: '流水号', value: String(record.refId) }] : []),
-        ].map((item, i) => (
-          <div
-            key={i}
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              padding: `${q(18)} 0`,
-              borderBottom: '1px solid rgba(120,60,220,0.1)',
-            }}
-          >
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: q(24) }}>{item.label}</span>
-            <span style={{ color: '#fff', fontSize: q(24), fontWeight: 500, textAlign: 'right', maxWidth: '60%', wordBreak: 'break-all' }}>{item.value}</span>
-          </div>
-        ))}
-
+        {children}
         {/* 关闭按钮 */}
         <div
           onClick={onClose}
@@ -159,11 +130,130 @@ function GoldLogDetailModal({ record, onClose }: { record: any; onClose: () => v
   );
 }
 
+function DetailRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      padding: `${q(18)} 0`,
+      borderBottom: '1px solid rgba(120,60,220,0.1)',
+    }}>
+      <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: q(24) }}>{label}</span>
+      <span style={{ color: valueColor ?? '#fff', fontSize: q(24), fontWeight: 500, textAlign: 'right', maxWidth: '60%', wordBreak: 'break-all' }}>{value}</span>
+    </div>
+  );
+}
+
+// 余额记录详情弹窗
+function GoldLogDetailModal({ record, onClose }: { record: any; onClose: () => void }) {
+  if (!record) return null;
+  const amount = Number(record.amount);
+  const balance = Number(record.balance);
+  const date = new Date(record.createdAt);
+  return (
+    <DetailModal onClose={onClose} title="流水详情">
+      {/* 金额 */}
+      <div style={{
+        textAlign: 'center',
+        marginBottom: q(36),
+        padding: `${q(24)} 0`,
+        borderBottom: '1px solid rgba(120,60,220,0.2)',
+      }}>
+        <div style={{ color: amountColor(amount), fontSize: q(56), fontWeight: 900, lineHeight: 1.1 }}>
+          {formatAmount(amount)}
+        </div>
+        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: q(22), marginTop: q(8) }}>金币</div>
+      </div>
+      <DetailRow label="类型" value={getTypeLabel(record.type)} />
+      <DetailRow label="余额" value={`${balance.toFixed(2)} 金币`} />
+      <DetailRow label="时间" value={date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })} />
+      {record.description && <DetailRow label="备注" value={record.description} />}
+      {record.refId && <DetailRow label="流水号" value={String(record.refId)} />}
+    </DetailModal>
+  );
+}
+
+// 充值记录详情弹窗
+function RechargeDetailModal({ record, onClose }: { record: any; onClose: () => void }) {
+  if (!record) return null;
+  const amount = Number(record.amount);
+  const gold = Number(record.gold);
+  const bonusDiamond = Number(record.bonusDiamond ?? 0);
+  const date = new Date(record.createdAt);
+  const statusInfo = RECHARGE_STATUS_LABELS[record.status as number] ?? { label: '未知', color: '#fff' };
+  const PAY_METHOD_LABELS: Record<string, string> = { alipay: '支付宝', wechat: '微信支付', manual: '人工充值' };
+  return (
+    <DetailModal onClose={onClose} title="充值详情">
+      {/* 金额 */}
+      <div style={{
+        textAlign: 'center',
+        marginBottom: q(36),
+        padding: `${q(24)} 0`,
+        borderBottom: '1px solid rgba(120,60,220,0.2)',
+      }}>
+        <div style={{ color: '#4ade80', fontSize: q(56), fontWeight: 900, lineHeight: 1.1 }}>
+          ¥{amount.toFixed(2)}
+        </div>
+        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: q(22), marginTop: q(8) }}>充值金额</div>
+      </div>
+      <DetailRow label="获得金币" value={`${gold.toFixed(0)} 金币`} valueColor="#ffd700" />
+      {bonusDiamond > 0 && <DetailRow label="赠送钻石" value={`${bonusDiamond.toFixed(0)} 钻石`} valueColor="#7df9ff" />}
+      <DetailRow label="支付方式" value={PAY_METHOD_LABELS[record.payMethod] ?? record.payMethod ?? '—'} />
+      <DetailRow label="状态" value={statusInfo.label} valueColor={statusInfo.color} />
+      <DetailRow label="订单号" value={record.orderNo ?? '—'} />
+      <DetailRow label="时间" value={date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })} />
+      {record.remark && <DetailRow label="备注" value={record.remark} />}
+    </DetailModal>
+  );
+}
+
+// 提货记录详情弹窗
+function ExtractDetailModal({ record, onClose }: { record: any; onClose: () => void }) {
+  if (!record) return null;
+  const quality = record.itemQuality ?? 3;
+  const qualityInfo = QUALITY_LABELS[quality] ?? { label: '普通', color: '#9ca3af' };
+  const extractedAt = record.extractedAt ? new Date(record.extractedAt) : null;
+  const createdAt = new Date(record.createdAt);
+  const SOURCE_LABELS: Record<string, string> = { box: '宝箱', arena: '竞技场', roll: 'ROLL房', admin: '管理员' };
+  return (
+    <DetailModal onClose={onClose} title="提货详情">
+      {/* 物品图片 */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: q(32) }}>
+        <div style={{
+          width: q(160),
+          height: q(160),
+          borderRadius: q(16),
+          background: 'rgba(120,60,220,0.2)',
+          border: `2px solid ${qualityInfo.color}40`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+        }}>
+          {record.itemImageUrl ? (
+            <img src={record.itemImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          ) : (
+            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: q(24) }}>无图</span>
+          )}
+        </div>
+      </div>
+      <DetailRow label="物品名称" value={record.itemName ?? '未知物品'} />
+      <DetailRow label="品质" value={qualityInfo.label} valueColor={qualityInfo.color} />
+      <DetailRow label="价值" value={`${Number(record.itemValue ?? 0).toFixed(2)} 金币`} valueColor="#ffd700" />
+      <DetailRow label="来源" value={SOURCE_LABELS[record.source] ?? record.source ?? '—'} />
+      <DetailRow label="获得时间" value={createdAt.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })} />
+      {extractedAt && <DetailRow label="提货时间" value={extractedAt.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })} />}
+    </DetailModal>
+  );
+}
+
 export default function MyRecords() {
   const [activeTab, setActiveTab] = useState(0);
   const [timeFilter, setTimeFilter] = useState(0);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [detailRecord, setDetailRecord] = useState<any>(null);
+  const [detailType, setDetailType] = useState<'gold' | 'recharge' | 'extract' | null>(null);
   const [, navigate] = useLocation();
 
   // 余额记录无限滚动状态
@@ -178,6 +268,18 @@ export default function MyRecords() {
   const [rechargeHasMore, setRechargeHasMore] = useState(true);
   const [rechargeLoadingMore, setRechargeLoadingMore] = useState(false);
 
+  // 提货记录无限滚动状态
+  const [extractPage, setExtractPage] = useState(1);
+  const [extractList, setExtractList] = useState<any[]>([]);
+  const [extractHasMore, setExtractHasMore] = useState(true);
+  const [extractLoadingMore, setExtractLoadingMore] = useState(false);
+
+  // 赠送记录无限滚动状态
+  const [giftPage, setGiftPage] = useState(1);
+  const [giftList, setGiftList] = useState<any[]>([]);
+  const [giftHasMore, setGiftHasMore] = useState(true);
+  const [giftLoadingMore, setGiftLoadingMore] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // 切换 tab 或时间筛选时重置分页
@@ -185,15 +287,12 @@ export default function MyRecords() {
   const prevTimeRef = useRef(timeFilter);
   useEffect(() => {
     if (prevTabRef.current !== activeTab || prevTimeRef.current !== timeFilter) {
-      setGoldPage(1);
-      setGoldList([]);
-      setGoldHasMore(true);
-      setRechargePage(1);
-      setRechargeList([]);
-      setRechargeHasMore(true);
+      setGoldPage(1); setGoldList([]); setGoldHasMore(true);
+      setRechargePage(1); setRechargeList([]); setRechargeHasMore(true);
+      setExtractPage(1); setExtractList([]); setExtractHasMore(true);
+      setGiftPage(1); setGiftList([]); setGiftHasMore(true);
       prevTabRef.current = activeTab;
       prevTimeRef.current = timeFilter;
-      // 重置滚动位置
       if (scrollRef.current) scrollRef.current.scrollTop = 0;
     }
   }, [activeTab, timeFilter]);
@@ -203,30 +302,24 @@ export default function MyRecords() {
     { page: goldPage, limit: PAGE_SIZE, timeRange: TIME_RANGE_MAP[timeFilter] },
     { enabled: activeTab === 0, staleTime: 10_000 }
   );
-
   useEffect(() => {
     if (!goldLogsData) return;
     const newItems = goldLogsData.list ?? [];
-    if (goldPage === 1) {
-      setGoldList(newItems);
-    } else {
-      setGoldList(prev => [...prev, ...newItems]);
-    }
+    if (goldPage === 1) setGoldList(newItems);
+    else setGoldList(prev => [...prev, ...newItems]);
     setGoldHasMore(newItems.length >= PAGE_SIZE);
     setGoldLoadingMore(false);
   }, [goldLogsData, goldPage]);
 
-  // 充值记录查询（带时间筛选）
+  // 充值记录查询
   const rechargeTimeRange = TIME_RANGE_MAP[timeFilter];
   const { data: rechargeData, isLoading: rechargeLoading } = trpc.player.rechargeOrders.useQuery(
     { page: rechargePage, limit: PAGE_SIZE },
     { enabled: activeTab === 1, staleTime: 10_000 }
   );
-
   useEffect(() => {
     if (!rechargeData) return;
     let newItems = rechargeData.list ?? [];
-    // 前端按时间筛选
     if (rechargeTimeRange !== 'all') {
       const now = Date.now();
       const cutoff = rechargeTimeRange === 'today' ? now - 86400000
@@ -234,20 +327,47 @@ export default function MyRecords() {
         : now - 7 * 86400000;
       newItems = newItems.filter((r: any) => new Date(r.createdAt).getTime() > cutoff);
     }
-    if (rechargePage === 1) {
-      setRechargeList(newItems);
-    } else {
-      setRechargeList(prev => [...prev, ...newItems]);
-    }
+    if (rechargePage === 1) setRechargeList(newItems);
+    else setRechargeList(prev => [...prev, ...newItems]);
     setRechargeHasMore((rechargeData.list ?? []).length >= PAGE_SIZE);
     setRechargeLoadingMore(false);
   }, [rechargeData, rechargePage, rechargeTimeRange]);
+
+  // 提货记录查询
+  const { data: extractData, isLoading: extractLoading } = trpc.player.extractLogs.useQuery(
+    { page: extractPage, limit: PAGE_SIZE },
+    { enabled: activeTab === 2, staleTime: 10_000 }
+  );
+  useEffect(() => {
+    if (!extractData) return;
+    const newItems = extractData.list ?? [];
+    if (extractPage === 1) setExtractList(newItems);
+    else setExtractList(prev => [...prev, ...newItems]);
+    setExtractHasMore(newItems.length >= PAGE_SIZE);
+    setExtractLoadingMore(false);
+  }, [extractData, extractPage]);
+
+  // 赠送记录查询
+  const { data: giftData, isLoading: giftLoading } = trpc.player.giftLogs.useQuery(
+    { page: giftPage, limit: PAGE_SIZE },
+    { enabled: activeTab === 3, staleTime: 10_000 }
+  );
+  useEffect(() => {
+    if (!giftData) return;
+    const newItems = giftData.list ?? [];
+    if (giftPage === 1) setGiftList(newItems);
+    else setGiftList(prev => [...prev, ...newItems]);
+    setGiftHasMore(newItems.length >= PAGE_SIZE);
+    setGiftLoadingMore(false);
+  }, [giftData, giftPage]);
 
   const isLoading = activeTab === 0
     ? (goldLogsLoading && goldPage === 1)
     : activeTab === 1
     ? (rechargeLoading && rechargePage === 1)
-    : false;
+    : activeTab === 2
+    ? (extractLoading && extractPage === 1)
+    : (giftLoading && giftPage === 1);
 
   // 滚动监听
   const handleScroll = useCallback(() => {
@@ -263,8 +383,14 @@ export default function MyRecords() {
     } else if (activeTab === 1 && rechargeHasMore && !rechargeLoadingMore && !rechargeLoading) {
       setRechargeLoadingMore(true);
       setRechargePage(prev => prev + 1);
+    } else if (activeTab === 2 && extractHasMore && !extractLoadingMore && !extractLoading) {
+      setExtractLoadingMore(true);
+      setExtractPage(prev => prev + 1);
+    } else if (activeTab === 3 && giftHasMore && !giftLoadingMore && !giftLoading) {
+      setGiftLoadingMore(true);
+      setGiftPage(prev => prev + 1);
     }
-  }, [activeTab, goldHasMore, goldLoadingMore, goldLogsLoading, rechargeHasMore, rechargeLoadingMore, rechargeLoading]);
+  }, [activeTab, goldHasMore, goldLoadingMore, goldLogsLoading, rechargeHasMore, rechargeLoadingMore, rechargeLoading, extractHasMore, extractLoadingMore, extractLoading, giftHasMore, giftLoadingMore, giftLoading]);
 
   // 空状态引导
   const EmptyState = ({ tab }: { tab: number }) => {
@@ -318,6 +444,24 @@ export default function MyRecords() {
     return null;
   };
 
+  // 充值状态标签
+  const RechargeStatusBadge = ({ status }: { status: number }) => {
+    const info = RECHARGE_STATUS_LABELS[status] ?? { label: '未知', color: '#fff' };
+    return (
+      <span style={{
+        fontSize: q(18),
+        color: info.color,
+        background: `${info.color}20`,
+        border: `1px solid ${info.color}60`,
+        borderRadius: q(8),
+        padding: `${q(2)} ${q(10)}`,
+        whiteSpace: 'nowrap',
+      }}>
+        {info.label}
+      </span>
+    );
+  };
+
   return (
     <PageSlideIn>
       <div
@@ -355,21 +499,49 @@ export default function MyRecords() {
               ))}
             </div>
 
-            {/* 时间筛选 + 表头 */}
+            {/* 时间筛选 + 表头（余额/充值记录显示，提货/赠送不显示时间筛选） */}
             <div style={{ background: 'rgba(10,5,30,0.85)', padding: `${q(16)} ${q(20)}`, flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: q(12), marginBottom: q(16) }}>
-                {TIME_FILTERS.map((f, i) => (
-                  <div key={i} onClick={() => setTimeFilter(i)} style={{ padding: `${q(6)} ${q(20)}`, borderRadius: q(20), background: timeFilter === i ? 'rgba(192,132,252,0.3)' : 'rgba(255,255,255,0.1)', color: timeFilter === i ? '#c084fc' : 'rgba(255,255,255,0.7)', fontSize: q(22), cursor: 'pointer', border: timeFilter === i ? '1px solid #c084fc' : '1px solid transparent', transition: 'all 0.2s' }}>
-                    {f}
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', borderBottom: '1px solid rgba(120,60,220,0.3)', paddingBottom: q(12) }}>
-                <span style={{ flex: 2, color: 'rgba(255,255,255,0.6)', fontSize: q(22) }}>时间</span>
-                <span style={{ flex: 1.5, color: 'rgba(255,255,255,0.6)', fontSize: q(22), textAlign: 'center' }}>类型</span>
-                <span style={{ flex: 1.5, color: 'rgba(255,255,255,0.6)', fontSize: q(22), textAlign: 'center' }}>金额</span>
-                <span style={{ flex: 1, color: 'rgba(255,255,255,0.6)', fontSize: q(22), textAlign: 'right' }}>余额</span>
-              </div>
+              {(activeTab === 0 || activeTab === 1) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: q(12), marginBottom: q(16) }}>
+                  {TIME_FILTERS.map((f, i) => (
+                    <div key={i} onClick={() => setTimeFilter(i)} style={{ padding: `${q(6)} ${q(20)}`, borderRadius: q(20), background: timeFilter === i ? 'rgba(192,132,252,0.3)' : 'rgba(255,255,255,0.1)', color: timeFilter === i ? '#c084fc' : 'rgba(255,255,255,0.7)', fontSize: q(22), cursor: 'pointer', border: timeFilter === i ? '1px solid #c084fc' : '1px solid transparent', transition: 'all 0.2s' }}>
+                      {f}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 表头 */}
+              {activeTab === 0 && (
+                <div style={{ display: 'flex', borderBottom: '1px solid rgba(120,60,220,0.3)', paddingBottom: q(12) }}>
+                  <span style={{ flex: 2, color: 'rgba(255,255,255,0.6)', fontSize: q(22) }}>时间</span>
+                  <span style={{ flex: 1.5, color: 'rgba(255,255,255,0.6)', fontSize: q(22), textAlign: 'center' }}>类型</span>
+                  <span style={{ flex: 1.5, color: 'rgba(255,255,255,0.6)', fontSize: q(22), textAlign: 'center' }}>金额</span>
+                  <span style={{ flex: 1, color: 'rgba(255,255,255,0.6)', fontSize: q(22), textAlign: 'right' }}>余额</span>
+                </div>
+              )}
+              {activeTab === 1 && (
+                <div style={{ display: 'flex', borderBottom: '1px solid rgba(120,60,220,0.3)', paddingBottom: q(12) }}>
+                  <span style={{ flex: 2, color: 'rgba(255,255,255,0.6)', fontSize: q(22) }}>时间</span>
+                  <span style={{ flex: 1.5, color: 'rgba(255,255,255,0.6)', fontSize: q(22), textAlign: 'center' }}>金额</span>
+                  <span style={{ flex: 1.5, color: 'rgba(255,255,255,0.6)', fontSize: q(22), textAlign: 'center' }}>金币</span>
+                  <span style={{ flex: 1, color: 'rgba(255,255,255,0.6)', fontSize: q(22), textAlign: 'right' }}>状态</span>
+                </div>
+              )}
+              {activeTab === 2 && (
+                <div style={{ display: 'flex', borderBottom: '1px solid rgba(120,60,220,0.3)', paddingBottom: q(12) }}>
+                  <span style={{ flex: 2, color: 'rgba(255,255,255,0.6)', fontSize: q(22) }}>提货时间</span>
+                  <span style={{ flex: 2, color: 'rgba(255,255,255,0.6)', fontSize: q(22), textAlign: 'center' }}>物品名称</span>
+                  <span style={{ flex: 1, color: 'rgba(255,255,255,0.6)', fontSize: q(22), textAlign: 'right' }}>价值</span>
+                </div>
+              )}
+              {activeTab === 3 && (
+                <div style={{ display: 'flex', borderBottom: '1px solid rgba(120,60,220,0.3)', paddingBottom: q(12) }}>
+                  <span style={{ flex: 2, color: 'rgba(255,255,255,0.6)', fontSize: q(22) }}>时间</span>
+                  <span style={{ flex: 2, color: 'rgba(255,255,255,0.6)', fontSize: q(22), textAlign: 'center' }}>物品名称</span>
+                  <span style={{ flex: 1, color: 'rgba(255,255,255,0.6)', fontSize: q(22), textAlign: 'right' }}>价值</span>
+                </div>
+              )}
             </div>
 
             {/* 记录列表 */}
@@ -384,7 +556,7 @@ export default function MyRecords() {
                   {goldList.map((r: any, i: number) => (
                     <div
                       key={r.id ?? i}
-                      onClick={() => setDetailRecord(r)}
+                      onClick={() => { setDetailRecord(r); setDetailType('gold'); }}
                       style={{ display: 'flex', flexDirection: 'column', padding: `${q(16)} ${q(20)}`, borderBottom: '1px solid rgba(120,60,220,0.15)', cursor: 'pointer', transition: 'background 0.15s' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -405,16 +577,53 @@ export default function MyRecords() {
               ) : activeTab === 1 && rechargeList.length > 0 ? (
                 <>
                   {rechargeList.map((r: any, i: number) => (
-                    <div key={r.id ?? i} style={{ display: 'flex', alignItems: 'center', padding: `${q(20)} ${q(20)}`, borderBottom: '1px solid rgba(120,60,220,0.15)' }}>
+                    <div
+                      key={r.id ?? i}
+                      onClick={() => { setDetailRecord(r); setDetailType('recharge'); }}
+                      style={{ display: 'flex', alignItems: 'center', padding: `${q(20)} ${q(20)}`, borderBottom: '1px solid rgba(120,60,220,0.15)', cursor: 'pointer' }}
+                    >
                       <span style={{ flex: 2, color: 'rgba(255,255,255,0.7)', fontSize: q(20) }}>
                         {new Date(r.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                       </span>
-                      <span style={{ flex: 1.5, color: '#c084fc', fontSize: q(22), textAlign: 'center' }}>充值</span>
-                      <span style={{ flex: 1.5, color: '#4ade80', fontSize: q(22), textAlign: 'center', fontWeight: 600 }}>+¥{Number(r.amount).toFixed(2)}</span>
-                      <span style={{ flex: 1, color: '#ffd700', fontSize: q(20), textAlign: 'right' }}>{Number(r.gold).toFixed(0)}</span>
+                      <span style={{ flex: 1.5, color: '#4ade80', fontSize: q(22), textAlign: 'center', fontWeight: 600 }}>¥{Number(r.amount).toFixed(2)}</span>
+                      <span style={{ flex: 1.5, color: '#ffd700', fontSize: q(20), textAlign: 'center' }}>{Number(r.gold).toFixed(0)}</span>
+                      <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                        <RechargeStatusBadge status={r.status} />
+                      </div>
                     </div>
                   ))}
                   <LoadMoreHint loading={rechargeLoadingMore} hasMore={rechargeHasMore} count={rechargeList.length} />
+                </>
+              ) : activeTab === 2 && extractList.length > 0 ? (
+                <>
+                  {extractList.map((r: any, i: number) => {
+                    const quality = r.itemQuality ?? 3;
+                    const qualityInfo = QUALITY_LABELS[quality] ?? { label: '普通', color: '#9ca3af' };
+                    return (
+                      <div
+                        key={r.id ?? i}
+                        onClick={() => { setDetailRecord(r); setDetailType('extract'); }}
+                        style={{ display: 'flex', alignItems: 'center', padding: `${q(16)} ${q(20)}`, borderBottom: '1px solid rgba(120,60,220,0.15)', cursor: 'pointer', gap: q(8) }}
+                      >
+                        {/* 物品缩略图 */}
+                        <div style={{ width: q(60), height: q(60), borderRadius: q(8), background: 'rgba(120,60,220,0.2)', border: `1px solid ${qualityInfo.color}40`, overflow: 'hidden', flexShrink: 0 }}>
+                          {r.itemImageUrl ? (
+                            <img src={r.itemImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          ) : null}
+                        </div>
+                        <span style={{ flex: 2, color: 'rgba(255,255,255,0.7)', fontSize: q(20) }}>
+                          {r.extractedAt ? new Date(r.extractedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                        </span>
+                        <span style={{ flex: 2, color: qualityInfo.color, fontSize: q(20), textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {r.itemName ?? '未知物品'}
+                        </span>
+                        <span style={{ flex: 1, color: '#ffd700', fontSize: q(20), textAlign: 'right' }}>
+                          {Number(r.itemValue ?? 0).toFixed(0)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <LoadMoreHint loading={extractLoadingMore} hasMore={extractHasMore} count={extractList.length} />
                 </>
               ) : (
                 <EmptyState tab={activeTab} />
@@ -431,9 +640,15 @@ export default function MyRecords() {
         {/* 设置弹窗 */}
         <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
 
-        {/* 余额记录详情弹窗 */}
-        {detailRecord && (
-          <GoldLogDetailModal record={detailRecord} onClose={() => setDetailRecord(null)} />
+        {/* 详情弹窗 */}
+        {detailRecord && detailType === 'gold' && (
+          <GoldLogDetailModal record={detailRecord} onClose={() => { setDetailRecord(null); setDetailType(null); }} />
+        )}
+        {detailRecord && detailType === 'recharge' && (
+          <RechargeDetailModal record={detailRecord} onClose={() => { setDetailRecord(null); setDetailType(null); }} />
+        )}
+        {detailRecord && detailType === 'extract' && (
+          <ExtractDetailModal record={detailRecord} onClose={() => { setDetailRecord(null); setDetailType(null); }} />
         )}
 
         <style>{`
