@@ -870,3 +870,7 @@
 
 ## Loading 页面修复（2026-03-13）
 - [x] 修复全局 Loading 页面中间奇怪竖条问题，让背景铺满全屏（position: fixed; inset: 0）
+
+## UI 细节修复（2026-03-13）
+- [x] 修复音乐行图标尺寸（q(50) 改为 q(72)，与其他行保持一致）
+- [x] 修复分享招募行背景图（改用 menuBg0，并加上 borderRadius 和 overflow: hidden）

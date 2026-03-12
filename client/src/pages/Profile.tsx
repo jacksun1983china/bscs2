@@ -202,10 +202,12 @@ export default function Profile() {
             position: 'relative',
             height: q(100),
             cursor: 'pointer',
+            borderRadius: q(20),
+            overflow: 'hidden',
           }}
           onClick={() => navigate('/share')}
         >
-          <img src={WD.shareRowBg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
+          <img src={WD.menuBg0} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
           <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'row', alignItems: 'center', height: '100%', padding: `0 ${q(25)}` }}>
             <img src={WD.shareIcon} alt="分享" style={{ width: q(72), height: q(72), objectFit: 'contain' }} />
             <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500, marginLeft: q(20) }}>分享招募</span>
@@ -267,7 +269,7 @@ export default function Profile() {
         >
           <img src={WD.musicBg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
           <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'row', alignItems: 'center', height: '100%', padding: `0 ${q(25)}` }}>
-          <img src={WD.musicIcon} alt="音乐" style={{ width: q(50), height: q(50), objectFit: 'contain' }} />
+          <img src={WD.musicIcon} alt="音乐" style={{ width: q(72), height: q(72), objectFit: 'contain' }} />
           <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500, marginLeft: q(16) }}>音乐</span>
           {/* 音乐开关 */}
           <div
