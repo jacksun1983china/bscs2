@@ -312,7 +312,7 @@
 - [ ] Backpack.tsx：顶部导航+玩家信息卡固定悬停，内容区可滚动
 
 ## 背包页面蓝湖还原（2026-03-10 第十轮）
-- [ ] 修复 Profile.tsx 语法错误
+- [x] 修复 Profile.tsx 语法错误
 - [ ] 修复 db.ts getPlayerInventory JOIN items 表
 - [ ] 按蓝湖代码完整重写 Backpack.tsx（顶部+个人信息卡悬停，内容区滚动）
 
@@ -782,3 +782,13 @@
 - [x] 安全密码：改造为底部弹窗组件（与SteamSettings风格一致）
 - [x] 安全密码：遮罩加入backdrop-filter:blur(4px)模糊效果
 - [x] 安全密码：删除/security-password路由，Profile页面改为弹窗调用
+
+## 弹窗 z-index 修复 + 后端API接入（2026-03-12）
+- [x] SteamSettings.tsx：使用 createPortal 渲染到 document.body，解决 PageSlideIn transform stacking context 问题
+- [x] SecurityPassword.tsx：使用 createPortal 渲染到 document.body，position:fixed + zIndex:2000/2001
+- [x] SteamSettings.tsx：绑定码添加复制到剪贴板功能（navigator.clipboard + execCommand 降级方案）
+- [x] SteamSettings.tsx：两个 Steam 按钮添加真实跳转链接（Steam 交易链接页面 + 库存公开设置页面）
+- [x] 后端 routers.ts：新增 player.sendSecurityCode（发送安全密码验证码，purpose=safe_password）
+- [x] 后端 routers.ts：新增 player.setPassword（验证码校验 + 保存 safePassword 字段）
+- [x] SecurityPassword.tsx：接入真实 API（sendSecurityCode + setPassword），去除硬编码 123456
+- [x] 新增 server/player.modal.test.ts：7 个单元测试全部通过

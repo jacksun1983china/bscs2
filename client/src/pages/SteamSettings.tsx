@@ -5,6 +5,7 @@
  * 用法：<SteamSettingsModal visible={visible} onClose={() => setVisible(false)} />
  */
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 
@@ -104,18 +105,34 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
     setTimeout(onClose, 300);
   };
 
-  return (
+  const handleCopyCode = () => {
+    if (!bindingCode) return;
+    navigator.clipboard.writeText(bindingCode)
+      .then(() => toast.success('绑定码已复制到剪贴板'))
+      .catch(() => {
+        // 降级方案：使用 execCommand
+        const el = document.createElement('textarea');
+        el.value = bindingCode;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        toast.success('绑定码已复制');
+      });
+  };
+
+  const content = (
     <>
       {/* 遮罩层 */}
       <div
         onClick={handleClose}
         style={{
-          position: 'absolute',
+          position: 'fixed',
           inset: 0,
           background: 'rgba(0,0,0,0.65)',
           backdropFilter: 'blur(4px)',
           WebkitBackdropFilter: 'blur(4px)',
-          zIndex: 200,
+          zIndex: 2000,
           transition: 'opacity 0.3s ease',
           opacity: animating ? 1 : 0,
         }}
@@ -124,11 +141,11 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
       {/* 弹窗主体 */}
       <div
         style={{
-          position: 'absolute',
+          position: 'fixed',
           left: 0,
           right: 0,
           bottom: 0,
-          zIndex: 201,
+          zIndex: 2001,
           containerType: 'inline-size',
           transition: 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease',
           transform: animating ? 'translateY(0)' : 'translateY(100%)',
@@ -318,7 +335,7 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
                 />
               </div>
 
-              {/* 保存按鈕 */}
+              {/* 保存按钮 */}
               <div
                 onClick={handleSave}
                 style={{
@@ -366,25 +383,50 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
 
                   {/* 提货绑定码 + 生成按钮 */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${q(10)}` }}>
-                    <div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ color: '#fff', fontSize: q(26), fontWeight: 500, marginBottom: q(6) }}>提货绑定码</div>
                       <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: q(22) }}>新增提取饰品的副号时使用</div>
                       {bindingCode && (
                         <div
                           style={{
                             marginTop: q(10),
-                            color: '#54e7f4',
-                            fontSize: q(30),
-                            fontWeight: 700,
-                            letterSpacing: 3,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: q(12),
+                            flexWrap: 'wrap',
                           }}
                         >
-                          {bindingCode}
+                          <span
+                            style={{
+                              color: '#54e7f4',
+                              fontSize: q(30),
+                              fontWeight: 700,
+                              letterSpacing: 3,
+                            }}
+                          >
+                            {bindingCode}
+                          </span>
+                          <span
+                            onClick={handleCopyCode}
+                            style={{
+                              color: '#fff',
+                              fontSize: q(22),
+                              background: 'rgba(84,231,244,0.2)',
+                              border: '1px solid rgba(84,231,244,0.5)',
+                              borderRadius: q(6),
+                              padding: `${q(4)} ${q(14)}`,
+                              cursor: 'pointer',
+                              flexShrink: 0,
+                              userSelect: 'none',
+                            }}
+                          >
+                            复制
+                          </span>
                         </div>
                       )}
                     </div>
                     <div
-                      style={{ position: 'relative', width: q(130), height: q(62), cursor: 'pointer', flexShrink: 0 }}
+                      style={{ position: 'relative', width: q(130), height: q(62), cursor: 'pointer', flexShrink: 0, marginLeft: q(10) }}
                       onClick={handleGenerate}
                     >
                       <img src={IMG.generateBtn} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
@@ -413,7 +455,7 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
                 </div>
                 <span
                   style={{ color: '#54e7f4', fontSize: q(22), cursor: 'pointer' }}
-                  onClick={() => alert('教程功能即将上线')}
+                  onClick={() => window.open('https://store.steampowered.com/about/', '_blank')}
                 >
                   查看教程》
                 </span>
@@ -424,4 +466,6 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
       </div>
     </>
   );
+
+  return createPortal(content, document.body);
 }

@@ -5,6 +5,7 @@
  * 用法：<SecurityPasswordModal visible={visible} onClose={() => setVisible(false)} />
  */
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 
@@ -37,12 +38,43 @@ export default function SecurityPasswordModal({ visible, onClose }: SecurityPass
   const [newPwd, setNewPwd] = useState('');
   const [confirmPwd, setConfirmPwd] = useState('');
   const [countdown, setCountdown] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { data: meData } = trpc.player.me.useQuery(undefined, { enabled: visible });
   const phone = meData?.phone ?? '';
   const maskedPhone = phone ? phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') : '未绑定手机';
+
+  // 发送验证码（真实API）
+  const sendCodeMutation = trpc.player.sendSecurityCode.useMutation({
+    onSuccess: () => {
+      toast.success('验证码已发送，请查收短信');
+      setCountdown(60);
+      timerRef.current = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current!);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    },
+    onError: (err) => toast.error(err.message || '发送失败，请稍后重试'),
+  });
+
+  // 设置安全密码（真实API）
+  const setPasswordMutation = trpc.player.setPassword.useMutation({
+    onSuccess: () => {
+      toast.success('安全密码设置成功');
+      setTimeout(() => {
+        setCode('');
+        setNewPwd('');
+        setConfirmPwd('');
+        onClose();
+      }, 1000);
+    },
+    onError: (err) => toast.error(err.message || '设置失败，请重试'),
+  });
 
   // 控制挂载/卸载动画
   useEffect(() => {
@@ -70,36 +102,19 @@ export default function SecurityPasswordModal({ visible, onClose }: SecurityPass
 
   const handleSendCode = () => {
     if (countdown > 0) return;
-    toast.success('验证码已发送（测试：123456）');
-    setCountdown(60);
-    timerRef.current = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current!);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    if (!phone) {
+      toast.error('请先绑定手机号');
+      return;
+    }
+    sendCodeMutation.mutate();
   };
 
   const handleSubmit = () => {
     if (!code) { toast.error('请输入验证码'); return; }
-    if (code !== '123456') { toast.error('验证码错误'); return; }
     if (!newPwd) { toast.error('请输入新密码'); return; }
     if (newPwd.length < 6 || newPwd.length > 20) { toast.error('密码长度为6-20位'); return; }
     if (newPwd !== confirmPwd) { toast.error('两次密码不一致'); return; }
-    setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      toast.success('安全密码设置成功');
-      setTimeout(() => {
-        setCode('');
-        setNewPwd('');
-        setConfirmPwd('');
-        onClose();
-      }, 1000);
-    }, 1000);
+    setPasswordMutation.mutate({ code, password: newPwd });
   };
 
   const handleClose = () => {
@@ -107,7 +122,9 @@ export default function SecurityPasswordModal({ visible, onClose }: SecurityPass
     setTimeout(onClose, 300);
   };
 
-  return (
+  const submitting = setPasswordMutation.isPending;
+
+  const content = (
     <>
       {/* 遮罩层（含模糊效果） */}
       <div
@@ -118,7 +135,7 @@ export default function SecurityPasswordModal({ visible, onClose }: SecurityPass
           background: 'rgba(0,0,0,0.6)',
           backdropFilter: 'blur(4px)',
           WebkitBackdropFilter: 'blur(4px)',
-          zIndex: 200,
+          zIndex: 2000,
           opacity: animating ? 1 : 0,
           transition: 'opacity 0.3s ease',
         }}
@@ -126,19 +143,16 @@ export default function SecurityPasswordModal({ visible, onClose }: SecurityPass
 
       {/* 弹窗主体（从底部滑入） */}
       <div
-        className="phone-container"
         style={{
           position: 'fixed',
           bottom: 0,
-          left: '50%',
-          transform: `translateX(-50%) translateY(${animating ? '0' : '100%'})`,
+          left: 0,
+          right: 0,
+          transform: `translateY(${animating ? '0' : '100%'})`,
           transition: 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)',
-          zIndex: 201,
-          width: '100%',
-          maxWidth: 480,
+          zIndex: 2001,
           containerType: 'inline-size',
           maxHeight: '90vh',
-          overflowY: 'auto',
           borderRadius: `${q(24)} ${q(24)} 0 0`,
           overflow: 'hidden',
         }}
@@ -158,7 +172,7 @@ export default function SecurityPasswordModal({ visible, onClose }: SecurityPass
           }}
         />
 
-        {/* 内容层 */}
+        {/* 内容层（可滚动） */}
         <div
           style={{
             position: 'relative',
@@ -166,6 +180,8 @@ export default function SecurityPasswordModal({ visible, onClose }: SecurityPass
             display: 'flex',
             flexDirection: 'column',
             paddingBottom: q(60),
+            maxHeight: '90vh',
+            overflowY: 'auto',
           }}
         >
           {/* 顶部标题栏 */}
@@ -238,13 +254,30 @@ export default function SecurityPasswordModal({ visible, onClose }: SecurityPass
                 />
               </div>
               <div
-                style={{ position: 'relative', width: q(200), height: q(80), cursor: countdown > 0 ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                style={{
+                  position: 'relative',
+                  width: q(200),
+                  height: q(80),
+                  cursor: (countdown > 0 || sendCodeMutation.isPending) ? 'not-allowed' : 'pointer',
+                  flexShrink: 0,
+                }}
                 onClick={handleSendCode}
               >
-                <img src={IMG.codeBtnBg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill', opacity: countdown > 0 ? 0.6 : 1 }} />
+                <img
+                  src={IMG.codeBtnBg}
+                  alt=""
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'fill',
+                    opacity: (countdown > 0 || sendCodeMutation.isPending) ? 0.6 : 1,
+                  }}
+                />
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ color: '#fbf4ff', fontSize: q(24), fontWeight: 700 }}>
-                    {countdown > 0 ? `${countdown}s` : '获取验证码'}
+                    {sendCodeMutation.isPending ? '发送中...' : countdown > 0 ? `${countdown}s` : '获取验证码'}
                   </span>
                 </div>
               </div>
@@ -342,4 +375,6 @@ export default function SecurityPasswordModal({ visible, onClose }: SecurityPass
       </div>
     </>
   );
+
+  return createPortal(content, document.body);
 }

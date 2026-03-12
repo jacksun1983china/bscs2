@@ -412,6 +412,38 @@ export const appRouter = router({
       await db.update(players).set({ steamBindingCode: code }).where(eq(players.id, session.playerId));
       return { code };
     }),
+
+    /** 发送安全密码验证码 */
+    sendSecurityCode: publicProcedure.mutation(async ({ ctx }) => {
+      const session = await getPlayerFromCookie(ctx.req);
+      if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+      const player = await getPlayerById(session.playerId);
+      if (!player) throw new TRPCError({ code: "NOT_FOUND", message: "用户不存在" });
+      if (!player.phone) throw new TRPCError({ code: "BAD_REQUEST", message: "请先绑定手机号" });
+      const code = await createSmsCode(player.phone, "safe_password");
+      console.log(`[模拟短信] 安全密码验证码 手机号: ${player.phone} 验证码: ${code}`);
+      return { success: true, message: "验证码已发送" };
+    }),
+
+    /** 设置安全密码（验证码校验 + 保存） */
+    setPassword: publicProcedure
+      .input(z.object({
+        code: z.string().length(6),
+        password: z.string().min(6).max(20),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const player = await getPlayerById(session.playerId);
+        if (!player) throw new TRPCError({ code: "NOT_FOUND", message: "用户不存在" });
+        if (!player.phone) throw new TRPCError({ code: "BAD_REQUEST", message: "请先绑定手机号" });
+        const valid = await verifySmsCode(player.phone, input.code, "safe_password");
+        if (!valid) throw new TRPCError({ code: "BAD_REQUEST", message: "验证码无效或已过期" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接失败" });
+        await db.update(players).set({ safePassword: input.password }).where(eq(players.id, session.playerId));
+        return { success: true };
+      }),
   }),
 
   // ── Roll房 ──────────────────────────────────────────────────
