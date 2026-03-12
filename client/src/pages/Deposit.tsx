@@ -10,7 +10,7 @@
  * 7. 最小/最大金额从后台读取
  */
 import { PageSlideIn } from '@/components/PageTransition';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 import TopNav from '@/components/TopNav';
@@ -55,8 +55,15 @@ export default function Deposit() {
   const [payMethod, setPayMethod] = useState<PayMethod>('zhifubao');
   const [settingsVisible, setSettingsVisible] = useState(false);
 
-  const { data: configsData } = trpc.player.rechargeConfigs.useQuery();
+  const { data: configsData, isLoading: configsLoading } = trpc.player.rechargeConfigs.useQuery();
   const [orderResult, setOrderResult] = useState<{ orderNo: string; amount: number; gold: number } | null>(null);
+
+  // 数据加载完成后自动选中第一个档位
+  useEffect(() => {
+    if (configsData && configsData.length > 0) {
+      setSelectedAmount(Number(configsData[0].amount));
+    }
+  }, [configsData]);
 
   const createOrderMut = trpc.player.createRechargeOrder.useMutation({
     onSuccess: (data) => {
@@ -67,6 +74,7 @@ export default function Deposit() {
   });
 
   const amounts = useMemo(() => {
+    // 只在数据加载完成后使用后端数据，不 fallback 到硬编码
     if (configsData && configsData.length > 0) {
       return configsData.map((c: any) => ({
         amount: Number(c.amount),
@@ -75,7 +83,8 @@ export default function Deposit() {
         tag: c.tag ?? '',
       }));
     }
-    return DEFAULT_AMOUNTS;
+    // 加载中或无数据时返回空数组，由 UI 显示骨架屏
+    return [];
   }, [configsData]);
 
   // 从档位中动态计算最小/最大金额
@@ -181,7 +190,22 @@ export default function Deposit() {
 
         {/* 金额网格 */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: q(14), padding: `${q(20)} ${q(30)} 0` }}>
-          {amounts.map((item, idx) => {
+          {/* 加载中：显示骨架屏占位符 */}
+          {configsLoading && Array.from({ length: 6 }).map((_, idx) => (
+            <div
+              key={`skeleton-${idx}`}
+              style={{
+                position: 'relative',
+                aspectRatio: '164/148',
+                borderRadius: q(12),
+                background: 'rgba(120,60,220,0.15)',
+                border: '1px solid rgba(120,60,220,0.25)',
+                animation: 'skeletonPulse 1.4s ease-in-out infinite',
+              }}
+            />
+          ))}
+          {/* 加载完成：显示真实档位 */}
+          {!configsLoading && amounts.map((item, idx) => {
             const isSelected = selectedAmount === item.amount;
             const hasBonus = item.bonus > 0;
             return (
@@ -296,6 +320,13 @@ export default function Deposit() {
         <BottomNav active="chongzhi" />
       </div>
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+      {/* 骨架屏动画 */}
+      <style>{`
+        @keyframes skeletonPulse {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.9; }
+        }
+      `}</style>
     </div>
     </PageSlideIn>
   );

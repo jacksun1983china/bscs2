@@ -1,0 +1,76 @@
+{
+  "query": "SELECT * FROM rechargeConfigs ORDER BY sort;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT * FROM rechargeConfigs ORDER BY sort;",
+  "rows": [
+    {
+      "id": "1",
+      "amount": "30.00",
+      "gold": "30.00",
+      "bonusDiamond": "0.00",
+      "tag": "",
+      "isFirstRecharge": "0",
+      "sort": "1",
+      "status": "1",
+      "createdAt": "2026-03-10 13:44:02"
+    },
+    {
+      "id": "2",
+      "amount": "50.00",
+      "gold": "50.00",
+      "bonusDiamond": "0.00",
+      "tag": "",
+      "isFirstRecharge": "0",
+      "sort": "2",
+      "status": "1",
+      "createdAt": "2026-03-10 13:44:02"
+    },
+    {
+      "id": "3",
+      "amount": "100.00",
+      "gold": "100.00",
+      "bonusDiamond": "0.00",
+      "tag": "最热门",
+      "isFirstRecharge": "0",
+      "sort": "3",
+      "status": "1",
+      "createdAt": "2026-03-10 13:44:02"
+    },
+    {
+      "id": "4",
+      "amount": "200.00",
+      "gold": "200.00",
+      "bonusDiamond": "37.00",
+      "tag": "",
+      "isFirstRecharge": "0",
+      "sort": "4",
+      "status": "1",
+      "createdAt": "2026-03-10 13:44:02"
+    },
+    {
+      "id": "5",
+      "amount": "500.00",
+      "gold": "500.00",
+      "bonusDiamond": "100.00",
+      "tag": "",
+      "isFirstRecharge": "0",
+      "sort": "5",
+      "status": "1",
+      "createdAt": "2026-03-10 13:44:02"
+    },
+    {
+      "id": "6",
+      "amount": "1000.00",
+      "gold": "1000.00",
+      "bonusDiamond": "250.00",
+      "tag": "",
+      "isFirstRecharge": "0",
+      "sort": "6",
+      "status": "1",
+      "createdAt": "2026-03-10 13:44:02"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tamount\tgold\tbonusDiamond\ttag\tisFirstRecharge\tsort\tstatus\tcreatedAt\n1\t30.00\t30.00\t0.00\t\t0\t1\t1\t2026-03-10 13:44:02\n2\t50.00\t50.00\t0.00\t\t0\t2\t1\t2026-03-10 13:44:02\n3\t100.00\t100.00\t0.00\t最热门\t0\t3\t1\t2026-03-10 13:44:02\n4\t200.00\t200.00\t37.00\t\t0\t4\t1\t2026-03-10 13:44:02\n5\t500.00\t500.00\t100.00\t\t0\t5\t1\t2026-03-10 13:44:02\n6\t1000.00\t1000.00\t250.00\t\t0\t6\t1\t2026-03-10 13:44:02\n",
+  "stderr": "",
+  "execution_time_ms": 1957
+}
