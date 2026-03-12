@@ -40,23 +40,47 @@ function PageLoader() {
   return (
     <div
       style={{
-        minHeight: "100vh",
+        position: "fixed",
+        inset: 0,
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
         background: "#0d0621",
+        zIndex: 9999,
       }}
     >
+      {/* 背景光晕 */}
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        background: "radial-gradient(ellipse 60% 60% at 50% 50%, rgba(100,30,200,0.25) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+      {/* 加载圆圈 */}
       <div
         style={{
-          width: 40,
-          height: 40,
-          border: "3px solid rgba(120,60,220,0.3)",
+          position: "relative",
+          width: 56,
+          height: 56,
+          border: "3px solid rgba(120,60,220,0.2)",
           borderTop: "3px solid #a855f7",
+          borderRight: "3px solid rgba(168,85,247,0.5)",
           borderRadius: "50%",
           animation: "spin 0.8s linear infinite",
+          boxShadow: "0 0 20px rgba(168,85,247,0.4)",
         }}
       />
+      {/* 加载文字 */}
+      <div style={{
+        marginTop: 16,
+        color: "rgba(168,85,247,0.7)",
+        fontSize: 13,
+        letterSpacing: 2,
+        fontWeight: 500,
+      }}>
+        加载中...
+      </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
