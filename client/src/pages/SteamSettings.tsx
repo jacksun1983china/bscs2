@@ -5,6 +5,8 @@
  * 用法：<SteamSettingsModal visible={visible} onClose={() => setVisible(false)} />
  */
 import { useState, useEffect } from 'react';
+import { trpc } from '@/lib/trpc';
+import { toast } from 'sonner';
 
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
 
@@ -38,19 +40,50 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
   const [mainUrl, setMainUrl] = useState('');
   const [subUrl, setSubUrl] = useState('');
   const [bindingCode, setBindingCode] = useState('');
-  const [generating, setGenerating] = useState(false);
+  const utils = trpc.useUtils();
+
+  // 读取真实Steam设置
+  const { data: steamData } = trpc.player.getSteam.useQuery(undefined, {
+    enabled: visible,
+  });
+
+  // 当数据加载后同步到本地state
+  useEffect(() => {
+    if (steamData) {
+      setMainUrl(steamData.mainUrl || '');
+      setSubUrl(steamData.subUrl || '');
+      setBindingCode(steamData.bindingCode || '');
+    }
+  }, [steamData]);
+
+  // 保存Steam设置
+  const updateSteam = trpc.player.updateSteam.useMutation({
+    onSuccess: () => {
+      toast.success('Steam设置已保存');
+      utils.player.getSteam.invalidate();
+    },
+    onError: (err) => toast.error(err.message || '保存失败'),
+  });
+
+  // 生成绑定码
+  const generateCode = trpc.player.generateBindingCode.useMutation({
+    onSuccess: (data) => {
+      setBindingCode(data.code);
+      toast.success('绑定码已生成');
+      utils.player.getSteam.invalidate();
+    },
+    onError: (err) => toast.error(err.message || '生成失败'),
+  });
 
   // 控制挂载/卸载动画
   useEffect(() => {
     if (visible) {
       setMounted(true);
-      // 下一帧触发入场动画
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setAnimating(true));
       });
     } else {
       setAnimating(false);
-      // 等动画结束后卸载
       const t = setTimeout(() => setMounted(false), 300);
       return () => clearTimeout(t);
     }
@@ -59,12 +92,11 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
   if (!mounted) return null;
 
   const handleGenerate = () => {
-    setGenerating(true);
-    setTimeout(() => {
-      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-      setBindingCode(code);
-      setGenerating(false);
-    }, 800);
+    generateCode.mutate();
+  };
+
+  const handleSave = () => {
+    updateSteam.mutate({ mainUrl, subUrl });
   };
 
   const handleClose = () => {
@@ -81,6 +113,8 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
           position: 'absolute',
           inset: 0,
           background: 'rgba(0,0,0,0.65)',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
           zIndex: 200,
           transition: 'opacity 0.3s ease',
           opacity: animating ? 1 : 0,
@@ -161,7 +195,8 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
                 inset: 0,
                 width: '100%',
                 height: '100%',
-                objectFit: 'fill',
+                objectFit: 'cover',
+                objectPosition: 'center top',
                 zIndex: 0,
               }}
             />
@@ -261,7 +296,7 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
               </p>
 
               {/* 副号URL输入框 */}
-              <div style={{ position: 'relative', height: q(80), marginBottom: q(20) }}>
+              <div style={{ position: 'relative', height: q(80), marginBottom: q(12) }}>
                 <img src={IMG.inputBg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
                 <input
                   value={subUrl}
@@ -281,6 +316,29 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
                     boxSizing: 'border-box',
                   }}
                 />
+              </div>
+
+              {/* 保存按鈕 */}
+              <div
+                onClick={handleSave}
+                style={{
+                  position: 'relative',
+                  height: q(76),
+                  marginBottom: q(20),
+                  cursor: 'pointer',
+                  borderRadius: q(8),
+                  overflow: 'hidden',
+                  background: 'linear-gradient(135deg, #6d28d9 0%, #4c1d95 100%)',
+                  border: '1px solid rgba(167,139,250,0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: updateSteam.isPending ? 0.7 : 1,
+                }}
+              >
+                <span style={{ color: '#fff', fontSize: q(28), fontWeight: 700, letterSpacing: 1 }}>
+                  {updateSteam.isPending ? '保存中...' : '保存设置'}
+                </span>
               </div>
 
               {/* ── 绑定我为副号区块 ── */}
@@ -332,7 +390,7 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
                       <img src={IMG.generateBtn} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
                       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <span style={{ color: '#fbf4ff', fontSize: q(26), fontWeight: 700 }}>
-                          {generating ? '生成中...' : '生成'}
+                          {generateCode.isPending ? '生成中...' : '生成'}
                         </span>
                       </div>
                     </div>

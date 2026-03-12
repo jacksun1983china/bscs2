@@ -756,8 +756,8 @@
 - [x] Vortex 界面完全汉化（CASH OUT→提现、HOLD TO SPIN→按住旋转、Part Pay→部分提现、BONUS→奖励、OFFICIAL GAME→官方游戏）
 
 ## vortexBets 表修复（2026-03-12）
-- [ ] 确认 vortexBets 表在数据库中是否存在
-- [ ] 执行 pnpm db:push 创建缺失的 vortexBets 表
+- [x] 确认 vortexBets 表在数据库中已存在，字段匹配正常
+- [x] 修复 doSpin 中 handleCashOut 闭包陷阱，内联 bonus cashOut 逻辑
 
 ## Bug汇总修复（2026-03-12 第五批）
 - [x] 我的记录页面：删除顶部硬编码，加入公共顶部组件
@@ -771,3 +771,14 @@
 - [x] STEAM设置页面：删除顶部/底部公共组件（弹窗不需要）
 - [x] STEAM设置页面：将独立页面改造为真正弹窗组件，删除硬编码背景/遮罩，加弹出动画
 - [x] STEAM设置页面：在Profile页面中以弹窗方式调用，删除/steam-settings路由
+
+## 安全密码弹窗改造（2026-03-12 第七批）
+- [x] 将SecurityPassword从独立路由页面改造为底部弹窗组件（与SteamSettings风格一致）
+- [x] 删除/security-password路由，在Profile页面中以弹窗方式调用
+
+## STEAM接口+模糊效果+安全密码弹窗（2026-03-12 第七批）
+- [x] STEAM弹窗：接入真实保存/读取Steam链接接口（getSteam/updateSteam/generateBindingCode）
+- [x] STEAM弹窗：遮罩加入backdrop-filter:blur(4px)模糊效果
+- [x] 安全密码：改造为底部弹窗组件（与SteamSettings风格一致）
+- [x] 安全密码：遮罩加入backdrop-filter:blur(4px)模糊效果
+- [x] 安全密码：删除/security-password路由，Profile页面改为弹窗调用

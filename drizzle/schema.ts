@@ -57,8 +57,12 @@ export const players = mysqlTable("players", {
   commissionEnabled: tinyint("commissionEnabled").notNull().default(0),
   /** 待提取返佣余额（商城币） */
   commissionBalance: decimal("commissionBalance", { precision: 15, scale: 2 }).notNull().default("0.00"),
-  /** STEAM账号 */
-  steamAccount: varchar("steamAccount", { length: 100 }).notNull().default(""),
+  /** STEAM主号交易链接 */
+  steamAccount: varchar("steamAccount", { length: 500 }).notNull().default(""),
+  /** STEAM副号交易链接 */
+  steamSubAccount: varchar("steamSubAccount", { length: 500 }).notNull().default(""),
+  /** STEAM提货绑定码 */
+  steamBindingCode: varchar("steamBindingCode", { length: 20 }).notNull().default(""),
   /** 安全密码（6位数字，加密存储） */
   safePassword: varchar("safePassword", { length: 100 }).notNull().default(""),
   /** 实名认证：姓名 */

@@ -363,6 +363,55 @@ export const appRouter = router({
         await db.update(players).set(updates).where(eq(players.id, session.playerId));
         return { success: true };
       }),
+
+    /** 获取Steam设置 */
+    getSteam: publicProcedure.query(async ({ ctx }) => {
+      const session = await getPlayerFromCookie(ctx.req);
+      if (!session) return { mainUrl: '', subUrl: '', bindingCode: '' };
+      const db = await getDb();
+      if (!db) return { mainUrl: '', subUrl: '', bindingCode: '' };
+      const [player] = await db.select({
+        steamAccount: players.steamAccount,
+        steamSubAccount: players.steamSubAccount,
+        steamBindingCode: players.steamBindingCode,
+      }).from(players).where(eq(players.id, session.playerId)).limit(1);
+      if (!player) return { mainUrl: '', subUrl: '', bindingCode: '' };
+      return {
+        mainUrl: player.steamAccount || '',
+        subUrl: player.steamSubAccount || '',
+        bindingCode: player.steamBindingCode || '',
+      };
+    }),
+
+    /** 保存Steam设置（主号URL + 副号URL） */
+    updateSteam: publicProcedure
+      .input(z.object({
+        mainUrl: z.string().max(500),
+        subUrl: z.string().max(500),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接失败" });
+        await db.update(players).set({
+          steamAccount: input.mainUrl,
+          steamSubAccount: input.subUrl,
+        }).where(eq(players.id, session.playerId));
+        return { success: true };
+      }),
+
+    /** 生成Steam提货绑定码 */
+    generateBindingCode: publicProcedure.mutation(async ({ ctx }) => {
+      const session = await getPlayerFromCookie(ctx.req);
+      if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接失败" });
+      const code = Math.random().toString(36).substring(2, 6).toUpperCase() +
+                   Math.random().toString(36).substring(2, 6).toUpperCase();
+      await db.update(players).set({ steamBindingCode: code }).where(eq(players.id, session.playerId));
+      return { code };
+    }),
   }),
 
   // ── Roll房 ──────────────────────────────────────────────────

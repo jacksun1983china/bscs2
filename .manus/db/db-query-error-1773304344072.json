@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE players \n  MODIFY COLUMN steamAccount varchar(500) NOT NULL DEFAULT '',\n  ADD COLUMN steamSubAccount varchar(500) NOT NULL DEFAULT '' AFTER steamAccount,\n  ADD COLUMN steamBindingCode varchar(20) NOT NULL DEFAULT '' AFTER steamSubAccount;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute ALTER TABLE players \n  MODIFY COLUMN steamAccount varchar(500) NOT NULL DEFAULT '',\n  ADD COLUMN steamSubAccount varchar(500) NOT NULL DEFAULT '' AFTER steamAccount,\n  ADD COLUMN steamBindingCode varchar(20) NOT NULL DEFAULT '' AFTER steamSubAccount;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'steamsubaccount' in 'players'"
+  ]
+}
