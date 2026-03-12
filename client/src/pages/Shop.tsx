@@ -333,6 +333,7 @@ export default function Shop() {
         flexDirection: 'column',
         containerType: 'inline-size',
         position: 'relative',
+        background: '#0d0621',
       }}
     >
         {/* 背景图 */}

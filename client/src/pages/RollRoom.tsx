@@ -284,6 +284,7 @@ export default function RollRoom() {
         flexDirection: 'column',
         position: 'relative',
         containerType: 'inline-size',
+        background: '#0d0621',
       }}
     >
       {/* 全局背景层：bgSection1 + bgBox2 叠加，absolute 铺满整个 phone-container（含底部导航区域） */}

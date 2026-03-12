@@ -84,6 +84,7 @@ export default function VipPage() {
           flexDirection: 'column',
           position: 'relative',
           containerType: 'inline-size',
+          background: '#0d0621',
         }}
       >
         {/* 全局背景层 */}

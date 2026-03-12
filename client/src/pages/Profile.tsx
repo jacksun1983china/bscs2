@@ -89,6 +89,7 @@ export default function Profile() {
         flexDirection: 'column',
         containerType: 'inline-size',
         position: 'relative',
+        background: '#0d0621',
       }}
     >
       {/* 背景 */}

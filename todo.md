@@ -853,3 +853,8 @@
   - phone-container 加 background: '#0d0621' 兜底
   - 可滚动内容区加 background: '#0d0621' 兜底
   - 记录列表区加 paddingBottom 防止底部导航遮挡
+
+## 全面优化（2026-03-13）
+- [x] 统一所有页面背景底底（Backpack、Deposit、Profile、VipPage、Arena、Shop、RollRoom、RollRoomDetail、ArenaHistory 页面均加 background: '#0d0621'）
+- [x] 余额记录无限滚动（滚动到底部自动加载下一页，每页 20 条）
+- [x] 空状态引导按钮（余额/充値/提货/赠送记录空状态均加引导按钮）

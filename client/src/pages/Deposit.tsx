@@ -98,6 +98,7 @@ export default function Deposit() {
         flexDirection: 'column',
         containerType: 'inline-size',
         position: 'relative',
+        background: '#0d0621',
       }}
     >
       <img

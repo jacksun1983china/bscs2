@@ -211,6 +211,7 @@ export default function Backpack() {
         flexDirection: 'column',
         containerType: 'inline-size',
         position: 'relative',
+        background: '#0d0621',
       }}
     >
       {/* 全局背景 */}

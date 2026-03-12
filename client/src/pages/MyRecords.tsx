@@ -3,15 +3,17 @@
  * 按蓝湖 lanhu_wodejilu 设计稿还原
  * 功能：余额记录/充值记录/提货记录/赠送记录，支持时间筛选
  * 使用公共组件：TopNav（顶部）、PlayerInfoCard（个人卡片）、BottomNav（底部导航）
+ * 优化：无限滚动（滚动到底部自动加载下一页）、空状态引导按钮
  */
 import { PageSlideIn } from '@/components/PageTransition';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { trpc } from '@/lib/trpc';
 import { LANHU } from '@/lib/assets';
 import TopNav from '@/components/TopNav';
 import BottomNav from '@/components/BottomNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
 import SettingsModal from '@/components/SettingsModal';
+import { useLocation } from 'wouter';
 
 // CDN 资源
 const BTN1_CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/btn1@2x_16b5b512.png';  // 选中状态tab背景
@@ -23,6 +25,8 @@ const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 const RECORD_TABS = ['余额记录', '充值记录', '提货记录', '赠送记录'];
 const TIME_FILTERS = ['全部', '今日', '昨日', '近7日'];
 const TIME_RANGE_MAP = ['all', 'today', 'yesterday', 'week7'] as const;
+
+const PAGE_SIZE = 20;
 
 // 金额颜色：正数绿色，负数红色
 function amountColor(amount: number) {
@@ -62,16 +66,54 @@ export default function MyRecords() {
   const [timeFilter, setTimeFilter] = useState(0);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [detailRecord, setDetailRecord] = useState<any>(null);
+  const [, navigate] = useLocation();
 
-  // 余额记录（金币流水）
+  // 无限滚动状态
+  const [goldPage, setGoldPage] = useState(1);
+  const [goldList, setGoldList] = useState<any[]>([]);
+  const [goldHasMore, setGoldHasMore] = useState(true);
+  const [goldLoadingMore, setGoldLoadingMore] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // 切换 tab 或时间筛选时重置分页
+  const prevTabRef = useRef(activeTab);
+  const prevTimeRef = useRef(timeFilter);
+  useEffect(() => {
+    if (prevTabRef.current !== activeTab || prevTimeRef.current !== timeFilter) {
+      setGoldPage(1);
+      setGoldList([]);
+      setGoldHasMore(true);
+      prevTabRef.current = activeTab;
+      prevTimeRef.current = timeFilter;
+    }
+  }, [activeTab, timeFilter]);
+
+  // 余额记录（金币流水）- 分页查询
   const { data: goldLogsData, isLoading: goldLogsLoading } = trpc.player.goldLogs.useQuery(
     {
-      page: 1,
-      limit: 50,
+      page: goldPage,
+      limit: PAGE_SIZE,
       timeRange: TIME_RANGE_MAP[timeFilter],
     },
-    { enabled: activeTab === 0 }
+    {
+      enabled: activeTab === 0,
+      staleTime: 10_000,
+    }
   );
+
+  // 当新数据到来时追加到列表
+  useEffect(() => {
+    if (!goldLogsData) return;
+    const newItems = goldLogsData.list ?? [];
+    if (goldPage === 1) {
+      setGoldList(newItems);
+    } else {
+      setGoldList(prev => [...prev, ...newItems]);
+    }
+    setGoldHasMore(newItems.length >= PAGE_SIZE);
+    setGoldLoadingMore(false);
+  }, [goldLogsData, goldPage]);
 
   // 充值记录
   const { data: rechargeData, isLoading: rechargeLoading } = trpc.player.rechargeOrders.useQuery(
@@ -91,9 +133,57 @@ export default function MyRecords() {
     return list.filter((r: any) => new Date(r.createdAt).getTime() > cutoff);
   }, [rechargeData, timeFilter]);
 
-  const goldLogsList = goldLogsData?.list ?? [];
+  const isLoading = activeTab === 0 ? (goldLogsLoading && goldPage === 1) : (activeTab === 1 ? rechargeLoading : false);
 
-  const isLoading = activeTab === 0 ? goldLogsLoading : (activeTab === 1 ? rechargeLoading : false);
+  // 滚动监听：到底部时加载下一页
+  const handleScroll = useCallback(() => {
+    if (activeTab !== 0) return;
+    if (!goldHasMore || goldLoadingMore || goldLogsLoading) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    if (scrollHeight - scrollTop - clientHeight < 80) {
+      setGoldLoadingMore(true);
+      setGoldPage(prev => prev + 1);
+    }
+  }, [activeTab, goldHasMore, goldLoadingMore, goldLogsLoading]);
+
+  // 空状态引导按钮
+  const EmptyState = ({ tab }: { tab: number }) => {
+    let hint = '暂无记录！';
+    let btnLabel = '';
+    let btnPath = '';
+    if (tab === 0) { hint = '暂无余额记录'; btnLabel = '去游戏'; btnPath = '/'; }
+    else if (tab === 1) { hint = '暂无充值记录'; btnLabel = '去充值'; btnPath = '/deposit'; }
+    else if (tab === 2) { hint = '暂无提货记录'; btnLabel = '去背包'; btnPath = '/backpack'; }
+    else if (tab === 3) { hint = '暂无赠送记录'; btnLabel = '去背包'; btnPath = '/backpack'; }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: `${q(80)} 0` }}>
+        <img src={EMPTY_ICON} alt="" style={{ width: q(200), height: q(200), objectFit: 'contain' }} />
+        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: q(26), marginTop: q(20) }}>{hint}</span>
+        {btnLabel && (
+          <div
+            onClick={() => navigate(btnPath)}
+            style={{
+              marginTop: q(28),
+              padding: `${q(16)} ${q(60)}`,
+              borderRadius: q(40),
+              background: 'linear-gradient(135deg, #7c3aed, #c084fc)',
+              color: '#fff',
+              fontSize: q(26),
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 4px 16px rgba(120,60,220,0.5)',
+              letterSpacing: 1,
+            }}
+          >
+            {btnLabel}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <PageSlideIn>
@@ -131,18 +221,22 @@ export default function MyRecords() {
           </div>
 
           {/* 可滚动内容区 */}
-          <div style={{
-            position: 'relative',
-            width: '100%',
-            flex: 1,
-            minHeight: 0,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            paddingBottom: q(90),
-            background: '#0d0621',
-          }}>
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            style={{
+              position: 'relative',
+              width: '100%',
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              paddingBottom: q(90),
+              background: '#0d0621',
+            }}
+          >
             {/* 记录类型 Tab — 使用 btn1/btn2 图片作为背景 */}
             <div
               style={{
@@ -232,7 +326,7 @@ export default function MyRecords() {
             </div>
 
             {/* 记录列表 */}
-            <div style={{ flex: 1, background: 'rgba(10,5,30,0.85)', minHeight: q(400), paddingBottom: q(90) }}>
+            <div style={{ flex: 1, background: 'rgba(10,5,30,0.85)', minHeight: q(400) }}>
               {isLoading ? (
                 /* 加载状态 */
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: `${q(80)} 0` }}>
@@ -245,44 +339,66 @@ export default function MyRecords() {
                   }} />
                   <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: q(24), marginTop: q(20) }}>加载中...</span>
                 </div>
-              ) : activeTab === 0 && goldLogsList.length > 0 ? (
-                /* 余额记录 */
-                goldLogsList.map((r: any, i: number) => (
-                  <div
-                    key={r.id ?? i}
-                    onClick={() => setDetailRecord(r)}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      padding: `${q(16)} ${q(20)}`,
-                      borderBottom: '1px solid rgba(120,60,220,0.15)',
-                      cursor: 'pointer',
-                      transition: 'background 0.15s',
-                    }}
-                  >
-                    {/* 主行：时间 + 类型 + 金额 + 余额 */}
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <span style={{ flex: 2, color: 'rgba(255,255,255,0.7)', fontSize: q(20) }}>
-                        {new Date(r.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                      <span style={{ flex: 1.5, color: '#c084fc', fontSize: q(20), textAlign: 'center' }}>
-                        {getTypeLabel(r.type)}
-                      </span>
-                      <span style={{ flex: 1.5, color: amountColor(r.amount), fontSize: q(22), textAlign: 'center', fontWeight: 600 }}>
-                        {formatAmount(r.amount)}
-                      </span>
-                      <span style={{ flex: 1, color: '#ffd700', fontSize: q(20), textAlign: 'right' }}>
-                        {Number(r.balance).toFixed(0)}
-                      </span>
-                    </div>
-                    {/* 备注行（如果有description） */}
-                    {r.description ? (
-                      <div style={{ marginTop: q(6), color: 'rgba(255,255,255,0.4)', fontSize: q(18), paddingLeft: q(2) }}>
-                        {r.description}
+              ) : activeTab === 0 && goldList.length > 0 ? (
+                /* 余额记录（无限滚动） */
+                <>
+                  {goldList.map((r: any, i: number) => (
+                    <div
+                      key={r.id ?? i}
+                      onClick={() => setDetailRecord(r)}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        padding: `${q(16)} ${q(20)}`,
+                        borderBottom: '1px solid rgba(120,60,220,0.15)',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s',
+                      }}
+                    >
+                      {/* 主行：时间 + 类型 + 金额 + 余额 */}
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <span style={{ flex: 2, color: 'rgba(255,255,255,0.7)', fontSize: q(20) }}>
+                          {new Date(r.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span style={{ flex: 1.5, color: '#c084fc', fontSize: q(20), textAlign: 'center' }}>
+                          {getTypeLabel(r.type)}
+                        </span>
+                        <span style={{ flex: 1.5, color: amountColor(r.amount), fontSize: q(22), textAlign: 'center', fontWeight: 600 }}>
+                          {formatAmount(r.amount)}
+                        </span>
+                        <span style={{ flex: 1, color: '#ffd700', fontSize: q(20), textAlign: 'right' }}>
+                          {Number(r.balance).toFixed(0)}
+                        </span>
                       </div>
-                    ) : null}
-                  </div>
-                ))
+                      {/* 备注行（如果有description） */}
+                      {r.description ? (
+                        <div style={{ marginTop: q(6), color: 'rgba(255,255,255,0.4)', fontSize: q(18), paddingLeft: q(2) }}>
+                          {r.description}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                  {/* 加载更多提示 */}
+                  {goldLoadingMore && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: `${q(30)} 0` }}>
+                      <div style={{
+                        width: q(40), height: q(40),
+                        border: `${q(3)} solid rgba(192,132,252,0.3)`,
+                        borderTop: `${q(3)} solid #c084fc`,
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                        marginRight: q(12),
+                      }} />
+                      <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: q(22) }}>加载更多...</span>
+                    </div>
+                  )}
+                  {/* 没有更多数据提示 */}
+                  {!goldHasMore && goldList.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: `${q(30)} 0` }}>
+                      <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: q(22) }}>— 已加载全部记录 —</span>
+                    </div>
+                  )}
+                </>
               ) : activeTab === 1 && rechargeList.length > 0 ? (
                 /* 充值记录 */
                 rechargeList.map((r: any, i: number) => (
@@ -308,11 +424,8 @@ export default function MyRecords() {
                   </div>
                 ))
               ) : (
-                /* 空状态 */
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: `${q(80)} 0` }}>
-                  <img src={EMPTY_ICON} alt="" style={{ width: q(200), height: q(200), objectFit: 'contain' }} />
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: q(26), marginTop: q(20) }}>暂无记录！</span>
-                </div>
+                /* 空状态（带引导按钮） */
+                <EmptyState tab={activeTab} />
               )}
             </div>
           </div>

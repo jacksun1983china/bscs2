@@ -221,7 +221,7 @@ export default function ArenaHistory() {
   const hasMore = (records?.length ?? 0) >= PAGE_SIZE;
 
   return (
-    <div className="phone-container" style={{ display: 'flex', flexDirection: 'column', containerType: 'inline-size', position: 'relative' }}>
+    <div className="phone-container" style={{ display: 'flex', flexDirection: 'column', containerType: 'inline-size', position: 'relative', background: '#0d0621' }}>
       {/* 背景 */}
       <img
         src="https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/bg_98756154.png"

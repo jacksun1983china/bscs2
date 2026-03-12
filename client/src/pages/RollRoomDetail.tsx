@@ -276,6 +276,7 @@ export default function RollRoomDetail() {
         backgroundSize: 'cover',
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'top center',
+        backgroundColor: '#0d0621',
         position: 'relative',
         containerType: 'inline-size',
         overflowX: 'hidden',
