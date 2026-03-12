@@ -44,6 +44,270 @@ const ELEMENT_CONFIG: Record<Element, { label: string; color: string; icon: stri
   bonus: { label: '奖励', color: '#ffd700', bgColor: 'rgba(255,215,0,0.2)',  icon: ASSETS.elementBonus },
 };
 
+// ── 圆形 Slot 滚轮组件 ────────────────────────────────────────────────────────
+// 所有图标按圆形排列，旋转减速后停在目标图标
+function SlotWheel({
+  isSpinning,
+  targetElement,
+  onSpinComplete,
+}: {
+  isSpinning: boolean;
+  targetElement: Element | null;
+  onSpinComplete?: () => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animRef = useRef<number>(0);
+  const angleRef = useRef(0);          // 当前旋转角度（弧度）
+  const velocityRef = useRef(0);       // 当前角速度
+  const stateRef = useRef<'idle' | 'spinning' | 'stopping' | 'stopped'>('idle');
+  const targetAngleRef = useRef(0);    // 目标停止角度
+  const imagesRef = useRef<Record<string, HTMLImageElement | null>>({});
+  const onCompleteRef = useRef(onSpinComplete);
+  onCompleteRef.current = onSpinComplete;
+
+  // 图标顺序（顺时针排列在轮盘上）
+  const WHEEL_ELEMENTS: Element[] = ['fire', 'earth', 'water', 'wind', 'skull', 'bonus'];
+  const SLOT_COUNT = WHEEL_ELEMENTS.length;
+
+  // 预加载图片
+  useEffect(() => {
+    WHEEL_ELEMENTS.forEach(el => {
+      const img = new Image();
+      img.src = ELEMENT_CONFIG[el].icon;
+      img.onload = () => { imagesRef.current[el] = img; };
+      imagesRef.current[el] = null;
+    });
+  }, []);
+
+  // 监听 isSpinning 变化：开始旋转
+  useEffect(() => {
+    if (isSpinning && stateRef.current !== 'spinning') {
+      stateRef.current = 'spinning';
+      velocityRef.current = 0.35; // 初始高速
+    }
+  }, [isSpinning]);
+
+  // 监听 targetElement 变化：开始减速停止
+  useEffect(() => {
+    if (!isSpinning && targetElement && stateRef.current === 'spinning') {
+      // 计算目标图标的停止角度
+      const idx = WHEEL_ELEMENTS.indexOf(targetElement);
+      if (idx >= 0) {
+        // 每个图标的中心角度（顶部指针位置 = -π/2）
+        const slotAngle = (idx / SLOT_COUNT) * Math.PI * 2;
+        // 需要旋转到：指针（顶部）对准目标图标
+        // 当前角度 + n圈 + 对准偏移
+        const currentNorm = ((angleRef.current % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+        // 目标：顶部指针（-π/2 即 3π/2）对准 slotAngle
+        // 即 angleRef.current 旋转后使 slotAngle - angle ≡ 0 (mod 2π)
+        const pointerPos = (Math.PI * 2 - slotAngle + Math.PI * 2) % (Math.PI * 2);
+        let delta = (pointerPos - currentNorm + Math.PI * 2) % (Math.PI * 2);
+        if (delta < Math.PI * 0.5) delta += Math.PI * 2; // 至少再转半圈
+        // 再加2圈保证减速感
+        targetAngleRef.current = angleRef.current + delta + Math.PI * 4;
+        stateRef.current = 'stopping';
+      }
+    }
+  }, [isSpinning, targetElement]);
+
+  // 动画主循环
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const cx = W / 2;
+    const cy = H / 2;
+    const wheelR = W * 0.36;   // 滚轮外圆半径
+    const iconR = W * 0.27;    // 图标分布半径
+    const iconSize = W * 0.11; // 图标大小
+
+    function drawWheel() {
+      ctx!.clearRect(0, 0, W, H);
+
+      // ── 更新角度 ──────────────────────────────────────────────────
+      if (stateRef.current === 'spinning') {
+        // 匀速高速旋转，逐渐加速到最大
+        velocityRef.current = Math.min(velocityRef.current + 0.008, 0.28);
+        angleRef.current += velocityRef.current;
+      } else if (stateRef.current === 'stopping') {
+        const remaining = targetAngleRef.current - angleRef.current;
+        if (remaining <= 0.01) {
+          angleRef.current = targetAngleRef.current;
+          velocityRef.current = 0;
+          stateRef.current = 'stopped';
+          onCompleteRef.current?.();
+        } else {
+          // easeOut 减速
+          const progress = Math.max(0, Math.min(1, 1 - remaining / (Math.PI * 6)));
+          const easedVel = 0.28 * (1 - progress * progress * progress) + 0.002;
+          velocityRef.current = Math.max(0.002, easedVel);
+          angleRef.current += velocityRef.current;
+        }
+      }
+
+      // ── 绘制滚轮背景 ──────────────────────────────────────────────
+      // 外圆发光
+      const glowGrad = ctx!.createRadialGradient(cx, cy, wheelR * 0.7, cx, cy, wheelR + 8);
+      glowGrad.addColorStop(0, 'rgba(124,58,237,0)');
+      glowGrad.addColorStop(0.7, 'rgba(124,58,237,0.15)');
+      glowGrad.addColorStop(1, 'rgba(168,85,247,0.4)');
+      ctx!.beginPath();
+      ctx!.arc(cx, cy, wheelR + 8, 0, Math.PI * 2);
+      ctx!.fillStyle = glowGrad;
+      ctx!.fill();
+
+      // 轮盘主体
+      const bgGrad = ctx!.createRadialGradient(cx, cy, 0, cx, cy, wheelR);
+      bgGrad.addColorStop(0, '#1a0a3e');
+      bgGrad.addColorStop(0.6, '#0d0621');
+      bgGrad.addColorStop(1, '#1a0a3e');
+      ctx!.beginPath();
+      ctx!.arc(cx, cy, wheelR, 0, Math.PI * 2);
+      ctx!.fillStyle = bgGrad;
+      ctx!.fill();
+
+      // 轮盘边框
+      ctx!.beginPath();
+      ctx!.arc(cx, cy, wheelR, 0, Math.PI * 2);
+      ctx!.strokeStyle = 'rgba(168,85,247,0.6)';
+      ctx!.lineWidth = 3;
+      ctx!.stroke();
+
+      // ── 绘制分割线（随轮盘旋转）──────────────────────────────────
+      ctx!.save();
+      ctx!.translate(cx, cy);
+      ctx!.rotate(angleRef.current);
+      for (let i = 0; i < SLOT_COUNT; i++) {
+        const a = (i / SLOT_COUNT) * Math.PI * 2;
+        ctx!.beginPath();
+        ctx!.moveTo(0, 0);
+        ctx!.lineTo(wheelR * Math.cos(a), wheelR * Math.sin(a));
+        ctx!.strokeStyle = 'rgba(124,58,237,0.25)';
+        ctx!.lineWidth = 1;
+        ctx!.stroke();
+      }
+      ctx!.restore();
+
+      // ── 绘制图标（随轮盘旋转）────────────────────────────────────
+      ctx!.save();
+      ctx!.translate(cx, cy);
+      ctx!.rotate(angleRef.current);
+
+      for (let i = 0; i < SLOT_COUNT; i++) {
+        const el = WHEEL_ELEMENTS[i];
+        const a = (i / SLOT_COUNT) * Math.PI * 2 - Math.PI / 2; // 从顶部开始
+        const ix = iconR * Math.cos(a);
+        const iy = iconR * Math.sin(a);
+        const cfg = ELEMENT_CONFIG[el];
+        const half = iconSize / 2;
+
+        // 图标背景圆
+        ctx!.beginPath();
+        ctx!.arc(ix, iy, half * 1.15, 0, Math.PI * 2);
+        ctx!.fillStyle = cfg.bgColor;
+        ctx!.fill();
+        ctx!.strokeStyle = cfg.color + '88';
+        ctx!.lineWidth = 1.5;
+        ctx!.stroke();
+
+        // 图标图片
+        const img = imagesRef.current[el];
+        if (img) {
+          ctx!.drawImage(img, ix - half, iy - half, iconSize, iconSize);
+        } else {
+          // 回退：文字
+          ctx!.fillStyle = cfg.color;
+          ctx!.font = `bold ${iconSize * 0.5}px Arial`;
+          ctx!.textAlign = 'center';
+          ctx!.textBaseline = 'middle';
+          ctx!.fillText(cfg.label[0], ix, iy);
+        }
+      }
+      ctx!.restore();
+
+      // ── 中心装饰圆 ────────────────────────────────────────────────
+      const centerR = W * 0.1;
+      const cGrad = ctx!.createRadialGradient(cx, cy, 0, cx, cy, centerR);
+      cGrad.addColorStop(0, '#4c1d95');
+      cGrad.addColorStop(1, '#1a0a3e');
+      ctx!.beginPath();
+      ctx!.arc(cx, cy, centerR, 0, Math.PI * 2);
+      ctx!.fillStyle = cGrad;
+      ctx!.fill();
+      ctx!.strokeStyle = 'rgba(168,85,247,0.7)';
+      ctx!.lineWidth = 2;
+      ctx!.stroke();
+
+      // 漩涡图案（中心静止）
+      if (stateRef.current === 'spinning' || stateRef.current === 'stopping') {
+        const t = Date.now() / 300;
+        for (let i = 0; i < 3; i++) {
+          const a = t + (i / 3) * Math.PI * 2;
+          const r = centerR * 0.55;
+          ctx!.beginPath();
+          ctx!.arc(cx + r * Math.cos(a), cy + r * Math.sin(a), 3, 0, Math.PI * 2);
+          ctx!.fillStyle = `rgba(168,85,247,${0.6 + 0.4 * Math.sin(t + i)})`;
+          ctx!.fill();
+        }
+      }
+
+      // ── 顶部指针（固定，不随轮盘旋转）───────────────────────────
+      const pointerY = cy - wheelR - 2;
+      ctx!.save();
+      ctx!.beginPath();
+      ctx!.moveTo(cx, pointerY + 2);
+      ctx!.lineTo(cx - 10, pointerY - 18);
+      ctx!.lineTo(cx + 10, pointerY - 18);
+      ctx!.closePath();
+      const isActive = stateRef.current === 'spinning' || stateRef.current === 'stopping';
+      ctx!.fillStyle = isActive ? '#ffd700' : 'rgba(255,215,0,0.5)';
+      ctx!.shadowColor = '#ffd700';
+      ctx!.shadowBlur = isActive ? 12 : 4;
+      ctx!.fill();
+      ctx!.restore();
+
+      // ── 停止时高亮当前图标 ────────────────────────────────────────
+      if (stateRef.current === 'stopped' && targetElement) {
+        const idx = WHEEL_ELEMENTS.indexOf(targetElement);
+        if (idx >= 0) {
+          const a = (idx / SLOT_COUNT) * Math.PI * 2 - Math.PI / 2 + angleRef.current;
+          const ix = cx + iconR * Math.cos(a);
+          const iy = cy + iconR * Math.sin(a);
+          const half = iconSize / 2;
+          ctx!.beginPath();
+          ctx!.arc(ix, iy, half * 1.4, 0, Math.PI * 2);
+          ctx!.strokeStyle = ELEMENT_CONFIG[targetElement].color;
+          ctx!.lineWidth = 3;
+          ctx!.shadowColor = ELEMENT_CONFIG[targetElement].color;
+          ctx!.shadowBlur = 20;
+          ctx!.stroke();
+          ctx!.shadowBlur = 0;
+        }
+      }
+    }
+
+    function animate() {
+      drawWheel();
+      animRef.current = requestAnimationFrame(animate);
+    }
+    animate();
+    return () => cancelAnimationFrame(animRef.current);
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={280}
+      height={280}
+      style={{ width: '100%', maxWidth: 280, display: 'block', margin: '0 auto' }}
+    />
+  );
+}
+
 // ── 同心圆轨道组件 ────────────────────────────────────────────────────────────
 function OrbitTrack({
   trackState,
@@ -221,37 +485,6 @@ function OrbitTrack({
         ctx!.fillText(text, tx, ty);
       });
 
-      // 中心圆（显示当前旋转元素）
-      const centerR = radii[0];
-      ctx!.beginPath();
-      ctx!.arc(cx, cy, centerR, 0, Math.PI * 2);
-      const grad = ctx!.createRadialGradient(cx, cy, 0, cx, cy, centerR);
-      grad.addColorStop(0, '#3a1a6e');
-      grad.addColorStop(1, '#1a0a3e');
-      ctx!.fillStyle = grad;
-      ctx!.fill();
-      ctx!.strokeStyle = '#7c3aed44';
-      ctx!.lineWidth = 2;
-      ctx!.stroke();
-
-      // 旋转动画（中心漩涡）
-      if (isSpinning) {
-        rotationRef.current += 0.05;
-        ctx!.save();
-        ctx!.translate(cx, cy);
-        ctx!.rotate(rotationRef.current);
-        // 漩涡效果
-        for (let i = 0; i < 3; i++) {
-          const angle = (i / 3) * Math.PI * 2 + rotationRef.current;
-          const r = centerR * 0.6;
-          ctx!.beginPath();
-          ctx!.arc(cx - cx + r * Math.cos(angle), cy - cy + r * Math.sin(angle), 3, 0, Math.PI * 2);
-          ctx!.fillStyle = '#a855f7';
-          ctx!.fill();
-        }
-        ctx!.restore();
-      }
-
       // Bonus 触发特效
       if (bonusTriggered) {
         ctx!.beginPath();
@@ -302,6 +535,7 @@ export default function Vortex() {
   const [balance, setBalance] = useState<number | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [gameStarted, setGameStarted] = useState(false); // 是否已开始（扣了投注）
+  const [spinWheelComplete, setSpinWheelComplete] = useState(false); // 滚轮动画完成标志
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 音效
@@ -574,8 +808,9 @@ export default function Vortex() {
           <div style={{ fontSize: 10, color: '#7c3aed', letterSpacing: 4, marginTop: -4 }}>官方游戏</div>
         </div>
 
-        {/* 同心圆轨道 */}
-        <div style={{ width: '100%', position: 'relative' }}>
+        {/* 游戏主区域：Slot 滚轮（中间）+ 同心圆轨道（外圈） */}
+        <div style={{ width: '100%', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          {/* 同心圆轨道（外圈） */}
           <OrbitTrack
             trackState={trackState}
             spinningElement={spinningElement}
@@ -583,27 +818,21 @@ export default function Vortex() {
             bonusTriggered={bonusTriggered}
           />
 
-          {/* 中心元素显示 */}
-          {lastElement && (
-            <div style={{
-              position: 'absolute',
-              top: '50%', left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: 56, height: 56,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              pointerEvents: 'none',
-            }}>
-              <img
-                src={ELEMENT_CONFIG[lastElement].icon}
-                alt={lastElement}
-                style={{
-                  width: 48, height: 48, objectFit: 'contain',
-                  filter: `drop-shadow(0 0 8px ${ELEMENT_CONFIG[lastElement].color})`,
-                  animation: isSpinning ? 'none' : 'elementPop 0.3s ease',
-                }}
-              />
-            </div>
-          )}
+          {/* Slot 滚轮覆盖在同心圆中心 */}
+          <div style={{
+            position: 'absolute',
+            top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '68%',
+            aspectRatio: '1',
+            pointerEvents: 'none',
+          }}>
+            <SlotWheel
+              isSpinning={isSpinning}
+              targetElement={lastElement}
+              onSpinComplete={() => setSpinWheelComplete(true)}
+            />
+          </div>
         </div>
 
         {/* 游戏消息 */}
