@@ -372,9 +372,29 @@ export default function Vortex() {
         setBonusTriggered(true);
         setGameMessage(`🎉 BONUS！获得 ${result.bonusMultiplier}x 奖励！`);
         playWin(); // Bonus 大奖音效
-        // 自动触发 Cash Out
-        setTimeout(() => {
-          handleCashOut(false, newPayout, newTrack);
+        // 自动触发 Cash Out（直接内联，避免 handleCashOut 闭包引用问题）
+        setTimeout(async () => {
+          try {
+            const cashOutResult = await cashOutMutation.mutateAsync({
+              betAmount,
+              multiplier: newMult,
+              trackState: newTrack,
+              isPartial: false,
+              partialRatio: 0.5,
+            });
+            if (cashOutResult.success) {
+              setBalance(cashOutResult.balanceAfter);
+              setGameMessage(`🎉 奖励提现！赢得 ${cashOutResult.winAmount.toFixed(2)} 金币！`);
+              setTrackState({ fire: 0, earth: 0, water: 0 });
+              setCurrentMultiplier(0);
+              setPayout(0);
+              setGameStarted(false);
+              setBonusTriggered(false);
+              setAutoMode(false);
+            }
+          } catch (err: any) {
+            setGameMessage(err.message || '奖励提现失败');
+          }
         }, 1500);
       } else {
         const elName = ELEMENT_CONFIG[result.element as Element]?.label || result.element;
@@ -394,7 +414,7 @@ export default function Vortex() {
       setIsSpinning(false);
       setSpinningElement(null);
     }
-  }, [isSpinning, balance, betAmount, trackState, currentMultiplier, gameStarted, spinMutation]);
+  }, [isSpinning, balance, betAmount, trackState, currentMultiplier, gameStarted, spinMutation, cashOutMutation, playWin, playLose, playSpinStop]);
 
   // Cash Out
   const handleCashOut = useCallback(async (isPartial = false, overridePayout?: number, overrideTrack?: TrackState) => {

@@ -754,3 +754,7 @@
 - [x] 修复 vortexBets 表 INSERT 错误（字段匹配确认正常）
 - [x] 修复 wild（wind/skull/bonus）图片丢失（重新生成并上传CDN）
 - [x] Vortex 界面完全汉化（CASH OUT→提现、HOLD TO SPIN→按住旋转、Part Pay→部分提现、BONUS→奖励、OFFICIAL GAME→官方游戏）
+
+## vortexBets 表修复（2026-03-12）
+- [ ] 确认 vortexBets 表在数据库中是否存在
+- [ ] 执行 pnpm db:push 创建缺失的 vortexBets 表

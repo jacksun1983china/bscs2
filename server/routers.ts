@@ -2345,6 +2345,11 @@ export const appRouter = router({
         const player = playerRows[0];
         const currentGold = parseFloat(player.gold);
 
+        // 容错：multiplier 为 0 时拒绝结算（防止前端闭包陷阱导致的异常调用）
+        if (input.multiplier <= 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "倍率无效，请重新旋转后再提现" });
+        }
+
         const winAmount = input.betAmount * input.multiplier;
         const payoutAmount = input.isPartial ? winAmount * input.partialRatio : winAmount;
         const netAmount = payoutAmount - input.betAmount;
