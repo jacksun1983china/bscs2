@@ -525,9 +525,10 @@ export default function Backpack() {
                 color: '#fff',
                 fontSize: q(26),
                 fontWeight: 500,
-                margin: `${q(31)} 0 0 ${q(24)}`,
+                marginLeft: q(24),
                 whiteSpace: 'nowrap',
-                }}
+                flexShrink: 0,
+              }}
             >
               共{total}件
             </span>
@@ -539,7 +540,8 @@ export default function Backpack() {
                 backgroundSize: '100% 100%',
                 backgroundRepeat: 'no-repeat',
                 width: q(310),
-                margin: `${q(19)} 0 0 ${q(16)}`,
+                marginLeft: q(16),
+                flexShrink: 0,
                 display: 'flex',
                 alignItems: 'center',
               }}
@@ -568,7 +570,8 @@ export default function Backpack() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: q(4),
-                margin: `${q(30)} 0 0 ${q(23)}`,
+                marginLeft: q(23),
+                flexShrink: 0,
                 cursor: 'pointer',
                 opacity: sortBy === 'price' ? 1 : 0.55,
               }}
@@ -584,7 +587,9 @@ export default function Backpack() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: q(4),
-                margin: `${q(25)} ${q(23)} 0 ${q(21)}`,
+                marginLeft: q(21),
+                marginRight: q(23),
+                flexShrink: 0,
                 cursor: 'pointer',
                 opacity: sortBy === 'time' ? 1 : 0.55,
               }}
