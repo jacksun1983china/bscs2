@@ -104,6 +104,7 @@ export default function MyRecords() {
           flexDirection: 'column',
           position: 'relative',
           containerType: 'inline-size',
+          background: '#0d0621',
         }}
       >
         {/* 全局背景层 */}
@@ -140,6 +141,7 @@ export default function MyRecords() {
             display: 'flex',
             flexDirection: 'column',
             paddingBottom: q(90),
+            background: '#0d0621',
           }}>
             {/* 记录类型 Tab — 使用 btn1/btn2 图片作为背景 */}
             <div
@@ -230,7 +232,7 @@ export default function MyRecords() {
             </div>
 
             {/* 记录列表 */}
-            <div style={{ flex: 1, background: 'rgba(10,5,30,0.85)', minHeight: q(400) }}>
+            <div style={{ flex: 1, background: 'rgba(10,5,30,0.85)', minHeight: q(400), paddingBottom: q(90) }}>
               {isLoading ? (
                 /* 加载状态 */
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: `${q(80)} 0` }}>

@@ -847,3 +847,9 @@
 ## Vortex cashOut 报错修复（2026-03-12）
 - [x] 创建 vortexBets 数据库表（cashOut 时 INSERT 报表不存在错误）
 - [x] 修复 Vortex 动画时序：slot 滚轮完全停止后才触发外圈轨道动画
+
+## MyRecords 背景截断修复（2026-03-13）
+- [x] 修复余额记录页面黑色背景被截断问题，确保背景延伸到底部0像素
+  - phone-container 加 background: '#0d0621' 兜底
+  - 可滚动内容区加 background: '#0d0621' 兜底
+  - 记录列表区加 paddingBottom 防止底部导航遮挡
