@@ -569,7 +569,7 @@ export default function Backpack() {
                 gap: q(20),
               }}
             >
-              <img src={B.itemPlaceholder} alt="" style={{ width: q(280), height: q(220), opacity: 0.4 }} />
+              <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/pic1@2x_b3c200a7.png" alt="" style={{ width: q(280), height: q(280), objectFit: 'contain' }} />
               <span style={{ color: 'rgba(180,150,255,0.6)', fontSize: q(26) }}>背包空空如也</span>
             </div>
           ) : (
