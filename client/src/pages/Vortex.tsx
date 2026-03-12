@@ -44,6 +44,179 @@ const ELEMENT_CONFIG: Record<Element, { label: string; color: string; icon: stri
   bonus: { label: '奖励', color: '#ffd700', bgColor: 'rgba(255,215,0,0.2)',  icon: ASSETS.elementBonus },
 };
 
+// ── 垂直滚动 Slot 列组件 ────────────────────────────────────────────────────
+/**
+ * SlotColumn — 单列垂直滚动 slot 滚轮
+ * - 旋转时：图标从上往下高速滚动
+ * - 停止时：减速停在 targetElement 对应的图标上，并高亮发光
+ */
+function SlotColumn({
+  isSpinning,
+  targetElement,
+  size = 56,
+}: {
+  isSpinning: boolean;
+  targetElement: Element | null;
+  size?: number;
+}) {
+  const ELEMENTS: Element[] = ['fire', 'earth', 'water', 'wind', 'skull', 'bonus'];
+  // 扩展列表（首尾各复制一份，保证滚动无缝）
+  const STRIP = [...ELEMENTS, ...ELEMENTS, ...ELEMENTS];
+
+  const itemH = size; // 每个图标高度 = 容器尺寸
+  const containerH = size; // 可见窗口高度
+
+  // offsetY：当前滚动偏移（px），向下滚动为正
+  const [offsetY, setOffsetY] = useState(0);
+  const rafRef = useRef<number>(0);
+  const velRef = useRef(0); // 当前速度（px/frame）
+  const stateRef = useRef<'idle' | 'spinning' | 'stopping'>('idle');
+  const targetOffsetRef = useRef(0);
+
+  // 计算目标元素在 STRIP 中第二段的 index（居中段，避免越界）
+  function getTargetOffset(el: Element): number {
+    const idx = ELEMENTS.indexOf(el);
+    const stripIdx = ELEMENTS.length + idx; // 第二段
+    return stripIdx * itemH;
+  }
+
+  useEffect(() => {
+    if (isSpinning) {
+      // 开始旋转：高速向下滚动
+      stateRef.current = 'spinning';
+      velRef.current = 18; // 初始速度 px/frame
+
+      const spinLoop = () => {
+        if (stateRef.current !== 'spinning') return;
+        setOffsetY(prev => {
+          let next = prev + velRef.current;
+          // 循环：超过第二段末尾时跳回第一段对应位置
+          const totalH = ELEMENTS.length * itemH;
+          if (next >= totalH * 2) next -= totalH;
+          return next;
+        });
+        rafRef.current = requestAnimationFrame(spinLoop);
+      };
+      rafRef.current = requestAnimationFrame(spinLoop);
+    } else {
+      // 停止旋转：减速停在目标
+      if (stateRef.current === 'idle') return;
+      stateRef.current = 'stopping';
+      cancelAnimationFrame(rafRef.current);
+
+      const el = targetElement ?? 'fire';
+      const target = getTargetOffset(el);
+      targetOffsetRef.current = target;
+
+      // 用 easeOut 动画从当前位置滑到目标位置
+      let startOffset = 0;
+      setOffsetY(prev => { startOffset = prev; return prev; });
+
+      // 确保目标在当前位置前方（向下方向）
+      const totalH = ELEMENTS.length * itemH;
+      let adjustedTarget = target;
+      // 如果目标在当前位置后面（上方），加一圈
+      if (adjustedTarget <= startOffset) {
+        adjustedTarget += totalH;
+      }
+      // 至少再滚一圈（增加停止感）
+      adjustedTarget += totalH;
+
+      const duration = 800; // ms
+      const startTime = performance.now();
+      const startVal = startOffset;
+      const endVal = adjustedTarget;
+
+      const stopLoop = (now: number) => {
+        const elapsed = now - startTime;
+        const t = Math.min(elapsed / duration, 1);
+        // easeOutCubic
+        const eased = 1 - Math.pow(1 - t, 3);
+        const current = startVal + (endVal - startVal) * eased;
+
+        // 对 totalH 取模，保持在合理范围
+        const normalized = current % (totalH * 3);
+        setOffsetY(normalized);
+
+        if (t < 1) {
+          rafRef.current = requestAnimationFrame(stopLoop);
+        } else {
+          // 最终停在精确位置
+          setOffsetY(adjustedTarget % (totalH * 3));
+          stateRef.current = 'idle';
+        }
+      };
+      rafRef.current = requestAnimationFrame(stopLoop);
+    }
+
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [isSpinning, targetElement]);
+
+  // 当前中心显示的元素（用于高亮）
+  const centerIdx = Math.round(offsetY / itemH) % ELEMENTS.length;
+  const centerEl = ELEMENTS[((centerIdx % ELEMENTS.length) + ELEMENTS.length) % ELEMENTS.length];
+
+  return (
+    <div style={{
+      width: size,
+      height: containerH,
+      overflow: 'hidden',
+      borderRadius: '50%',
+      position: 'relative',
+      background: 'radial-gradient(circle, rgba(30,10,60,0.95) 0%, rgba(10,5,30,0.98) 100%)',
+      border: '2px solid rgba(168,85,247,0.6)',
+      boxShadow: isSpinning
+        ? '0 0 16px rgba(168,85,247,0.8), inset 0 0 12px rgba(168,85,247,0.3)'
+        : targetElement
+          ? `0 0 20px ${ELEMENT_CONFIG[targetElement].color}99, inset 0 0 10px ${ELEMENT_CONFIG[targetElement].color}22`
+          : '0 0 8px rgba(124,58,237,0.4)',
+      transition: 'box-shadow 0.3s ease',
+    }}>
+      {/* 滚动条带 */}
+      <div style={{
+        position: 'absolute',
+        top: -offsetY % (STRIP.length * itemH),
+        left: 0,
+        width: '100%',
+        willChange: 'transform',
+      }}>
+        {STRIP.map((el, i) => (
+          <div
+            key={i}
+            style={{
+              width: size,
+              height: itemH,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <img
+              src={ELEMENT_CONFIG[el].icon}
+              alt={el}
+              style={{
+                width: size * 0.72,
+                height: size * 0.72,
+                objectFit: 'contain',
+                filter: (!isSpinning && targetElement === el)
+                  ? `drop-shadow(0 0 6px ${ELEMENT_CONFIG[el].color}) brightness(1.3)`
+                  : 'brightness(0.85)',
+                transition: 'filter 0.2s',
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      {/* 上下渐变遮罩（增强 slot 效果） */}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: '50%',
+        background: 'linear-gradient(to bottom, rgba(10,5,30,0.7) 0%, transparent 30%, transparent 70%, rgba(10,5,30,0.7) 100%)',
+        pointerEvents: 'none',
+      }} />
+    </div>
+  );
+}
+
 // ── 同心圆轨道组件 ────────────────────────────────────────────────────────────
 function OrbitTrack({
   trackState,
@@ -583,27 +756,19 @@ export default function Vortex() {
             bonusTriggered={bonusTriggered}
           />
 
-          {/* 中心元素显示 */}
-          {lastElement && (
-            <div style={{
-              position: 'absolute',
-              top: '50%', left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: 56, height: 56,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              pointerEvents: 'none',
-            }}>
-              <img
-                src={ELEMENT_CONFIG[lastElement].icon}
-                alt={lastElement}
-                style={{
-                  width: 48, height: 48, objectFit: 'contain',
-                  filter: `drop-shadow(0 0 8px ${ELEMENT_CONFIG[lastElement].color})`,
-                  animation: isSpinning ? 'none' : 'elementPop 0.3s ease',
-                }}
-              />
-            </div>
-          )}
+          {/* 中心 Slot 滚轮（垂直滚动） */}
+          <div style={{
+            position: 'absolute',
+            top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+          }}>
+            <SlotColumn
+              isSpinning={isSpinning}
+              targetElement={lastElement}
+              size={56}
+            />
+          </div>
         </div>
 
         {/* 游戏消息 */}
