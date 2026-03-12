@@ -514,8 +514,12 @@ export default function ArenaRoom() {
     { enabled: boxIds.length > 0, refetchOnWindowFocus: false }
   );
 
+  // 重试计数，避免 429 时无限重试
+  const joinRetryRef = useRef(0);
+
   const joinRoom = trpc.arena.joinRoom.useMutation({
     onSuccess: () => {
+      joinRetryRef.current = 0;
       setIsPresent(true);
       setJoinLoading(false);
       // 延迟 800ms 再启动 getRoomDetail，避免与 joinRoom 并发触发 429
@@ -525,6 +529,19 @@ export default function ArenaRoom() {
     },
     onError: (err) => {
       setJoinLoading(false);
+      // 429 Too Many Requests：自动重试（最多 2 次，逐次加长延迟）
+      const httpStatus = (err as any)?.data?.httpStatus;
+      const is429 = httpStatus === 429 || err.message?.includes('429');
+      if (is429 && joinRetryRef.current < 2) {
+        joinRetryRef.current += 1;
+        const delay = 1500 * joinRetryRef.current; // 1.5s, 3s
+        setTimeout(() => {
+          setJoinLoading(true);
+          joinRoom.mutate({ roomId });
+        }, delay);
+        return;
+      }
+      joinRetryRef.current = 0;
       // 房间已满、已不在等待状态（playing/finished）时，不显示错误，让roomDetail的useEffect处理展示
       if (err.message.includes('已满') || err.message.includes('不在等待') || err.message.includes('已不在等待')) {
         setIsPresent(false);
@@ -537,6 +554,17 @@ export default function ArenaRoom() {
       }
     },
   });
+
+  // 超时兜底：5 秒后若仍在加载中，强制退出加载状态并启用 roomDetail
+  useEffect(() => {
+    if (roomId > 0) {
+      const timer = setTimeout(() => {
+        setJoinLoading(false);
+        setRoomDetailEnabled(true);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [roomId]);
 
   useEffect(() => {
     if (roomId > 0) {
