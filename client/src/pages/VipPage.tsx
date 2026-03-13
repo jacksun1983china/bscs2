@@ -156,7 +156,7 @@ export default function VipPage() {
               padding: `${q(32)} ${q(28)}`,
               boxShadow: '0 0 30px rgba(120,40,220,0.3)',
               position: 'relative',
-              overflow: 'hidden',
+              overflow: 'visible',
             }}>
               {/* 卡片光效 */}
               <div style={{
@@ -164,9 +164,9 @@ export default function VipPage() {
                 background: 'linear-gradient(90deg, transparent, rgba(192,132,252,0.8), transparent)',
               }} />
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: q(24) }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: q(24), minHeight: q(100) }}>
                 {/* VIP 图标 */}
-                <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ flexShrink: 0, width: q(100), height: q(100), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {currentLevel === 0 ? (
                     <Vip0Icon size={q(100)} />
                   ) : (
@@ -179,18 +179,19 @@ export default function VipPage() {
                 </div>
 
                 {/* VIP 信息 */}
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
                     color: '#fff', fontSize: q(36), fontWeight: 900,
                     fontFamily: '"Orbitron", sans-serif',
                     textShadow: currentLevel > 0 ? '0 0 20px rgba(192,132,252,0.8)' : 'none',
+                    lineHeight: 1.3,
                   }}>
                     VIP {currentLevel}
                   </div>
-                  <div style={{ color: '#9980cc', fontSize: q(24), marginTop: q(8) }}>
+                  <div style={{ color: '#9980cc', fontSize: q(24), marginTop: q(8), lineHeight: 1.3 }}>
                     {player?.nickname || '未登录'}
                   </div>
-                  <div style={{ color: '#7df9ff', fontSize: q(22), marginTop: q(4) }}>
+                  <div style={{ color: '#7df9ff', fontSize: q(22), marginTop: q(4), lineHeight: 1.3 }}>
                     累计充值：¥{totalRecharge.toFixed(2)}
                   </div>
                 </div>
