@@ -2016,19 +2016,8 @@ export const appRouter = router({
         // 记录金币流水
         await insertGoldLog(playerToken.playerId, netAmount, newGold, 'vortex', netAmount >= 0 ? `Vortex 赢得 ${payoutAmount.toFixed(2)} 金币` : `Vortex 投注 ${input.betAmount.toFixed(2)} 金币`);
         // 记录投注
-        await (db as any).execute(
-          `INSERT INTO vortexBets (userId, playerName, betAmount, multiplier, winAmount, netAmount, balanceAfter, resultData, isWin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            playerToken.playerId,
-            player.nickname || '',
-            input.betAmount.toFixed(2),
-            serverMultiplier.toFixed(2),
-            payoutAmount.toFixed(2),
-            netAmount.toFixed(2),
-            newGold.toFixed(2),
-            JSON.stringify(input.trackState),
-            payoutAmount > 0 ? 1 : 0,
-          ]
+        await db.execute(
+          sql`INSERT INTO vortexBets (userId, playerName, betAmount, multiplier, winAmount, netAmount, balanceAfter, resultData, isWin) VALUES (${playerToken.playerId}, ${player.nickname || ''}, ${input.betAmount.toFixed(2)}, ${serverMultiplier.toFixed(2)}, ${payoutAmount.toFixed(2)}, ${netAmount.toFixed(2)}, ${newGold.toFixed(2)}, ${JSON.stringify(input.trackState)}, ${payoutAmount > 0 ? 1 : 0})`
         );
 
         return {
@@ -2050,8 +2039,7 @@ export const appRouter = router({
         if (!db) return [];
         try {
           const [rows] = await (db as any).execute(
-            `SELECT * FROM vortexBets WHERE userId = ? ORDER BY createdAt DESC LIMIT ?`,
-            [playerToken.playerId, input.limit]
+            sql`SELECT * FROM vortexBets WHERE userId = ${playerToken.playerId} ORDER BY createdAt DESC LIMIT ${input.limit}`
           );
           return (rows as any[]).map((r: any) => ({
             id: r.id,

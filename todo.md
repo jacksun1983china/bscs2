@@ -997,3 +997,4 @@
 - [x] 修复 sku.boxList limit=200 超过后端 max(100) 导致400错误
 - [x] 修复429 Rate exceeded导致tRPC JSON解析失败的死循环
 - [x] 优化前端retry逻辑，正确处理429响应
+- [x] 修复 Vortex 游戏下注时 INSERT INTO vortexBets 数据库插入失败
