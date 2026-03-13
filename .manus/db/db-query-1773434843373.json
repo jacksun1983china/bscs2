@@ -1,0 +1,37 @@
+{
+  "query": "SELECT r.id, r.roomNo, r.rounds, r.currentRound, r.status, r.winnerId, \n       (SELECT COUNT(*) FROM arenaRoundResults rr WHERE rr.roomId = r.id) as resultCount\nFROM arenaRooms r WHERE r.roomNo = 336676;\n\nSELECT roundNo, playerId, goodsName, goodsValue FROM arenaRoundResults \nWHERE roomId = (SELECT id FROM arenaRooms WHERE roomNo = 336676) \nORDER BY roundNo, playerId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT r.id, r.roomNo, r.rounds, r.currentRound, r.status, r.winnerId, \n       (SELECT COUNT(*) FROM arenaRoundResults rr WHERE rr.roomId = r.id) as resultCount\nFROM arenaRooms r WHERE r.roomNo = 336676;\n\nSELECT roundNo, playerId, goodsName, goodsValue FROM arenaRoundResults \nWHERE roomId = (SELECT id FROM arenaRooms WHERE roomNo = 336676) \nORDER BY roundNo, playerId;",
+  "rows": [
+    {
+      "id": "120021",
+      "roomNo": "336676",
+      "rounds": "8",
+      "currentRound": "1",
+      "status": "finished",
+      "winnerId": "0",
+      "resultCount": "16"
+    }
+  ],
+  "messages": [
+    "roundNo\tplayerId\tgoodsName\tgoodsValue",
+    "1\t120200\tMP7 陆军斥候\t0.10",
+    "1\t120206\tMP7 陆军斥候\t0.10",
+    "2\t120200\tMP7 陆军斥候\t0.10",
+    "2\t120206\tMP7 陆军斥候\t0.10",
+    "3\t120200\tMP7 陆军斥候\t0.10",
+    "3\t120206\tMP7 陆军斥候\t0.10",
+    "4\t120200\tMP7 陆军斥候\t0.10",
+    "4\t120206\tMP7 陆军斥候\t0.10",
+    "5\t120200\tMP7 陆军斥候\t0.10",
+    "5\t120206\tMP7 陆军斥候\t0.10",
+    "6\t120200\tMP7 陆军斥候\t0.10",
+    "6\t120206\tMP7 陆军斥候\t0.10",
+    "7\t120200\tMP7 陆军斥候\t0.10",
+    "7\t120206\tMP7 陆军斥候\t0.10",
+    "8\t120200\tMP7 陆军斥候\t0.10",
+    "8\t120206\tMP7 陆军斥候\t0.10"
+  ],
+  "stdout": "id\troomNo\trounds\tcurrentRound\tstatus\twinnerId\tresultCount\n120021\t336676\t8\t1\tfinished\t0\t16\nroundNo\tplayerId\tgoodsName\tgoodsValue\n1\t120200\tMP7 陆军斥候\t0.10\n1\t120206\tMP7 陆军斥候\t0.10\n2\t120200\tMP7 陆军斥候\t0.10\n2\t120206\tMP7 陆军斥候\t0.10\n3\t120200\tMP7 陆军斥候\t0.10\n3\t120206\tMP7 陆军斥候\t0.10\n4\t120200\tMP7 陆军斥候\t0.10\n4\t120206\tMP7 陆军斥候\t0.10\n5\t120200\tMP7 陆军斥候\t0.10\n5\t120206\tMP7 陆军斥候\t0.10\n6\t120200\tMP7 陆军斥候\t0.10\n6\t120206\tMP7 陆军斥候\t0.10\n7\t120200\tMP7 陆军斥候\t0.10\n7\t120206\tMP7 陆军斥候\t0.10\n8\t120200\tMP7 陆军斥候\t0.10\n8\t120206\tMP7 陆军斥候\t0.10\n",
+  "stderr": "",
+  "execution_time_ms": 59
+}

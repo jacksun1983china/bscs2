@@ -452,6 +452,8 @@ export default function ArenaRoom() {
   const pendingSpinRef = useRef<Array<{ itemMap: Record<number, { goodsId: number; goodsName: string; goodsImage: string; goodsLevel: number; goodsValue: string }>; roundNo: number }>>([]);
   // 缓存 game_over 数据，等待 SLOT 动画完成后再触发结束
   const pendingGameOverRef = useRef<any>(null);
+  // 跟踪 reveal 动画状态（SLOT 转完后展示 2.2 秒的开奖结果），防止 SSE 在 reveal 期间直接启动下一轮
+  const revealingRef = useRef(false);
 
   // ── 跳过游戏动画状态 ──
   const [skipGameAnim, setSkipGameAnim] = useState(false);
@@ -604,6 +606,9 @@ export default function ArenaRoom() {
   }, [sseConnected]);
   const [currentRound, setCurrentRound] = useState(1);
   const [spinning, setSpinning] = useState(false);
+  const spinningRef = useRef(false); // 实时跟踪 spinning 状态，供 SSE 回调读取
+  // 同步 spinningRef 与 spinning state
+  useEffect(() => { spinningRef.current = spinning; }, [spinning]);
   const [spinDoneCount, setSpinDoneCount] = useState(0);
   const [roundResults, setRoundResults] = useState<Record<number, Array<{
     playerId: number;
@@ -690,7 +695,7 @@ export default function ArenaRoom() {
         liveRoundsReceivedRef.current = roundNo;
         // 确保 gameStatus 为 playing（观战者可能在 roomDetail 加载前收到此消息）
         setGameStatus('playing');
-        setCurrentRound(roundNo);
+        // 注意：setCurrentRound 在空闲分支中设置，队列模式下由 handleSlotDone 线性推进
         setRoundResults((prev) => {
           const enriched = results.map((r: any) => ({ ...r }));
           return { ...prev, [roundNo]: enriched };
@@ -722,13 +727,20 @@ export default function ArenaRoom() {
             seatNo: r.seatNo,
           })));
         }
-        setCurrentRoundItems(itemMap);
-        if (showIntroRef.current) {
-          // 开场动画正在播放，将结果加入队列，动画结束后按顺序触发 slot
+        // ── 线性状态机核心逻辑 ──
+        // 只有在“空闲”状态（非开场动画、非 SLOT 转动中、非 reveal 展示中）才直接启动 SLOT
+        // 其他情况一律加入队列，等当前步骤完成后由 handleSlotDone/handleIntroComplete 线性触发
+        const stateFlags = { intro: showIntroRef.current, spinning: spinningRef.current, revealing: revealingRef.current };
+        console.log(`[SM] round_result R${roundNo} | flags:`, stateFlags, `| queue:${pendingSpinRef.current.length}`);
+        if (showIntroRef.current || spinningRef.current || revealingRef.current) {
+          // 开场动画正在播放 或 SLOT 正在转动 或 reveal 展示中，加入队列
           pendingSpinRef.current.push({ itemMap, roundNo });
-          // 不设置 spinning=true，避免在开场动画期间在后台播放动画
+          console.log(`[SM] → QUEUED R${roundNo} (queue now ${pendingSpinRef.current.length})`);
         } else {
-          // 开场动画已结束，直接触发 slot 动画
+          // 空闲状态，直接启动 SLOT 动画
+          console.log(`[SM] → DIRECT START R${roundNo}`);
+          setCurrentRound(roundNo);
+          setCurrentRoundItems(itemMap);
           setSpinning(true);
           setSpinDoneCount(0);
           setSkipGameAnim(false);
@@ -744,24 +756,41 @@ export default function ArenaRoom() {
           isDraw: !!(msg.isDraw),
           players: (msg.players as any[]).map((p: any) => ({ ...p, isDraw: !!(msg.isDraw) })),
         };
-        // 缓存 game_over 数据，等待 SLOT 动画完成后再触发结束
-        pendingGameOverRef.current = overData;
         refetchRoom();
         utils.player.inventory.invalidate();
-        // 设置兜底定时器：如果 30 秒后 pendingGameOver 仍未被消费，强制触发结束
-        setTimeout(() => {
-          if (pendingGameOverRef.current) {
-            const pending = pendingGameOverRef.current;
-            pendingGameOverRef.current = null;
-            setGameOverData(pending);
+        // ── 线性状态机：检查当前是否空闲 ──
+        console.log(`[SM] game_over | spinning:${spinningRef.current} revealing:${revealingRef.current} queue:${pendingSpinRef.current.length} intro:${showIntroRef.current}`);
+        if (!spinningRef.current && !revealingRef.current && pendingSpinRef.current.length === 0 && !showIntroRef.current) {
+          // SLOT 空闲且队列为空，所有轮次已完成，直接触发结束
+          // 延迟 2.5 秒，等待最后一轮的 reveal 动画完成
+          setTimeout(() => {
+            setGameOverData(overData);
             setGameStatus('finished');
             setTimeout(() => {
-              if (pending.isDraw) playLoseTone();
-              else if (pending.players.some((p: any) => p.isWinner)) playWinFanfare();
+              if (overData.isDraw) playLoseTone();
+              else if (overData.players.some((p: any) => p.isWinner)) playWinFanfare();
               else playLoseTone();
             }, 500);
-          }
-        }, 30000);
+          }, 2500);
+        } else {
+          // SLOT 还在转或队列中还有待处理轮次，缓存 game_over 数据
+          // 由 handleSlotDone 在最后一轮完成后线性消费
+          pendingGameOverRef.current = overData;
+          // 兜底定时器：60 秒后如果仍未消费，强制触发结束
+          setTimeout(() => {
+            if (pendingGameOverRef.current) {
+              const pending = pendingGameOverRef.current;
+              pendingGameOverRef.current = null;
+              setGameOverData(pending);
+              setGameStatus('finished');
+              setTimeout(() => {
+                if (pending.isDraw) playLoseTone();
+                else if (pending.players.some((p: any) => p.isWinner)) playWinFanfare();
+                else playLoseTone();
+              }, 500);
+            }
+          }, 60000);
+        }
         break;
       }
       case 'room_cancelled':
@@ -945,28 +974,8 @@ export default function ArenaRoom() {
     }
   }, [roomDetail?.room?.status, roomDetail?.roundResults, roomDetail?.players, isReplaying, spinning, showIntro, gameStatus]);
 
-  // ── 监听 spinning 变化：当 SLOT 停止转动且有缓存的 game_over 数据时，触发结束 ──
-  // 这是处理 game_over SSE 在 SLOT 转动期间到达的核心逻辑
-  // 注意：这个 useEffect 不会在回放模式下触发，因为回放模式不会设置 pendingGameOverRef
-  useEffect(() => {
-    if (!spinning && !showIntro && pendingGameOverRef.current && gameStatus === 'playing') {
-      // 延迟一小段时间，等待 reveal 动画完成
-      const timer = setTimeout(() => {
-        if (pendingGameOverRef.current) {
-          const pending = pendingGameOverRef.current;
-          pendingGameOverRef.current = null;
-          setGameOverData(pending);
-          setGameStatus('finished');
-          setTimeout(() => {
-            if (pending.isDraw) playLoseTone();
-            else if (pending.players.some((p: any) => p.isWinner)) playWinFanfare();
-            else playLoseTone();
-          }, 500);
-        }
-      }, 3000); // 3秒延迟，等待 reveal 动画和其他过渡完成
-      return () => clearTimeout(timer);
-    }
-  }, [spinning, showIntro, gameStatus]);
+  // [REMOVED] 不再通过 useEffect 监听 spinning 变化来消费 pendingGameOver
+  // 现在由 handleSlotDone 在最后一轮完成后线性消费，或由 game_over SSE 处理在空闲时直接触发
 
   // ── 回放模式：用 replayKey 控制开始（每次递增 replayKey 就重新开始回放）──
   // 依赖 replayKey 而非 isReplaying，避免数据刷新时重复触发
@@ -1153,6 +1162,7 @@ export default function ArenaRoom() {
   const handleSlotDone = useCallback(() => {
     setSpinDoneCount((prev) => {
       const next = prev + 1;
+      console.log(`[SM] handleSlotDone count=${next}/${maxPlayers}`);
       if (next >= maxPlayers) {
         setSpinning(false);
 
@@ -1184,9 +1194,11 @@ export default function ArenaRoom() {
             .sort((a, b) => a._seatNo - b._seatNo);
           setRevealItems(revealData);
           setShowRoundReveal(true);
+          revealingRef.current = true; // 标记 reveal 动画开始
 
           setTimeout(() => {
             setShowRoundReveal(false);
+            revealingRef.current = false; // reveal 动画结束
             if (currentReplayRound < totalReplayRounds) {
               const nextRound = currentReplayRound + 1;
               replayRoundRef.current = nextRound;
@@ -1239,13 +1251,17 @@ export default function ArenaRoom() {
             .sort((a, b) => a._seatNo - b._seatNo);
           setRevealItems(revealData);
           setShowRoundReveal(true);
+          revealingRef.current = true; // 标记 reveal 动画开始
 
           setTimeout(() => {
             setShowRoundReveal(false);
+            revealingRef.current = false; // reveal 动画结束
+            console.log(`[SM] reveal done (normal) | queue:${pendingSpinRef.current.length} currentRound:${currentRound} totalRounds:${totalRounds}`);
             // 检查队列中是否有待处理的轮次（服务器恢复时快速广播的多轮结果）
             if (pendingSpinRef.current.length > 0) {
               const nextPending = pendingSpinRef.current[0];
               pendingSpinRef.current = pendingSpinRef.current.slice(1);
+              console.log(`[SM] → dequeue & start R${nextPending.roundNo} (queue remaining ${pendingSpinRef.current.length})`);
               setTimeout(() => {
                 setCurrentRoundItems(nextPending.itemMap);
                 setCurrentRound(nextPending.roundNo);
@@ -1254,10 +1270,12 @@ export default function ArenaRoom() {
                 setSkipGameAnim(false);
               }, 100);
             } else if (currentRound < totalRounds) {
+              console.log(`[SM] → waiting for SSE R${currentRound + 1} (currentRound=${currentRound} < totalRounds=${totalRounds})`);
               setCurrentRound((r) => r + 1);
               // 不清空 currentRoundItems，等待 SSE round_result 消息覆盖，避免 SlotMachine 动画中断
             } else {
               // 最后一轮完成，检查是否有缓存的 game_over 数据
+              console.log(`[SM] → last round done, pendingGameOver:${!!pendingGameOverRef.current}`);
               if (pendingGameOverRef.current) {
                 const overData = pendingGameOverRef.current;
                 pendingGameOverRef.current = null;
@@ -1284,6 +1302,7 @@ export default function ArenaRoom() {
   const handleIntroComplete = useCallback(() => {
     showIntroRef.current = false; // 开场动画已结束
     setShowIntro(false);
+    console.log(`[SM] handleIntroComplete | queue:${pendingSpinRef.current.length} isReplaying:${isReplaying}`);
     // 回放模式：开场动画完成，解除等待状态，允许 slot 开始
     if (isReplaying) {
       setReplayWaitingIntro(false);
@@ -1331,20 +1350,16 @@ export default function ArenaRoom() {
       }, 300);
     } else {
       // 开场动画结束时还没有轮次结果（autoSpinAllRounds 还没开始）
-      // 设置一个 10 秒定时器作为兜底
-      // 如果实时游戏已经开始（liveGameActiveRef=true），不做任何干预
-      // 如果实时游戏未开始，强制 refetch 并触发回放
+      // 等待 SSE round_result 事件到达，它会通过线性状态机直接启动 SLOT
+      // 兜底：10 秒后如果实时游戏未开始，强制 refetch 并触发回放
       setTimeout(() => {
-        // 如果实时游戏已经在进行中，不需要兜底
-        if (liveGameActiveRef.current) return;
-        // 检查是否已经在 spinning 或已经在回放或已经结束
-        if (gameStatusRef.current === 'playing' && !showIntroRef.current) {
-          // 不重置 introShownRef（避免重复触发开场动画）
-          // 而是直接强制刷新房间详情，然后交给同步状态 useEffect 处理
-          // 为了让同步状态 useEffect 能触发回放，临时重置 introShownRef
-          introShownRef.current = false;
-          refetchRoom();
-        }
+        if (liveGameActiveRef.current) return; // 实时游戏已开始，不干预
+        if (spinningRef.current) return; // SLOT 已在转，不干预
+        if (gameStatusRef.current === 'finished') return; // 已结束，不干预
+        // 强制 refetch 房间详情，然后交给同步状态 useEffect 处理
+        // 重置 introShownRef 以允许同步状态 useEffect 触发回放
+        introShownRef.current = false;
+        refetchRoom();
       }, 10000);
     }
   }, [isReplaying]); // isReplaying 是唯一需要的依赖，其余通过 ref 访问
