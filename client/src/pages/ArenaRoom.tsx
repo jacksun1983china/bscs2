@@ -522,14 +522,22 @@ export default function ArenaRoom() {
   const joinRetryRef = useRef(0);
 
   const joinRoom = trpc.arena.joinRoom.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       joinRetryRef.current = 0;
       setIsPresent(true);
       setJoinLoading(false);
-      // 延迟 800ms 再启动 getRoomDetail，避免与 joinRoom 并发触发 429
+      // 立即启用 roomDetail，缩短延迟到 100ms（仅用于避免同一批次并发）
       setTimeout(() => {
         setRoomDetailEnabled(true);
-      }, 800);
+        // 如果 joinRoom 返回的状态已是 playing（房间已满），直接触发游戏开始逻辑
+        // 这样即使错过了 SSE 的 game_started 广播也能正常开始
+        if (data?.roomStatus === 'playing' || data?.isFull) {
+          setGameStatus('playing');
+          setCurrentRound(1);
+          // 再延迟 50ms 让 roomDetailEnabled 状态生效后再 refetch
+          setTimeout(() => refetchRoom(), 50);
+        }
+      }, 100);
     },
     onError: (err) => {
       setJoinLoading(false);
@@ -581,6 +589,23 @@ export default function ArenaRoom() {
   // 用 ref 跟踪最新的 gameStatus，供 useCallback 闭包中访问（避免闭包捕获旧值）
   const gameStatusRef = useRef<'waiting' | 'playing' | 'finished'>('waiting');
   useEffect(() => { gameStatusRef.current = gameStatus; }, [gameStatus]);
+  // SSE 连接状态：true=已连接，false=断线重连中
+  const [sseConnected, setSseConnected] = useState(true);
+  // 断线提示延迟显示（避免短暂断线闪烁），只有断线超过 2s 才显示提示
+  const [showSseDisconnected, setShowSseDisconnected] = useState(false);
+  const sseDisconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!sseConnected) {
+      // 断线 2 秒后才显示提示，避免短暂断线闪烁
+      sseDisconnectTimerRef.current = setTimeout(() => setShowSseDisconnected(true), 2000);
+    } else {
+      if (sseDisconnectTimerRef.current) clearTimeout(sseDisconnectTimerRef.current);
+      setShowSseDisconnected(false);
+    }
+    return () => {
+      if (sseDisconnectTimerRef.current) clearTimeout(sseDisconnectTimerRef.current);
+    };
+  }, [sseConnected]);
   const [currentRound, setCurrentRound] = useState(1);
   const [spinning, setSpinning] = useState(false);
   const [spinDoneCount, setSpinDoneCount] = useState(0);
@@ -777,7 +802,11 @@ export default function ArenaRoom() {
     }
   }, [refetchRoom, navigate]);
 
-  useArenaWS({ onMessage: handleWsMessage, subscribeRoomId: roomId });
+  useArenaWS({
+    onMessage: handleWsMessage,
+    subscribeRoomId: roomId,
+    onConnectionChange: (connected) => setSseConnected(connected),
+  });
 
   // ── 同步房间状态 ──
   useEffect(() => {
@@ -1339,6 +1368,21 @@ export default function ArenaRoom() {
       <div style={{ position: 'sticky', top: 0, zIndex: 50 }}>
         <TopNav onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
       </div>
+
+      {/* SSE 断线提示条：断线超过 2s 才显示，避免短暂断线闪烁 */}
+      {showSseDisconnected && (
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 49,
+          background: 'rgba(180,60,20,0.92)',
+          borderBottom: '1px solid rgba(255,100,50,0.6)',
+          padding: `${q(8)} ${q(20)}`,
+          display: 'flex', alignItems: 'center', gap: q(8),
+          fontSize: q(22), color: '#ffd0b0',
+        }}>
+          <span style={{ animation: 'pulse 1.2s ease-in-out infinite', display: 'inline-block' }}>⚡</span>
+          <span>网络不稳定，正在重连中……游戏结果不会丢失</span>
+        </div>
+      )}
 
       {/* 内容区 */}
       <div style={{ flex: 1, overflowY: 'auto', padding: `${q(12)} ${q(20)}`, paddingBottom: q(80), position: 'relative', zIndex: 1 }}>

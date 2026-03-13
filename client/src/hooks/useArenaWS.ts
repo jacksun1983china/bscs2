@@ -21,17 +21,23 @@ interface UseArenaWSOptions {
   subscribeList?: boolean;
   /** 自动订阅的房间ID */
   subscribeRoomId?: number | null;
+  /** SSE 连接状态变化回调 */
+  onConnectionChange?: (connected: boolean) => void;
 }
 
-export function useArenaWS({ onMessage, subscribeList = false, subscribeRoomId = null }: UseArenaWSOptions) {
+export function useArenaWS({ onMessage, subscribeList = false, subscribeRoomId = null, onConnectionChange }: UseArenaWSOptions) {
   const esRef = useRef<EventSource | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onMessageRef = useRef(onMessage);
+  const onConnectionChangeRef = useRef(onConnectionChange);
 
-  // 保持 onMessage 引用最新，避免闭包问题
+  // 保持回调引用最新，避免闭包问题
   useEffect(() => {
     onMessageRef.current = onMessage;
   }, [onMessage]);
+  useEffect(() => {
+    onConnectionChangeRef.current = onConnectionChange;
+  }, [onConnectionChange]);
 
   const connect = useCallback((roomId: number) => {
     // 关闭已有连接
@@ -47,7 +53,10 @@ export function useArenaWS({ onMessage, subscribeList = false, subscribeRoomId =
     es.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data) as ArenaWSMessage;
-        // 不过滤 connected 事件，让调用方感知重连（用于游戏状态恢复）
+        // connected 事件：通知连接状态变化，并传给调用方处理
+        if (msg.type === 'connected') {
+          onConnectionChangeRef.current?.(true);
+        }
         onMessageRef.current?.(msg);
       } catch {
         // ignore parse errors
@@ -55,6 +64,8 @@ export function useArenaWS({ onMessage, subscribeList = false, subscribeRoomId =
     };
 
     es.onerror = () => {
+      // 通知断线
+      onConnectionChangeRef.current?.(false);
       es.close();
       esRef.current = null;
       // 3秒后重连
