@@ -1,0 +1,22 @@
+{
+  "query": "SELECT id, nickname, phone, createdAt FROM players WHERE nickname IN (SELECT nickname FROM players GROUP BY nickname HAVING COUNT(*) > 1) ORDER BY nickname, id LIMIT 30;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT id, nickname, phone, createdAt FROM players WHERE nickname IN (SELECT nickname FROM players GROUP BY nickname HAVING COUNT(*) > 1) ORDER BY nickname, id LIMIT 30;",
+  "rows": [
+    {
+      "id": "120003",
+      "nickname": "用户3333",
+      "phone": "13222233333",
+      "createdAt": "2026-03-13 15:46:07"
+    },
+    {
+      "id": "120004",
+      "nickname": "用户3333",
+      "phone": "15222333333",
+      "createdAt": "2026-03-13 15:46:35"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tnickname\tphone\tcreatedAt\n120003\t用户3333\t13222233333\t2026-03-13 15:46:07\n120004\t用户3333\t15222333333\t2026-03-13 15:46:35\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}

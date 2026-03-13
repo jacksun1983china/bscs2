@@ -207,6 +207,8 @@ export const appRouter = router({
         const inviter = await getPlayerById(player.invitedBy);
         invitedByNickname = inviter?.nickname ?? null;
       }
+      // 昵称是默认格式（用户+数字）或为空时，需要设置昵称
+      const needSetNickname = !player.nickname || /^用户\d+$/.test(player.nickname) || player.nickname === '';
       return {
         id: player.id, phone: player.phone, nickname: player.nickname, avatar: player.avatar,
         vipLevel: player.vipLevel, gold: player.gold, diamond: player.diamond, shopCoin: player.shopCoin,
@@ -214,7 +216,7 @@ export const appRouter = router({
         invitedBy: player.invitedBy, invitedByNickname, identity: player.identity,
         commissionEnabled: player.commissionEnabled, commissionBalance: player.commissionBalance,
         steamAccount: player.steamAccount, realName: player.realName ? "已认证" : "",
-        createdAt: player.createdAt,
+        createdAt: player.createdAt, needSetNickname,
       };
     }),
 
@@ -407,11 +409,43 @@ export const appRouter = router({
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接失败" });
         const { players } = await import("../drizzle/schema");
         const updates: Record<string, string> = {};
-        if (input.nickname) updates.nickname = input.nickname;
+        if (input.nickname) {
+          // 检查昵称唯一性（排除自己）
+          const existing = await db.select({ id: players.id }).from(players)
+            .where(eq(players.nickname, input.nickname)).limit(1);
+          if (existing.length > 0 && existing[0].id !== session.playerId) {
+            throw new TRPCError({ code: "CONFLICT", message: "昵称已被使用，请换一个" });
+          }
+          updates.nickname = input.nickname;
+        }
         if (input.avatar) updates.avatar = input.avatar;
         if (Object.keys(updates).length === 0) return { success: true };
         await db.update(players).set(updates).where(eq(players.id, session.playerId));
         return { success: true };
+      }),
+
+    /** 生成随机昵称候选列表（用于摇骰子） */
+    generateNicknames: publicProcedure
+      .input(z.object({ count: z.number().min(1).max(10).default(5) }))
+      .query(async ({ input }) => {
+        const { generateNicknameCandidates } = await import("../shared/nicknameDictionary");
+        return { nicknames: generateNicknameCandidates(input.count) };
+      }),
+
+    /** 检查昵称是否可用 */
+    checkNickname: publicProcedure
+      .input(z.object({ nickname: z.string().min(1).max(20) }))
+      .query(async ({ input, ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        const db = await getDb();
+        if (!db) return { available: false };
+        const { players } = await import("../drizzle/schema");
+        const existing = await db.select({ id: players.id }).from(players)
+          .where(eq(players.nickname, input.nickname)).limit(1);
+        if (existing.length === 0) return { available: true };
+        // 如果是自己当前的昵称，也算可用
+        if (session && existing[0].id === session.playerId) return { available: true };
+        return { available: false };
       }),
 
     /** 获取Steam设置 */

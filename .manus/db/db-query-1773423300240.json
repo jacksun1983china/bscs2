@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE players ADD COLUMN IF NOT EXISTS isBot tinyint NOT NULL DEFAULT 0 COMMENT '是否机器人：1=机器人 0=真实玩家'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute ALTER TABLE players ADD COLUMN IF NOT EXISTS isBot tinyint NOT NULL DEFAULT 0 COMMENT '是否机器人：1=机器人 0=真实玩家'",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 523
+}

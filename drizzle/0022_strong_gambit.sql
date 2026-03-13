@@ -1,0 +1,1 @@
+ALTER TABLE `players` ADD `isBot` tinyint DEFAULT 0 NOT NULL;

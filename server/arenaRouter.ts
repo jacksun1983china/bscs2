@@ -404,13 +404,13 @@ export const arenaRouter = router({
           goodsLevel: picked.level,
           goodsValue: String(picked.price),
         });
-        // 真实玩家（playerId > 0）将奖励道具入背包
+        // 真实玩家（playerId > 0）将奖励道具暂存（status=3 表示竞技场待结算，游戏结束后再分配归属）
         if (rp.playerId > 0) {
           await db.insert(playerItems).values({
             playerId: rp.playerId,
             itemId: picked.id,
             source: 'arena',
-            status: 0,
+            status: 3, // 3=竞技场待结算
           });
         }
         results.push({
@@ -668,13 +668,13 @@ export async function autoSpinAllRounds(roomId: number) {
           goodsLevel: picked.level,
           goodsValue: String(picked.price),
         });
-        // 真实玩家（playerId > 0）将奖励道具入背包
+        // 真实玩家（playerId > 0）将奖励道具暂存（status=3 表示竞技场待结算，游戏结束后再分配归属）
         if (rp.playerId > 0) {
           await db.insert(playerItems).values({
             playerId: rp.playerId,
             itemId: picked.id,
             source: 'arena',
-            status: 0,
+            status: 3, // 3=竞技场待结算
           });
         }
         results.push({
@@ -746,18 +746,52 @@ async function finishGame(roomId: number, db: Awaited<ReturnType<typeof getDb>>,
       .update(arenaRoomPlayers)
       .set({ totalValue, isWinner })
       .where(eq(arenaRoomPlayers.id, rp.id));
+  }
 
-    if (isDraw) {
-      // 平局：各自保留自己开出的物品（不转移，已在背包中）
-      // 无需额外操作，物品已经在 autoSpinAllRounds 中写入 playerItems
-    } else if (isWinner) {
-      // 赢家获得所有玩家的总价値（以金币形式发放）
-      const [p] = await db.select().from(players).where(eq(players.id, rp.playerId));
-      if (p) {
-        const totalPrize = Object.values(valueMap).reduce((s, v) => s + v, 0);
-        const newGold = (parseFloat(p.gold ?? "0") + totalPrize).toFixed(2);
-        await db.update(players).set({ gold: newGold }).where(eq(players.id, rp.playerId));
-        await insertGoldLog(rp.playerId, totalPrize, parseFloat(newGold), 'arena', `竞技场获得奖励（房间${roomId}）`);
+  if (isDraw) {
+    // 平局：各自保留自己开出的物品，将 status=3 改为 status=0（入背包）
+    for (const rp of roomPlayers) {
+      if (rp.playerId > 0) {
+        await db
+          .update(playerItems)
+          .set({ status: 0 })
+          .where(
+            and(
+              eq(playerItems.playerId, rp.playerId),
+              eq(playerItems.status, 3),
+              eq(playerItems.source, 'arena')
+            )
+          );
+      }
+    }
+  } else {
+    // 胜负：赢家获得所有玩家开出的物品（包括输家的）
+    // 1. 赢家自己的物品：status=3 改为 status=0
+    if (winnerId > 0) {
+      await db
+        .update(playerItems)
+        .set({ status: 0 })
+        .where(
+          and(
+            eq(playerItems.playerId, winnerId),
+            eq(playerItems.status, 3),
+            eq(playerItems.source, 'arena')
+          )
+        );
+      // 2. 输家的物品：将 playerId 改为 winnerId，status=3 改为 status=0
+      for (const rp of roomPlayers) {
+        if (rp.playerId !== winnerId && rp.playerId > 0) {
+          await db
+            .update(playerItems)
+            .set({ playerId: winnerId, status: 0 })
+            .where(
+              and(
+                eq(playerItems.playerId, rp.playerId),
+                eq(playerItems.status, 3),
+                eq(playerItems.source, 'arena')
+              )
+            );
+        }
       }
     }
   }

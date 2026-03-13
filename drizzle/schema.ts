@@ -30,7 +30,7 @@ export type InsertUser = typeof users.$inferInsert;
 export const players = mysqlTable("players", {
   id: int("id").autoincrement().primaryKey(),
   phone: varchar("phone", { length: 20 }).notNull().unique(),
-  nickname: varchar("nickname", { length: 100 }).notNull().default(""),
+  nickname: varchar('nickname', { length: 100 }).notNull().default("").unique(),
   /** 系统头像ID，001-016，8男8女，默认001 */
   avatar: varchar("avatar", { length: 10 }).notNull().default("001"),
   vipLevel: tinyint("vipLevel").notNull().default(0),
@@ -58,6 +58,8 @@ export const players = mysqlTable("players", {
   commissionEnabled: tinyint("commissionEnabled").notNull().default(0),
   /** 待提取返佣余额（商城币） */
   commissionBalance: decimal("commissionBalance", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  /** 是否机器人：1=机器人 0=真实玩家 */
+  isBot: tinyint("isBot").notNull().default(0),
   /** STEAM主号交易链接 */
   steamAccount: varchar("steamAccount", { length: 500 }).notNull().default(""),
   /** STEAM副号交易链接 */

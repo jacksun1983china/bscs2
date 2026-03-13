@@ -15,6 +15,7 @@ import GameMenuList from '@/components/GameMenuList';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
 import TopNav from '@/components/TopNav';
 import SettingsModal from '@/components/SettingsModal';
+import NicknameSetupModal from '@/components/NicknameSetupModal';
 import ParticleCanvas from '@/components/ParticleCanvas';
 import { useSound } from '@/hooks/useSound';
 
@@ -124,17 +125,26 @@ export default function Home() {
     navigate(route);
   };
 
-  // 首次登录欢迎弹窗
+  // 昵称设置弹窗：needSetNickname 时优先显示
+  const [showNicknameSetup, setShowNicknameSetup] = useState(false);
+  useEffect(() => {
+    if (player?.needSetNickname) {
+      const timer = setTimeout(() => setShowNicknameSetup(true), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [player?.needSetNickname]);
+
+  // 首次登录欢迎弹窗（昵称设置完成后才显示）
   const [showWelcome, setShowWelcome] = useState(false);
   useEffect(() => {
-    if (!player) return;
+    if (!player || player.needSetNickname) return;
     const key = `welcome_shown_${player.id}`;
     if (!localStorage.getItem(key)) {
       // 延迟 600ms 等入场动画结束
       const timer = setTimeout(() => setShowWelcome(true), 600);
       return () => clearTimeout(timer);
     }
-  }, [player?.id]);
+  }, [player?.id, player?.needSetNickname]);
   const handleCloseWelcome = () => {
     if (player) localStorage.setItem(`welcome_shown_${player.id}`, '1');
     setShowWelcome(false);
@@ -475,6 +485,9 @@ export default function Home() {
 
       {/* 设置弹窗 */}
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+
+      {/* 昵称+头像设置弹窗（首次登录强制） */}
+      <NicknameSetupModal visible={showNicknameSetup} onClose={() => setShowNicknameSetup(false)} />
 
       {/* 首次登录欢迎弹窗 */}
       {showWelcome && (

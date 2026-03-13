@@ -1,9 +1,10 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { lazy, Suspense } from "react";
-import { Route, Switch } from "wouter";
+import { lazy, Suspense, useEffect } from "react";
+import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { trpc } from "@/lib/trpc";
 
 // ── 核心页面（首屏必须，同步加载）──────────────────────────────
 import NotFound from "@/pages/NotFound";
@@ -86,39 +87,113 @@ function PageLoader() {
   );
 }
 
+/**
+ * ProtectedRoute — 路由守卫
+ * 未登录时自动跳转到 /login，已登录则渲染子组件
+ */
+function ProtectedRoute({ component: Component }: { component: React.ComponentType<any> }) {
+  const [, navigate] = useLocation();
+  const { data: player, isLoading } = trpc.player.me.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    // 加载完成且未登录 → 跳转登录页
+    if (!isLoading && !player) {
+      navigate("/login");
+    }
+  }, [isLoading, player, navigate]);
+
+  // 加载中：显示全屏 Loading
+  if (isLoading) return <PageLoader />;
+
+  // 未登录：返回 null（useEffect 会跳转）
+  if (!player) return null;
+
+  // 已登录：渲染目标页面
+  return <Component />;
+}
+
 function Router() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Switch>
+        {/* 公开页面：无需登录 */}
         <Route path={"/"} component={Home} />
         <Route path={"/login"} component={Login} />
-        <Route path={"/admin"} component={AdminDashboard} />
-        {/* 游戏页面 */}
-        <Route path={"/arena"} component={Arena} />
-        <Route path={"/arena/:id"} component={ArenaRoom} />
-        <Route path={"/arena-history"} component={ArenaHistory} />
-        <Route path={"/rollx"} component={RollX} />
-        <Route path={"/rush"} component={UncrossableRush} />
-        <Route path={"/dingdong"} component={DingDong} />
-        <Route path={"/vortex"} component={Vortex} />
-        <Route path={"/roll"} component={RollRoom} />
-        <Route path={"/roll/:id"} component={RollRoomDetail} />
-        {/* 底部导航页面 */}
-        <Route path={"/profile"} component={Profile} />
-        <Route path={"/share"} component={Share} />
-        <Route path={"/bag"} component={Bag} />
-        <Route path={"/backpack"} component={Backpack} />
-        <Route path={"/recharge"} component={Deposit} />
-        <Route path={"/shop"} component={Shop} />
-        {/* 个人设置页面 */}
-        <Route path={"/my-records"} component={MyRecords} />
-        <Route path={"/vip"} component={VipPage} />
-        <Route path={"/mailbox"} component={Mailbox} />
-        {/* 客服系统 */}
-        <Route path={"/kefu"} component={CustomerService} />
         <Route path={"/agent/login"} component={AgentLogin} />
-        <Route path={"/agent"} component={AgentDashboard} />
         <Route path={"/404"} component={NotFound} />
+
+        {/* 受保护页面：需要登录 */}
+        <Route path={"/admin"}>
+          {() => <ProtectedRoute component={AdminDashboard} />}
+        </Route>
+        {/* 游戏页面 */}
+        <Route path={"/arena"}>
+          {() => <ProtectedRoute component={Arena} />}
+        </Route>
+        <Route path={"/arena/:id"}>
+          {(params) => <ProtectedRoute component={() => <ArenaRoom />} />}
+        </Route>
+        <Route path={"/arena-history"}>
+          {() => <ProtectedRoute component={ArenaHistory} />}
+        </Route>
+        <Route path={"/rollx"}>
+          {() => <ProtectedRoute component={RollX} />}
+        </Route>
+        <Route path={"/rush"}>
+          {() => <ProtectedRoute component={UncrossableRush} />}
+        </Route>
+        <Route path={"/dingdong"}>
+          {() => <ProtectedRoute component={DingDong} />}
+        </Route>
+        <Route path={"/vortex"}>
+          {() => <ProtectedRoute component={Vortex} />}
+        </Route>
+        <Route path={"/roll"}>
+          {() => <ProtectedRoute component={RollRoom} />}
+        </Route>
+        <Route path={"/roll/:id"}>
+          {() => <ProtectedRoute component={RollRoomDetail} />}
+        </Route>
+        {/* 底部导航页面 */}
+        <Route path={"/profile"}>
+          {() => <ProtectedRoute component={Profile} />}
+        </Route>
+        <Route path={"/share"}>
+          {() => <ProtectedRoute component={Share} />}
+        </Route>
+        <Route path={"/bag"}>
+          {() => <ProtectedRoute component={Bag} />}
+        </Route>
+        <Route path={"/backpack"}>
+          {() => <ProtectedRoute component={Backpack} />}
+        </Route>
+        <Route path={"/recharge"}>
+          {() => <ProtectedRoute component={Deposit} />}
+        </Route>
+        <Route path={"/shop"}>
+          {() => <ProtectedRoute component={Shop} />}
+        </Route>
+        {/* 个人设置页面 */}
+        <Route path={"/my-records"}>
+          {() => <ProtectedRoute component={MyRecords} />}
+        </Route>
+        <Route path={"/vip"}>
+          {() => <ProtectedRoute component={VipPage} />}
+        </Route>
+        <Route path={"/mailbox"}>
+          {() => <ProtectedRoute component={Mailbox} />}
+        </Route>
+        {/* 客服系统 */}
+        <Route path={"/kefu"}>
+          {() => <ProtectedRoute component={CustomerService} />}
+        </Route>
+        <Route path={"/agent"}>
+          {() => <ProtectedRoute component={AgentDashboard} />}
+        </Route>
         <Route component={NotFound} />
       </Switch>
     </Suspense>

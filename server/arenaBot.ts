@@ -3,21 +3,24 @@
  *
  * 逻辑：
  *   1. 每隔 BOT_CHECK_INTERVAL 毫秒检测等待中的房间
- *   2. 若房间等待时间超过 BOT_WAIT_THRESHOLD 秒，自动派遣机器人加入
- *   3. 机器人账号从预设列表中随机选取（不占用真实玩家账号）
- *   4. 机器人加入后，若房间满员，触发游戏开始广播
- *   5. 机器人的开箱结果由服务端正常随机决定（与真实玩家相同概率）
+ *   2. 若房间创建后超过 BOT_WAIT_THRESHOLD 秒仍未满员，自动派遣机器人加入
+ *   3. 机器人账号从数据库 isBot=1 的玩家中随机选取（真实账号）
+ *   4. 机器人加入时扣除入场费（金币不足则跳过，从其他机器人中选）
+ *   5. 机器人加入后，若房间满员，触发游戏开始广播并自动完成所有轮次
+ *   6. 机器人开箱结果由服务端正常随机决定（与真实玩家相同概率）
  */
 
-import { getDb, resetDb } from "./db";
+import { getDb, resetDb, insertGoldLog } from "./db";
 import {
   arenaRooms,
   arenaRoomPlayers,
   arenaRoundResults,
   boxes,
   boxGoods,
+  players,
+  playerItems,
 } from "../drizzle/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, ne, sql } from "drizzle-orm";
 import {
   broadcastPlayerJoined,
   broadcastGameStarted,
@@ -28,28 +31,7 @@ import {
 
 // ── 配置 ──────────────────────────────────────────────────────────────────
 const BOT_CHECK_INTERVAL = 8000;   // 每8秒检测一次
-const BOT_WAIT_THRESHOLD = 15;     // 等待超过15秒派机器人（秒）
-
-// ── 机器人预设账号 ──────────────────────────────────────────────────────────
-const BOT_ACCOUNTS = [
-  { id: -1,  nickname: "暗影猎手",  avatar: "003" },
-  { id: -2,  nickname: "星辰战士",  avatar: "007" },
-  { id: -3,  nickname: "霓虹刺客",  avatar: "011" },
-  { id: -4,  nickname: "量子破坏者", avatar: "002" },
-  { id: -5,  nickname: "赛博武士",  avatar: "009" },
-  { id: -6,  nickname: "幽灵特工",  avatar: "005" },
-  { id: -7,  nickname: "铁血战神",  avatar: "013" },
-  { id: -8,  nickname: "闪电猎人",  avatar: "006" },
-  { id: -9,  nickname: "深渊守护者", avatar: "015" },
-  { id: -10, nickname: "光速剑客",  avatar: "004" },
-];
-
-/** 随机选取一个机器人账号（避免同一房间重复） */
-function pickBot(usedBotIds: number[]) {
-  const available = BOT_ACCOUNTS.filter((b) => !usedBotIds.includes(b.id));
-  if (available.length === 0) return BOT_ACCOUNTS[Math.floor(Math.random() * BOT_ACCOUNTS.length)];
-  return available[Math.floor(Math.random() * available.length)];
-}
+const BOT_WAIT_THRESHOLD = 10;     // 等待超过10秒派机器人（秒）
 
 /** 根据概率权重随机抽取一个 boxGoods */
 function rollBoxGoods(goods: Array<{ id: number; probability: string; [key: string]: unknown }>) {
@@ -86,6 +68,32 @@ async function fetchRoomSummaries() {
   }));
 }
 
+/** 从数据库随机选取一个可用机器人（金币充足且不在房间内） */
+async function pickBotFromDb(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  entryFee: number,
+  excludeIds: number[]
+): Promise<{ id: number; nickname: string; avatar: string; gold: string } | null> {
+  // 查询所有 isBot=1 且金币 >= 入场费 的机器人
+  const allBots = await db
+    .select({ id: players.id, nickname: players.nickname, avatar: players.avatar, gold: players.gold })
+    .from(players)
+    .where(
+      and(
+        eq(players.isBot, 1),
+        eq(players.status, 1),
+        sql`CAST(${players.gold} AS DECIMAL(15,2)) >= ${entryFee}`
+      )
+    );
+
+  // 过滤掉已在房间内的机器人
+  const available = allBots.filter((b) => !excludeIds.includes(b.id));
+  if (available.length === 0) return null;
+
+  // 随机选一个
+  return available[Math.floor(Math.random() * available.length)];
+}
+
 /** 机器人执行所有轮次开箱（游戏满员后自动完成） */
 async function botPlayAllRounds(roomId: number) {
   const db = await getDb();
@@ -110,7 +118,6 @@ async function botPlayAllRounds(roomId: number) {
       .where(and(eq(arenaRoundResults.roomId, roomId), eq(arenaRoundResults.roundNo, roundNo)));
     if (existingResults.length > 0) continue;
 
-    // 循环使用宝箱：若 boxIds 不足 rounds 数，则循环取最后一个
     const boxId = boxIds[roundNo - 1] ?? boxIds[boxIds.length - 1];
     if (!boxId) continue;
 
@@ -140,6 +147,8 @@ async function botPlayAllRounds(roomId: number) {
         price: string | number;
         probability: string;
       };
+
+      // 插入开箱结果
       await db.insert(arenaRoundResults).values({
         roomId,
         roundNo,
@@ -152,6 +161,17 @@ async function botPlayAllRounds(roomId: number) {
         goodsLevel: picked.level,
         goodsValue: String(picked.price),
       });
+
+      // 若是真实玩家（正数ID），将物品放入背包（status=3 临时持有，等结算）
+      if (rp.playerId > 0) {
+        await db.insert(playerItems).values({
+          playerId: rp.playerId,
+          itemId: picked.id,
+          source: 'arena',
+          status: 3, // 3=竞技场待结算
+        });
+      }
+
       results.push({
         playerId: rp.playerId,
         nickname: rp.nickname,
@@ -177,14 +197,12 @@ async function botPlayAllRounds(roomId: number) {
   await finishBotGame(roomId, db, roomPlayerList);
 }
 
-/** 游戏结束处理（机器人版，不给机器人发金币） */
+/** 游戏结束处理（含平局检测和物品转移） */
 async function finishBotGame(
   roomId: number,
-  db: Awaited<ReturnType<typeof getDb>>,
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   roomPlayerList: typeof arenaRoomPlayers.$inferSelect[]
 ) {
-  if (!db) return;
-
   const allResults = await db
     .select()
     .from(arenaRoundResults)
@@ -204,26 +222,82 @@ async function finishBotGame(
     }
   }
 
+  // 检测平局
+  const topPlayers = Object.entries(valueMap).filter(([, v]) => v === maxValue);
+  const isDraw = topPlayers.length > 1;
+  if (isDraw) winnerId = 0;
+
   // 更新参与者记录
   for (const rp of roomPlayerList) {
     const totalValue = (valueMap[rp.playerId] || 0).toFixed(2);
-    const isWinner = rp.playerId === winnerId ? 1 : 0;
+    const isWinner = isDraw ? 0 : (rp.playerId === winnerId ? 1 : 0);
     await db
       .update(arenaRoomPlayers)
       .set({ totalValue, isWinner })
       .where(eq(arenaRoomPlayers.id, rp.id));
   }
 
-  // 赢家若是真实玩家，发放奖励金币
-  const { players } = await import("../drizzle/schema");
-  const { eq: eqDrizzle } = await import("drizzle-orm");
-  if (winnerId > 0) {
-    // 正数ID = 真实玩家
-    const [winnerPlayer] = await db.select().from(players).where(eqDrizzle(players.id, winnerId));
-    if (winnerPlayer) {
-      const totalPrize = Object.values(valueMap).reduce((s, v) => s + v, 0);
-      const newGold = (parseFloat(winnerPlayer.gold ?? "0") + totalPrize).toFixed(2);
-      await db.update(players).set({ gold: newGold }).where(eqDrizzle(players.id, winnerId));
+  if (isDraw) {
+    // 平局：各自保留自己开出的物品（status=3 → status=0）
+    for (const rp of roomPlayerList) {
+      if (rp.playerId > 0) {
+        await db
+          .update(playerItems)
+          .set({ status: 0 })
+          .where(
+            and(
+              eq(playerItems.playerId, rp.playerId),
+              eq(playerItems.status, 3),
+              eq(playerItems.source, 'arena')
+            )
+          );
+      }
+    }
+  } else {
+    // 胜负：赢家获得所有玩家开出的物品
+    if (winnerId > 0) {
+      // 赢家自己的物品：status=3 → status=0
+      await db
+        .update(playerItems)
+        .set({ status: 0 })
+        .where(
+          and(
+            eq(playerItems.playerId, winnerId),
+            eq(playerItems.status, 3),
+            eq(playerItems.source, 'arena')
+          )
+        );
+      // 输家的物品：转移给赢家
+      for (const rp of roomPlayerList) {
+        if (rp.playerId !== winnerId && rp.playerId > 0) {
+          await db
+            .update(playerItems)
+            .set({ playerId: winnerId, status: 0 })
+            .where(
+              and(
+                eq(playerItems.playerId, rp.playerId),
+                eq(playerItems.status, 3),
+                eq(playerItems.source, 'arena')
+              )
+            );
+        }
+      }
+    } else {
+      // 赢家是机器人，真实玩家的物品丢失（正常游戏逻辑）
+      for (const rp of roomPlayerList) {
+        if (rp.playerId > 0) {
+          await db
+            .update(playerItems)
+            .set({ status: 2 }) // status=2 表示已消耗/丢失
+            .where(
+              and(
+                eq(playerItems.playerId, rp.playerId),
+                eq(playerItems.status, 3),
+                eq(playerItems.source, 'arena')
+              )
+            );
+        }
+      }
     }
   }
 
@@ -240,9 +314,10 @@ async function finishBotGame(
     avatar: rp.avatar,
     seatNo: rp.seatNo,
     totalValue: (valueMap[rp.playerId] || 0).toFixed(2),
-    isWinner: rp.playerId === winnerId,
+    isWinner: !isDraw && rp.playerId === winnerId,
+    isDraw,
   }));
-  broadcastGameOver(roomId, winnerId, playerResults);
+  broadcastGameOver(roomId, winnerId, playerResults, isDraw);
 }
 
 // ── 主循环 ────────────────────────────────────────────────────────────────
@@ -260,7 +335,6 @@ export function startBotLoop() {
       await checkAndFillRooms();
     } catch (err: any) {
       console.error("[ArenaBot] 检测房间出错:", err);
-      // 数据库连接断开时重置，下次自动重连
       if (err?.cause?.message?.includes('ECONNRESET') || err?.message?.includes('ECONNRESET')) {
         console.log('[ArenaBot] 数据库连接断开，重置连接...');
         resetDb();
@@ -284,49 +358,61 @@ async function checkAndFillRooms() {
   const now = Date.now();
 
   for (const room of waitingRooms) {
-    // 跳过正在处理中的房间，防止并发重复加入
     if (processingRooms.has(room.id)) continue;
 
-    // 修复：Number(dateString) 返回 NaN，必须用 new Date() 解析
-    const createdAt = room.createdAt instanceof Date ? room.createdAt.getTime() : new Date(room.createdAt).getTime();
+    const createdAt = room.createdAt instanceof Date
+      ? room.createdAt.getTime()
+      : new Date(room.createdAt as any).getTime();
     const waitSeconds = (now - createdAt) / 1000;
 
-    // 等待时间未超过阈值，跳过
     if (waitSeconds < BOT_WAIT_THRESHOLD) continue;
 
-    // 重新从数据库读取最新房间状态（避免使用缓存的旧数据）
+    // 重新读取最新房间状态
     const [freshRoom] = await db.select().from(arenaRooms).where(eq(arenaRooms.id, room.id));
     if (!freshRoom || freshRoom.status !== "waiting") continue;
 
-    // 需要填充的机器人数量（使用最新数据）
     const needed = freshRoom.maxPlayers - freshRoom.currentPlayers;
     if (needed <= 0) continue;
 
-    // 标记该房间正在处理中
     processingRooms.add(room.id);
 
     try {
-      // 获取房间内已有的机器人ID（负数ID）
+      const entryFee = parseFloat(freshRoom.entryFee);
+
+      // 获取房间内已有的玩家ID（避免同一机器人重复加入）
       const existingPlayers = await db
         .select()
         .from(arenaRoomPlayers)
         .where(eq(arenaRoomPlayers.roomId, room.id));
-      const usedBotIds = existingPlayers
-        .map((p) => p.playerId)
-        .filter((id) => id < 0);
+      const existingPlayerIds = existingPlayers.map((p) => p.playerId);
 
-      console.log(`[ArenaBot] 房间 #${freshRoom.roomNo} 等待 ${waitSeconds.toFixed(0)}s，派遣 ${needed} 个机器人`);
+      console.log(`[ArenaBot] 房间 #${freshRoom.roomNo} 等待 ${waitSeconds.toFixed(0)}s，需派遣 ${needed} 个机器人`);
 
       let currentCount = freshRoom.currentPlayers;
       let gameStarted = false;
+      const usedBotIds = [...existingPlayerIds];
 
       for (let i = 0; i < needed; i++) {
-        const bot = pickBot(usedBotIds);
+        // 从数据库选取可用机器人
+        const bot = await pickBotFromDb(db, entryFee, usedBotIds);
+        if (!bot) {
+          console.warn(`[ArenaBot] 没有可用机器人（金币不足或已全部在房间内），跳过`);
+          break;
+        }
         usedBotIds.push(bot.id);
 
         const seatNo = currentCount + 1;
         currentCount++;
         const isFull = currentCount >= freshRoom.maxPlayers;
+
+        // 扣除机器人入场费
+        const botGold = parseFloat(bot.gold);
+        const newBotGold = (botGold - entryFee).toFixed(2);
+        await db
+          .update(players)
+          .set({ gold: newBotGold })
+          .where(eq(players.id, bot.id));
+        await insertGoldLog(bot.id, -entryFee, parseFloat(newBotGold), 'arena', `竞技场入场费（机器人加入房间 #${freshRoom.roomNo}）`);
 
         // 插入机器人为参与者
         await db.insert(arenaRoomPlayers).values({
@@ -337,7 +423,7 @@ async function checkAndFillRooms() {
           seatNo,
         });
 
-        // 更新房间人数
+        // 原子更新房间人数
         await db
           .update(arenaRooms)
           .set({
@@ -347,7 +433,8 @@ async function checkAndFillRooms() {
           })
           .where(eq(arenaRooms.id, freshRoom.id));
 
-        console.log(`[ArenaBot] 机器人 ${bot.nickname}(id=${bot.id}) 已加入房间 #${freshRoom.roomNo}，当前人数 ${currentCount}/${freshRoom.maxPlayers}`);
+        console.log(`[ArenaBot] 机器人 ${bot.nickname}(id=${bot.id}) 加入房间 #${freshRoom.roomNo}，人数 ${currentCount}/${freshRoom.maxPlayers}`);
+
         // 广播玩家加入
         broadcastPlayerJoined(
           freshRoom.id,
@@ -362,16 +449,17 @@ async function checkAndFillRooms() {
         }
 
         // 机器人加入间隔1秒，更自然
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        if (i < needed - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
       }
 
       // 广播房间列表更新
       const summaries = await fetchRoomSummaries();
       broadcastRoomListUpdate(summaries);
 
-      // 如果游戏开始了，机器人自动完成所有轮次
+      // 游戏开始后，延迟5秒开始自动开箱（等开场动画播完）
       if (gameStarted) {
-        // 延迟5秒后开始开箱（开场动画约3.1秒，多留1.9秒缓冲）
         setTimeout(() => {
           botPlayAllRounds(freshRoom.id).catch((err) => {
             console.error(`[ArenaBot] 房间 #${freshRoom.roomNo} 开箱出错:`, err);
@@ -379,7 +467,6 @@ async function checkAndFillRooms() {
         }, 5000);
       }
     } finally {
-      // 无论成功失败，都移除处理标记
       processingRooms.delete(room.id);
     }
   }
