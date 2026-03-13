@@ -91,6 +91,7 @@ interface InventoryItem {
   itemImageUrl: string | null;
   itemQuality: number | null;
   itemValue: string | null;
+  recycleGold: string;
   source: string;
   status: number;
   createdAt: Date;
@@ -221,7 +222,7 @@ export default function Backpack() {
 
   const selectedValue = filteredItems
     .filter(i => selectedIds.has(i.itemId))
-    .reduce((s, i) => s + Number(i.itemValue ?? 0) * i.count, 0);
+    .reduce((s, i) => s + Number(i.recycleGold ?? i.itemValue ?? 0) * i.count, 0);
 
   const hasSelected = selectedIds.size > 0;
 
@@ -660,7 +661,7 @@ export default function Backpack() {
               {filteredItems.map((item, idx) => {
                 const isSelected = selectedIds.has(item.itemId);
                 const isRightCol = idx % 2 === 1;
-                const value = Number(item.itemValue ?? 0);
+                const value = Number(item.recycleGold ?? item.itemValue ?? 0);
                 const quality = item.itemQuality ?? 'common';
 
                 return (
@@ -1075,7 +1076,7 @@ export default function Backpack() {
               {detailItem.itemName ?? '未知道具'}
             </div>
             <div style={{ color: '#ffd700', fontSize: 14, marginBottom: 6 }}>
-              价値：{Number(detailItem.itemValue ?? 0).toFixed(0)} 金币
+              回收价值：{Number(detailItem.recycleGold ?? detailItem.itemValue ?? 0).toFixed(0)} 金币
             </div>
             <div style={{ color: '#c0a0ff', fontSize: 12, marginBottom: 6 }}>
               来源：{detailItem.source === 'arena' ? '竞技场' : detailItem.source === 'roll' ? 'Roll房' : '开箱'}

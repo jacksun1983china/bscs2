@@ -1,0 +1,170 @@
+{
+  "query": "SELECT pi.id, pi.playerId, pi.itemId, pi.recycleGold, pi.status, bg.price as boxGoodsPrice FROM playerItems pi LEFT JOIN boxGoods bg ON pi.itemId = bg.id LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT pi.id, pi.playerId, pi.itemId, pi.recycleGold, pi.status, bg.price as boxGoodsPrice FROM playerItems pi LEFT JOIN boxGoods bg ON pi.itemId = bg.id LIMIT 20;",
+  "rows": [
+    {
+      "id": "30003",
+      "playerId": "120130",
+      "itemId": "16",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30004",
+      "playerId": "120130",
+      "itemId": "16",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30005",
+      "playerId": "120130",
+      "itemId": "16",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30006",
+      "playerId": "120130",
+      "itemId": "10",
+      "recycleGold": "6.60",
+      "status": "0",
+      "boxGoodsPrice": "6.60"
+    },
+    {
+      "id": "30007",
+      "playerId": "120130",
+      "itemId": "64",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30008",
+      "playerId": "120130",
+      "itemId": "64",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30009",
+      "playerId": "120207",
+      "itemId": "16",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30010",
+      "playerId": "120126",
+      "itemId": "16",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30011",
+      "playerId": "120169",
+      "itemId": "16",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30012",
+      "playerId": "120207",
+      "itemId": "16",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30013",
+      "playerId": "120126",
+      "itemId": "16",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30014",
+      "playerId": "120169",
+      "itemId": "16",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30015",
+      "playerId": "120207",
+      "itemId": "16",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30016",
+      "playerId": "120126",
+      "itemId": "16",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30017",
+      "playerId": "120169",
+      "itemId": "16",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30018",
+      "playerId": "120207",
+      "itemId": "32",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30019",
+      "playerId": "120126",
+      "itemId": "32",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30020",
+      "playerId": "120169",
+      "itemId": "32",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30021",
+      "playerId": "120207",
+      "itemId": "32",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30022",
+      "playerId": "120126",
+      "itemId": "32",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tplayerId\titemId\trecycleGold\tstatus\tboxGoodsPrice\n30003\t120130\t16\t0.10\t0\t0.10\n30004\t120130\t16\t0.10\t0\t0.10\n30005\t120130\t16\t0.10\t0\t0.10\n30006\t120130\t10\t6.60\t0\t6.60\n30007\t120130\t64\t0.10\t0\t0.10\n30008\t120130\t64\t0.10\t0\t0.10\n30009\t120207\t16\t0.10\t0\t0.10\n30010\t120126\t16\t0.10\t0\t0.10\n30011\t120169\t16\t0.10\t0\t0.10\n30012\t120207\t16\t0.10\t0\t0.10\n30013\t120126\t16\t0.10\t0\t0.10\n30014\t120169\t16\t0.10\t0\t0.10\n30015\t120207\t16\t0.10\t0\t0.10\n30016\t120126\t16\t0.10\t0\t0.10\n30017\t120169\t16\t0.10\t0\t0.10\n30018\t120207\t32\t0.10\t0\t0.10\n30019\t120126\t32\t0.10\t0\t0.10\n30020\t120169\t32\t0.10\t0\t0.10\n30021\t120207\t32\t0.10\t0\t0.10\n30022\t120126\t32\t0.10\t0\t0.10\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}

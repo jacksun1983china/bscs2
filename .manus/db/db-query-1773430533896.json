@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE playerItems pi JOIN boxGoods bg ON pi.itemId = bg.id SET pi.recycleGold = bg.price WHERE pi.recycleGold = 0.00 OR pi.recycleGold IS NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute UPDATE playerItems pi JOIN boxGoods bg ON pi.itemId = bg.id SET pi.recycleGold = bg.price WHERE pi.recycleGold = 0.00 OR pi.recycleGold IS NULL;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 66
+}

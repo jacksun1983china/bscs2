@@ -1,0 +1,70 @@
+{
+  "query": "SELECT pi.id, pi.recycleGold, pi.status, bg.price as boxGoodsPrice FROM playerItems pi LEFT JOIN boxGoods bg ON pi.itemId = bg.id WHERE pi.status = 0 LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT pi.id, pi.recycleGold, pi.status, bg.price as boxGoodsPrice FROM playerItems pi LEFT JOIN boxGoods bg ON pi.itemId = bg.id WHERE pi.status = 0 LIMIT 10;",
+  "rows": [
+    {
+      "id": "30003",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30004",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30005",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30006",
+      "recycleGold": "6.60",
+      "status": "0",
+      "boxGoodsPrice": "6.60"
+    },
+    {
+      "id": "30007",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30008",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30009",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30010",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30011",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    },
+    {
+      "id": "30012",
+      "recycleGold": "0.10",
+      "status": "0",
+      "boxGoodsPrice": "0.10"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\trecycleGold\tstatus\tboxGoodsPrice\n30003\t0.10\t0\t0.10\n30004\t0.10\t0\t0.10\n30005\t0.10\t0\t0.10\n30006\t6.60\t0\t6.60\n30007\t0.10\t0\t0.10\n30008\t0.10\t0\t0.10\n30009\t0.10\t0\t0.10\n30010\t0.10\t0\t0.10\n30011\t0.10\t0\t0.10\n30012\t0.10\t0\t0.10\n",
+  "stderr": "",
+  "execution_time_ms": 60
+}

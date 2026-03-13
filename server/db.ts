@@ -509,11 +509,13 @@ export async function drawRollRoom(roomId: number, designatedWinners?: { prizeId
         itemId = (inserted as any).insertId;
       }
       // 写入玩家背包
+      const rollRecycleValue = String(parseFloat(String(prizeInfo.value || '0')).toFixed(2));
       await db.insert(playerItems).values({
         playerId: w.playerId,
         itemId,
         source: 'roll',
         status: 0,
+        recycleGold: rollRecycleValue,
       });
       await db.insert(messages).values({
         playerId: w.playerId, title: 'Roll房道具奖品',

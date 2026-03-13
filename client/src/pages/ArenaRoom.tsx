@@ -94,12 +94,16 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
     if (!spinning || !finalItem || skipAnim) return;
 
     const pool = reelItems.length > 0 ? reelItems : FALLBACK_POOL;
-    // 构建卷轴：20个随机道具 + 目标道具（总21格）
+    // 构建卷轴：20个随机道具在前面（滚动过程中显示），目标道具在倒数第2格（最终停在中间可见位置）
     const newReel: typeof reel = [];
+    // 前20格：随机道具（滚动过程中从上往下滚过）
     for (let i = 0; i < 20; i++) {
       newReel.push(pool[Math.floor(Math.random() * pool.length)]);
     }
+    // 倒数第2格：目标道具（最终停在中间可见位置）
     newReel.push({ id: finalItem.goodsId, name: finalItem.goodsName, imageUrl: finalItem.goodsImage, goodsLevel: finalItem.goodsLevel });
+    // 最后1格：随机填充（底部不可见）
+    newReel.push(pool[Math.floor(Math.random() * pool.length)]);
     setReel(newReel);
     setPhase('spinning');
     setDisplayItem(null);
@@ -132,13 +136,12 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
       : '';
 
   const totalH = `${ITEM_HEIGHT_PX * 3}px`;
-  // 卷轴总高度 = 21格
+  // 卷轴总高度 = 22格
   const reelTotalH = reel.length * ITEM_HEIGHT_PX;
-  // 滚动距离：让最后一格（目标）停在中间可见格
-  // 中间格位置 = ITEM_HEIGHT_PX（第2格，0-indexed=1）
-  // 目标格位置 = (reel.length - 1) * ITEM_HEIGHT_PX
-  // 需要向上滚动的距离 = 目标格位置 - ITEM_HEIGHT_PX
-  const scrollDist = (reel.length - 1) * ITEM_HEIGHT_PX - ITEM_HEIGHT_PX;
+  // 从上往下滚动（视觉效果：物品从上方滚入，向下滚出）
+  // 卷轴初始位置 translateY(0)（显示前3格），动画结束时 translateY 为负值（显示最后3格，目标在倒数第2格=中间）
+  // scrollDist = (reel.length - 3) * ITEM_HEIGHT_PX
+  const scrollDist = (reel.length - 3) * ITEM_HEIGHT_PX;
 
   return (
     <div

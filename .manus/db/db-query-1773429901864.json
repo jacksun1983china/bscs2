@@ -1,0 +1,70 @@
+{
+  "query": "SELECT id, itemId, recycleGold, status FROM playerItems LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT id, itemId, recycleGold, status FROM playerItems LIMIT 10",
+  "rows": [
+    {
+      "id": "30003",
+      "itemId": "16",
+      "recycleGold": "0.00",
+      "status": "0"
+    },
+    {
+      "id": "30004",
+      "itemId": "16",
+      "recycleGold": "0.00",
+      "status": "0"
+    },
+    {
+      "id": "30005",
+      "itemId": "16",
+      "recycleGold": "0.00",
+      "status": "0"
+    },
+    {
+      "id": "30006",
+      "itemId": "10",
+      "recycleGold": "0.00",
+      "status": "0"
+    },
+    {
+      "id": "30007",
+      "itemId": "64",
+      "recycleGold": "0.00",
+      "status": "0"
+    },
+    {
+      "id": "30008",
+      "itemId": "64",
+      "recycleGold": "0.00",
+      "status": "0"
+    },
+    {
+      "id": "30009",
+      "itemId": "16",
+      "recycleGold": "0.00",
+      "status": "0"
+    },
+    {
+      "id": "30010",
+      "itemId": "16",
+      "recycleGold": "0.00",
+      "status": "0"
+    },
+    {
+      "id": "30011",
+      "itemId": "16",
+      "recycleGold": "0.00",
+      "status": "0"
+    },
+    {
+      "id": "30012",
+      "itemId": "16",
+      "recycleGold": "0.00",
+      "status": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\titemId\trecycleGold\tstatus\n30003\t16\t0.00\t0\n30004\t16\t0.00\t0\n30005\t16\t0.00\t0\n30006\t10\t0.00\t0\n30007\t64\t0.00\t0\n30008\t64\t0.00\t0\n30009\t16\t0.00\t0\n30010\t16\t0.00\t0\n30011\t16\t0.00\t0\n30012\t16\t0.00\t0\n",
+  "stderr": "",
+  "execution_time_ms": 50
+}

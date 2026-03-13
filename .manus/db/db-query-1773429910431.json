@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, itemId, recycleGold, status, playerId FROM playerItems WHERE playerId = 120207 LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT id, itemId, recycleGold, status, playerId FROM playerItems WHERE playerId = 120207 LIMIT 10",
+  "rows": [
+    {
+      "id": "30009",
+      "itemId": "16",
+      "recycleGold": "0.00",
+      "status": "0",
+      "playerId": "120207"
+    },
+    {
+      "id": "30012",
+      "itemId": "16",
+      "recycleGold": "0.00",
+      "status": "0",
+      "playerId": "120207"
+    },
+    {
+      "id": "30015",
+      "itemId": "16",
+      "recycleGold": "0.00",
+      "status": "0",
+      "playerId": "120207"
+    },
+    {
+      "id": "30018",
+      "itemId": "32",
+      "recycleGold": "0.00",
+      "status": "0",
+      "playerId": "120207"
+    },
+    {
+      "id": "30021",
+      "itemId": "32",
+      "recycleGold": "0.00",
+      "status": "0",
+      "playerId": "120207"
+    },
+    {
+      "id": "30024",
+      "itemId": "32",
+      "recycleGold": "0.00",
+      "status": "0",
+      "playerId": "120207"
+    },
+    {
+      "id": "30039",
+      "itemId": "25",
+      "recycleGold": "0.00",
+      "status": "0",
+      "playerId": "120207"
+    },
+    {
+      "id": "30040",
+      "itemId": "32",
+      "recycleGold": "0.00",
+      "status": "0",
+      "playerId": "120207"
+    },
+    {
+      "id": "30041",
+      "itemId": "32",
+      "recycleGold": "0.00",
+      "status": "0",
+      "playerId": "120207"
+    },
+    {
+      "id": "30042",
+      "itemId": "45",
+      "recycleGold": "0.00",
+      "status": "0",
+      "playerId": "120207"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\titemId\trecycleGold\tstatus\tplayerId\n30009\t16\t0.00\t0\t120207\n30012\t16\t0.00\t0\t120207\n30015\t16\t0.00\t0\t120207\n30018\t32\t0.00\t0\t120207\n30021\t32\t0.00\t0\t120207\n30024\t32\t0.00\t0\t120207\n30039\t25\t0.00\t0\t120207\n30040\t32\t0.00\t0\t120207\n30041\t32\t0.00\t0\t120207\n30042\t45\t0.00\t0\t120207\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}

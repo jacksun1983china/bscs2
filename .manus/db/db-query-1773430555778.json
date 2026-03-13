@@ -1,0 +1,30 @@
+{
+  "query": "SELECT recycleGold, COUNT(*) as cnt FROM playerItems GROUP BY recycleGold ORDER BY cnt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT recycleGold, COUNT(*) as cnt FROM playerItems GROUP BY recycleGold ORDER BY cnt DESC LIMIT 20;",
+  "rows": [
+    {
+      "recycleGold": "0.10",
+      "cnt": "50"
+    },
+    {
+      "recycleGold": "12.80",
+      "cnt": "1"
+    },
+    {
+      "recycleGold": "6.60",
+      "cnt": "1"
+    },
+    {
+      "recycleGold": "35.50",
+      "cnt": "1"
+    },
+    {
+      "recycleGold": "12.77",
+      "cnt": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "recycleGold\tcnt\n0.10\t50\n12.80\t1\n6.60\t1\n35.50\t1\n12.77\t1\n",
+  "stderr": "",
+  "execution_time_ms": 52
+}

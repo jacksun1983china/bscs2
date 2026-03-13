@@ -406,11 +406,13 @@ export const arenaRouter = router({
         });
         // 真实玩家（playerId > 0）将奖励道具暂存（status=3 表示竞技场待结算，游戏结束后再分配归属）
         if (rp.playerId > 0) {
+          const recycleValue = String(parseFloat(String(picked.price || '0')).toFixed(2));
           await db.insert(playerItems).values({
             playerId: rp.playerId,
             itemId: picked.id,
             source: 'arena',
             status: 3, // 3=竞技场待结算
+            recycleGold: recycleValue,
           });
         }
         results.push({
@@ -670,11 +672,13 @@ export async function autoSpinAllRounds(roomId: number) {
         });
         // 真实玩家（playerId > 0）将奖励道具暂存（status=3 表示竞技场待结算，游戏结束后再分配归属）
         if (rp.playerId > 0) {
+          const recycleValue = String(parseFloat(String(picked.price || '0')).toFixed(2));
           await db.insert(playerItems).values({
             playerId: rp.playerId,
             itemId: picked.id,
             source: 'arena',
             status: 3, // 3=竞技场待结算
+            recycleGold: recycleValue,
           });
         }
         results.push({
