@@ -1024,3 +1024,7 @@
 ## 竞技场第三轮修复+新功能（2026-03-14）
 - [x] 修复 React key 重复错误（sortedPlayers.map 改用 seatNo+idx 作为 key，并修复并发控制根因）
 - [x] 新功能：机器人自动开房，保持房间列表始终有10-15个等待中的房间（ensureBotRooms，每15秒检查，不足10则补到13个）
+
+## 竞技场UI改进（2026-03-14 第四轮）
+- [x] 修复 ArenaRoom 页面 React key 重复错误（boxList.map 改用 idx 作为 key，同一宝箱可能被选多次导致 box.id 重复）
+- [x] 竞技场房间列表改为卡片样式，每行显示2个卡片（grid 2列布局，紧凑卡片设计）

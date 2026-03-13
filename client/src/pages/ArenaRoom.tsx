@@ -1661,7 +1661,7 @@ export default function ArenaRoom() {
             <div style={{ display: 'flex', gap: q(8), overflowX: 'auto' }}>
               {roomDetail.boxList.map((box, idx) => (
                 <div
-                  key={box.id}
+                  key={`box-${idx}`}
                   style={{
                     flexShrink: 0, textAlign: 'center',
                     background: idx + 1 < currentRound ? 'rgba(120,60,220,0.1)' : idx + 1 === currentRound ? 'rgba(120,60,220,0.3)' : 'rgba(20,8,50,0.8)',
@@ -1692,7 +1692,7 @@ export default function ArenaRoom() {
           }}>
             {danmakuList.map((d, idx) => (
               <div
-                key={d.id}
+                key={`dm-${d.id}-${idx}`}
                 style={{
                   position: 'absolute',
                   top: `${(idx % 3) * 33}%`,

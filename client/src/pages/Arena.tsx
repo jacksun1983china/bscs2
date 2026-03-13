@@ -361,76 +361,79 @@ interface RoomCardProps {
 
 function RoomCard({ room, onClick }: RoomCardProps) {
   const isFull = room.currentPlayers >= room.maxPlayers;
+  const statusColor = room.status === 'finished' ? '#60a5fa' : isFull ? '#ef4444' : '#22c55e';
+  const statusBg = room.status === 'finished' ? 'rgba(96,165,250,0.15)' : isFull ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)';
+  const statusText = room.status === 'finished' ? '已结束' : isFull ? '已满' : `${room.currentPlayers}/${room.maxPlayers}`;
+
   return (
     <div
       onClick={onClick}
       style={{
-        background: 'linear-gradient(135deg,rgba(30,10,65,0.95) 0%,rgba(15,5,40,0.98) 100%)',
+        background: 'linear-gradient(160deg,rgba(30,10,65,0.95) 0%,rgba(15,5,40,0.98) 100%)',
         border: '1.5px solid rgba(120,60,220,0.4)',
-        borderRadius: q(12), padding: `${q(16)} ${q(20)}`,
-        marginBottom: q(12), cursor: 'pointer',
+        borderRadius: q(14),
+        padding: q(14),
+        cursor: 'pointer',
         boxShadow: '0 4px 20px rgba(80,20,160,0.2)',
-        transition: 'border-color 0.2s',
+        transition: 'border-color 0.2s, transform 0.15s',
+        display: 'flex', flexDirection: 'column', gap: q(10),
+        minHeight: q(240),
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        {/* 左侧：创建者信息 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: q(12) }}>
-          <img
-            src={`/img/avatars/${room.creatorAvatar}.png`}
-            alt=""
-            style={{ width: q(56), height: q(56), borderRadius: '50%', border: '2px solid rgba(120,60,220,0.5)' }}
-          />
-          <div>
-            <div style={{ color: '#e0d0ff', fontSize: q(26), fontWeight: 600 }}>{room.creatorNickname}</div>
-            <div style={{ color: '#9980cc', fontSize: q(22), marginTop: q(4) }}>房间号 {room.roomNo}</div>
-          </div>
-        </div>
-
-        {/* 右侧：状态 */}
-        <div style={{ textAlign: 'right' }}>
-          <div
-            style={{
-              display: 'inline-block',
-              padding: `${q(4)} ${q(16)}`,
-              background: isFull ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)',
-              border: `1px solid ${isFull ? '#ef4444' : '#22c55e'}`,
-              borderRadius: q(20), color: isFull ? '#ef4444' : '#22c55e',
-              fontSize: q(22), marginBottom: q(6),
-            }}
-          >
-            {isFull ? '已满' : `${room.currentPlayers}/${room.maxPlayers}`}
-          </div>
-          <div style={{ color: '#ffd700', fontSize: q(24), fontWeight: 600 }}>
-            {parseFloat(room.entryFee).toFixed(0)} 金币
-          </div>
+      {/* 顶部：头像 + 昵称 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: q(10) }}>
+        <img
+          src={`/img/avatars/${room.creatorAvatar}.png`}
+          alt=""
+          style={{
+            width: q(48), height: q(48), borderRadius: '50%',
+            border: '2px solid rgba(120,60,220,0.5)',
+            flexShrink: 0,
+          }}
+        />
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <div style={{
+            color: '#e0d0ff', fontSize: q(24), fontWeight: 600,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>{room.creatorNickname}</div>
+          <div style={{ color: '#9980cc', fontSize: q(20) }}>#{room.roomNo}</div>
         </div>
       </div>
 
-        {/* 底部：轮数信息 */}
+      {/* 中间：金额 + 状态标签 */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ color: '#ffd700', fontSize: q(28), fontWeight: 700 }}>
+          <img src="/img/jinbi1.png" alt="" style={{ width: q(22), height: q(22), verticalAlign: 'middle', marginRight: q(4) }} />
+          {parseFloat(room.entryFee).toFixed(0)}
+        </div>
+        <div style={{
+          padding: `${q(3)} ${q(12)}`,
+          background: statusBg,
+          border: `1px solid ${statusColor}`,
+          borderRadius: q(16), color: statusColor,
+          fontSize: q(20), fontWeight: 600,
+        }}>
+          {statusText}
+        </div>
+      </div>
+
+      {/* 底部：轮数 + 人数 */}
       <div style={{
-        marginTop: q(12), paddingTop: q(10),
+        marginTop: 'auto', paddingTop: q(8),
         borderTop: '1px solid rgba(120,60,220,0.2)',
-        display: 'flex', alignItems: 'center', gap: q(20),
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <span style={{ color: '#9ca3af', fontSize: q(22) }}>
-          🎁 {room.rounds} 轮开笱
+        <span style={{ color: '#9ca3af', fontSize: q(20) }}>
+          {room.rounds}轮
         </span>
-        <span style={{ color: '#9ca3af', fontSize: q(22) }}>
-          👥 {room.maxPlayers} 人对战
+        <span style={{ color: '#9ca3af', fontSize: q(20) }}>
+          {room.maxPlayers}人场
         </span>
         {room.status === 'finished' ? (
-          <span style={{
-            color: '#60a5fa', fontSize: q(22), marginLeft: 'auto',
-            background: 'rgba(96,165,250,0.15)',
-            border: '1px solid rgba(96,165,250,0.4)',
-            borderRadius: q(12), padding: `${q(4)} ${q(12)}`,
-          }}>
-            ▶ 查看回放
-          </span>
+          <span style={{ color: '#60a5fa', fontSize: q(20) }}>回放 ›</span>
         ) : (
-          <span style={{ color: '#c084fc', fontSize: q(22), marginLeft: 'auto' }}>
-            {room.status === 'waiting' ? '等待中 ›' : '进行中'}
+          <span style={{ color: '#c084fc', fontSize: q(20) }}>
+            {room.status === 'waiting' ? '加入 ›' : '观战 ›'}
           </span>
         )}
       </div>
@@ -552,20 +555,22 @@ export default function Arena() {
           ))}
         </div>
 
-        {/* 房间列表 */}
+        {/* 房间列表（每行2个卡片） */}
         {!displayRooms || (displayRooms as any[]).length === 0 ? (
           <div style={{ textAlign: 'center', padding: `${q(80)} 0`, color: '#6b7280', fontSize: q(28) }}>
             <div style={{ fontSize: q(60), marginBottom: q(16) }}>🏟️</div>
             暂无房间，快来创建一个吧！
           </div>
         ) : (
-          (displayRooms as any[]).map((room: any) => (
-            <RoomCard
-              key={room.id}
-              room={room}
-              onClick={() => navigate(`/arena/${room.id}`)}
-            />
-          ))
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: q(12) }}>
+            {(displayRooms as any[]).map((room: any) => (
+              <RoomCard
+                key={room.id}
+                room={room}
+                onClick={() => navigate(`/arena/${room.id}`)}
+              />
+            ))}
+          </div>
         )}
       </div>
 
