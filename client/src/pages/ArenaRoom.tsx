@@ -450,9 +450,18 @@ export default function ArenaRoom() {
   const showIntroRef = useRef(false); // 实时跟踪 showIntro 状态，供事件处理函数读取
   // 开场动画期间到达的 round_result 缓存队列，动画结束后按顺序触发
   const pendingSpinRef = useRef<Array<{ itemMap: Record<number, { goodsId: number; goodsName: string; goodsImage: string; goodsLevel: number; goodsValue: string }>; roundNo: number }>>([]);
+  // 缓存 game_over 数据，等待 SLOT 动画完成后再触发结束
+  const pendingGameOverRef = useRef<any>(null);
 
   // ── 跳过游戏动画状态 ──
   const [skipGameAnim, setSkipGameAnim] = useState(false);
+
+  // ── 实时游戏进行中标记 ──
+  // 当通过 SSE 收到 round_result 时设为 true，表示正在实时游戏中（非回放）
+  // 防止兜底恢复逻辑在正常游戏进行中误触发
+  const liveGameActiveRef = useRef(false);
+  // 已通过 SSE 实时接收到的轮次数
+  const liveRoundsReceivedRef = useRef(0);
 
   // ── 实时累计价值 ──
   // 每轮结束后累加，key = playerId, value = 累计价值
@@ -676,6 +685,9 @@ export default function ArenaRoom() {
       case 'round_result': {
         const results = msg.results as any[];
         const roundNo = msg.roundNo as number;
+        // 标记实时游戏正在进行中，防止兜底恢复逻辑误触发
+        liveGameActiveRef.current = true;
+        liveRoundsReceivedRef.current = roundNo;
         // 确保 gameStatus 为 playing（观战者可能在 roomDetail 加载前收到此消息）
         setGameStatus('playing');
         setCurrentRound(roundNo);
@@ -724,21 +736,32 @@ export default function ArenaRoom() {
         break;
       }
       case 'game_over': {
+        // 重置实时游戏标记
+        liveGameActiveRef.current = false;
+        liveRoundsReceivedRef.current = 0;
         const overData = {
           winnerId: msg.winnerId as number,
           isDraw: !!(msg.isDraw),
           players: (msg.players as any[]).map((p: any) => ({ ...p, isDraw: !!(msg.isDraw) })),
         };
-        setGameOverData(overData);
-        setGameStatus('finished');
+        // 缓存 game_over 数据，等待 SLOT 动画完成后再触发结束
+        pendingGameOverRef.current = overData;
         refetchRoom();
-        // 刷新背包数据
         utils.player.inventory.invalidate();
+        // 设置兜底定时器：如果 30 秒后 pendingGameOver 仍未被消费，强制触发结束
         setTimeout(() => {
-          if (overData.isDraw) playLoseTone(); // 平局播放普通音效
-          else if (overData.players.some((p) => p.isWinner)) playWinFanfare();
-          else playLoseTone();
-        }, 500);
+          if (pendingGameOverRef.current) {
+            const pending = pendingGameOverRef.current;
+            pendingGameOverRef.current = null;
+            setGameOverData(pending);
+            setGameStatus('finished');
+            setTimeout(() => {
+              if (pending.isDraw) playLoseTone();
+              else if (pending.players.some((p: any) => p.isWinner)) playWinFanfare();
+              else playLoseTone();
+            }, 500);
+          }
+        }, 30000);
         break;
       }
       case 'room_cancelled':
@@ -797,6 +820,12 @@ export default function ArenaRoom() {
       const status = roomDetail.room.status as 'waiting' | 'playing' | 'finished' | 'cancelled';
       if (status === 'playing') {
         setGameStatus('playing');
+        // 如果实时游戏正在进行中（已经通过 SSE 收到了 round_result），不要触发回放或重复开场动画
+        // 这是最关键的保护：防止 roomDetail 刷新时干扰正在进行的实时游戏
+        if (liveGameActiveRef.current) {
+          // 实时游戏中，不做任何干预，让 SSE 事件驱动流程
+          return;
+        }
         // 不强制设置 isPresent，保留原有状态（参与者=true, 观战者=false）
         if (roomDetail.roundResults && roomDetail.roundResults.length > 0 && !isReplaying && !spinning) {
           // 已有历史轮次结果，说明游戏已经开始了（服务器重启后重进房间）
@@ -820,11 +849,17 @@ export default function ArenaRoom() {
               setReplayRound(1);
             }, 600);
           }
-        } else if (roomDetail.players.length >= 2) {
+        } else if (roomDetail.players.length >= 2 && !introShownRef.current) {
           // 还没有轮次结果，触发开场动画（参与者和观战者都要看）
+          // 增加 !introShownRef.current 条件，防止 roomDetail 刷新时重复触发
           triggerIntro(roomDetail.players);
         }
       } else if (status === 'finished') {
+        // 如果实时游戏正在进行中（还有轮次未完成），不要提前跳到结束
+        if (liveGameActiveRef.current && (spinning || showIntro)) {
+          // 实时游戏动画还在播放中，等待 game_over SSE 事件来触发结束
+          return;
+        }
         setGameStatus('finished');
         // 参与者和观战者都需要显示结果（参与者重新进入已结束房间时也要显示）
         if (!gameOverData && roomDetail.players.length > 0 && roomDetail.roundResults?.length > 0) {
@@ -845,12 +880,16 @@ export default function ArenaRoom() {
           setGameOverData({ winnerId: winner?.playerId ?? 0, players: overPlayers });
         }
       }
-      if (roomDetail.room.currentRound > 0) setCurrentRound(roomDetail.room.currentRound);
+      // 只在非实时游戏时同步 currentRound，避免覆盖实时轮次进度
+      if (!liveGameActiveRef.current && roomDetail.room.currentRound > 0) setCurrentRound(roomDetail.room.currentRound);
     }
   }, [roomDetail, isPresent, gameOverData]);
 
   // ── 同步已有轮次结果 ──
+  // 只在非实时游戏时同步，避免覆盖实时 SSE 收到的轮次数据
   useEffect(() => {
+    // 实时游戏进行中时，不要用 roomDetail 覆盖 SSE 实时数据
+    if (liveGameActiveRef.current) return;
     if (roomDetail?.roundResults && roomDetail.roundResults.length > 0) {
       const map: typeof roundResults = {};
       for (const r of roomDetail.roundResults) {
@@ -870,9 +909,12 @@ export default function ArenaRoom() {
     }
   }, [roomDetail?.roundResults]);
 
-  // ── 兑底恢复：当 roomDetail 加载完成且游戏已结束（finished）但前端还在 playing 状态时，自动触发回放 ──
+  // ── 兆底恢复：当 roomDetail 加载完成且游戏已结束（finished）但前端还在 playing 状态时 ──
   // 这处理了服务器重启后 SSE game_over 消息丢失的情况
+  // 注意：只在非实时游戏时触发，防止在正常游戏进行中提前跳到结束画面
   useEffect(() => {
+    // 实时游戏进行中时，不要干预，让 SSE game_over 事件来触发结束
+    if (liveGameActiveRef.current) return;
     if (
       roomDetail?.room?.status === 'finished' &&
       roomDetail.roundResults?.length > 0 &&
@@ -902,6 +944,29 @@ export default function ArenaRoom() {
       setGameStatus('finished');
     }
   }, [roomDetail?.room?.status, roomDetail?.roundResults, roomDetail?.players, isReplaying, spinning, showIntro, gameStatus]);
+
+  // ── 监听 spinning 变化：当 SLOT 停止转动且有缓存的 game_over 数据时，触发结束 ──
+  // 这是处理 game_over SSE 在 SLOT 转动期间到达的核心逻辑
+  // 注意：这个 useEffect 不会在回放模式下触发，因为回放模式不会设置 pendingGameOverRef
+  useEffect(() => {
+    if (!spinning && !showIntro && pendingGameOverRef.current && gameStatus === 'playing') {
+      // 延迟一小段时间，等待 reveal 动画完成
+      const timer = setTimeout(() => {
+        if (pendingGameOverRef.current) {
+          const pending = pendingGameOverRef.current;
+          pendingGameOverRef.current = null;
+          setGameOverData(pending);
+          setGameStatus('finished');
+          setTimeout(() => {
+            if (pending.isDraw) playLoseTone();
+            else if (pending.players.some((p: any) => p.isWinner)) playWinFanfare();
+            else playLoseTone();
+          }, 500);
+        }
+      }, 3000); // 3秒延迟，等待 reveal 动画和其他过渡完成
+      return () => clearTimeout(timer);
+    }
+  }, [spinning, showIntro, gameStatus]);
 
   // ── 回放模式：用 replayKey 控制开始（每次递增 replayKey 就重新开始回放）──
   // 依赖 replayKey 而非 isReplaying，避免数据刷新时重复触发
@@ -1191,6 +1256,22 @@ export default function ArenaRoom() {
             } else if (currentRound < totalRounds) {
               setCurrentRound((r) => r + 1);
               // 不清空 currentRoundItems，等待 SSE round_result 消息覆盖，避免 SlotMachine 动画中断
+            } else {
+              // 最后一轮完成，检查是否有缓存的 game_over 数据
+              if (pendingGameOverRef.current) {
+                const overData = pendingGameOverRef.current;
+                pendingGameOverRef.current = null;
+                setGameOverData(overData);
+                setGameStatus('finished');
+                refetchRoom();
+                utils.player.inventory.invalidate();
+                setTimeout(() => {
+                  if (overData.isDraw) playLoseTone();
+                  else if (overData.players.some((p: any) => p.isWinner)) playWinFanfare();
+                  else playLoseTone();
+                }, 500);
+              }
+              // 如果没有 pendingGameOverRef，等待 SSE game_over 事件
             }
           }, 2200);
         }
@@ -1250,16 +1331,21 @@ export default function ArenaRoom() {
       }, 300);
     } else {
       // 开场动画结束时还没有轮次结果（autoSpinAllRounds 还没开始）
-      // 设置一个 8 秒定时器，如果到时仍然没有 spinning，则强制 refetch 并触发回放
+      // 设置一个 10 秒定时器作为兜底
+      // 如果实时游戏已经开始（liveGameActiveRef=true），不做任何干预
+      // 如果实时游戏未开始，强制 refetch 并触发回放
       setTimeout(() => {
+        // 如果实时游戏已经在进行中，不需要兜底
+        if (liveGameActiveRef.current) return;
         // 检查是否已经在 spinning 或已经在回放或已经结束
         if (gameStatusRef.current === 'playing' && !showIntroRef.current) {
-          // 重置 introShownRef，允许同步状态 useEffect 重新触发回放
+          // 不重置 introShownRef（避免重复触发开场动画）
+          // 而是直接强制刷新房间详情，然后交给同步状态 useEffect 处理
+          // 为了让同步状态 useEffect 能触发回放，临时重置 introShownRef
           introShownRef.current = false;
-          // 强制刷新房间详情，让同步状态 useEffect 重新评估
           refetchRoom();
         }
-      }, 8000);
+      }, 10000);
     }
   }, [isReplaying]); // isReplaying 是唯一需要的依赖，其余通过 ref 访问
 
@@ -1831,6 +1917,9 @@ export default function ArenaRoom() {
                   setCurrentRound(1);
                   setCurrentRoundItems({});
                   setLiveValues({});
+                  pendingGameOverRef.current = null;
+                  liveGameActiveRef.current = false;
+                  liveRoundsReceivedRef.current = 0;
                 }}
                 style={{
                   display: 'block', width: '100%',
