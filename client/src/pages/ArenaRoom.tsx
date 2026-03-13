@@ -517,8 +517,8 @@ export default function ArenaRoom() {
         setRoomDetailEnabled(true);
         // 如果 joinRoom 返回的状态已是 playing（房间已满），直接触发游戏开始逻辑
         // 这样即使错过了 SSE 的 game_started 广播也能正常开始
-        if (data?.roomStatus === 'playing' || data?.isFull) {
-          setGameStatus('playing');
+        if (data?.roomStatus === 'playing' || data?.roomStatus === 'finished' || data?.isFull) {
+          setGameStatus(data?.roomStatus === 'finished' ? 'finished' : 'playing');
           setCurrentRound(1);
           // 再延迟 50ms 让 roomDetailEnabled 状态生效后再 refetch
           setTimeout(() => refetchRoom(), 50);
@@ -826,7 +826,8 @@ export default function ArenaRoom() {
         }
       } else if (status === 'finished') {
         setGameStatus('finished');
-        if (!isPresent && !gameOverData && roomDetail.players.length > 0) {
+        // 参与者和观战者都需要显示结果（参与者重新进入已结束房间时也要显示）
+        if (!gameOverData && roomDetail.players.length > 0 && roomDetail.roundResults?.length > 0) {
           const playerTotals: Record<number, number> = {};
           for (const r of roomDetail.roundResults) {
             playerTotals[r.playerId] = (playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue);
@@ -1222,8 +1223,8 @@ export default function ArenaRoom() {
       }, 100);
       return;
     }
-    // 兜底恢复：开场动画结束后 pendingSpinRef 为空，说明 SSE 消息在服务器重启时丢失了。
-    // 检查 roomDetailRef 中是否有历史轮次结果，有则自动触发回放，避免永久卡在"等待开始"。
+    // 兆底恢复：开场动画结束后 pendingSpinRef 为空，说明 SSE 消息在服务器重启时丢失了。
+    // 检查 roomDetailRef 中是否有历史轮次结果，有则自动触发回放，避免永久卡在“等待开始”。
     const detail = roomDetailRef.current;
     if (detail?.roundResults && detail.roundResults.length > 0 && detail.players && detail.players.length > 0) {
       // 延迟 300ms 确保 React 状态已更新，然后触发回放
@@ -1247,6 +1248,18 @@ export default function ArenaRoom() {
           setReplayRound(1);
         }, 400);
       }, 300);
+    } else {
+      // 开场动画结束时还没有轮次结果（autoSpinAllRounds 还没开始）
+      // 设置一个 8 秒定时器，如果到时仍然没有 spinning，则强制 refetch 并触发回放
+      setTimeout(() => {
+        // 检查是否已经在 spinning 或已经在回放或已经结束
+        if (gameStatusRef.current === 'playing' && !showIntroRef.current) {
+          // 重置 introShownRef，允许同步状态 useEffect 重新触发回放
+          introShownRef.current = false;
+          // 强制刷新房间详情，让同步状态 useEffect 重新评估
+          refetchRoom();
+        }
+      }, 8000);
     }
   }, [isReplaying]); // isReplaying 是唯一需要的依赖，其余通过 ref 访问
 

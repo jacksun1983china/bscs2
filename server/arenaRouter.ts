@@ -247,7 +247,14 @@ export const arenaRouter = router({
         .from(arenaRoomPlayers)
         .where(and(eq(arenaRoomPlayers.roomId, input.roomId), eq(arenaRoomPlayers.playerId, session.playerId)));
       if (existingCheck) {
-        return { roomId: input.roomId, alreadyJoined: true };
+        // 返回房间当前状态，让前端知道游戏是否已开始/结束
+        const [roomStatus] = await db.select({ status: arenaRooms.status }).from(arenaRooms).where(eq(arenaRooms.id, input.roomId));
+        return {
+          roomId: input.roomId,
+          alreadyJoined: true,
+          roomStatus: roomStatus?.status ?? 'waiting',
+          isFull: roomStatus?.status === 'playing' || roomStatus?.status === 'finished',
+        };
       }
 
       // 查询玩家信息（事务外）
