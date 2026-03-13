@@ -51,7 +51,7 @@ export default function Share() {
   const [activePeriod, setActivePeriod] = useState<'current' | 'last'>('current');
   const [settingsVisible, setSettingsVisible] = useState(false);
 
-  const { data: player } = trpc.player.me.useQuery(undefined, { retry: false });
+  const { data: player } = trpc.player.me.useQuery(undefined, { retry: false, staleTime: 30_000 });
   const { data: teamStats } = trpc.player.teamStats.useQuery(undefined, { enabled: !!player, retry: false });
 
   const withdrawMutation = trpc.player.withdrawCommission.useMutation({

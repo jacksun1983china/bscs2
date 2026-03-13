@@ -57,11 +57,11 @@ export default function Home() {
   }, []);
 
   const { data: player, isLoading, isFetching, fetchStatus } = trpc.player.me.useQuery(undefined, {
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // 禁用窗口焦点切换时自动重请，避免频繁触发 429
     staleTime: 30 * 1000, // 30秒内不重复请求，避免频繁刷新
   });
-  const { data: bannerList } = trpc.public.banners.useQuery();
-  const { data: broadcastList } = trpc.public.broadcasts.useQuery();
+  const { data: bannerList } = trpc.public.banners.useQuery(undefined, { staleTime: 5 * 60_000 }); // Banner 5分钟内不重请
+  const { data: broadcastList } = trpc.public.broadcasts.useQuery(undefined, { staleTime: 5 * 60_000 }); // 广播 5分钟内不重请
 
   const [bannerIndex, setBannerIndex] = useState(0);
   const [prevBannerIndex, setPrevBannerIndex] = useState<number | null>(null);

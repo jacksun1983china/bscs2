@@ -30,6 +30,8 @@ export function useArenaWS({ onMessage, subscribeList = false, subscribeRoomId =
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onMessageRef = useRef(onMessage);
   const onConnectionChangeRef = useRef(onConnectionChange);
+  // 指数退避：记录连续失败次数
+  const reconnectAttemptsRef = useRef(0);
 
   // 保持回调引用最新，避免闭包问题
   useEffect(() => {
@@ -55,6 +57,8 @@ export function useArenaWS({ onMessage, subscribeList = false, subscribeRoomId =
         const msg = JSON.parse(event.data) as ArenaWSMessage;
         // connected 事件：通知连接状态变化，并传给调用方处理
         if (msg.type === 'connected') {
+          // 连接成功，重置退避计数
+          reconnectAttemptsRef.current = 0;
           onConnectionChangeRef.current?.(true);
         }
         onMessageRef.current?.(msg);
@@ -68,10 +72,16 @@ export function useArenaWS({ onMessage, subscribeList = false, subscribeRoomId =
       onConnectionChangeRef.current?.(false);
       es.close();
       esRef.current = null;
-      // 3秒后重连
+
+      // 指数退避重连：3s → 6s → 12s → 24s → 最大 30s
+      // 避免频繁断连时爆发大量请求触发 429
+      const attempts = reconnectAttemptsRef.current;
+      reconnectAttemptsRef.current = attempts + 1;
+      const delay = Math.min(3000 * Math.pow(2, attempts), 30000);
+
       reconnectTimerRef.current = setTimeout(() => {
         connect(roomId);
-      }, 3000);
+      }, delay);
     };
   }, []);
 
@@ -80,6 +90,8 @@ export function useArenaWS({ onMessage, subscribeList = false, subscribeRoomId =
     const roomId = subscribeRoomId ?? (subscribeList ? 0 : -1);
     if (roomId < 0) return; // 不需要连接
 
+    // 重置退避计数
+    reconnectAttemptsRef.current = 0;
     connect(roomId);
 
     return () => {
@@ -91,6 +103,7 @@ export function useArenaWS({ onMessage, subscribeList = false, subscribeRoomId =
 
   // 以下方法保留接口兼容性（SSE 无需客户端发送订阅消息，连接时已通过 URL 参数指定）
   const subscribeListFn = useCallback(() => {
+    reconnectAttemptsRef.current = 0;
     connect(0);
   }, [connect]);
 
@@ -99,6 +112,7 @@ export function useArenaWS({ onMessage, subscribeList = false, subscribeRoomId =
   }, []);
 
   const subscribeRoom = useCallback((roomId: number) => {
+    reconnectAttemptsRef.current = 0;
     connect(roomId);
   }, [connect]);
 

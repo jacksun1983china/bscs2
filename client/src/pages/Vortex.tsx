@@ -490,7 +490,7 @@ export default function Vortex() {
   const { playWin, playLose, playSpinStop, playClick, startBgm } = useSound();
 
   // tRPC hooks
-  const playerQuery = trpc.player.me.useQuery();
+  const playerQuery = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
   const configQuery = trpc.vortex.getConfig.useQuery();
   const spinMutation = trpc.vortex.spin.useMutation();
   const cashOutMutation = trpc.vortex.cashOut.useMutation();

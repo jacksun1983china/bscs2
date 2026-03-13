@@ -93,7 +93,7 @@ export default function UncrossableRush() {
   const carsRef = useRef<CarAnim[]>([]);
 
   // ── tRPC ─────────────────────────────────────────────────────
-  const { data: playerData, refetch: refetchPlayer } = trpc.player.me.useQuery();
+  const { data: playerData, refetch: refetchPlayer } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
   const { data: settings } = trpc.rush.getSettings.useQuery();
   const startGameMut = trpc.rush.startGame.useMutation();
   const endGameMut = trpc.rush.endGame.useMutation();

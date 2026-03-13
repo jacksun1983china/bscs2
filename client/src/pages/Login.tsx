@@ -56,7 +56,7 @@ export default function Login() {
   }, []);
 
   // 检查是否已登录
-  const { data: playerMe } = trpc.player.me.useQuery();
+  const { data: playerMe } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
   useEffect(() => {
     if (playerMe) navigate('/');
   }, [playerMe]);

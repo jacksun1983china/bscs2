@@ -117,7 +117,7 @@ export default function RollX() {
   const [greenContainerRotation, setGreenContainerRotation] = useState(0);
 
   const { data: settings } = trpc.rollx.getSettings.useQuery();
-  const { data: player, refetch: refetchPlayer } = trpc.player.me.useQuery();
+  const { data: player, refetch: refetchPlayer } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
   const { data: history, refetch: refetchHistory } = trpc.rollx.getHistory.useQuery({ limit: 10 });
 
   const spinMutation = trpc.rollx.spin.useMutation();

@@ -448,6 +448,7 @@ export default function ArenaRoom() {
   const [replayRound, setReplayRound] = useState(0);
   const replayRoundRef = useRef(0); // 用ref跟踪最新値，避免handleSlotDone闭包捕获旧値
   const lastConnectedRefetchRef = useRef(0); // 防抖：记录上次 connected 触发 refetchRoom 的时间
+  const lastPlayerJoinedRefetchRef = useRef(0); // 防抖：记录上次 player_joined 触发 refetchRoom 的时间
   const replaySpinStartedRef = useRef(0); // 记录已经启动 slot 的轮次，防止重复触发
   const [isReplaying, setIsReplaying] = useState(false);
   // 回放是否正在等待开场动画完成（线性流程：开场动画 → slot动画）
@@ -676,9 +677,15 @@ export default function ArenaRoom() {
   // ── WebSocket 消息处理 ──
   const handleWsMessage = useCallback((msg: { type: string; [key: string]: unknown }) => {
     switch (msg.type) {
-      case 'player_joined':
-        refetchRoom();
+      case 'player_joined': {
+        // 防抖：2 秒内只触发一次，避免多人同时加入时爆发请求
+        const nowJoined = Date.now();
+        if (nowJoined - lastPlayerJoinedRefetchRef.current > 2000) {
+          lastPlayerJoinedRefetchRef.current = nowJoined;
+          refetchRoom();
+        }
         break;
+      }
       case 'game_started':
         setGameStatus('playing');
         setCurrentRound(1);

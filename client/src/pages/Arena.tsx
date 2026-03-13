@@ -38,14 +38,14 @@ function CreateRoomModal({ onClose, onCreated }: CreateRoomModalProps) {
   const [error, setError] = useState('');
 
   // 获取玩家当前余额
-  const { data: playerInfo } = trpc.player.me.useQuery();
+  const { data: playerInfo } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
   const myGold = parseFloat((playerInfo as any)?.gold ?? '0');
 
-  const { data: categories } = trpc.sku.categoryList.useQuery();
+  const { data: categories } = trpc.sku.categoryList.useQuery(undefined, { staleTime: 60_000 });
   const [activeCat, setActiveCat] = useState<number | null>(null);
   const { data: boxListData } = trpc.sku.boxList.useQuery(
     { categoryId: activeCat ?? undefined, page: 1, limit: 50 },
-    { enabled: true }
+    { enabled: true, staleTime: 60_000 }
   );
   const boxList = { list: boxListData?.data };
 
@@ -358,11 +358,17 @@ export default function Arena() {
   const [activeTab, setActiveTab] = useState<'waiting' | 'playing' | 'all'>('waiting');
 
   // 从服务器获取初始房间列表
-  const { data: roomsData, refetch } = trpc.arena.getRooms.useQuery({
-    status: activeTab,
-    page: 1,
-    pageSize: 30,
-  });
+  const { data: roomsData, refetch } = trpc.arena.getRooms.useQuery(
+    {
+      status: activeTab,
+      page: 1,
+      pageSize: 30,
+    },
+    {
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+    }
+  );
 
   // 本地房间列表（WebSocket实时更新）
   const [liveRooms, setLiveRooms] = useState<typeof roomsData | null>(null);

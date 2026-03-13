@@ -22,7 +22,7 @@ export default function Recharge() {
   const [selectedConfig, setSelectedConfig] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'recharge' | 'history'>('recharge');
 
-  const { data: player } = trpc.player.me.useQuery();
+  const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
   const { data: configs } = trpc.player.rechargeConfigs.useQuery();
   const { data: orders } = trpc.player.rechargeOrders.useQuery(
     { page: 1, limit: 20 },

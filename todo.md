@@ -908,3 +908,14 @@
 
 ## 安全密码页面重叠修复（2026-03-13）
 - [x] 修复安全密码弹窗与「我的」侧边栏重叠显示的问题（SecurityPassword、SettingsModal、SteamSettings 三个弹窗均改用 createPortal 挂载到 body + position:fixed）
+
+## 429 限流修复（2026-03-13）
+- [x] QueryClient 全局设置 staleTime: 30_000，减少重复请求
+- [x] QueryClient 全局设置 429 不重试策略，避免加剧限流
+- [x] Home.tsx 中 player.me 的 refetchOnWindowFocus 改为 false
+- [x] Home.tsx 中 banners/broadcasts 添加 staleTime: 5 分钟
+- [x] Arena.tsx 中 CreateRoomModal 的 player.me/categoryList/boxList 添加 staleTime
+- [x] Arena.tsx 中 getRooms 添加 staleTime 和 refetchOnWindowFocus: false
+- [x] 所有缺少 staleTime 的 player.me.useQuery 调用统一补充（Bag/Profile/Recharge/Login/Share/Vortex/DingDong/RollX/UncrossableRush）
+- [x] useArenaWS SSE 重连改为指数退避（3s → 6s → 12s → 最大 30s），避免频繁断连时爆发请求
+- [x] generalApiLimit 从 300/分钟提高到 600/分钟

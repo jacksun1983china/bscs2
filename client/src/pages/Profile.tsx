@@ -68,7 +68,7 @@ export default function Profile() {
   const [steamVisible, setSteamVisible] = useState(false);
   const [securityPwdVisible, setSecurityPwdVisible] = useState(false);
 
-  const { data: player } = trpc.player.me.useQuery();
+  const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
   const logoutMutation = trpc.player.logout.useMutation({
     onSuccess: () => navigate('/login'),
   });

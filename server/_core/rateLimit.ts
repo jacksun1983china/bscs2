@@ -63,12 +63,12 @@ export function createRateLimit(options: RateLimitOptions) {
 }
 
 /**
- * 预设：通用 API 限制（每 IP 每分钟 300 次）
+ * 预设：通用 API 限制（每 IP 每分钟 600 次）
  * 注：竞技场房间页面有轮询+SSE，需要较高的限制
  */
 export const generalApiLimit = createRateLimit({
   windowMs: 60 * 1000,
-  max: 300,
+  max: 600,
   message: "请求过于频繁，请 1 分钟后再试",
 });
 

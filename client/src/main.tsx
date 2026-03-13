@@ -7,7 +7,21 @@ import App from "./App";
 import "./index.css";
 import { GameAlertProvider } from "@/components/GameAlert";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // 全局 30 秒 staleTime，减少重复请求，避免触发 429
+      staleTime: 30_000,
+      // 429 Too Many Requests 不自动重试，避免加剧限流
+      retry: (failureCount, error) => {
+        const httpStatus = (error as any)?.data?.httpStatus;
+        if (httpStatus === 429) return false;
+        return failureCount < 2;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    },
+  },
+});
 
 // OAuth auto-redirect disabled: this app uses its own phone-based auth system
 queryClient.getQueryCache().subscribe(event => {

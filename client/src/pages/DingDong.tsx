@@ -179,7 +179,7 @@ export default function DingDong() {
   }, [SPEED_MAX, SPEED_ACCEL, SPEED_DECEL, DECEL_DIST]);
 
   // ── tRPC ──────────────────────────────────────────────────────
-  const { data: playerData, refetch: refetchPlayer } = trpc.player.me.useQuery();
+  const { data: playerData, refetch: refetchPlayer } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
   const { data: settings } = trpc.dingdong.getSettings.useQuery();
   const { data: history, refetch: refetchHistory } = trpc.dingdong.getHistory.useQuery({ limit: 20 });
 

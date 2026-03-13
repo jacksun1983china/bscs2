@@ -48,7 +48,7 @@ function BottomNav({ active }: { active: string }) {
 export default function Bag() {
   const [, navigate] = useLocation();
   const [settingsVisible, setSettingsVisible] = useState(false);
-  const { data: player } = trpc.player.me.useQuery();
+  const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
   const { data, isLoading } = trpc.player.inventory.useQuery(
     { page: 1, limit: 50 },
     { enabled: !!player }
