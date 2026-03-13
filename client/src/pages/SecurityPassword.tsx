@@ -5,6 +5,7 @@
  * 用法：<SecurityPasswordModal visible={visible} onClose={() => setVisible(false)} />
  */
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 
@@ -129,7 +130,7 @@ export default function SecurityPasswordModal({ visible, onClose }: SecurityPass
       <div
         onClick={handleClose}
         style={{
-          position: 'absolute',
+          position: 'fixed',
           inset: 0,
           background: 'rgba(0,0,0,0.6)',
           backdropFilter: 'blur(4px)',
@@ -143,7 +144,7 @@ export default function SecurityPasswordModal({ visible, onClose }: SecurityPass
       {/* 弹窗主体（从底部滑入） */}
       <div
         style={{
-          position: 'absolute',
+          position: 'fixed',
           bottom: 0,
           left: 0,
           right: 0,
@@ -375,5 +376,5 @@ export default function SecurityPasswordModal({ visible, onClose }: SecurityPass
     </>
   );
 
-  return content;
+  return createPortal(content, document.body);
 }

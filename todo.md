@@ -905,3 +905,6 @@
 - [x] 后台登录已是独立账号密码验证（通过环境变量 ADMIN_ACCOUNT/ADMIN_PASSWORD，无需 Manus OAuth）
 - [x] Manus 残留代码已清理（登录按鈕文字已改为"立即登录"）
 - [x] routers.ts 拆分：admin 路由（705行）提取到 server/routers/adminRouter.ts，主文件从 2734 行减少到 2032 行
+
+## 安全密码页面重叠修复（2026-03-13）
+- [x] 修复安全密码弹窗与「我的」侧边栏重叠显示的问题（SecurityPassword、SettingsModal、SteamSettings 三个弹窗均改用 createPortal 挂载到 body + position:fixed）
