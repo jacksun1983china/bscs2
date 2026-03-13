@@ -1,4 +1,4 @@
-CREATE TABLE `dingdongGames` (
+CREATE TABLE IF NOT EXISTS `dingdongGames` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`playerId` int NOT NULL,
 	`betAmount` decimal(18,2) NOT NULL,
@@ -9,11 +9,10 @@ CREATE TABLE `dingdongGames` (
 	`winAmount` decimal(18,2) NOT NULL DEFAULT '0.00',
 	`netAmount` decimal(18,2) NOT NULL DEFAULT '0.00',
 	`balanceAfter` decimal(18,2) NOT NULL DEFAULT '0.00',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `dingdongGames_id` PRIMARY KEY(`id`)
 );
---> statement-breakpoint
-CREATE TABLE `rushGames` (
+CREATE TABLE IF NOT EXISTS `rushGames` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`playerId` int NOT NULL,
 	`betAmount` decimal(18,2) NOT NULL,
@@ -23,6 +22,6 @@ CREATE TABLE `rushGames` (
 	`winAmount` decimal(18,2) NOT NULL DEFAULT '0.00',
 	`netAmount` decimal(18,2) NOT NULL DEFAULT '0.00',
 	`balanceAfter` decimal(18,2) NOT NULL DEFAULT '0.00',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `rushGames_id` PRIMARY KEY(`id`)
 );

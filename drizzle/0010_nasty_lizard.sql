@@ -1,4 +1,4 @@
-CREATE TABLE `weeklyCommissionStats` (
+CREATE TABLE IF NOT EXISTS `weeklyCommissionStats` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`inviterId` int NOT NULL,
 	`weekStart` varchar(12) NOT NULL,
@@ -7,7 +7,7 @@ CREATE TABLE `weeklyCommissionStats` (
 	`newMembers` int NOT NULL DEFAULT 0,
 	`totalRecharge` decimal(15,2) NOT NULL DEFAULT '0.00',
 	`totalFlow` decimal(15,2) NOT NULL DEFAULT '0.00',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `weeklyCommissionStats_id` PRIMARY KEY(`id`)
 );

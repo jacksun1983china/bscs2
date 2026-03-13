@@ -5,7 +5,7 @@ CREATE TABLE `banners` (
 	`title` varchar(100) NOT NULL DEFAULT '',
 	`sort` int NOT NULL DEFAULT 0,
 	`status` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `banners_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -14,7 +14,7 @@ CREATE TABLE `broadcasts` (
 	`content` varchar(500) NOT NULL,
 	`sort` int NOT NULL DEFAULT 0,
 	`status` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `broadcasts_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -26,7 +26,7 @@ CREATE TABLE `goldLogs` (
 	`type` varchar(50) NOT NULL,
 	`description` varchar(255) NOT NULL DEFAULT '',
 	`refId` int,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `goldLogs_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -36,7 +36,7 @@ CREATE TABLE `inviteRecords` (
 	`inviteeId` int NOT NULL,
 	`commission` decimal(10,2) NOT NULL DEFAULT '0.00',
 	`orderId` int,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `inviteRecords_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -49,7 +49,7 @@ CREATE TABLE `items` (
 	`type` varchar(50) NOT NULL DEFAULT 'skin',
 	`game` varchar(50) NOT NULL DEFAULT 'CS',
 	`status` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `items_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -61,7 +61,7 @@ CREATE TABLE `playerItems` (
 	`status` tinyint NOT NULL DEFAULT 0,
 	`extractedAt` timestamp,
 	`recycleGold` decimal(15,2) NOT NULL DEFAULT '0.00',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `playerItems_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -74,7 +74,7 @@ CREATE TABLE `rechargeConfigs` (
 	`isFirstRecharge` tinyint NOT NULL DEFAULT 0,
 	`sort` int NOT NULL DEFAULT 0,
 	`status` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `rechargeConfigs_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -88,8 +88,8 @@ CREATE TABLE `rechargeOrders` (
 	`payMethod` varchar(50) NOT NULL DEFAULT 'manual',
 	`status` tinyint NOT NULL DEFAULT 0,
 	`remark` varchar(255) NOT NULL DEFAULT '',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `rechargeOrders_id` PRIMARY KEY(`id`),
 	CONSTRAINT `rechargeOrders_orderNo_unique` UNIQUE(`orderNo`)
 );
@@ -101,7 +101,7 @@ CREATE TABLE `vipConfigs` (
 	`requiredPoints` int NOT NULL DEFAULT 0,
 	`rechargeBonus` decimal(5,2) NOT NULL DEFAULT '0.00',
 	`privileges` text,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `vipConfigs_id` PRIMARY KEY(`id`),
 	CONSTRAINT `vipConfigs_level_unique` UNIQUE(`level`)
 );

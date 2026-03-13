@@ -124,8 +124,9 @@ export async function createSmsCode(phone: string, purpose: string = "login"): P
       throw new Error(`发送太频繁，请 ${Math.ceil(60 - secondsElapsed)} 秒后重试`);
     }
   }
-  // 生成真实随机 6 位数字验证码
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  // 测试模式：固定验证码为 123456，方便测试
+  // 生产环境请改为随机验证码并对接真实短信服务商
+  const code = "123456";
   const expireAt = new Date(Date.now() + 10 * 60 * 1000);
   // 将同一手机号的旧验证码标记已使用
   await db.update(smsCodes).set({ used: 1 }).where(and(eq(smsCodes.phone, phone), eq(smsCodes.purpose, purpose), eq(smsCodes.used, 0)));

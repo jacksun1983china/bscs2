@@ -8,8 +8,8 @@ CREATE TABLE `csAgents` (
 	`activeSessionCount` int NOT NULL DEFAULT 0,
 	`maxSessions` int NOT NULL DEFAULT 5,
 	`enabled` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `csAgents_id` PRIMARY KEY(`id`),
 	CONSTRAINT `csAgents_username_unique` UNIQUE(`username`)
 );
@@ -24,7 +24,7 @@ CREATE TABLE `csMessages` (
 	`msgType` enum('text','image') NOT NULL DEFAULT 'text',
 	`content` text NOT NULL,
 	`isRead` tinyint NOT NULL DEFAULT 0,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `csMessages_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -35,7 +35,7 @@ CREATE TABLE `csQuickReplies` (
 	`content` text NOT NULL,
 	`sort` int NOT NULL DEFAULT 0,
 	`status` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `csQuickReplies_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -48,9 +48,9 @@ CREATE TABLE `csSessions` (
 	`agentUnread` int NOT NULL DEFAULT 0,
 	`playerUnread` int NOT NULL DEFAULT 0,
 	`lastMessage` varchar(500) NOT NULL DEFAULT '',
-	`lastMessageAt` timestamp DEFAULT (now()),
+	`lastMessageAt` timestamp DEFAULT CURRENT_TIMESTAMP,
 	`closeReason` varchar(200) NOT NULL DEFAULT '',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `csSessions_id` PRIMARY KEY(`id`)
 );

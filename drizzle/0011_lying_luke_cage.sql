@@ -1,4 +1,4 @@
-CREATE TABLE `shopItems` (
+CREATE TABLE IF NOT EXISTS `shopItems` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`templateId` varchar(50) NOT NULL DEFAULT '',
 	`typeId` varchar(50) NOT NULL DEFAULT '',
@@ -16,12 +16,11 @@ CREATE TABLE `shopItems` (
 	`referencePrice` decimal(15,2) NOT NULL DEFAULT '0.00',
 	`sellNum` int NOT NULL DEFAULT 0,
 	`enabled` tinyint NOT NULL DEFAULT 1,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `shopItems_id` PRIMARY KEY(`id`)
 );
---> statement-breakpoint
-CREATE TABLE `shopOrders` (
+CREATE TABLE IF NOT EXISTS `shopOrders` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`playerId` int NOT NULL,
 	`shopItemId` int NOT NULL,
@@ -31,7 +30,7 @@ CREATE TABLE `shopOrders` (
 	`status` varchar(30) NOT NULL DEFAULT 'pending',
 	`csOrderNo` varchar(100) NOT NULL DEFAULT '',
 	`remark` varchar(500) NOT NULL DEFAULT '',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `shopOrders_id` PRIMARY KEY(`id`)
 );

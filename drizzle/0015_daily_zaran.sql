@@ -1,4 +1,4 @@
-CREATE TABLE `fruitBombBets` (
+CREATE TABLE IF NOT EXISTS `fruitBombBets` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`roundId` int NOT NULL,
 	`playerId` int NOT NULL,
@@ -10,16 +10,15 @@ CREATE TABLE `fruitBombBets` (
 	`winAmount` decimal(18,2) NOT NULL DEFAULT '0.00',
 	`netAmount` decimal(18,2) NOT NULL DEFAULT '0.00',
 	`balanceAfter` decimal(18,2) NOT NULL DEFAULT '0.00',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `fruitBombBets_id` PRIMARY KEY(`id`)
 );
---> statement-breakpoint
-CREATE TABLE `fruitBombRounds` (
+CREATE TABLE IF NOT EXISTS `fruitBombRounds` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`winFruitIdx` int NOT NULL DEFAULT 0,
 	`status` varchar(20) NOT NULL DEFAULT 'betting',
 	`startedAt` bigint NOT NULL,
 	`finishedAt` bigint,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `fruitBombRounds_id` PRIMARY KEY(`id`)
 );

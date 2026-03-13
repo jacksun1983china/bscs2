@@ -1,4 +1,4 @@
-CREATE TABLE `gameConfigs` (
+CREATE TABLE IF NOT EXISTS `gameConfigs` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`gameKey` varchar(50) NOT NULL,
 	`name` varchar(100) NOT NULL,
@@ -11,8 +11,8 @@ CREATE TABLE `gameConfigs` (
 	`maxBet` int NOT NULL DEFAULT 1000000,
 	`sort` int NOT NULL DEFAULT 0,
 	`remark` varchar(255) NOT NULL DEFAULT '',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `gameConfigs_id` PRIMARY KEY(`id`),
 	CONSTRAINT `gameConfigs_gameKey_unique` UNIQUE(`gameKey`)
 );

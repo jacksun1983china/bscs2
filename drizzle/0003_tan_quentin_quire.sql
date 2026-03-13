@@ -6,7 +6,7 @@ CREATE TABLE `commissionLogs` (
 	`orderId` int,
 	`status` tinyint NOT NULL DEFAULT 0,
 	`withdrawnAt` timestamp,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `commissionLogs_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -18,7 +18,7 @@ CREATE TABLE `messages` (
 	`isRead` tinyint NOT NULL DEFAULT 0,
 	`type` varchar(50) NOT NULL DEFAULT 'system',
 	`refId` int,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `messages_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -29,7 +29,7 @@ CREATE TABLE `rollParticipants` (
 	`isBot` tinyint NOT NULL DEFAULT 0,
 	`botNickname` varchar(100) NOT NULL DEFAULT '',
 	`botAvatar` varchar(500) NOT NULL DEFAULT '',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `rollParticipants_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -41,7 +41,7 @@ CREATE TABLE `rollRoomPrizes` (
 	`value` decimal(10,2) NOT NULL,
 	`quantity` int NOT NULL DEFAULT 1,
 	`coinType` enum('shopCoin','gold') NOT NULL DEFAULT 'shopCoin',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `rollRoomPrizes_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -62,8 +62,8 @@ CREATE TABLE `rollRooms` (
 	`actualPaidValue` decimal(15,2) NOT NULL DEFAULT '0.00',
 	`actualPaidCount` int NOT NULL DEFAULT 0,
 	`createdBy` varchar(64) NOT NULL DEFAULT '',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `rollRooms_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -75,7 +75,7 @@ CREATE TABLE `rollWinners` (
 	`isBot` tinyint NOT NULL DEFAULT 0,
 	`nicknameSnapshot` varchar(100) NOT NULL DEFAULT '',
 	`isDesignated` tinyint NOT NULL DEFAULT 0,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `rollWinners_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint

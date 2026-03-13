@@ -11,13 +11,13 @@ CREATE TABLE `players` (
 	`status` tinyint NOT NULL DEFAULT 1,
 	`banReason` varchar(255) NOT NULL DEFAULT '',
 	`registerIp` varchar(50) NOT NULL DEFAULT '',
-	`lastLogin` timestamp DEFAULT (now()),
+	`lastLogin` timestamp DEFAULT CURRENT_TIMESTAMP,
 	`lastIp` varchar(50) NOT NULL DEFAULT '',
 	`device` varchar(200) NOT NULL DEFAULT '',
 	`inviteCode` varchar(20) NOT NULL DEFAULT '',
 	`invitedBy` int,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `players_id` PRIMARY KEY(`id`),
 	CONSTRAINT `players_phone_unique` UNIQUE(`phone`)
 );
@@ -29,6 +29,6 @@ CREATE TABLE `smsCodes` (
 	`purpose` varchar(20) NOT NULL DEFAULT 'login',
 	`used` tinyint NOT NULL DEFAULT 0,
 	`expireAt` timestamp NOT NULL,
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `smsCodes_id` PRIMARY KEY(`id`)
 );

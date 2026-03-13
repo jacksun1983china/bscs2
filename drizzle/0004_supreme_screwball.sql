@@ -8,7 +8,7 @@ CREATE TABLE `gameSettings` (
 	`maxMultiplier` decimal(10,2) NOT NULL DEFAULT '30000.00',
 	`enabled` tinyint NOT NULL DEFAULT 1,
 	`remark` varchar(255) NOT NULL DEFAULT '',
-	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `gameSettings_id` PRIMARY KEY(`id`),
 	CONSTRAINT `gameSettings_gameKey_unique` UNIQUE(`gameKey`)
 );
@@ -23,6 +23,6 @@ CREATE TABLE `rollxGames` (
 	`netAmount` decimal(18,2) NOT NULL DEFAULT '0.00',
 	`stopAngle` decimal(10,4) NOT NULL DEFAULT '0.0000',
 	`balanceAfter` decimal(18,2) NOT NULL DEFAULT '0.00',
-	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `rollxGames_id` PRIMARY KEY(`id`)
 );
