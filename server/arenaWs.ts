@@ -1,6 +1,9 @@
 /**
  * arenaWs.ts — 竞技场 WebSocket 服务
  *
+ * 使用 noServer 模式 + 手动 upgrade，避免与 Vite HMR WebSocket 冲突。
+ * 只对 /ws/arena 路径进行 WebSocket 升级，其他路径交给 Vite 处理。
+ *
  * 消息协议（服务端 → 客户端）：
  *   { type: 'room_list_update', rooms: ArenaRoomSummary[] }
  *   { type: 'room_joined', room: ArenaRoomDetail }
@@ -38,7 +41,20 @@ const clients = new Set<WsClient>();
 // ── 初始化 WebSocket 服务器 ───────────────────────────────────────────────
 
 export function initArenaWs(httpServer: Server) {
-  const wss = new WebSocketServer({ server: httpServer, path: "/ws/arena" });
+  // 使用 noServer 模式，不自动监听 upgrade 事件
+  const wss = new WebSocketServer({ noServer: true });
+
+  // 手动处理 upgrade 事件，只对 /ws/arena 路径进行 WebSocket 升级
+  httpServer.on("upgrade", (request, socket, head) => {
+    const pathname = new URL(request.url || "", `http://${request.headers.host}`).pathname;
+
+    if (pathname === "/ws/arena") {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit("connection", ws, request);
+      });
+    }
+    // 其他路径（如 Vite HMR）不处理，交给 Vite 自己的 upgrade 处理器
+  });
 
   wss.on("connection", (ws) => {
     const client: WsClient = {
