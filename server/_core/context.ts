@@ -50,7 +50,7 @@ async function tryAuthFromPlayerJwt(req: any): Promise<User | null> {
         return {
           id: 0,
           openId: "admin",
-          name: "admin",
+          name: (payload.account as string) || "admin",
           email: null,
           loginMethod: "admin",
           role: "admin",

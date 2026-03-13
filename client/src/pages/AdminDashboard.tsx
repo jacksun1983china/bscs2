@@ -524,12 +524,11 @@ export default function AdminDashboard() {
   const [adminAccount, setAdminAccount] = useState<string | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
 
-  // 同时验证后端cookie是否有效
+  // 验证后端cookie是否有效（始终执行，不用 enabled 限制）
   const verifyQuery = trpc.admin.verify.useQuery(undefined, {
-    enabled: !sessionChecked,
     retry: false,
-    refetchOnWindowFocus: true,
-    refetchInterval: 5 * 60 * 1000, // 每5分钟自动验证一次
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5分钟内不重新请求
   });
 
   useEffect(() => {
@@ -539,28 +538,22 @@ export default function AdminDashboard() {
 
   // 当verify查询完成时，根据后端结果决定登录状态
   useEffect(() => {
+    // 还没得到结果时不处理
     if (verifyQuery.isLoading) return;
+    if (!verifyQuery.isSuccess && !verifyQuery.isError) return;
+
     if (verifyQuery.data?.valid) {
       // 后端cookie有效，更新localStorage和登录状态
       const account = verifyQuery.data.account || 'admin';
       localStorage.setItem('bdcs2_admin_session', JSON.stringify({ account, loginAt: Date.now() }));
       setAdminAccount(account);
-    } else {
-      // 后端cookie失效，清除本地session并要求重新登录
+    } else if (!adminAccount) {
+      // 后端cookie失效，且当前没有通过登录表单登录，才清除
       localStorage.removeItem('bdcs2_admin_session');
       setAdminAccount(null);
     }
     setSessionChecked(true);
-  }, [verifyQuery.isLoading, verifyQuery.data]);
-
-  // 当verify查询失败时，清除session
-  useEffect(() => {
-    if (verifyQuery.error) {
-      localStorage.removeItem('bdcs2_admin_session');
-      setAdminAccount(null);
-      setSessionChecked(true);
-    }
-  }, [verifyQuery.error]);
+  }, [verifyQuery.isLoading, verifyQuery.isSuccess, verifyQuery.isError, verifyQuery.data, adminAccount]);
 
   const logoutMutation = trpc.admin.logout.useMutation({
     onSuccess: () => {

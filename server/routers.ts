@@ -175,6 +175,16 @@ export const appRouter = router({
             registerIp: (ctx.req as any).ip || "",
           });
           if (!player) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "登录失败" });
+          // 新用户注册赠送 1,000,000 金币
+          const WELCOME_GOLD = 1000000;
+          const db = await getDb();
+          if (db) {
+            await db.update(players).set({ gold: sql`gold + ${WELCOME_GOLD}` }).where(eq(players.id, player.id));
+            await insertGoldLog(player.id, WELCOME_GOLD, WELCOME_GOLD, 'register_gift', '新用户注册赠送金币');
+            // 重新获取更新后的玩家数据
+            const updatedPlayer = await getPlayerById(player.id);
+            if (updatedPlayer) player = updatedPlayer;
+          }
         }
         if (player.status === 0) throw new TRPCError({ code: "FORBIDDEN", message: "账号已被封禁" });
         await updatePlayerLogin(player.id, (ctx.req as any).ip || "");

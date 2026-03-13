@@ -932,3 +932,11 @@
 - [x] 后端 inventory 查询改为按 itemId 分组，返回 count（叠加数量）和 ids（所有 playerItems.id）
 - [x] 前端背包物品右上角显示数量角标（count > 1 时显示红色×N）
 - [x] 提取/回收时按 ids 数组操作（一次提取该物品的所有叠加条目）
+
+## 管理后台无数据修复（2026-03-13）
+- [x] 排查根本原因：verify useEffect 时序 bug， fetchStatus=idle 时误清除 adminAccount
+- [x] 修复 verify 查询逻辑：去掉 enabled 限制，改用 isSuccess/isError 判断，防止误清除登录状态
+- [x] 修复 context.ts 中管理员 token 解析， name 字段从 payload.account 读取
+
+## 新用户注册赠送金币（2026-03-13）
+- [x] 新用户注册时自动赠送 1,000,000 金币，并写入金币流水日志（register_gift）
