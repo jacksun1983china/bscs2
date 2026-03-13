@@ -10,6 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import { initArenaWs } from "../arenaWs";
 import { initArenaSSE } from "../arenaSSE";
 import { startBotLoop } from "../arenaBot";
+import { startArenaTimeoutWatcher } from "../arenaTimeout";
 import { autoSpinAllRounds } from "../arenaRouter";
 import { getDb } from "../db";
 import { arenaRooms } from "../../drizzle/schema";
@@ -89,6 +90,9 @@ async function startServer() {
 
   // 启动竞技场机器人自动填充服务
   startBotLoop();
+
+  // 启动竞技场房间超时自动关闭（10分钟无人满员则退款关闭）
+  startArenaTimeoutWatcher();
 
   // 服务器启动时恢复所有进行中的竞技场游戏
   // 防止服务器重启导致 autoSpinAllRounds 任务丢失
