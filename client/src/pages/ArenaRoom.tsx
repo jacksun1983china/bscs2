@@ -1068,7 +1068,7 @@ export default function ArenaRoom() {
               replayRoundRef.current = nextRound;
               setReplayRound(nextRound);
               setCurrentRound((r) => r + 1);
-              setCurrentRoundItems({});
+              // 不清空 currentRoundItems，让 replayRound useEffect 覆盖，避免 SlotMachine 动画中断
             } else {
               const playerTotals: Record<number, number> = {};
               for (const r of roomDetail.roundResults) {
@@ -1131,7 +1131,7 @@ export default function ArenaRoom() {
               }, 100);
             } else if (currentRound < totalRounds) {
               setCurrentRound((r) => r + 1);
-              setCurrentRoundItems({});
+              // 不清空 currentRoundItems，等待 SSE round_result 消息覆盖，避免 SlotMachine 动画中断
             }
           }, 2200);
         }
@@ -1460,7 +1460,7 @@ export default function ArenaRoom() {
                     </div>
                     <SlotMachine
                       finalItem={finalItem}
-                      spinning={spinning && !!finalItem}
+                      spinning={spinning}
                       onDone={handleSlotDone}
                       skipAnim={skipGameAnim}
                       reelItems={reelItems}
