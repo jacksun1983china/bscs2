@@ -657,9 +657,13 @@ export default function ArenaRoom() {
       case 'game_started':
         setGameStatus('playing');
         setCurrentRound(1);
-        refetchRoom();
+        // 先确保 roomDetailEnabled=true，再执行 refetch
+        // 否则 enabled=false 时 refetchRoom() 不会执行，导致开场动画无法触发
+        setRoomDetailEnabled(true);
+        // 延迟一小步确保 enabled 状态生效后再 refetch
+        setTimeout(() => refetchRoom(), 50);
         // 立即触发开场动画，不等 roomDetail 刷新
-        // 从当前 roomDetail 获取玩家列表，如果没有则用空列表先展示动画
+        // 从当前 roomDetail 获取玩家列表，如果没有则用占位符先展示动画
         {
           const currentPlayers = (roomDetailRef.current?.players ?? []) as Array<{ playerId: number; nickname: string; avatar: string; seatNo: number }>;
           triggerIntro(currentPlayers.length >= 2 ? currentPlayers : [{ playerId: 0, nickname: '玩家1', avatar: '001', seatNo: 1 }, { playerId: 1, nickname: '玩家2', avatar: '002', seatNo: 2 }]);
@@ -737,14 +741,16 @@ export default function ArenaRoom() {
         setSpectatorCount(msg.count as number);
         break;
       case 'connected': {
-        // SSE 重连成功，如果游戏正在进行中，主动拉取最新房间状态以恢复游戏
-        // 已有的 useEffect 兜底逻辑会根据 roomDetail 自动恢复游戏状态
+        // SSE 连接建立（初始连接或重连），无条件拉取一次房间状态
+        // 这样即使错过了 game_started 广播，useEffect 小底也能根据最新状态触发开场动画
         // 防抖：5 秒内只触发一次，避免 SSE 频繁断连重连导致请求爆发
-        if (gameStatusRef.current === 'playing') {
+        {
           const now = Date.now();
           if (now - lastConnectedRefetchRef.current > 5000) {
             lastConnectedRefetchRef.current = now;
-            refetchRoom();
+            // 先确保 roomDetailEnabled=true，再 refetch
+            setRoomDetailEnabled(true);
+            setTimeout(() => refetchRoom(), 50);
           }
         }
         break;
