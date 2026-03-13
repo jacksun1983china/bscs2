@@ -28,14 +28,25 @@ import {
   broadcastGameOver,
   broadcastRoomListUpdate,
 } from "./arenaSSE";
-
-// ── 配置 ──────────────────────────────────────────────────────────────────────
+// ── 配置 ────────────────────────────────────────────────────────────────────────
 const BOT_CHECK_INTERVAL = 8000;   // 每8秒检测一次
 const BOT_WAIT_THRESHOLD = 10;     // 等待超过10秒派机器人（秒）
 const BOT_GOLD_THRESHOLD = 10000;  // 金币低于此值时触发补充
 const BOT_GOLD_REFILL = 1000000;   // 补充后的目标金币数（100万）
 const BOT_REFILL_INTERVAL = 60000; // 每60秒检查一次金币补充
 
+// ── 机器人自动开房配置 ────────────────────────────────────────────────────────
+const BOT_ROOM_CHECK_INTERVAL = 15000;  // 每15秒检查一次房间数量
+const BOT_ROOM_MIN = 10;                // 最少保持的等待中房间数
+const BOT_ROOM_TARGET = 13;             // 目标房间数（每次补充到13个）
+const BOT_ROOM_CREATE_DELAY = 2000;     // 每创建一个房间间隔（毫秒）
+// 机器人开房的宝箱价格分布（权重越高越容易被选中）
+const BOT_ROOM_PRICE_WEIGHTS = [
+  { maxPrice: 5, weight: 40 },      // 低价房占 40%
+  { maxPrice: 20, weight: 30 },     // 中价房占 30%
+  { maxPrice: 100, weight: 20 },    // 高价房占 20%
+  { maxPrice: Infinity, weight: 10 }, // 超高价房占 10%
+];
 /** 根据概率权重随机抽取一个 boxGoods */
 function rollBoxGoods(goods: Array<{ id: number; probability: string; [key: string]: unknown }>) {
   if (goods.length === 0) throw new Error("宝箱内没有物品");
@@ -375,6 +386,19 @@ export function startBotLoop() {
       console.error('[ArenaBot] 金币补充出错:', err);
     }
   }, BOT_REFILL_INTERVAL);
+
+  // 机器人自动开房循环：启动时立即执行一次，之后每 15 秒检查
+  ensureBotRooms().catch((err) => console.error('[ArenaBot] 初始开房出错:', err));
+  setInterval(async () => {
+    try {
+      await ensureBotRooms();
+    } catch (err: any) {
+      console.error('[ArenaBot] 自动开房出错:', err);
+      if (err?.cause?.message?.includes('ECONNRESET') || err?.message?.includes('ECONNRESET')) {
+        resetDb();
+      }
+    }
+  }, BOT_ROOM_CHECK_INTERVAL);
 }
 
 // 正在处理中的房间ID集合，防止并发重复处理
@@ -427,17 +451,45 @@ async function checkAndFillRooms() {
       const usedBotIds = [...existingPlayerIds];
 
       for (let i = 0; i < needed; i++) {
+        // 关键：先用原子 SQL 占座（与真实玩家 joinRoom 相同的并发安全机制）
+        // WHERE status='waiting' AND current_players < max_players 确保不超员
+        const [atomicResult] = await db.execute(
+          sql`UPDATE arenaRooms
+              SET currentPlayers = currentPlayers + 1,
+                  status = CASE WHEN currentPlayers + 1 >= maxPlayers THEN 'playing' ELSE 'waiting' END,
+                  currentRound = CASE WHEN currentPlayers + 1 >= maxPlayers THEN 1 ELSE 0 END
+              WHERE id = ${freshRoom.id}
+                AND status = 'waiting'
+                AND currentPlayers < maxPlayers`
+        );
+        const affectedRows = (atomicResult as any).affectedRows ?? (atomicResult as any)[0]?.affectedRows ?? 0;
+        if (affectedRows === 0) {
+          // 占座失败：房间已满或已开始（可能被真实玩家抢先加入）
+          console.log(`[ArenaBot] 房间 #${freshRoom.roomNo} 原子占座失败，房间已满或已开始，停止派遣机器人`);
+          break;
+        }
+
+        // 占座成功，读取最新房间状态确认座位号和是否已满
+        const [updatedRoom] = await db.select().from(arenaRooms).where(eq(arenaRooms.id, freshRoom.id));
+        const seatNo = updatedRoom!.currentPlayers; // 更新后的 current_players 就是座位号
+        const isFull = updatedRoom!.status === 'playing';
+        currentCount = updatedRoom!.currentPlayers;
+
         // 从数据库选取可用机器人
         const bot = await pickBotFromDb(db, entryFee, usedBotIds);
         if (!bot) {
-          console.warn(`[ArenaBot] 没有可用机器人（金币不足或已全部在房间内），跳过`);
+          console.warn(`[ArenaBot] 没有可用机器人（金币不足或已全部在房间内），回滚占座`);
+          // 回滚占座：减少 current_players
+          await db.execute(
+            sql`UPDATE arenaRooms
+                SET currentPlayers = currentPlayers - 1,
+                    status = 'waiting',
+                    currentRound = 0
+                WHERE id = ${freshRoom.id}`
+          );
           break;
         }
         usedBotIds.push(bot.id);
-
-        const seatNo = currentCount + 1;
-        currentCount++;
-        const isFull = currentCount >= freshRoom.maxPlayers;
 
         // 扣除机器人入场费
         const botGold = parseFloat(bot.gold);
@@ -457,17 +509,7 @@ async function checkAndFillRooms() {
           seatNo,
         });
 
-        // 原子更新房间人数
-        await db
-          .update(arenaRooms)
-          .set({
-            currentPlayers: currentCount,
-            status: isFull ? "playing" : "waiting",
-            currentRound: isFull ? 1 : 0,
-          })
-          .where(eq(arenaRooms.id, freshRoom.id));
-
-        console.log(`[ArenaBot] 机器人 ${bot.nickname}(id=${bot.id}) 加入房间 #${freshRoom.roomNo}，人数 ${currentCount}/${freshRoom.maxPlayers}`);
+        console.log(`[ArenaBot] 机器人 ${bot.nickname}(id=${bot.id}) 加入房间 #${freshRoom.roomNo}，座位 ${seatNo}，人数 ${currentCount}/${freshRoom.maxPlayers}`);
 
         // 广播玩家加入
         broadcastPlayerJoined(
@@ -480,6 +522,7 @@ async function checkAndFillRooms() {
           gameStarted = true;
           console.log(`[ArenaBot] 房间 #${freshRoom.roomNo} 已满员，广播游戏开始`);
           broadcastGameStarted(freshRoom.id);
+          break; // 已满员，不再继续派遣
         }
 
         // 机器人加入间隔1秒，更自然
@@ -504,4 +547,154 @@ async function checkAndFillRooms() {
       processingRooms.delete(room.id);
     }
   }
+}
+
+
+// ── 机器人自动开房逻辑 ──────────────────────────────────────────────────────
+
+/** 生成6位随机房间号 */
+function genBotRoomNo(): string {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+/** 按权重随机选择一个价格段 */
+function pickPriceTier(): number {
+  const totalWeight = BOT_ROOM_PRICE_WEIGHTS.reduce((s, t) => s + t.weight, 0);
+  let rand = Math.random() * totalWeight;
+  for (const tier of BOT_ROOM_PRICE_WEIGHTS) {
+    rand -= tier.weight;
+    if (rand <= 0) return tier.maxPrice;
+  }
+  return BOT_ROOM_PRICE_WEIGHTS[BOT_ROOM_PRICE_WEIGHTS.length - 1].maxPrice;
+}
+
+/** 
+ * 确保等待中的房间数量不低于 BOT_ROOM_MIN
+ * 如果不足，由机器人自动创建新房间，直到达到 BOT_ROOM_TARGET
+ */
+async function ensureBotRooms() {
+  const db = await getDb();
+  if (!db) return;
+
+  // 统计当前等待中的房间数量
+  const waitingRooms = await db
+    .select({ id: arenaRooms.id })
+    .from(arenaRooms)
+    .where(eq(arenaRooms.status, "waiting"));
+
+  const waitingCount = waitingRooms.length;
+  if (waitingCount >= BOT_ROOM_MIN) return; // 房间数量充足，无需创建
+
+  const toCreate = BOT_ROOM_TARGET - waitingCount;
+  console.log(`[ArenaBot] 等待中房间 ${waitingCount} 个，不足 ${BOT_ROOM_MIN}，将创建 ${toCreate} 个机器人房间`);
+
+  // 获取所有启用的宝箱，按价格分组
+  const allBoxes = await db
+    .select({ id: boxes.id, name: boxes.name, price: boxes.price })
+    .from(boxes)
+    .where(eq(boxes.status, 1));
+
+  if (allBoxes.length === 0) {
+    console.warn('[ArenaBot] 没有可用的宝箱，无法创建房间');
+    return;
+  }
+
+  // 记录已使用的机器人ID（同一批次不重复使用）
+  const usedBotIds: number[] = [];
+
+  for (let i = 0; i < toCreate; i++) {
+    try {
+      // 1. 选择价格段
+      const maxPrice = pickPriceTier();
+      const prevTierMax = BOT_ROOM_PRICE_WEIGHTS.find(t => t.maxPrice === maxPrice);
+      const prevIdx = BOT_ROOM_PRICE_WEIGHTS.indexOf(prevTierMax!);
+      const minPrice = prevIdx > 0 ? BOT_ROOM_PRICE_WEIGHTS[prevIdx - 1].maxPrice : 0;
+      
+      // 从该价格段中随机选择宝箱
+      const tierBoxes = allBoxes.filter(b => {
+        const p = parseFloat(b.price);
+        return p > minPrice && p <= maxPrice;
+      });
+      // 如果该价格段没有宝箱，从所有宝箱中随机选
+      const availableBoxes = tierBoxes.length > 0 ? tierBoxes : allBoxes;
+
+      // 2. 随机决定房间配置
+      const maxPlayers = Math.random() < 0.75 ? 2 : 3; // 75% 概率2人场，25% 概率3人场
+      const rounds = Math.floor(Math.random() * 8) + 1; // 1-8轮
+
+      // 3. 随机选择宝箱（每轮一个，可重复）
+      const selectedBoxIds: number[] = [];
+      for (let r = 0; r < rounds; r++) {
+        const box = availableBoxes[Math.floor(Math.random() * availableBoxes.length)];
+        selectedBoxIds.push(box.id);
+      }
+
+      // 4. 计算入场费
+      const boxMap = new Map(allBoxes.map(b => [b.id, b]));
+      const entryFee = selectedBoxIds.reduce((s, bid) => s + parseFloat(boxMap.get(bid)?.price ?? '0'), 0);
+
+      // 5. 选择一个机器人作为创建者
+      const bot = await pickBotFromDb(db, entryFee, usedBotIds);
+      if (!bot) {
+        console.warn(`[ArenaBot] 没有可用机器人创建房间（金币不足），停止创建`);
+        break;
+      }
+      usedBotIds.push(bot.id);
+
+      // 6. 扣除机器人金币
+      const botGold = parseFloat(bot.gold);
+      const newBotGold = (botGold - entryFee).toFixed(2);
+      await db
+        .update(players)
+        .set({ gold: newBotGold })
+        .where(eq(players.id, bot.id));
+      await insertGoldLog(bot.id, -entryFee, parseFloat(newBotGold), 'arena', `竞技场入场费（机器人自动开房）`);
+
+      // 7. 生成唯一房间号
+      let roomNo = genBotRoomNo();
+      for (let j = 0; j < 5; j++) {
+        const [exist] = await db.select().from(arenaRooms).where(eq(arenaRooms.roomNo, roomNo));
+        if (!exist) break;
+        roomNo = genBotRoomNo();
+      }
+
+      // 8. 创建房间
+      const [insertResult] = await db.insert(arenaRooms).values({
+        roomNo,
+        creatorId: bot.id,
+        creatorNickname: bot.nickname || '机器人',
+        creatorAvatar: bot.avatar || '001',
+        maxPlayers,
+        currentPlayers: 1,
+        rounds,
+        entryFee: entryFee.toFixed(2),
+        boxIds: JSON.stringify(selectedBoxIds),
+        status: 'waiting',
+      });
+      const roomId = (insertResult as any).insertId as number;
+
+      // 9. 添加机器人为参与者（座位1）
+      await db.insert(arenaRoomPlayers).values({
+        roomId,
+        playerId: bot.id,
+        nickname: bot.nickname || '机器人',
+        avatar: bot.avatar || '001',
+        seatNo: 1,
+      });
+
+      console.log(`[ArenaBot] 机器人 ${bot.nickname} 创建房间 #${roomNo}（${maxPlayers}人场 ${rounds}轮 入场费¥${entryFee.toFixed(2)}）`);
+
+      // 创建间隔，避免瞬间创建太多
+      if (i < toCreate - 1) {
+        await new Promise((resolve) => setTimeout(resolve, BOT_ROOM_CREATE_DELAY));
+      }
+    } catch (err) {
+      console.error(`[ArenaBot] 创建第 ${i + 1} 个机器人房间出错:`, err);
+    }
+  }
+
+  // 广播房间列表更新
+  const summaries = await fetchRoomSummaries();
+  broadcastRoomListUpdate(summaries);
+  console.log(`[ArenaBot] 机器人开房完成，当前等待中房间已补充`);
 }

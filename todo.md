@@ -1015,3 +1015,12 @@
 - [x] 修复最后一局动画没看完就直接显示结算结果（根因：setSpinning(false)和revealingRef=true之间有时间空隙，修复为先设置revealingRef再清除spinning）
 - [x] 修复 SLOT 旋转方向：改为从上往下转（目标道具放卷轴前部，动画从 translateY负值到0）
 - [x] 修复背包物品分解返回 0 金币（arenaBot.ts 插入 playerItems 时缺少 recycleGold 字段，已修复代码并修复历史数据）
+
+## 竞技场严重并发问题修复（2026-03-14 第三轮）
+- [x] 修复2人场进了3个人的严重并发控制问题（机器人加入改用原子SQL占座，WHERE current_players < max_players AND status='waiting'）
+- [x] 修复由此导致的 React key 重复错误（sortedPlayers.map 改用 seatNo+idx 作为 key）
+- [x] 机器人加入也受并发锁保护（与真实玩家使用相同的原子占座机制）
+
+## 竞技场第三轮修复+新功能（2026-03-14）
+- [x] 修复 React key 重复错误（sortedPlayers.map 改用 seatNo+idx 作为 key，并修复并发控制根因）
+- [x] 新功能：机器人自动开房，保持房间列表始终有10-15个等待中的房间（ensureBotRooms，每15秒检查，不足10则补到13个）

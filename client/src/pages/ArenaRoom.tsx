@@ -1860,7 +1860,7 @@ export default function ArenaRoom() {
                 })()}
               </div>
               <div style={{ display: 'flex', gap: q(12) }}>
-                {sortedPlayers.map((p) => {
+                {sortedPlayers.map((p, pIdx) => {
                   const pDraw = gameOverData?.isDraw ?? false;
                   const borderColor = pDraw ? '#9ca3af' : p.isWinner ? '#f5c842' : '#ef4444';
                   const bgColor = pDraw ? 'rgba(156,163,175,0.1)' : p.isWinner ? 'rgba(245,200,66,0.15)' : 'rgba(239,68,68,0.08)';
@@ -1874,7 +1874,7 @@ export default function ArenaRoom() {
                   const valueColor = pDraw ? '#9ca3af' : p.isWinner ? '#22c55e' : '#ef4444';
                   return (
                   <div
-                    key={p.playerId}
+                    key={`${p.seatNo}-${pIdx}`}
                     style={{
                       flex: 1, textAlign: 'center', position: 'relative',
                       background: bgColor,

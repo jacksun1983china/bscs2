@@ -1,0 +1,14 @@
+{
+  "query": "SELECT status, COUNT(*) as cnt FROM arenaRooms GROUP BY status",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT status, COUNT(*) as cnt FROM arenaRooms GROUP BY status",
+  "rows": [
+    {
+      "status": "finished",
+      "cnt": "11"
+    }
+  ],
+  "messages": [],
+  "stdout": "status\tcnt\nfinished\t11\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}

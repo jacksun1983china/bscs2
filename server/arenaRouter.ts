@@ -281,13 +281,13 @@ export const arenaRouter = router({
       // 关键操作：原子占座（一条 SQL，并发安全）
       // WHERE status='waiting' AND current_players < max_players 确保不超员
       const [updateResult] = await db.execute(
-        sql`UPDATE arena_rooms
-            SET current_players = current_players + 1,
-                status = CASE WHEN current_players + 1 >= max_players THEN 'playing' ELSE 'waiting' END,
-                current_round = CASE WHEN current_players + 1 >= max_players THEN 1 ELSE 0 END
+        sql`UPDATE arenaRooms
+            SET currentPlayers = currentPlayers + 1,
+                status = CASE WHEN currentPlayers + 1 >= maxPlayers THEN 'playing' ELSE 'waiting' END,
+                currentRound = CASE WHEN currentPlayers + 1 >= maxPlayers THEN 1 ELSE 0 END
             WHERE id = ${input.roomId}
               AND status = 'waiting'
-              AND current_players < max_players`
+              AND currentPlayers < maxPlayers`
       );
       const affectedRows = (updateResult as any).affectedRows ?? (updateResult as any)[0]?.affectedRows ?? 0;
       if (affectedRows === 0) {
