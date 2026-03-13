@@ -55,6 +55,14 @@ function CreateRoomModal({ onClose, onCreated }: CreateRoomModalProps) {
     { enabled: true, staleTime: 60_000 }
   );
   const boxList = { list: boxListData?.data };
+  // 全量宝笱（不过滤分类），用于底部已选预览
+  const { data: allBoxListData } = trpc.sku.boxList.useQuery(
+    { page: 1, limit: 200 },
+    { staleTime: 120_000 }
+  );
+  const allBoxes: any[] = allBoxListData?.data ?? [];
+  // 已选宝笱详情（用于底部预览）
+  const selectedBoxDetails = allBoxes.filter((b: any) => (boxCounts[b.id] ?? 0) > 0);
 
   const createRoom = trpc.arena.createRoom.useMutation({
     onSuccess: (data) => {
@@ -239,6 +247,47 @@ function CreateRoomModal({ onClose, onCreated }: CreateRoomModalProps) {
           padding: `${q(16)} ${q(24)}`,
           borderTop: '1px solid rgba(120,60,220,0.3)',
         }}>
+          {/* 已选宝箱预览（跨分类可见） */}
+          {selectedBoxDetails.length > 0 && (
+            <div style={{
+              display: 'flex', gap: q(8), flexWrap: 'wrap',
+              marginBottom: q(10),
+              padding: `${q(8)} ${q(10)}`,
+              background: 'rgba(120,60,220,0.1)',
+              borderRadius: q(8),
+              border: '1px solid rgba(120,60,220,0.2)',
+            }}>
+              {selectedBoxDetails.map((b: any) => (
+                <div key={b.id} style={{ position: 'relative', width: q(72), flexShrink: 0 }}>
+                  <img
+                    src={b.imageUrl || `${CDN}/a888e4d9c59e44cf49c0949345509ee4_32c3c37e.png`}
+                    alt={b.name}
+                    style={{ width: '100%', aspectRatio: '1', objectFit: 'contain', borderRadius: q(6) }}
+                  />
+                  <div style={{
+                    position: 'absolute', top: q(-4), right: q(-4),
+                    minWidth: q(24), height: q(24), borderRadius: q(12),
+                    background: 'linear-gradient(135deg,#7c3aed,#c084fc)',
+                    color: '#fff', fontWeight: 800, fontSize: q(16),
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: `0 ${q(4)}`,
+                  }}>{boxCounts[b.id]}</div>
+                  {/* 点击减少 */}
+                  <div
+                    onClick={() => removeBox(b.id)}
+                    style={{
+                      position: 'absolute', bottom: q(-4), right: q(-4),
+                      width: q(22), height: q(22), borderRadius: '50%',
+                      background: 'rgba(239,68,68,0.85)',
+                      color: '#fff', fontWeight: 900, fontSize: q(18),
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', lineHeight: 1,
+                    }}
+                  >−</div>
+                </div>
+              ))}
+            </div>
+          )}
           {/* 余额 vs 入场费 对比行 */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: q(10) }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: q(16) }}>

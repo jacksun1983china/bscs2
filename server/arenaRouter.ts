@@ -733,23 +733,30 @@ async function finishGame(roomId: number, db: Awaited<ReturnType<typeof getDb>>,
       winnerId = Number(pid);
     }
   }
+  // 检测是否平局：多个玩家分数相同且等于最高分
+  const topPlayers = Object.entries(valueMap).filter(([, v]) => v === maxValue);
+  const isDraw = topPlayers.length > 1;
+  if (isDraw) winnerId = 0; // 平局时 winnerId = 0
+
   // 更新参与者记录
   for (const rp of roomPlayers) {
     const totalValue = (valueMap[rp.playerId] || 0).toFixed(2);
-    const isWinner = rp.playerId === winnerId ? 1 : 0;
+    const isWinner = isDraw ? 0 : (rp.playerId === winnerId ? 1 : 0);
     await db
       .update(arenaRoomPlayers)
       .set({ totalValue, isWinner })
       .where(eq(arenaRoomPlayers.id, rp.id));
-    // 赢家获得所有物品价値（以金币形式发放）
-    if (isWinner) {
+
+    if (isDraw) {
+      // 平局：各自保留自己开出的物品（不转移，已在背包中）
+      // 无需额外操作，物品已经在 autoSpinAllRounds 中写入 playerItems
+    } else if (isWinner) {
+      // 赢家获得所有玩家的总价値（以金币形式发放）
       const [p] = await db.select().from(players).where(eq(players.id, rp.playerId));
       if (p) {
-        // 总奖励 = 所有玩家的总价値之和
         const totalPrize = Object.values(valueMap).reduce((s, v) => s + v, 0);
         const newGold = (parseFloat(p.gold ?? "0") + totalPrize).toFixed(2);
         await db.update(players).set({ gold: newGold }).where(eq(players.id, rp.playerId));
-        // 记录金币日志（竞技场获得奖励）
         await insertGoldLog(rp.playerId, totalPrize, parseFloat(newGold), 'arena', `竞技场获得奖励（房间${roomId}）`);
       }
     }
@@ -766,7 +773,8 @@ async function finishGame(roomId: number, db: Awaited<ReturnType<typeof getDb>>,
     avatar: rp.avatar,
     seatNo: rp.seatNo,
     totalValue: (valueMap[rp.playerId] || 0).toFixed(2),
-    isWinner: rp.playerId === winnerId,
+    isWinner: !isDraw && rp.playerId === winnerId,
+    isDraw,
   }));
-  broadcastGameOver(roomId, winnerId, playerResults);
+  broadcastGameOver(roomId, winnerId, playerResults, isDraw);
 }

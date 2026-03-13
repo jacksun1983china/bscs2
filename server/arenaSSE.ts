@@ -196,9 +196,10 @@ export function broadcastRoundResult(
 export function broadcastGameOver(
   roomId: number,
   winnerId: number,
-  players: unknown[]
+  players: unknown[],
+  isDraw?: boolean
 ) {
-  broadcastToRoom(roomId, { type: "game_over", roomId, winnerId, players });
+  broadcastToRoom(roomId, { type: "game_over", roomId, winnerId, players, isDraw: isDraw ?? false });
 }
 
 /** 广播房间取消 */

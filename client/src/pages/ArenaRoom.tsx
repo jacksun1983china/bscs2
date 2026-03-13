@@ -317,11 +317,12 @@ interface PlayerSeatProps {
   seatNo: number;
   isEmpty?: boolean;
   isWinner?: boolean;
-  /** 实时累计价值（游戏进行中） */
+  isDraw?: boolean;
+  /** 实时累计价値（游戏进行中） */
   liveValue?: number;
 }
 
-function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false, liveValue }: PlayerSeatProps) {
+function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false, isDraw = false, liveValue }: PlayerSeatProps) {
   // 价值变化时触发数字跳动动画
   const [prevValue, setPrevValue] = useState(liveValue ?? 0);
   const [bump, setBump] = useState(false);
@@ -341,21 +342,23 @@ function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false, liveVal
         : isEmpty
           ? 'rgba(20,8,50,0.5)'
           : 'rgba(30,10,65,0.8)',
-      border: `2px solid ${isWinner ? '#f5c842' : isEmpty ? 'rgba(120,60,220,0.2)' : 'rgba(120,60,220,0.4)'}`,
+      border: `2px solid ${isWinner ? '#f5c842' : isDraw ? '#9ca3af' : isEmpty ? 'rgba(120,60,220,0.2)' : 'rgba(120,60,220,0.4)'}`,
       borderRadius: q(12), padding: q(12),
       textAlign: 'center',
-      boxShadow: isWinner ? '0 0 20px rgba(245,200,66,0.5)' : 'none',
+      boxShadow: isWinner ? '0 0 20px rgba(245,200,66,0.5)' : isDraw ? '0 0 12px rgba(156,163,175,0.3)' : 'none',
       position: 'relative',
       transition: 'box-shadow 0.3s ease',
     }}>
-      {isWinner && (
+      {(isWinner || isDraw) && (
         <div style={{
           position: 'absolute', top: q(-12), left: '50%', transform: 'translateX(-50%)',
-          background: 'linear-gradient(135deg,#f5c842,#c8860a)',
+          background: isDraw
+            ? 'linear-gradient(135deg,#6b7280,#9ca3af)'
+            : 'linear-gradient(135deg,#f5c842,#c8860a)',
           borderRadius: q(10), padding: `${q(2)} ${q(12)}`,
           color: '#fff', fontSize: q(18), fontWeight: 700,
           whiteSpace: 'nowrap',
-        }}>👑 胜利</div>
+        }}>{isDraw ? '🤝 平局' : '👑 胜利'}</div>
       )}
       {isEmpty ? (
         <>
@@ -600,7 +603,8 @@ export default function ArenaRoom() {
   }>>>({});
   const [gameOverData, setGameOverData] = useState<{
     winnerId: number;
-    players: Array<{ playerId: number; nickname: string; avatar: string; seatNo: number; totalValue: string; isWinner: boolean }>;
+    isDraw?: boolean;
+    players: Array<{ playerId: number; nickname: string; avatar: string; seatNo: number; totalValue: string; isWinner: boolean; isDraw?: boolean }>;
   } | null>(null);
 
   const [currentRoundItems, setCurrentRoundItems] = useState<Record<number, {
@@ -738,7 +742,8 @@ export default function ArenaRoom() {
       case 'game_over': {
         const overData = {
           winnerId: msg.winnerId as number,
-          players: msg.players as any[],
+          isDraw: !!(msg.isDraw),
+          players: (msg.players as any[]).map((p: any) => ({ ...p, isDraw: !!(msg.isDraw) })),
         };
         setGameOverData(overData);
         setGameStatus('finished');
@@ -746,7 +751,8 @@ export default function ArenaRoom() {
         // 刷新背包数据
         utils.player.inventory.invalidate();
         setTimeout(() => {
-          if (overData.players.some((p) => p.isWinner)) playWinFanfare();
+          if (overData.isDraw) playLoseTone(); // 平局播放普通音效
+          else if (overData.players.some((p) => p.isWinner)) playWinFanfare();
           else playLoseTone();
         }, 500);
         break;
@@ -1539,6 +1545,7 @@ export default function ArenaRoom() {
                 player={winnerData ? { ...p!, totalValue: winnerData.totalValue, isWinner: winnerData.isWinner ? 1 : 0 } : p}
                 isEmpty={!p}
                 isWinner={winnerData?.isWinner ?? false}
+                isDraw={gameOverData?.isDraw ?? false}
                 liveValue={gameStatus === 'playing' && p ? (liveValues[p.playerId] ?? 0) : undefined}
               />
             );
@@ -1762,155 +1769,56 @@ export default function ArenaRoom() {
                 })()}
               </div>
               <div style={{ display: 'flex', gap: q(12) }}>
-                {sortedPlayers.map((p) => (
+                {sortedPlayers.map((p) => {
+                  const pDraw = gameOverData?.isDraw ?? false;
+                  const borderColor = pDraw ? '#9ca3af' : p.isWinner ? '#f5c842' : '#ef4444';
+                  const bgColor = pDraw ? 'rgba(156,163,175,0.1)' : p.isWinner ? 'rgba(245,200,66,0.15)' : 'rgba(239,68,68,0.08)';
+                  const badgeBg = pDraw
+                    ? 'linear-gradient(135deg,#6b7280,#9ca3af)'
+                    : p.isWinner
+                      ? 'linear-gradient(135deg,#f5c842,#c8860a)'
+                      : 'linear-gradient(135deg,#ef4444,#991b1b)';
+                  const badgeText = pDraw ? '🤝 平局' : p.isWinner ? '👑 胜利' : '💔 失败';
+                  const valueLabel = pDraw ? '↔ 平局保留物品' : p.isWinner ? '⬆ 最高总价値' : '⬇ 较低总价値';
+                  const valueColor = pDraw ? '#9ca3af' : p.isWinner ? '#22c55e' : '#ef4444';
+                  return (
                   <div
                     key={p.playerId}
                     style={{
                       flex: 1, textAlign: 'center', position: 'relative',
-                      background: p.isWinner ? 'rgba(245,200,66,0.15)' : 'rgba(239,68,68,0.08)',
-                      border: `2px solid ${p.isWinner ? '#f5c842' : '#ef4444'}`,
+                      background: bgColor,
+                      border: `2px solid ${borderColor}`,
                       borderRadius: q(12), padding: `${q(20)} ${q(12)} ${q(12)}`,
                     }}
                   >
                     <div style={{
                       position: 'absolute', top: q(-14), left: '50%', transform: 'translateX(-50%)',
-                      background: p.isWinner
-                        ? 'linear-gradient(135deg,#f5c842,#c8860a)'
-                        : 'linear-gradient(135deg,#ef4444,#991b1b)',
+                      background: badgeBg,
                       borderRadius: q(20), padding: `${q(4)} ${q(16)}`,
                       color: '#fff', fontSize: q(20), fontWeight: 800,
                       whiteSpace: 'nowrap', boxShadow: p.isWinner ? '0 2px 12px rgba(245,200,66,0.5)' : 'none',
                     }}>
-                      {p.isWinner ? '👑 胜利' : '💔 失败'}
+                      {badgeText}
                     </div>
                     <img
                       src={getAvatarUrl(p.avatar)}
                       alt=""
-                      style={{ width: q(60), height: q(60), borderRadius: '50%', marginBottom: q(8), border: `2px solid ${p.isWinner ? '#f5c842' : '#ef4444'}`, objectFit: 'cover' }}
+                      style={{ width: q(60), height: q(60), borderRadius: '50%', marginBottom: q(8), border: `2px solid ${borderColor}`, objectFit: 'cover' }}
                     />
                     <div style={{ color: '#e0d0ff', fontSize: q(22), fontWeight: 600 }}>{p.nickname}</div>
                     <div style={{ color: '#ffd700', fontSize: q(28), fontWeight: 800, marginTop: q(6) }}>
                       ¥{parseFloat(p.totalValue).toFixed(2)}
                     </div>
-                    <div style={{ color: p.isWinner ? '#22c55e' : '#ef4444', fontSize: q(18), marginTop: q(4) }}>
-                      {p.isWinner ? '⬆ 最高总价值' : '⬇ 较低总价值'}
+                    <div style={{ color: valueColor, fontSize: q(18), marginTop: q(4) }}>
+                      {valueLabel}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
         })()}
-
-        {/* 历史轮次结果 */}
-        {Object.keys(roundResults).length > 0 && (
-          <div>
-            <div style={{ color: '#9ca3af', fontSize: q(22), marginBottom: q(8), display: 'flex', alignItems: 'center', gap: q(8) }}>
-              <span style={{ width: q(4), height: q(18), background: 'linear-gradient(#c084fc,#7c3aed)', display: 'inline-block', borderRadius: q(2) }} />
-              开箱记录
-            </div>
-            {Object.entries(roundResults).sort((a, b) => Number(a[0]) - Number(b[0])).map(([roundNo, results]) => {
-              const enrichedResults = (results as any[]).map((r: any) => {
-                if (r.seatNo && r.seatNo > 0) return r;
-                const matchedPlayer = players.find((pl) => pl.playerId === r.playerId);
-                return {
-                  ...r,
-                  seatNo: matchedPlayer?.seatNo ?? 0,
-                  nickname: r.nickname || matchedPlayer?.nickname || `玩家${r.playerId}`,
-                };
-              }).sort((a: any, b: any) => a.seatNo - b.seatNo);
-              return (
-                <div key={roundNo} style={{
-                  background: 'linear-gradient(135deg,rgba(20,8,50,0.85),rgba(12,4,30,0.9))',
-                  border: '1px solid rgba(120,60,220,0.3)',
-                  borderRadius: q(14), padding: q(16),
-                  marginBottom: q(12),
-                  boxShadow: '0 4px 16px rgba(80,20,160,0.2)',
-                }}>
-                  <div style={{
-                    color: '#c084fc', fontSize: q(22), fontWeight: 700, marginBottom: q(12),
-                    display: 'flex', alignItems: 'center', gap: q(8),
-                    borderBottom: '1px solid rgba(120,60,220,0.2)', paddingBottom: q(8),
-                  }}>
-                    <span style={{
-                      background: 'rgba(120,60,220,0.3)', borderRadius: q(6),
-                      padding: `${q(2)} ${q(10)}`, fontSize: q(20),
-                    }}>第 {roundNo} 轮</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: q(10) }}>
-                    {enrichedResults.map((r: any) => (
-                      <div key={r.playerId} style={{ flex: 1, textAlign: 'center' }}>
-                        <div style={{ color: '#9ca3af', fontSize: q(18), marginBottom: q(8), fontWeight: 500 }}>{r.nickname}</div>
-                        {/* 武器图卡片 */}
-                        <div style={{
-                          position: 'relative',
-                          background: LEVEL_BG[r.goodsLevel],
-                          borderRadius: q(12), padding: q(10),
-                          boxShadow: r.goodsLevel === 1
-                            ? `0 0 20px rgba(245,200,66,0.7), 0 0 40px rgba(245,200,66,0.3), inset 0 0 12px rgba(245,200,66,0.1)`
-                            : r.goodsLevel === 2
-                              ? `0 0 16px rgba(192,132,252,0.7), 0 0 32px rgba(192,132,252,0.3)`
-                              : `0 0 10px ${LEVEL_GLOW[r.goodsLevel]}`,
-                          overflow: 'hidden',
-                        }}>
-                          {/* 稀有度光效背景 */}
-                          {r.goodsLevel <= 2 && (
-                            <div style={{
-                              position: 'absolute', inset: 0, pointerEvents: 'none',
-                              background: r.goodsLevel === 1
-                                ? 'radial-gradient(ellipse at 50% 20%, rgba(245,200,66,0.3) 0%, transparent 65%)'
-                                : 'radial-gradient(ellipse at 50% 20%, rgba(192,132,252,0.25) 0%, transparent 65%)',
-                              animation: 'arenaPulse 1.5s ease-in-out infinite',
-                            }} />
-                          )}
-                          {/* 武器图 */}
-                          <div style={{ position: 'relative', zIndex: 1 }}>
-                            {r.goodsImage ? (
-                              <img
-                                src={r.goodsImage}
-                                alt={r.goodsName}
-                                style={{
-                                  width: q(110), height: q(110), objectFit: 'contain',
-                                  marginBottom: q(6), display: 'block', margin: '0 auto',
-                                  filter: r.goodsLevel === 1
-                                    ? 'drop-shadow(0 0 10px rgba(245,200,66,0.9)) drop-shadow(0 0 20px rgba(245,200,66,0.5))'
-                                    : r.goodsLevel === 2
-                                      ? 'drop-shadow(0 0 8px rgba(192,132,252,0.9)) drop-shadow(0 0 16px rgba(192,132,252,0.5))'
-                                      : 'none',
-                                }}
-                              />
-                            ) : (
-                              <div style={{
-                                width: q(110), height: q(110), margin: '0 auto',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: q(48), marginBottom: q(6),
-                              }}>🎁</div>
-                            )}
-                            {/* 品质标签 */}
-                            <div style={{
-                              display: 'inline-block', padding: `${q(2)} ${q(8)}`,
-                              background: 'rgba(0,0,0,0.45)', borderRadius: q(4),
-                              color: '#fff', fontSize: q(16), fontWeight: 700,
-                              marginBottom: q(4),
-                            }}>{LEVEL_LABEL[r.goodsLevel]}</div>
-                            <div style={{
-                              color: '#fff', fontSize: q(18), fontWeight: 600,
-                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                              marginBottom: q(4),
-                            }}>{r.goodsName}</div>
-                            <div style={{ color: '#ffd700', fontSize: q(22), fontWeight: 800 }}>
-                              ¥{parseFloat(r.goodsValue).toFixed(2)}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
 
         {/* 返回按鈕 + 再次回放按鈕 */}
         {gameStatus === 'finished' && (
