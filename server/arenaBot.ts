@@ -29,9 +29,12 @@ import {
   broadcastRoomListUpdate,
 } from "./arenaSSE";
 
-// ── 配置 ──────────────────────────────────────────────────────────────────
+// ── 配置 ──────────────────────────────────────────────────────────────────────
 const BOT_CHECK_INTERVAL = 8000;   // 每8秒检测一次
 const BOT_WAIT_THRESHOLD = 10;     // 等待超过10秒派机器人（秒）
+const BOT_GOLD_THRESHOLD = 10000;  // 金币低于此值时触发补充
+const BOT_GOLD_REFILL = 1000000;   // 补充后的目标金币数（100万）
+const BOT_REFILL_INTERVAL = 60000; // 每60秒检查一次金币补充
 
 /** 根据概率权重随机抽取一个 boxGoods */
 function rollBoxGoods(goods: Array<{ id: number; probability: string; [key: string]: unknown }>) {
@@ -324,12 +327,31 @@ async function finishBotGame(
 
 let botLoopStarted = false;
 
+/** 检查并补充金币低于阈值的机器人 */
+async function refillBotGold() {
+  const db = await getDb();
+  if (!db) return;
+
+  // 一次性找出所有金币低于阈值的机器人，直接用 SQL 批量更新
+  const [result] = await db.execute(
+    sql`UPDATE players
+        SET gold = ${BOT_GOLD_REFILL.toFixed(2)}
+        WHERE isBot = 1
+          AND CAST(gold AS DECIMAL(15,2)) < ${BOT_GOLD_THRESHOLD}`
+  );
+  const affected = (result as any).affectedRows ?? 0;
+  if (affected > 0) {
+    console.log(`[ArenaBot] 金币补充：已为 ${affected} 个机器人补充金币至 ${BOT_GOLD_REFILL}`);
+  }
+}
+
 export function startBotLoop() {
   if (botLoopStarted) return;
   botLoopStarted = true;
 
   console.log("[ArenaBot] 机器人服务已启动，检测间隔:", BOT_CHECK_INTERVAL, "ms");
 
+  // 房间填充循环
   setInterval(async () => {
     try {
       await checkAndFillRooms();
@@ -341,6 +363,16 @@ export function startBotLoop() {
       }
     }
   }, BOT_CHECK_INTERVAL);
+
+  // 金币补充循环：启动时立即执行一次，之后每 60 秒检查
+  refillBotGold().catch((err) => console.error('[ArenaBot] 初始金币补充出错:', err));
+  setInterval(async () => {
+    try {
+      await refillBotGold();
+    } catch (err: any) {
+      console.error('[ArenaBot] 金币补充出错:', err);
+    }
+  }, BOT_REFILL_INTERVAL);
 }
 
 // 正在处理中的房间ID集合，防止并发重复处理
