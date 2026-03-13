@@ -402,9 +402,9 @@ function RoomCard({ room, onClick }: RoomCardProps) {
 
       {/* 中间：金额 + 状态标签 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ color: '#ffd700', fontSize: q(28), fontWeight: 700 }}>
-          <img src="/img/jinbi1.png" alt="" style={{ width: q(22), height: q(22), verticalAlign: 'middle', marginRight: q(4) }} />
-          {parseFloat(room.entryFee).toFixed(0)}
+        <div style={{ color: '#ffd700', fontSize: q(28), fontWeight: 700, display: 'flex', alignItems: 'center', gap: q(6) }}>
+          <img src="/img/jinbi1.png" alt="" style={{ width: q(28), height: q(28), flexShrink: 0 }} />
+          <span>{parseFloat(room.entryFee).toFixed(0)}</span>
         </div>
         <div style={{
           padding: `${q(3)} ${q(12)}`,
