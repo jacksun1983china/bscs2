@@ -577,6 +577,9 @@ export default function ArenaRoom() {
   }, [roomId]);
 
   const [gameStatus, setGameStatus] = useState<'waiting' | 'playing' | 'finished'>('waiting');
+  // 用 ref 跟踪最新的 gameStatus，供 useCallback 闭包中访问（避免闭包捕获旧值）
+  const gameStatusRef = useRef<'waiting' | 'playing' | 'finished'>('waiting');
+  useEffect(() => { gameStatusRef.current = gameStatus; }, [gameStatus]);
   const [currentRound, setCurrentRound] = useState(1);
   const [spinning, setSpinning] = useState(false);
   const [spinDoneCount, setSpinDoneCount] = useState(0);
@@ -732,6 +735,14 @@ export default function ArenaRoom() {
       case 'spectator_count':
         setSpectatorCount(msg.count as number);
         break;
+      case 'connected': {
+        // SSE 重连成功，如果游戏正在进行中，主动拉取最新房间状态以恢复游戏
+        // 已有的 useEffect 兜底逻辑会根据 roomDetail 自动恢复游戏状态
+        if (gameStatusRef.current === 'playing') {
+          refetchRoom();
+        }
+        break;
+      }
       case 'danmaku': {
         const item: DanmakuItem = {
           id: ++danmakuIdRef.current,

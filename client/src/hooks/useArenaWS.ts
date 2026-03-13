@@ -47,8 +47,7 @@ export function useArenaWS({ onMessage, subscribeList = false, subscribeRoomId =
     es.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data) as ArenaWSMessage;
-        // 过滤心跳
-        if (msg.type === 'connected') return;
+        // 不过滤 connected 事件，让调用方感知重连（用于游戏状态恢复）
         onMessageRef.current?.(msg);
       } catch {
         // ignore parse errors
