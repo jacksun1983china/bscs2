@@ -447,6 +447,7 @@ export default function ArenaRoom() {
   const [replayKey, setReplayKey] = useState(0); // 每次点击回放递增，强制重置状态
   const [replayRound, setReplayRound] = useState(0);
   const replayRoundRef = useRef(0); // 用ref跟踪最新値，避免handleSlotDone闭包捕获旧値
+  const lastConnectedRefetchRef = useRef(0); // 防抖：记录上次 connected 触发 refetchRoom 的时间
   const replaySpinStartedRef = useRef(0); // 记录已经启动 slot 的轮次，防止重复触发
   const [isReplaying, setIsReplaying] = useState(false);
   // 回放是否正在等待开场动画完成（线性流程：开场动画 → slot动画）
@@ -497,11 +498,11 @@ export default function ArenaRoom() {
     {
       enabled: roomId > 0 && roomDetailEnabled,
       refetchOnWindowFocus: false,
-      // 等待状态下每 3 秒轮询一次，兜底 SSE 失效的情况
+      // 等待状态下每 10 秒轮询一次，兜底 SSE 失效的情况（减少请求频率避免 429）
       // 注意：此处不能引用 gameStatus（后声明），改用 roomDetail 的状态判断
       refetchInterval: (query) => {
         const data = query.state.data as { room?: { status?: string } } | undefined;
-        return data?.room?.status === 'waiting' || !data ? 3000 : false;
+        return data?.room?.status === 'waiting' || !data ? 10000 : false;
       },
     }
   );
@@ -738,8 +739,13 @@ export default function ArenaRoom() {
       case 'connected': {
         // SSE 重连成功，如果游戏正在进行中，主动拉取最新房间状态以恢复游戏
         // 已有的 useEffect 兜底逻辑会根据 roomDetail 自动恢复游戏状态
+        // 防抖：5 秒内只触发一次，避免 SSE 频繁断连重连导致请求爆发
         if (gameStatusRef.current === 'playing') {
-          refetchRoom();
+          const now = Date.now();
+          if (now - lastConnectedRefetchRef.current > 5000) {
+            lastConnectedRefetchRef.current = now;
+            refetchRoom();
+          }
         }
         break;
       }
