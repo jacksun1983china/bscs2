@@ -482,6 +482,8 @@ export default function ArenaRoom() {
       // 等待状态下每 10 秒轮询一次，兜底 SSE 失效的情况（减少请求频率避免 429）
       // 注意：此处不能引用 gameStatus（后声明），改用 roomDetail 的状态判断
       refetchInterval: (query) => {
+        // 错误时停止轮询，避免 429 死循环
+        if (query.state.error) return false;
         const data = query.state.data as { room?: { status?: string } } | undefined;
         return data?.room?.status === 'waiting' || !data ? 10000 : false;
       },
@@ -524,7 +526,7 @@ export default function ArenaRoom() {
       setJoinLoading(false);
       // 429 Too Many Requests：自动重试（最多 2 次，逐次加长延迟）
       const httpStatus = (err as any)?.data?.httpStatus;
-      const is429 = httpStatus === 429 || err.message?.includes('429');
+      const is429 = httpStatus === 429 || err.message?.includes('429') || err.message?.includes('Rate exceeded') || err.message?.includes('Too Many');
       if (is429 && joinRetryRef.current < 2) {
         joinRetryRef.current += 1;
         const delay = 1500 * joinRetryRef.current; // 1.5s, 3s

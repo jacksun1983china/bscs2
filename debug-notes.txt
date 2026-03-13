@@ -1,0 +1,14 @@
+Bug分析：
+1. sku.boxList limit=200 超过后端 max(100) 验证 → 400错误
+2. 429 Rate exceeded 是因为 generalApiLimit 每分钟3000次，但前端可能在短时间内发了大量请求
+3. 429返回的是JSON格式 {error:{code,message,retryAfter}}，但tRPC客户端期望的是tRPC格式
+4. 429响应不经过tRPC中间件，直接由Express返回，所以tRPC客户端无法解析
+5. 前端retry配置检查httpStatus===429，但429不是tRPC返回的，error.data.httpStatus不存在
+6. 实际上429的响应体是 JSON {error:...}，但错误信息显示 "Unexpected token 'R', Rate exceeded."
+   这说明429返回的可能是纯文本 "Rate exceeded." 而不是JSON
+
+修复方案：
+A. 前端：limit=200 改为 limit=100
+B. 前端：retry逻辑需要正确检测429（检查error.message或status）
+C. 服务端：429返回的格式需要与tRPC兼容，或者大幅提高限制
+D. 最简单：提高generalApiLimit到更高值，因为3000/分钟对于正常游戏页面可能不够

@@ -12,13 +12,26 @@ const queryClient = new QueryClient({
     queries: {
       // 全局 30 秒 staleTime，减少重复请求，避免触发 429
       staleTime: 30_000,
-      // 429 Too Many Requests 不自动重试，避免加剧限流
+      // 不自动重试 429/400 等不可恢复错误
       retry: (failureCount, error) => {
+        const errMsg = (error as any)?.message ?? '';
         const httpStatus = (error as any)?.data?.httpStatus;
+        // 429 Rate exceeded（可能是纯文本响应导致 JSON 解析失败）
         if (httpStatus === 429) return false;
-        return failureCount < 2;
+        if (errMsg.includes('Rate exceeded')) return false;
+        if (errMsg.includes('429')) return false;
+        if (errMsg.includes('Too Many Requests')) return false;
+        // Zod 验证错误（如 limit 超限）不重试
+        if (httpStatus === 400) return false;
+        if (errMsg.includes('Too big')) return false;
+        // 其他错误最多重试 1 次
+        return failureCount < 1;
       },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      retryDelay: (attemptIndex) => Math.min(2000 * 2 ** attemptIndex, 30000),
+    },
+    mutations: {
+      // mutation 默认不重试
+      retry: false,
     },
   },
 });

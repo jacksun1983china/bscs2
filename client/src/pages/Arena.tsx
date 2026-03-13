@@ -57,7 +57,7 @@ function CreateRoomModal({ onClose, onCreated }: CreateRoomModalProps) {
   const boxList = { list: boxListData?.data };
   // 全量宝笱（不过滤分类），用于底部已选预览
   const { data: allBoxListData } = trpc.sku.boxList.useQuery(
-    { page: 1, limit: 200 },
+    { page: 1, limit: 100 },
     { staleTime: 120_000 }
   );
   const allBoxes: any[] = allBoxListData?.data ?? [];
