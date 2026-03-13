@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
 
 const IMG = {
-  pageBg: CDN + '8f9d28fdfc7667250b233c3d0bfe09c5_1ed4dc7c.png',         // 卡片背景
+  pageBg: CDN + 'f31991704ee2ae0c587bced542f86af9_c8c76942.png',         // 卡片背景（深紫色条纹卡片）
   closeIcon: CDN + '0a565575e1660d7f436be303ee97cd36_a9baada9.png',      // 关闭图标
   phoneLabelBg: CDN + '309437a2ef150f79de28ac7201cb7788_680a4c9a.png',   // 手机号标签背景
   inputBg: CDN + 'a905cabde518af2a82a2306ac1069c8d_b809f334.png',        // 输入框背景
