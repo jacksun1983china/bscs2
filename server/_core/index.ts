@@ -44,7 +44,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // 速率限制中间件
-  // 游戏操作接口：每 IP 每秒 10 次（防止脚本刷分）
+  // 游戏操作接口：每 IP 每秒 60 次（防止脚本刷分）
   app.use("/api/trpc/game.", gameActionLimit);
   app.use("/api/trpc/rush.", gameActionLimit);
   app.use("/api/trpc/vortex.", gameActionLimit);
@@ -55,7 +55,7 @@ async function startServer() {
   app.use("/api/trpc/player.sendSmsCode", smsLimit);
   // 管理员登录：每 IP 每 15 分钟 10 次
   app.use("/api/trpc/admin.login", adminLoginLimit);
-  // 通用 API 限制：每 IP 每分钟 120 次
+  // 通用 API 限制：每 IP 每分钟 3000 次
   app.use("/api/trpc", generalApiLimit);
 
   // OAuth callback under /api/oauth/callback

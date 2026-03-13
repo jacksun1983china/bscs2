@@ -63,21 +63,21 @@ export function createRateLimit(options: RateLimitOptions) {
 }
 
 /**
- * 预设：通用 API 限制（每 IP 每分钟 600 次）
- * 注：竞技场房间页面有轮询+SSE，需要较高的限制
+ * 预设：通用 API 限制（每 IP 每分钟 3000 次）
+ * 限流仅用于防止恶意抓取，正常游戏操作不应被限制
  */
 export const generalApiLimit = createRateLimit({
   windowMs: 60 * 1000,
-  max: 600,
+  max: 3000,
   message: "请求过于频繁，请 1 分钟后再试",
 });
 
 /**
- * 预设：游戏操作限制（每 IP 每秒 10 次，防止脚本刷分）
+ * 预设：游戏操作限制（每 IP 每秒 60 次，防止脚本刷分）
  */
 export const gameActionLimit = createRateLimit({
   windowMs: 1000,
-  max: 10,
+  max: 60,
   message: "操作过于频繁，请稍后再试",
 });
 
