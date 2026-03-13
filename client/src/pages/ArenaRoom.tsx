@@ -591,6 +591,7 @@ export default function ArenaRoom() {
   // 用 ref 跟踪最新的 gameStatus，供 useCallback 闭包中访问（避免闭包捕获旧值）
   const gameStatusRef = useRef<'waiting' | 'playing' | 'finished'>('waiting');
   useEffect(() => { gameStatusRef.current = gameStatus; }, [gameStatus]);
+
   // SSE 连接状态：true=已连接，false=断线重连中
   const [sseConnected, setSseConnected] = useState(true);
   // 断线提示延迟显示（避免短暂断线闪烁），只有断线超过 2s 才显示提示
@@ -632,6 +633,12 @@ export default function ArenaRoom() {
 
   // 开奖展示覆盖层
   const [showRoundReveal, setShowRoundReveal] = useState(false);
+  // 游戏结束获奖弹窗
+  const [showPrizeModal, setShowPrizeModal] = useState(false);
+  const [myPrizeItems, setMyPrizeItems] = useState<Array<{
+    goodsId: number; goodsName: string; goodsImage: string; goodsLevel: number; goodsValue: string;
+  }>>([]);
+  const utils = trpc.useUtils();
   const [revealItems, setRevealItems] = useState<Array<{
     nickname: string;
     goodsName: string;
@@ -760,6 +767,8 @@ export default function ArenaRoom() {
         setGameOverData(overData);
         setGameStatus('finished');
         refetchRoom();
+        // 刷新背包数据
+        utils.player.inventory.invalidate();
         setTimeout(() => {
           if (overData.players.some((p) => p.isWinner)) playWinFanfare();
           else playLoseTone();
@@ -1018,6 +1027,29 @@ export default function ArenaRoom() {
 
   const myPlayerId = roomDetail?.myPlayerId ?? 0;
   const isCreator = room ? room.creatorId === myPlayerId : false;
+
+  // 游戏结束时，展示我的获奖弹窗
+  useEffect(() => {
+    if (gameStatus !== 'finished' || myPlayerId === 0) return;
+    // 收集所有轮次中我的物品
+    const items: Array<{ goodsId: number; goodsName: string; goodsImage: string; goodsLevel: number; goodsValue: string }> = [];
+    for (const roundArr of Object.values(roundResults)) {
+      for (const r of roundArr) {
+        if (r.playerId === myPlayerId) {
+          items.push({ goodsId: r.goodsId, goodsName: r.goodsName, goodsImage: r.goodsImage, goodsLevel: r.goodsLevel, goodsValue: r.goodsValue });
+        }
+      }
+    }
+    // 如果没有轮次结果（如观战者没有参与），就不弹窗
+    if (items.length === 0) return;
+    // 延迟 1.5s 再弹出，等待背景音效播完
+    const timer = setTimeout(() => {
+      setMyPrizeItems(items);
+      setShowPrizeModal(true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameStatus, myPlayerId]);
 
   // ── 发送弹幕 ──
   const handleSendDanmaku = useCallback(async () => {
@@ -1285,6 +1317,94 @@ export default function ArenaRoom() {
         alt=""
         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.4, pointerEvents: 'none' }}
       />
+
+      {/* ── 游戏结束获奖弹窗 ── */}
+      {showPrizeModal && myPrizeItems.length > 0 && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 500,
+          background: 'rgba(5,1,15,0.95)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          padding: `${q(40)} ${q(20)}`,
+          animation: 'prizeModalIn 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+        }}>
+          <style>{`
+            @keyframes prizeModalIn { from { opacity:0; transform:scale(0.85); } to { opacity:1; transform:scale(1); } }
+            @keyframes prizeItemIn { from { opacity:0; transform:translateY(30px) scale(0.8); } to { opacity:1; transform:translateY(0) scale(1); } }
+            @keyframes prizeGoldSpin { 0%{transform:rotateY(0deg);} 100%{transform:rotateY(360deg);} }
+            @keyframes prizeShine { 0%,100%{opacity:0.6;} 50%{opacity:1;} }
+          `}</style>
+          {/* 标题 */}
+          <div style={{ textAlign: 'center', marginBottom: q(32) }}>
+            <div style={{ fontSize: q(48), marginBottom: q(8) }}>🎉</div>
+            <div style={{ color: '#f5c842', fontSize: q(36), fontWeight: 900, textShadow: '0 0 20px rgba(245,200,66,0.8)', letterSpacing: 2 }}>恭喜获得奖励！</div>
+            <div style={{ color: '#c084fc', fontSize: q(24), marginTop: q(8) }}>
+              共 <span style={{ color: '#f5c842', fontWeight: 700, fontSize: q(28) }}>{myPrizeItems.length}</span> 件道具已入背包
+            </div>
+          </div>
+          {/* 物品列表 */}
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: q(16),
+            justifyContent: 'center', maxWidth: q(700),
+            maxHeight: q(600), overflowY: 'auto',
+          }}>
+            {myPrizeItems.map((item, idx) => (
+              <div key={idx} style={{
+                width: q(180), display: 'flex', flexDirection: 'column', alignItems: 'center',
+                background: item.goodsLevel === 1
+                  ? 'linear-gradient(135deg,rgba(200,134,10,0.3),rgba(245,200,66,0.2))'
+                  : item.goodsLevel === 2
+                    ? 'linear-gradient(135deg,rgba(106,13,173,0.3),rgba(192,132,252,0.2))'
+                    : 'rgba(20,8,50,0.8)',
+                border: `2px solid ${
+                  item.goodsLevel === 1 ? 'rgba(245,200,66,0.8)'
+                    : item.goodsLevel === 2 ? 'rgba(192,132,252,0.8)'
+                    : 'rgba(96,165,250,0.5)'
+                }`,
+                borderRadius: q(12), padding: q(12),
+                animation: `prizeItemIn 0.4s ease ${idx * 0.08}s both`,
+                boxShadow: item.goodsLevel === 1
+                  ? '0 0 20px rgba(245,200,66,0.4)'
+                  : item.goodsLevel === 2
+                    ? '0 0 20px rgba(192,132,252,0.4)'
+                    : 'none',
+              }}>
+                <div style={{
+                  width: q(120), height: q(120), borderRadius: q(8), overflow: 'hidden',
+                  background: 'rgba(0,0,0,0.3)', marginBottom: q(8),
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <img src={item.goodsImage} alt={item.goodsName}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                </div>
+                <div style={{
+                  color: item.goodsLevel === 1 ? '#f5c842' : item.goodsLevel === 2 ? '#c084fc' : '#60a5fa',
+                  fontSize: q(16), fontWeight: 700, marginBottom: q(4),
+                }}>
+                  {item.goodsLevel === 1 ? '传说' : item.goodsLevel === 2 ? '稀有' : '普通'}
+                </div>
+                <div style={{ color: '#fff', fontSize: q(18), fontWeight: 600, textAlign: 'center', lineHeight: 1.3 }}>{item.goodsName}</div>
+                <div style={{ color: '#ffd700', fontSize: q(22), fontWeight: 800, marginTop: q(4) }}>¥{parseFloat(item.goodsValue).toFixed(2)}</div>
+              </div>
+            ))}
+          </div>
+          {/* 关闭按钮 */}
+          <button
+            onClick={() => setShowPrizeModal(false)}
+            style={{
+              marginTop: q(32),
+              padding: `${q(16)} ${q(60)}`,
+              background: 'linear-gradient(135deg,#7c3aed,#c084fc)',
+              border: 'none', borderRadius: q(30),
+              color: '#fff', fontSize: q(28), fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 4px 20px rgba(192,132,252,0.5)',
+            }}
+          >
+            太棒了！
+          </button>
+        </div>
+      )}
 
       {/* ── 开奖展示覆盖层 ── */}
       {showRoundReveal && revealItems.length > 0 && (

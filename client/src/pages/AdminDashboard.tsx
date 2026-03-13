@@ -140,6 +140,16 @@ const I18N = {
     extractable: '可提取',
     extracted: '已提取',
     extract: '提取',
+    adjustGold: '调整金币',
+    adjustGoldTitle: '手动调整金币',
+    adjustAmount: '调整金币数量',
+    adjustAmountHint: '正数为增加，负数为扣除',
+    adjustReason: '调整原因',
+    adjustReasonPlaceholder: '请输入调整原因',
+    adjustConfirm: '确认调整',
+    adjustSuccess: '金币调整成功',
+    currentGold: '当前金币',
+    afterAdjust: '调整后金币',
   },
   en: {
     title: 'BDCS2 Admin Console',
@@ -253,6 +263,16 @@ const I18N = {
     extractable: 'Extractable',
     extracted: 'Extracted',
     extract: 'Extract',
+    adjustGold: 'Adjust Gold',
+    adjustGoldTitle: 'Manual Gold Adjustment',
+    adjustAmount: 'Adjustment Amount',
+    adjustAmountHint: 'Positive to add, negative to deduct',
+    adjustReason: 'Reason',
+    adjustReasonPlaceholder: 'Enter reason for adjustment',
+    adjustConfirm: 'Confirm',
+    adjustSuccess: 'Gold adjusted successfully',
+    currentGold: 'Current Gold',
+    afterAdjust: 'Gold After Adjustment',
   },
 };
 
@@ -260,7 +280,30 @@ const I18N = {
 function PlayerDetailModal({
   playerId, onClose, t,
 }: { playerId: number; onClose: () => void; t: typeof I18N['zh'] }) {
-  const { data: player, isLoading } = trpc.admin.playerDetail.useQuery({ id: playerId });
+  const { data: player, isLoading, refetch } = trpc.admin.playerDetail.useQuery({ id: playerId });
+  const [showAdjust, setShowAdjust] = useState(false);
+  const [adjustAmount, setAdjustAmount] = useState('');
+  const [adjustReason, setAdjustReason] = useState('');
+  const utils = trpc.useUtils();
+  const adjustMutation = trpc.admin.adjustPlayerGold.useMutation({
+    onSuccess: (data) => {
+      toast.success(`${t.adjustSuccess}: ${data.newGold.toFixed(2)}`);
+      setShowAdjust(false);
+      setAdjustAmount('');
+      setAdjustReason('');
+      refetch();
+      utils.admin.playerList.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const handleAdjust = () => {
+    const amt = parseFloat(adjustAmount);
+    if (isNaN(amt) || amt === 0) { toast.error('请输入有效数字'); return; }
+    if (!adjustReason.trim()) { toast.error(t.adjustReasonPlaceholder); return; }
+    adjustMutation.mutate({ playerId, amount: amt, reason: adjustReason.trim() });
+  };
+  const currentGold = player ? parseFloat(player.gold || '0') : 0;
+  const previewGold = currentGold + (parseFloat(adjustAmount) || 0);
 
   return (
     <div
@@ -277,6 +320,7 @@ function PlayerDetailModal({
           border: '1px solid rgba(120,60,220,0.5)',
           borderRadius: 16, padding: 28, width: '100%', maxWidth: 520,
           boxShadow: '0 20px 60px rgba(80,20,160,0.6)',
+          maxHeight: '90vh', overflowY: 'auto',
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -287,32 +331,110 @@ function PlayerDetailModal({
         {isLoading ? (
           <div style={{ textAlign: 'center', padding: 40, color: 'rgba(180,150,255,0.6)' }}>{t.loading}</div>
         ) : player ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {[
-              [t.id, player.id],
-              [t.phone, player.phone?.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')],
-              [t.nickname, player.nickname],
-              [t.vip, `VIP${player.vipLevel}`],
-              [t.gold, parseFloat(player.gold || '0').toFixed(2)],
-              [t.diamond, parseFloat(player.diamond || '0').toFixed(2)],
-              [t.totalRechargeLabel, `¥${parseFloat(player.totalRecharge || '0').toFixed(2)}`],
-              [t.totalWinLabel, `¥${parseFloat(player.totalWin || '0').toFixed(2)}`],
-              [t.status, player.status === 1 ? `✅ ${t.active}` : `🚫 ${t.banned}`],
-              [t.inviteCode, player.inviteCode],
-              [t.registerIp, player.registerIp || '-'],
-              [t.lastIp, player.lastIp || '-'],
-              [t.createdAt, player.createdAt ? new Date(player.createdAt).toLocaleString() : '-'],
-              [t.lastLogin, player.lastLogin ? new Date(player.lastLogin).toLocaleString() : '-'],
-            ].map(([label, value]) => (
-              <div key={label as string} style={{
-                background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '8px 12px',
-                border: '1px solid rgba(120,60,220,0.2)',
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {[
+                [t.id, player.id],
+                [t.phone, player.phone?.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')],
+                [t.nickname, player.nickname],
+                [t.vip, `VIP${player.vipLevel}`],
+                [t.gold, parseFloat(player.gold || '0').toFixed(2)],
+                [t.diamond, parseFloat(player.diamond || '0').toFixed(2)],
+                [t.totalRechargeLabel, `¥${parseFloat(player.totalRecharge || '0').toFixed(2)}`],
+                [t.totalWinLabel, `¥${parseFloat(player.totalWin || '0').toFixed(2)}`],
+                [t.status, player.status === 1 ? `✅ ${t.active}` : `🚫 ${t.banned}`],
+                [t.inviteCode, player.inviteCode],
+                [t.registerIp, player.registerIp || '-'],
+                [t.lastIp, player.lastIp || '-'],
+                [t.createdAt, player.createdAt ? new Date(player.createdAt).toLocaleString() : '-'],
+                [t.lastLogin, player.lastLogin ? new Date(player.lastLogin).toLocaleString() : '-'],
+              ].map(([label, value]) => (
+                <div key={label as string} style={{
+                  background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '8px 12px',
+                  border: '1px solid rgba(120,60,220,0.2)',
+                }}>
+                  <div style={{ color: 'rgba(180,150,255,0.6)', fontSize: 11, marginBottom: 2 }}>{label as string}</div>
+                  <div style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>{String(value ?? '-')}</div>
+                </div>
+              ))}
+            </div>
+            {/* 调整金币按鈕 */}
+            <div style={{ marginTop: 16 }}>
+              <button
+                onClick={() => setShowAdjust(v => !v)}
+                style={{
+                  width: '100%', padding: '10px 0', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                  cursor: 'pointer', border: '1px solid rgba(251,191,36,0.4)',
+                  background: showAdjust ? 'rgba(251,191,36,0.25)' : 'rgba(251,191,36,0.12)',
+                  color: '#fbbf24', transition: 'all 0.2s',
+                }}
+              >
+                💰 {t.adjustGold}
+              </button>
+            </div>
+            {/* 调整金币面板 */}
+            {showAdjust && (
+              <div style={{
+                marginTop: 12, padding: 16, borderRadius: 12,
+                background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.25)',
               }}>
-                <div style={{ color: 'rgba(180,150,255,0.6)', fontSize: 11, marginBottom: 2 }}>{label as string}</div>
-                <div style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>{String(value ?? '-')}</div>
+                <div style={{ color: '#fbbf24', fontSize: 14, fontWeight: 700, marginBottom: 12 }}>{t.adjustGoldTitle}</div>
+                {/* 当前金币预览 */}
+                <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+                  <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '8px 12px', border: '1px solid rgba(120,60,220,0.2)' }}>
+                    <div style={{ color: 'rgba(180,150,255,0.6)', fontSize: 11, marginBottom: 2 }}>{t.currentGold}</div>
+                    <div style={{ color: '#fbbf24', fontSize: 15, fontWeight: 700 }}>{currentGold.toFixed(2)}</div>
+                  </div>
+                  <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '8px 12px', border: '1px solid rgba(120,60,220,0.2)' }}>
+                    <div style={{ color: 'rgba(180,150,255,0.6)', fontSize: 11, marginBottom: 2 }}>{t.afterAdjust}</div>
+                    <div style={{ color: previewGold >= 0 ? '#10b981' : '#ef4444', fontSize: 15, fontWeight: 700 }}>{previewGold.toFixed(2)}</div>
+                  </div>
+                </div>
+                {/* 调整数量输入 */}
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ color: 'rgba(180,150,255,0.7)', fontSize: 12, marginBottom: 4 }}>{t.adjustAmount} <span style={{ color: 'rgba(180,150,255,0.4)', fontSize: 11 }}>({t.adjustAmountHint})</span></div>
+                  <input
+                    type="number"
+                    value={adjustAmount}
+                    onChange={e => setAdjustAmount(e.target.value)}
+                    placeholder="例：100 或 -50"
+                    style={{
+                      width: '100%', padding: '8px 12px', borderRadius: 8, fontSize: 14,
+                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(120,60,220,0.35)',
+                      color: '#fff', outline: 'none', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+                {/* 原因输入 */}
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: 'rgba(180,150,255,0.7)', fontSize: 12, marginBottom: 4 }}>{t.adjustReason}</div>
+                  <input
+                    type="text"
+                    value={adjustReason}
+                    onChange={e => setAdjustReason(e.target.value)}
+                    placeholder={t.adjustReasonPlaceholder}
+                    style={{
+                      width: '100%', padding: '8px 12px', borderRadius: 8, fontSize: 14,
+                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(120,60,220,0.35)',
+                      color: '#fff', outline: 'none', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={handleAdjust}
+                  disabled={adjustMutation.isPending}
+                  style={{
+                    width: '100%', padding: '10px 0', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                    cursor: adjustMutation.isPending ? 'not-allowed' : 'pointer',
+                    background: adjustMutation.isPending ? 'rgba(123,47,255,0.3)' : 'linear-gradient(135deg,#7b2fff,#06b6d4)',
+                    color: '#fff', border: 'none', opacity: adjustMutation.isPending ? 0.7 : 1,
+                  }}
+                >
+                  {adjustMutation.isPending ? t.loading : t.adjustConfirm}
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         ) : (
           <div style={{ textAlign: 'center', padding: 40, color: 'rgba(255,100,100,0.7)' }}>Not found</div>
         )}

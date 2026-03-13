@@ -124,6 +124,22 @@ export default function Home() {
     navigate(route);
   };
 
+  // 首次登录欢迎弹窗
+  const [showWelcome, setShowWelcome] = useState(false);
+  useEffect(() => {
+    if (!player) return;
+    const key = `welcome_shown_${player.id}`;
+    if (!localStorage.getItem(key)) {
+      // 延迟 600ms 等入场动画结束
+      const timer = setTimeout(() => setShowWelcome(true), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [player?.id]);
+  const handleCloseWelcome = () => {
+    if (player) localStorage.setItem(`welcome_shown_${player.id}`, '1');
+    setShowWelcome(false);
+  };
+
   return (
     <div
       className="phone-container"
@@ -459,6 +475,94 @@ export default function Home() {
 
       {/* 设置弹窗 */}
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+
+      {/* 首次登录欢迎弹窗 */}
+      {showWelcome && (
+        <div
+          style={{
+            position: 'absolute', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'welcomeFadeIn 0.4s ease',
+          }}
+          onClick={handleCloseWelcome}
+        >
+          <div
+            style={{
+              width: q(580), borderRadius: q(24),
+              background: 'linear-gradient(145deg, #1a0840 0%, #0d0621 60%, #1a0840 100%)',
+              border: '1.5px solid rgba(160,80,255,0.6)',
+              boxShadow: '0 0 60px rgba(120,40,220,0.6), 0 0 120px rgba(80,20,160,0.3)',
+              padding: `${q(32)} ${q(28)} ${q(28)}`,
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              animation: 'welcomeSlideUp 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* 标题 */}
+            <div style={{
+              fontSize: q(32), fontWeight: 900, color: '#fff',
+              textShadow: '0 0 20px rgba(160,80,255,0.8)',
+              marginBottom: q(8), letterSpacing: 2,
+            }}>&#x1F389; 欢迎加入 YouMe!</div>
+            <div style={{ color: 'rgba(180,150,255,0.7)', fontSize: q(22), marginBottom: q(24) }}>您的新手礼包已就绪</div>
+
+            {/* 金币展示区 */}
+            <div style={{
+              width: '100%', borderRadius: q(16),
+              background: 'linear-gradient(135deg, rgba(251,191,36,0.15) 0%, rgba(251,191,36,0.05) 100%)',
+              border: '1px solid rgba(251,191,36,0.4)',
+              padding: `${q(20)} ${q(24)}`,
+              display: 'flex', alignItems: 'center', gap: q(16),
+              marginBottom: q(24),
+            }}>
+              <div style={{ fontSize: q(48) }}>&#x1F4B0;</div>
+              <div>
+                <div style={{ color: 'rgba(251,191,36,0.7)', fontSize: q(20), marginBottom: q(4) }}>新手専属金币大礼包</div>
+                <div style={{
+                  fontSize: q(44), fontWeight: 900,
+                  background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  lineHeight: 1,
+                }}>1,000,000</div>
+                <div style={{ color: 'rgba(251,191,36,0.6)', fontSize: q(18), marginTop: q(2) }}>金币已自动入账</div>
+              </div>
+            </div>
+
+            {/* 提示文字 */}
+            <div style={{
+              color: 'rgba(180,150,255,0.5)', fontSize: q(18), textAlign: 'center',
+              marginBottom: q(20), lineHeight: 1.6,
+            }}>
+              去竞技场、ROLL房、幸运转盘中展身手，赢取更多大奖！
+            </div>
+
+            {/* 确认按鈕 */}
+            <button
+              onClick={handleCloseWelcome}
+              style={{
+                width: '100%', padding: `${q(16)} 0`, borderRadius: q(12),
+                fontSize: q(26), fontWeight: 800, cursor: 'pointer', border: 'none',
+                background: 'linear-gradient(135deg, #7b2fff 0%, #06b6d4 100%)',
+                color: '#fff', letterSpacing: 2,
+                boxShadow: '0 4px 20px rgba(123,47,255,0.5)',
+              }}
+            >
+              开始游戏 &#x1F3AE;
+            </button>
+          </div>
+        </div>
+      )}
+      <style>{`
+        @keyframes welcomeFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes welcomeSlideUp {
+          from { opacity: 0; transform: translateY(40px) scale(0.9); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </div>
   );
 }

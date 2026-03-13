@@ -747,4 +747,30 @@ export const adminRouter = router({
         total: Number(countResult[0]?.count ?? 0),
       };
     }),
+
+  /** 管理后台：手动调整玩家金币 */
+  adjustPlayerGold: adminProcedure
+    .input(z.object({
+      playerId: z.number(),
+      amount: z.number(), // 正数为增加，负数为扣除
+      reason: z.string().min(1, '请填写原因'),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: '数据库未连接' });
+      const player = await getPlayerById(input.playerId);
+      if (!player) throw new TRPCError({ code: 'NOT_FOUND', message: '玩家不存在' });
+      const currentGold = parseFloat(String(player.gold ?? 0));
+      const newGold = currentGold + input.amount;
+      if (newGold < 0) throw new TRPCError({ code: 'BAD_REQUEST', message: '金币不足，无法扣除' });
+      await db.update(players).set({ gold: String(newGold.toFixed(2)) }).where(eq(players.id, input.playerId));
+      await insertGoldLog(
+        input.playerId,
+        input.amount,
+        newGold,
+        input.amount >= 0 ? 'admin_gift' : 'admin_deduct',
+        input.reason,
+      );
+      return { success: true, newGold };
+    }),
 });
