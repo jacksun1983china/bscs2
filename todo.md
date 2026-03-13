@@ -1010,3 +1010,8 @@
 - [x] 修复 revealingRef 竞态条件：防止 SSE 在 reveal 动画期间（SLOT转完后2.2秒展示期）直接启动下一轮
 - [x] 添加 [SM] 调试日志：记录每个 SSE 事件和状态机转换的完整时序
 - [x] 编写 24 个线性状态机单元测试（arenaStateMachine.test.ts），覆盖8轮完整流程、竞态保护、边界情况
+
+## 竞技场+背包紧急修复（2026-03-14 第二轮）
+- [x] 修复最后一局动画没看完就直接显示结算结果（根因：setSpinning(false)和revealingRef=true之间有时间空隙，修复为先设置revealingRef再清除spinning）
+- [x] 修复 SLOT 旋转方向：改为从上往下转（目标道具放卷轴前部，动画从 translateY负值到0）
+- [x] 修复背包物品分解返回 0 金币（arenaBot.ts 插入 playerItems 时缺少 recycleGold 字段，已修复代码并修复历史数据）

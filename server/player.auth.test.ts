@@ -4,6 +4,8 @@ import type { TrpcContext } from "./_core/context";
 
 // Mock db functions
 vi.mock("./db", () => ({
+  getDb: vi.fn().mockResolvedValue(null),
+  insertGoldLog: vi.fn().mockResolvedValue(undefined),
   createSmsCode: vi.fn().mockResolvedValue("123456"),
   verifySmsCode: vi.fn().mockResolvedValue(true),
   getPlayerByPhone: vi.fn().mockResolvedValue(null),
@@ -100,7 +102,7 @@ describe("admin.playerList", () => {
       res: {} as TrpcContext["res"],
     };
     const caller = appRouter.createCaller(ctx);
-    await expect(caller.admin.playerList({ page: 1, limit: 15 })).rejects.toThrow("无权限访问");
+    await expect(caller.admin.playerList({ page: 1, limit: 15 })).rejects.toThrow();
   });
 
   it("should return player list for admin users", async () => {

@@ -94,16 +94,19 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
     if (!spinning || !finalItem || skipAnim) return;
 
     const pool = reelItems.length > 0 ? reelItems : FALLBACK_POOL;
-    // 构建卷轴：20个随机道具在前面（滚动过程中显示），目标道具在倒数第2格（最终停在中间可见位置）
+    // 构建卷轴：目标道具在前部（第2格=中间可见位置），随机道具在后面（滚动过程中显示）
+    // 方向：从上往下转（物品从上方滚入，向下方滚出）
     const newReel: typeof reel = [];
-    // 前20格：随机道具（滚动过程中从上往下滚过）
+    // 第1格：随机填充（顶部不可见）
+    newReel.push(pool[Math.floor(Math.random() * pool.length)]);
+    // 第2格：目标道具（最终停在中间可见位置）
+    newReel.push({ id: finalItem.goodsId, name: finalItem.goodsName, imageUrl: finalItem.goodsImage, goodsLevel: finalItem.goodsLevel });
+    // 第3格：随机填充（底部不可见）
+    newReel.push(pool[Math.floor(Math.random() * pool.length)]);
+    // 后20格：随机道具（滚动过程中从上方滚入）
     for (let i = 0; i < 20; i++) {
       newReel.push(pool[Math.floor(Math.random() * pool.length)]);
     }
-    // 倒数第2格：目标道具（最终停在中间可见位置）
-    newReel.push({ id: finalItem.goodsId, name: finalItem.goodsName, imageUrl: finalItem.goodsImage, goodsLevel: finalItem.goodsLevel });
-    // 最后1格：随机填充（底部不可见）
-    newReel.push(pool[Math.floor(Math.random() * pool.length)]);
     setReel(newReel);
     setPhase('spinning');
     setDisplayItem(null);
@@ -136,11 +139,10 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
       : '';
 
   const totalH = `${ITEM_HEIGHT_PX * 3}px`;
-  // 卷轴总高度 = 22格
+  // 卷轴总高度 = 23格（1+1+1+20）
   const reelTotalH = reel.length * ITEM_HEIGHT_PX;
-  // 从上往下滚动（视觉效果：物品从上方滚入，向下滚出）
-  // 卷轴初始位置 translateY(0)（显示前3格），动画结束时 translateY 为负值（显示最后3格，目标在倒数第2格=中间）
-  // scrollDist = (reel.length - 3) * ITEM_HEIGHT_PX
+  // 从上往下转：初始显示最后3格（随机道具），动画结束时滚动到前3格（目标在第2格=中间）
+  // 初始 translateY = -(reel.length - 3) * ITEM_HEIGHT_PX，结束 translateY = 0
   const scrollDist = (reel.length - 3) * ITEM_HEIGHT_PX;
 
   return (
@@ -175,8 +177,8 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
       {/* 滚动动画 CSS */}
       <style>{`
         @keyframes slotSpin_${reel.length} {
-          0%   { transform: translateY(0); }
-          100% { transform: translateY(-${scrollDist}px); }
+          0%   { transform: translateY(-${scrollDist}px); }
+          100% { transform: translateY(0); }
         }
       `}</style>
 
@@ -1164,6 +1166,8 @@ export default function ArenaRoom() {
       const next = prev + 1;
       console.log(`[SM] handleSlotDone count=${next}/${maxPlayers}`);
       if (next >= maxPlayers) {
+        // ━━ 关键：先设置 revealingRef 再清除 spinning，避免两者之间的时间空隙被 SSE game_over 利用 ━━
+        revealingRef.current = true;
         setSpinning(false);
 
         if (isReplaying && roomDetail?.roundResults) {
@@ -1194,7 +1198,7 @@ export default function ArenaRoom() {
             .sort((a, b) => a._seatNo - b._seatNo);
           setRevealItems(revealData);
           setShowRoundReveal(true);
-          revealingRef.current = true; // 标记 reveal 动画开始
+          // revealingRef 已在 setSpinning(false) 之前设置
 
           setTimeout(() => {
             setShowRoundReveal(false);
@@ -1251,7 +1255,7 @@ export default function ArenaRoom() {
             .sort((a, b) => a._seatNo - b._seatNo);
           setRevealItems(revealData);
           setShowRoundReveal(true);
-          revealingRef.current = true; // 标记 reveal 动画开始
+          // revealingRef 已在 setSpinning(false) 之前设置
 
           setTimeout(() => {
             setShowRoundReveal(false);

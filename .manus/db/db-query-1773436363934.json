@@ -1,0 +1,110 @@
+{
+  "query": "SELECT * FROM playerItems ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT * FROM playerItems ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "30121",
+      "playerId": "120206",
+      "itemId": "64",
+      "source": "arena",
+      "status": "0",
+      "extractedAt": "NULL",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-13 21:10:02"
+    },
+    {
+      "id": "30120",
+      "playerId": "120206",
+      "itemId": "54",
+      "source": "arena",
+      "status": "0",
+      "extractedAt": "NULL",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-13 21:10:02"
+    },
+    {
+      "id": "30119",
+      "playerId": "120206",
+      "itemId": "64",
+      "source": "arena",
+      "status": "0",
+      "extractedAt": "NULL",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-13 21:09:57"
+    },
+    {
+      "id": "30118",
+      "playerId": "120206",
+      "itemId": "64",
+      "source": "arena",
+      "status": "0",
+      "extractedAt": "NULL",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-13 21:09:57"
+    },
+    {
+      "id": "30117",
+      "playerId": "120206",
+      "itemId": "32",
+      "source": "arena",
+      "status": "0",
+      "extractedAt": "NULL",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-13 21:09:51"
+    },
+    {
+      "id": "30116",
+      "playerId": "120206",
+      "itemId": "32",
+      "source": "arena",
+      "status": "0",
+      "extractedAt": "NULL",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-13 21:09:51"
+    },
+    {
+      "id": "30115",
+      "playerId": "120206",
+      "itemId": "14",
+      "source": "arena",
+      "status": "0",
+      "extractedAt": "NULL",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-13 21:09:46"
+    },
+    {
+      "id": "30114",
+      "playerId": "120206",
+      "itemId": "16",
+      "source": "arena",
+      "status": "0",
+      "extractedAt": "NULL",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-13 21:09:46"
+    },
+    {
+      "id": "30113",
+      "playerId": "120200",
+      "itemId": "96",
+      "source": "arena",
+      "status": "0",
+      "extractedAt": "NULL",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-13 20:45:13"
+    },
+    {
+      "id": "30112",
+      "playerId": "120206",
+      "itemId": "96",
+      "source": "arena",
+      "status": "0",
+      "extractedAt": "NULL",
+      "recycleGold": "0.00",
+      "createdAt": "2026-03-13 20:45:13"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tplayerId\titemId\tsource\tstatus\textractedAt\trecycleGold\tcreatedAt\n30121\t120206\t64\tarena\t0\tNULL\t0.00\t2026-03-13 21:10:02\n30120\t120206\t54\tarena\t0\tNULL\t0.00\t2026-03-13 21:10:02\n30119\t120206\t64\tarena\t0\tNULL\t0.00\t2026-03-13 21:09:57\n30118\t120206\t64\tarena\t0\tNULL\t0.00\t2026-03-13 21:09:57\n30117\t120206\t32\tarena\t0\tNULL\t0.00\t2026-03-13 21:09:51\n30116\t120206\t32\tarena\t0\tNULL\t0.00\t2026-03-13 21:09:51\n30115\t120206\t14\tarena\t0\tNULL\t0.00\t2026-03-13 21:09:46\n30114\t120206\t16\tarena\t0\tNULL\t0.00\t2026-03-13 21:09:46\n30113\t120200\t96\tarena\t0\tNULL\t0.00\t2026-03-13 20:45:13\n30112\t120206\t96\tarena\t0\tNULL\t0.00\t2026-03-13 20:45:13\n",
+  "stderr": "",
+  "execution_time_ms": 52
+}

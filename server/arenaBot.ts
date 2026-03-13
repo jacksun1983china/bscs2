@@ -167,11 +167,13 @@ async function botPlayAllRounds(roomId: number) {
 
       // 若是真实玩家（正数ID），将物品放入背包（status=3 临时持有，等结算）
       if (rp.playerId > 0) {
+        const recycleValue = String(parseFloat(String(picked.price || '0')).toFixed(2));
         await db.insert(playerItems).values({
           playerId: rp.playerId,
           itemId: picked.id,
           source: 'arena',
           status: 3, // 3=竞技场待结算
+          recycleGold: recycleValue,
         });
       }
 
