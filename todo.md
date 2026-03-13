@@ -900,3 +900,8 @@
 
 ## 背包底部操作栏 fixed 定位（2026-03-13）
 - [x] 将底部操作栏改为 flex 布局中的兄弟元素（在 BottomNav 之前），自然贴底导航上方
+
+## 第五轮全面优化（2026-03-13）
+- [x] 后台登录已是独立账号密码验证（通过环境变量 ADMIN_ACCOUNT/ADMIN_PASSWORD，无需 Manus OAuth）
+- [x] Manus 残留代码已清理（登录按鈕文字已改为"立即登录"）
+- [x] routers.ts 拆分：admin 路由（705行）提取到 server/routers/adminRouter.ts，主文件从 2734 行减少到 2032 行
