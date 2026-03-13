@@ -919,3 +919,7 @@
 - [x] 所有缺少 staleTime 的 player.me.useQuery 调用统一补充（Bag/Profile/Recharge/Login/Share/Vortex/DingDong/RollX/UncrossableRush）
 - [x] useArenaWS SSE 重连改为指数退避（3s → 6s → 12s → 最大 30s），避免频繁断连时爆发请求
 - [x] generalApiLimit 从 300/分钟提高到 600/分钟
+
+## 竞技场 Slot 修复（2026-03-13）
+- [x] 修复 slot 转轴物品滚动后消失问题（将条目从 31 个减少到 10 个，目标放到最后一格，修正 translateY 方向为正向滚动）
+- [x] 确保进入竞技场房间 100% 正常（joinRoom 错误处理完善，5秒超时底安已存在）

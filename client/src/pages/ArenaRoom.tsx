@@ -66,8 +66,8 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
-  // 构建卷轴条目：目标放在第一格，后面跟随机条目
-  // 滚动方向：从上往下（translateY 从负大到 0）
+  // 构建卷轴条目：随机条目在前，目标放在最后一格
+  // 滚动方向：从上往下（translateY 从 0 增大到 (totalItems-1)*REEL_ITEM_PX）
   const buildReel = useCallback((target: typeof finalItem, items: typeof reelItems) => {
     if (!target) return [];
     const pool = items.length > 0 ? items : [
@@ -75,15 +75,16 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
       { id: 1, name: '稀有装备', imageUrl: '', goodsLevel: 2 },
       { id: 2, name: '普通道具', imageUrl: '', goodsLevel: 3 },
       { id: 3, name: '回收物品', imageUrl: '', goodsLevel: 4 },
-      { id: 4, name: '神秘宝笱', imageUrl: '', goodsLevel: 2 },
+      { id: 4, name: '神秘宝箱', imageUrl: '', goodsLevel: 2 },
       { id: 5, name: '限定皮肤', imageUrl: '', goodsLevel: 1 },
     ];
-    // 目标放在第一格，后面跟 30 个随机条目
+    // 随机条目在前（9个），目标放在最后一格
+    // 总共 10 格，translateY 最大值 = 9 * REEL_ITEM_PX = 1440（q(1440) ≈ 192cqw，合理范围）
     const reel: Array<{ id: number; name: string; imageUrl: string; goodsLevel: number }> = [];
-    reel.push({ id: target.goodsId, name: target.goodsName, imageUrl: target.goodsImage, goodsLevel: target.goodsLevel });
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 9; i++) {
       reel.push(pool[Math.floor(Math.random() * pool.length)]);
     }
+    reel.push({ id: target.goodsId, name: target.goodsName, imageUrl: target.goodsImage, goodsLevel: target.goodsLevel });
     return reel;
   }, []);
 
@@ -116,19 +117,19 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
       setShowFinal(false);
       setDisplayItem(null);
 
-      // 目标在第一格（index=0）
-      // 滚动方向：从上往下（卷轴从底部开始，向上滚到顶部）
-      // 初始位置：把卷轴放到最底部（展示最后一格）
-      const totalItems = newReel.length;
-      const startY = -((totalItems - 1) * REEL_ITEM_PX); // 卷轴展示最后一格
-      const finalY = 0; // 目标：展示第一格（目标物品）
-      const preY = -(1 * REEL_ITEM_PX); // 先停到目标后一格（弹性起点）
+      // 目标在最后一格（index = totalItems - 1）
+      // 滚动方向：从上往下（translateY 从 0 增大）
+      // 初始位置：卷轴展示第一格（translateY = 0）
+      const totalItems = newReel.length; // = 10
+      const startY = 0; // 展示第一格（随机物品）
+      const finalY = (totalItems - 1) * REEL_ITEM_PX; // 目标：展示最后一格 = 9 * 160 = 1440
+      const preY = (totalItems - 2) * REEL_ITEM_PX; // 先停到目标前一格（弹性起点）= 8 * 160 = 1280
 
-      // 重置到底部（无动画）
+      // 重置到顶部（无动画）
       setTransition('none');
       setTranslateY(startY);
 
-      // 第一阶段：快速加速向上滚动（2.2s，从底部滚到目标前一格）
+      // 第一阶段：快速加速向下滚动（2.2s，从顶部滚到目标前一格）
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setTransition(`transform 2.2s cubic-bezier(0.25, 0.1, 0.1, 1.0)`);
