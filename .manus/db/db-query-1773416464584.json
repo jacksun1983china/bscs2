@@ -1,0 +1,9 @@
+{
+  "query": "SELECT pi.id, pi.playerId, pi.itemId, pi.source, pi.status, pi.createdAt, bg.name as itemName, bg.imageUrl FROM playerItems pi LEFT JOIN boxGoods bg ON pi.itemId = bg.id WHERE pi.source = 'arena' ORDER BY pi.createdAt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT pi.id, pi.playerId, pi.itemId, pi.source, pi.status, pi.createdAt, bg.name as itemName, bg.imageUrl FROM playerItems pi LEFT JOIN boxGoods bg ON pi.itemId = bg.id WHERE pi.source = 'arena' ORDER BY pi.createdAt DESC LIMIT 20;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 110
+}

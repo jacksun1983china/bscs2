@@ -86,6 +86,7 @@ const QUALITY_LABELS: Record<string, string> = {
 
 interface InventoryItem {
   id: number;
+  itemId: number;
   itemName: string | null;
   itemImageUrl: string | null;
   itemQuality: number | null;
@@ -93,6 +94,9 @@ interface InventoryItem {
   source: string;
   status: number;
   createdAt: Date;
+  // 叠加数量和对应的所有 playerItems.id
+  count: number;
+  ids: number[];
 }
 
 export default function Backpack() {
@@ -198,10 +202,11 @@ export default function Backpack() {
         : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-  const toggleSelect = useCallback((id: number) => {
+  // selectedIds 存储选中物品的 itemId（叠加后每种物品用 itemId 区分）
+  const toggleSelect = useCallback((itemId: number) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
       return next;
     });
   }, []);
@@ -210,13 +215,13 @@ export default function Backpack() {
     setSelectedIds(prev =>
       prev.size === filteredItems.length
         ? new Set()
-        : new Set(filteredItems.map(i => i.id))
+        : new Set(filteredItems.map(i => i.itemId))
     );
   }, [filteredItems]);
 
   const selectedValue = filteredItems
-    .filter(i => selectedIds.has(i.id))
-    .reduce((s, i) => s + Number(i.itemValue ?? 0), 0);
+    .filter(i => selectedIds.has(i.itemId))
+    .reduce((s, i) => s + Number(i.itemValue ?? 0) * i.count, 0);
 
   const hasSelected = selectedIds.size > 0;
 
@@ -241,11 +246,15 @@ export default function Backpack() {
   }, [hasSelected]);
 
   const handleConfirmAction = () => {
-    const ids = Array.from(selectedIds);
+    // 收集所有选中物品的全部 playerItems.id（叠加物品每个都要包含）
+    const allIds = filteredItems
+      .filter(i => selectedIds.has(i.itemId))
+      .flatMap(i => i.ids);
+    if (allIds.length === 0) return;
     if (confirmModal.type === 'extract') {
-      extractMutation.mutate({ ids });
+      extractMutation.mutate({ ids: allIds });
     } else if (confirmModal.type === 'recycle') {
-      recycleMutation.mutate({ ids });
+      recycleMutation.mutate({ ids: allIds });
     }
   };
 
@@ -649,15 +658,15 @@ export default function Backpack() {
                 </div>
               )}
               {filteredItems.map((item, idx) => {
-                const isSelected = selectedIds.has(item.id);
+                const isSelected = selectedIds.has(item.itemId);
                 const isRightCol = idx % 2 === 1;
                 const value = Number(item.itemValue ?? 0);
                 const quality = item.itemQuality ?? 'common';
 
                 return (
                   <div
-                    key={item.id}
-                    onClick={() => toggleSelect(item.id)}
+                    key={item.itemId}
+                    onClick={() => toggleSelect(item.itemId)}
                     style={{
                       position: 'relative',
                       width: q(340),
@@ -730,15 +739,16 @@ export default function Backpack() {
                       </div>
                     </div>
 
-                    {/* 品质标签 */}
+                    {/* 品质标签（左上角） */}
                     <div
                       style={{
                         position: 'absolute',
                         top: q(8),
-                        right: q(8),
+                        left: q(8),
                         background: QUALITY_BG[quality] ?? QUALITY_BG.common,
                         borderRadius: q(6),
                         padding: `${q(2)} ${q(10)}`,
+                        zIndex: 5,
                       }}
                     >
                       <span
@@ -754,23 +764,49 @@ export default function Backpack() {
                       </span>
                     </div>
 
-                    {/* 选中标记 */}
+                    {/* 数量角标（右上角，count > 1 时显示） */}
+                    {item.count > 1 && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: q(6),
+                          right: q(6),
+                          minWidth: q(36),
+                          height: q(36),
+                          background: 'linear-gradient(135deg, #ff4d4d, #ff2020)',
+                          borderRadius: q(18),
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: `0 ${q(8)}`,
+                          boxShadow: '0 2px 6px rgba(255,0,0,0.5)',
+                          zIndex: 6,
+                          border: `${q(2)} solid rgba(255,255,255,0.3)`,
+                        }}
+                      >
+                        <span style={{ color: '#fff', fontSize: q(20), fontWeight: 900, lineHeight: 1 }}>×{item.count}</span>
+                      </div>
+                    )}
+
+                    {/* 选中标记（右下角） */}
                     {isSelected && (
                       <div
                         style={{
                           position: 'absolute',
-                          top: q(8),
-                          left: q(8),
-                          width: q(32),
-                          height: q(32),
+                          bottom: q(50),
+                          right: q(8),
+                          width: q(36),
+                          height: q(36),
                           borderRadius: '50%',
                           backgroundColor: 'rgba(180,80,255,1)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          zIndex: 7,
+                          boxShadow: '0 0 8px rgba(180,80,255,0.8)',
                         }}
                       >
-                        <span style={{ color: '#fff', fontSize: q(20), lineHeight: 1 }}>✓</span>
+                        <span style={{ color: '#fff', fontSize: q(22), lineHeight: 1 }}>✓</span>
                       </div>
                     )}
 

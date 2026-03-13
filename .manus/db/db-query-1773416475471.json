@@ -1,0 +1,210 @@
+{
+  "query": "SELECT id, roomNo, status, maxPlayers, currentPlayers, rounds, winnerId, createdAt FROM arenaRooms ORDER BY createdAt DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT id, roomNo, status, maxPlayers, currentPlayers, rounds, winnerId, createdAt FROM arenaRooms ORDER BY createdAt DESC LIMIT 20;",
+  "rows": [
+    {
+      "id": "120008",
+      "roomNo": "500335",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "5",
+      "winnerId": "-1",
+      "createdAt": "2026-03-13 13:41:25"
+    },
+    {
+      "id": "120007",
+      "roomNo": "583976",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "6",
+      "winnerId": "-1",
+      "createdAt": "2026-03-13 13:12:24"
+    },
+    {
+      "id": "120006",
+      "roomNo": "857053",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "5",
+      "winnerId": "1",
+      "createdAt": "2026-03-13 13:01:51"
+    },
+    {
+      "id": "120005",
+      "roomNo": "264240",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "5",
+      "winnerId": "-5",
+      "createdAt": "2026-03-13 12:50:56"
+    },
+    {
+      "id": "120004",
+      "roomNo": "954306",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "5",
+      "winnerId": "1",
+      "createdAt": "2026-03-13 12:49:21"
+    },
+    {
+      "id": "120003",
+      "roomNo": "673157",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "4",
+      "winnerId": "-10",
+      "createdAt": "2026-03-13 10:33:15"
+    },
+    {
+      "id": "120002",
+      "roomNo": "553264",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "3",
+      "winnerId": "1",
+      "createdAt": "2026-03-13 10:21:25"
+    },
+    {
+      "id": "120001",
+      "roomNo": "692157",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "4",
+      "winnerId": "1",
+      "createdAt": "2026-03-13 10:16:10"
+    },
+    {
+      "id": "90001",
+      "roomNo": "334524",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "4",
+      "winnerId": "1",
+      "createdAt": "2026-03-13 10:01:30"
+    },
+    {
+      "id": "60003",
+      "roomNo": "243133",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "5",
+      "winnerId": "1",
+      "createdAt": "2026-03-12 11:04:02"
+    },
+    {
+      "id": "60002",
+      "roomNo": "435610",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "3",
+      "winnerId": "1",
+      "createdAt": "2026-03-12 09:58:29"
+    },
+    {
+      "id": "60001",
+      "roomNo": "820612",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "3",
+      "winnerId": "-5",
+      "createdAt": "2026-03-12 05:50:25"
+    },
+    {
+      "id": "30032",
+      "roomNo": "676697",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "4",
+      "winnerId": "1",
+      "createdAt": "2026-03-11 20:49:28"
+    },
+    {
+      "id": "30031",
+      "roomNo": "240283",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "3",
+      "winnerId": "-10",
+      "createdAt": "2026-03-11 20:48:44"
+    },
+    {
+      "id": "30030",
+      "roomNo": "893591",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "5",
+      "winnerId": "1",
+      "createdAt": "2026-03-11 16:59:04"
+    },
+    {
+      "id": "30029",
+      "roomNo": "212269",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "4",
+      "winnerId": "1",
+      "createdAt": "2026-03-11 15:25:21"
+    },
+    {
+      "id": "30028",
+      "roomNo": "277397",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "4",
+      "winnerId": "1",
+      "createdAt": "2026-03-11 15:10:38"
+    },
+    {
+      "id": "30027",
+      "roomNo": "576834",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "5",
+      "winnerId": "90003",
+      "createdAt": "2026-03-11 14:59:45"
+    },
+    {
+      "id": "30026",
+      "roomNo": "524548",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "5",
+      "winnerId": "90003",
+      "createdAt": "2026-03-11 14:59:29"
+    },
+    {
+      "id": "30025",
+      "roomNo": "426232",
+      "status": "finished",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "rounds": "1",
+      "winnerId": "90003",
+      "createdAt": "2026-03-11 14:51:35"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\troomNo\tstatus\tmaxPlayers\tcurrentPlayers\trounds\twinnerId\tcreatedAt\n120008\t500335\tfinished\t2\t2\t5\t-1\t2026-03-13 13:41:25\n120007\t583976\tfinished\t2\t2\t6\t-1\t2026-03-13 13:12:24\n120006\t857053\tfinished\t2\t2\t5\t1\t2026-03-13 13:01:51\n120005\t264240\tfinished\t2\t2\t5\t-5\t2026-03-13 12:50:56\n120004\t954306\tfinished\t2\t2\t5\t1\t2026-03-13 12:49:21\n120003\t673157\tfinished\t2\t2\t4\t-10\t2026-03-13 10:33:15\n120002\t553264\tfinished\t2\t2\t3\t1\t2026-03-13 10:21:25\n120001\t692157\tfinished\t2\t2\t4\t1\t2026-03-13 10:16:10\n90001\t334524\tfinished\t2\t2\t4\t1\t2026-03-13 10:01:30\n60003\t243133\tfinished\t2\t2\t5\t1\t2026-03-12 11:04:02\n60002\t435610\tfinished\t2\t2\t3\t1\t2026-03-12 09:58:29\n60001\t820612\tfinished\t2\t2\t3\t-5\t2026-03-12 05:50:25\n30032\t676697\tfinished\t2\t2\t4\t1\t2026-03-11 20:49:28\n30031\t240283\tfinished\t2\t2\t3\t-10\t2026-03-11 20:48:44\n30030\t893591\tfinished\t2\t2\t5\t1\t2026-03-11 16:59:04\n30029\t212269\tfinished\t2\t2\t4\t1\t2026-03-11 15:25:21\n30028\t277397\tfinished\t2\t2\t4\t1\t2026-03-11 15:10:38\n30027\t576834\tfinished\t2\t2\t5\t90003\t2026-03-11 14:59:45\n30026\t524548\tfinished\t2\t2\t5\t90003\t2026-03-11 14:59:29\n30025\t426232\tfinished\t2\t2\t1\t90003\t2026-03-11 14:51:35\n",
+  "stderr": "",
+  "execution_time_ms": 49
+}
