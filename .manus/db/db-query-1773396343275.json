@@ -1,0 +1,110 @@
+{
+  "query": "\nSELECT id, roomNo, status, currentRound, rounds, maxPlayers, currentPlayers, createdAt \nFROM arenaRooms \nORDER BY createdAt DESC\nLIMIT 10;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute \nSELECT id, roomNo, status, currentRound, rounds, maxPlayers, currentPlayers, createdAt \nFROM arenaRooms \nORDER BY createdAt DESC\nLIMIT 10;\n",
+  "rows": [
+    {
+      "id": "90001",
+      "roomNo": "334524",
+      "status": "finished",
+      "currentRound": "1",
+      "rounds": "4",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "createdAt": "2026-03-13 10:01:30"
+    },
+    {
+      "id": "60003",
+      "roomNo": "243133",
+      "status": "finished",
+      "currentRound": "1",
+      "rounds": "5",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "createdAt": "2026-03-12 11:04:02"
+    },
+    {
+      "id": "60002",
+      "roomNo": "435610",
+      "status": "finished",
+      "currentRound": "1",
+      "rounds": "3",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "createdAt": "2026-03-12 09:58:29"
+    },
+    {
+      "id": "60001",
+      "roomNo": "820612",
+      "status": "finished",
+      "currentRound": "1",
+      "rounds": "3",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "createdAt": "2026-03-12 05:50:25"
+    },
+    {
+      "id": "30032",
+      "roomNo": "676697",
+      "status": "finished",
+      "currentRound": "1",
+      "rounds": "4",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "createdAt": "2026-03-11 20:49:28"
+    },
+    {
+      "id": "30031",
+      "roomNo": "240283",
+      "status": "finished",
+      "currentRound": "1",
+      "rounds": "3",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "createdAt": "2026-03-11 20:48:44"
+    },
+    {
+      "id": "30030",
+      "roomNo": "893591",
+      "status": "finished",
+      "currentRound": "1",
+      "rounds": "5",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "createdAt": "2026-03-11 16:59:04"
+    },
+    {
+      "id": "30029",
+      "roomNo": "212269",
+      "status": "finished",
+      "currentRound": "1",
+      "rounds": "4",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "createdAt": "2026-03-11 15:25:21"
+    },
+    {
+      "id": "30028",
+      "roomNo": "277397",
+      "status": "finished",
+      "currentRound": "1",
+      "rounds": "4",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "createdAt": "2026-03-11 15:10:38"
+    },
+    {
+      "id": "30027",
+      "roomNo": "576834",
+      "status": "finished",
+      "currentRound": "1",
+      "rounds": "5",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "createdAt": "2026-03-11 14:59:45"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\troomNo\tstatus\tcurrentRound\trounds\tmaxPlayers\tcurrentPlayers\tcreatedAt\n90001\t334524\tfinished\t1\t4\t2\t2\t2026-03-13 10:01:30\n60003\t243133\tfinished\t1\t5\t2\t2\t2026-03-12 11:04:02\n60002\t435610\tfinished\t1\t3\t2\t2\t2026-03-12 09:58:29\n60001\t820612\tfinished\t1\t3\t2\t2\t2026-03-12 05:50:25\n30032\t676697\tfinished\t1\t4\t2\t2\t2026-03-11 20:49:28\n30031\t240283\tfinished\t1\t3\t2\t2\t2026-03-11 20:48:44\n30030\t893591\tfinished\t1\t5\t2\t2\t2026-03-11 16:59:04\n30029\t212269\tfinished\t1\t4\t2\t2\t2026-03-11 15:25:21\n30028\t277397\tfinished\t1\t4\t2\t2\t2026-03-11 15:10:38\n30027\t576834\tfinished\t1\t5\t2\t2\t2026-03-11 14:59:45\n",
+  "stderr": "",
+  "execution_time_ms": 1548
+}

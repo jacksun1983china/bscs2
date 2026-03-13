@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT id, room_no, status, current_round, rounds, max_players, current_players, created_at \nFROM arena_rooms \nWHERE room_no = '90001' OR id = 90001\nORDER BY created_at DESC\nLIMIT 5;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute \nSELECT id, room_no, status, current_round, rounds, max_players, current_players, created_at \nFROM arena_rooms \nWHERE room_no = '90001' OR id = 90001\nORDER BY created_at DESC\nLIMIT 5;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 2: Table 'f39rghmccdkvuc3rbx8cym.arena_rooms' doesn't exist"
+  ]
+}

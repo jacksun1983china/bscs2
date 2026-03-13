@@ -1,0 +1,20 @@
+{
+  "query": "\nSELECT id, roomNo, status, currentRound, rounds, maxPlayers, currentPlayers, createdAt \nFROM arenaRooms \nWHERE roomNo = '90001' OR id = 90001\nORDER BY createdAt DESC\nLIMIT 5;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute \nSELECT id, roomNo, status, currentRound, rounds, maxPlayers, currentPlayers, createdAt \nFROM arenaRooms \nWHERE roomNo = '90001' OR id = 90001\nORDER BY createdAt DESC\nLIMIT 5;\n",
+  "rows": [
+    {
+      "id": "90001",
+      "roomNo": "334524",
+      "status": "finished",
+      "currentRound": "1",
+      "rounds": "4",
+      "maxPlayers": "2",
+      "currentPlayers": "2",
+      "createdAt": "2026-03-13 10:01:30"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\troomNo\tstatus\tcurrentRound\trounds\tmaxPlayers\tcurrentPlayers\tcreatedAt\n90001\t334524\tfinished\t1\t4\t2\t2\t2026-03-13 10:01:30\n",
+  "stderr": "",
+  "execution_time_ms": 1602
+}

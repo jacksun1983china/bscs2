@@ -763,8 +763,30 @@ export default function ArenaRoom() {
       if (status === 'playing') {
         setGameStatus('playing');
         // 不强制设置 isPresent，保留原有状态（参与者=true, 观战者=false）
-        // 触发开场动画（参与者和观战者都要看）
-        if (roomDetail.players.length >= 2) {
+        if (roomDetail.roundResults && roomDetail.roundResults.length > 0 && !isReplaying && !spinning) {
+          // 已有历史轮次结果，说明游戏已经开始了（服务器重启后重进房间）
+          // 跳过开场动画，直接触发回放
+          if (!introShownRef.current) {
+            introShownRef.current = true; // 标记开场动画已处理，防止重复触发
+            setIsReplaying(true);
+            setGameOverData(null);
+            setRoundResults({});
+            setCurrentRound(1);
+            setCurrentRoundItems({});
+            setSpinning(false);
+            setSpinDoneCount(0);
+            setLiveValues({});
+            setReplayRound(0);
+            replayRoundRef.current = 0;
+            replaySpinStartedRef.current = 0;
+            setReplayWaitingIntro(false);
+            setTimeout(() => {
+              replayRoundRef.current = 1;
+              setReplayRound(1);
+            }, 600);
+          }
+        } else if (roomDetail.players.length >= 2) {
+          // 还没有轮次结果，触发开场动画（参与者和观战者都要看）
           triggerIntro(roomDetail.players);
         }
       } else if (status === 'finished') {
@@ -811,6 +833,39 @@ export default function ArenaRoom() {
       setRoundResults(map);
     }
   }, [roomDetail?.roundResults]);
+
+  // ── 兑底恢复：当 roomDetail 加载完成且游戏已结束（finished）但前端还在 playing 状态时，自动触发回放 ──
+  // 这处理了服务器重启后 SSE game_over 消息丢失的情况
+  useEffect(() => {
+    if (
+      roomDetail?.room?.status === 'finished' &&
+      roomDetail.roundResults?.length > 0 &&
+      roomDetail.players?.length > 0 &&
+      !isReplaying &&
+      !spinning &&
+      !showIntro &&
+      gameStatus === 'playing'
+    ) {
+      // 游戏已结束但前端还在 playing，说明错过了 game_over 事件
+      // 直接设置 game_over 数据
+      const playerTotals: Record<number, number> = {};
+      for (const r of roomDetail.roundResults) {
+        playerTotals[r.playerId] = (playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue);
+      }
+      const maxVal = Math.max(...Object.values(playerTotals));
+      const overPlayers = roomDetail.players.map((p: any) => ({
+        playerId: p.playerId,
+        nickname: p.nickname,
+        avatar: p.avatar,
+        seatNo: p.seatNo,
+        totalValue: (playerTotals[p.playerId] ?? 0).toFixed(2),
+        isWinner: (playerTotals[p.playerId] ?? 0) === maxVal,
+      }));
+      const winner = overPlayers.find((p: any) => p.isWinner);
+      setGameOverData({ winnerId: winner?.playerId ?? 0, players: overPlayers });
+      setGameStatus('finished');
+    }
+  }, [roomDetail?.room?.status, roomDetail?.roundResults, roomDetail?.players, isReplaying, spinning, showIntro, gameStatus]);
 
   // ── 回放模式：用 replayKey 控制开始（每次递增 replayKey 就重新开始回放）──
   // 依赖 replayKey 而非 isReplaying，避免数据刷新时重复触发
@@ -1092,6 +1147,7 @@ export default function ArenaRoom() {
     // 回放模式：开场动画完成，解除等待状态，允许 slot 开始
     if (isReplaying) {
       setReplayWaitingIntro(false);
+      return;
     }
     // 实时模式：如果开场动画期间有缓存的 round_result，现在触发第一轮 slot 动画
     if (pendingSpinRef.current.length > 0) {
@@ -1106,6 +1162,33 @@ export default function ArenaRoom() {
         setSpinDoneCount(0);
         setSkipGameAnim(false);
       }, 100);
+      return;
+    }
+    // 兜底恢复：开场动画结束后 pendingSpinRef 为空，说明 SSE 消息在服务器重启时丢失了。
+    // 检查 roomDetailRef 中是否有历史轮次结果，有则自动触发回放，避免永久卡在"等待开始"。
+    const detail = roomDetailRef.current;
+    if (detail?.roundResults && detail.roundResults.length > 0 && detail.players && detail.players.length > 0) {
+      // 延迟 300ms 确保 React 状态已更新，然后触发回放
+      setTimeout(() => {
+        setIsReplaying(true);
+        setGameStatus('playing');
+        setGameOverData(null);
+        setRoundResults({});
+        setCurrentRound(1);
+        setCurrentRoundItems({});
+        setSpinning(false);
+        setSpinDoneCount(0);
+        setLiveValues({});
+        setReplayRound(0);
+        replayRoundRef.current = 0;
+        replaySpinStartedRef.current = 0;
+        setReplayWaitingIntro(false); // 开场动画已经播放完了，直接开始 slot
+        // 延迟 400ms 再设置 replayRound=1，触发第一轮 slot
+        setTimeout(() => {
+          replayRoundRef.current = 1;
+          setReplayRound(1);
+        }, 400);
+      }, 300);
     }
   }, [isReplaying]); // isReplaying 是唯一需要的依赖，其余通过 ref 访问
 
