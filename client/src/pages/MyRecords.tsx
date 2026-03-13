@@ -625,6 +625,37 @@ export default function MyRecords() {
                   })}
                   <LoadMoreHint loading={extractLoadingMore} hasMore={extractHasMore} count={extractList.length} />
                 </>
+              ) : activeTab === 3 && giftList.length > 0 ? (
+                <>
+                  {giftList.map((r: any, i: number) => {
+                    const quality = r.itemQuality ?? 3;
+                    const qualityInfo = QUALITY_LABELS[quality] ?? { label: '普通', color: '#9ca3af' };
+                    return (
+                      <div
+                        key={r.id ?? i}
+                        onClick={() => { setDetailRecord(r); setDetailType('extract'); }}
+                        style={{ display: 'flex', alignItems: 'center', padding: `${q(16)} ${q(20)}`, borderBottom: '1px solid rgba(120,60,220,0.15)', cursor: 'pointer', gap: q(8) }}
+                      >
+                        {/* 物品缩略图 */}
+                        <div style={{ width: q(60), height: q(60), borderRadius: q(8), background: 'rgba(120,60,220,0.2)', border: `1px solid ${qualityInfo.color}40`, overflow: 'hidden', flexShrink: 0 }}>
+                          {r.itemImageUrl ? (
+                            <img src={r.itemImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          ) : null}
+                        </div>
+                        <span style={{ flex: 2, color: 'rgba(255,255,255,0.7)', fontSize: q(20) }}>
+                          {new Date(r.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span style={{ flex: 2, color: qualityInfo.color, fontSize: q(20), textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {r.itemName ?? '未知物品'}
+                        </span>
+                        <span style={{ flex: 1, color: '#ffd700', fontSize: q(20), textAlign: 'right' }}>
+                          {Number(r.itemValue ?? 0).toFixed(0)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <LoadMoreHint loading={giftLoadingMore} hasMore={giftHasMore} count={giftList.length} />
+                </>
               ) : (
                 <EmptyState tab={activeTab} />
               )}

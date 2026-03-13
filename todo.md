@@ -887,3 +887,10 @@
 
 ## 登录页每秒刷新修复（2026-03-13）
 - [x] 排查并修复登录页每秒刷新一次的 bug（tsx watch 监听了 .manus-logs 日志文件变化导致服务器频繁重启，添加 --exclude 参数排除日志目录）
+
+## 第四轮全面优化（2026-03-13）
+- [x] 余额记录详情弹窗（点击条目展示完整流水详情）
+- [x] 修复 Vortex 动画时序（用 useRef 存储 onSpinComplete 回调，避免 useEffect 闭包捕获旧引用）
+- [x] 清理 Google 字体引用（已使用 fonts.bunny.net 隐私友好镜像，项目中无 googleapis.com 引用）
+- [x] 充値审批接口添加金币日志记录（approveRechargeOrder 已在第 1202 行调用 insertGoldLog）
+- [x] 赠送记录列表渲染（补充 giftList 有数据时的列表渲染逻辑）

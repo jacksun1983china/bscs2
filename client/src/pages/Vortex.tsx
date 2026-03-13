@@ -74,6 +74,9 @@ function SlotColumn({
   const velRef = useRef(0); // 当前速度（px/frame）
   const stateRef = useRef<'idle' | 'spinning' | 'stopping'>('idle');
   const targetOffsetRef = useRef(0);
+  // 用 ref 存储 onSpinComplete，避免 useEffect 闭包捕获旧引用
+  const onSpinCompleteRef = useRef(onSpinComplete);
+  useEffect(() => { onSpinCompleteRef.current = onSpinComplete; }, [onSpinComplete]);
 
   // 计算目标元素在 STRIP 中第二段的 index（居中段，避免越界）
   function getTargetOffset(el: Element): number {
@@ -146,8 +149,8 @@ function SlotColumn({
           // 最终停在精确位置
           setOffsetY(adjustedTarget % (totalH * 3));
           stateRef.current = 'idle';
-          // 通知父组件 slot 已完全停止
-          onSpinComplete?.();
+          // 通知父组件 slot 已完全停止（通过 ref 调用，确保使用最新回调）
+          onSpinCompleteRef.current?.();
         }
       };
       rafRef.current = requestAnimationFrame(stopLoop);
