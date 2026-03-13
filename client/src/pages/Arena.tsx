@@ -34,8 +34,15 @@ interface CreateRoomModalProps {
 
 function CreateRoomModal({ onClose, onCreated }: CreateRoomModalProps) {
   const [maxPlayers, setMaxPlayers] = useState(2);
-  const [selectedBoxIds, setSelectedBoxIds] = useState<number[]>([]);
+  // 叠加选择：宝笱ID -> 数量
+  const [boxCounts, setBoxCounts] = useState<Record<number, number>>({});
   const [error, setError] = useState('');
+
+  // 转换为数组（每个 ID 重复 N 次）
+  const selectedBoxIds = Object.entries(boxCounts).flatMap(
+    ([id, cnt]) => Array(cnt).fill(Number(id))
+  );
+  const totalSelected = Object.values(boxCounts).reduce((s, c) => s + c, 0);
 
   // 获取玩家当前余额
   const { data: playerInfo } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
@@ -58,19 +65,31 @@ function CreateRoomModal({ onClose, onCreated }: CreateRoomModalProps) {
     },
   });
 
-  const toggleBox = (boxId: number) => {
-    setSelectedBoxIds((prev) => {
-      if (prev.includes(boxId)) return prev.filter((id) => id !== boxId);
-      if (prev.length >= 10) return prev;
-      return [...prev, boxId];
+  // 点击宝笱：+1
+  const addBox = (boxId: number) => {
+    setBoxCounts(prev => {
+      const cur = prev[boxId] ?? 0;
+      if (totalSelected >= 10) return prev; // 最多 10 个
+      return { ...prev, [boxId]: cur + 1 };
+    });
+  };
+  // 减少宝笱：-1，为 0 时移除
+  const removeBox = (boxId: number) => {
+    setBoxCounts(prev => {
+      const cur = prev[boxId] ?? 0;
+      if (cur <= 1) {
+        const next = { ...prev };
+        delete next[boxId];
+        return next;
+      }
+      return { ...prev, [boxId]: cur - 1 };
     });
   };
 
   const totalFee = boxList?.list
-    ?.filter((b: any) => selectedBoxIds.includes(b.id))
-    .reduce((s: number, b: any) => s + parseFloat(b.price), 0) ?? 0;
+    ?.reduce((s: number, b: any) => s + parseFloat(b.price) * (boxCounts[b.id] ?? 0), 0) ?? 0;
 
-  const insufficientGold = selectedBoxIds.length > 0 && myGold < totalFee;
+  const insufficientGold = totalSelected > 0 && myGold < totalFee;
 
   return (
     <div
@@ -125,7 +144,7 @@ function CreateRoomModal({ onClose, onCreated }: CreateRoomModalProps) {
 
           {/* 分类Tab */}
           <div style={{ marginBottom: q(12) }}>
-            <div style={{ color: '#9ca3af', fontSize: q(24), marginBottom: q(12) }}>选择宝箱（已选 {selectedBoxIds.length} 个）</div>
+            <div style={{ color: '#9ca3af', fontSize: q(24), marginBottom: q(12) }}>选择宝笱（已选 <span style={{ color: '#c084fc', fontWeight: 700 }}>{totalSelected}</span> 个，最多 10 个）</div>
             <div style={{ display: 'flex', gap: q(10), overflowX: 'auto', paddingBottom: q(4) }}>
               <button
                 onClick={() => setActiveCat(null)}
@@ -156,11 +175,12 @@ function CreateRoomModal({ onClose, onCreated }: CreateRoomModalProps) {
           {/* 宝箱网格 */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: q(12) }}>
             {boxList?.list?.map((box: any) => {
-              const isSelected = selectedBoxIds.includes(box.id);
+              const count = boxCounts[box.id] ?? 0;
+              const isSelected = count > 0;
               return (
                 <div
                   key={box.id}
-                  onClick={() => toggleBox(box.id)}
+                  onClick={() => addBox(box.id)}
                   style={{
                     position: 'relative',
                     background: isSelected ? 'rgba(120,60,220,0.3)' : 'rgba(20,8,50,0.8)',
@@ -168,15 +188,35 @@ function CreateRoomModal({ onClose, onCreated }: CreateRoomModalProps) {
                     borderRadius: q(10), padding: q(10),
                     cursor: 'pointer', textAlign: 'center',
                     boxShadow: isSelected ? '0 0 12px rgba(192,132,252,0.4)' : 'none',
+                    transition: 'all 0.15s ease',
                   }}
                 >
+                  {/* 数量角标（右上角） */}
                   {isSelected && (
                     <div style={{
                       position: 'absolute', top: q(4), right: q(4),
-                      width: q(28), height: q(28), borderRadius: '50%',
-                      background: '#7c3aed', color: '#fff',
+                      minWidth: q(28), height: q(28), borderRadius: q(14),
+                      background: 'linear-gradient(135deg,#7c3aed,#c084fc)',
+                      color: '#fff', fontWeight: 800,
                       fontSize: q(18), display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>✓</div>
+                      padding: `0 ${q(6)}`,
+                      boxShadow: '0 0 8px rgba(192,132,252,0.6)',
+                      zIndex: 2,
+                    }}>{count}</div>
+                  )}
+                  {/* 减少按鈕（左上角） */}
+                  {isSelected && (
+                    <div
+                      onClick={e => { e.stopPropagation(); removeBox(box.id); }}
+                      style={{
+                        position: 'absolute', top: q(4), left: q(4),
+                        width: q(28), height: q(28), borderRadius: '50%',
+                        background: 'rgba(239,68,68,0.85)',
+                        color: '#fff', fontWeight: 900,
+                        fontSize: q(22), display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', zIndex: 2, lineHeight: 1,
+                      }}
+                    >−</div>
                   )}
                   <img
                     src={box.imageUrl || `${CDN}/a888e4d9c59e44cf49c0949345509ee4_32c3c37e.png`}
@@ -208,9 +248,9 @@ function CreateRoomModal({ onClose, onCreated }: CreateRoomModalProps) {
                   {myGold.toFixed(0)}
                 </span> 金币
               </div>
-              {selectedBoxIds.length > 0 && (
+              {totalSelected > 0 && (
                 <div style={{ color: '#9ca3af', fontSize: q(22) }}>
-                  入场费：
+                  已选 <span style={{ color: '#c084fc', fontWeight: 700 }}>{totalSelected}</span> 个，入场费：
                   <span style={{ color: '#ffd700', fontWeight: 700 }}>{totalFee.toFixed(0)}</span> 金币
                 </div>
               )}
@@ -225,7 +265,7 @@ function CreateRoomModal({ onClose, onCreated }: CreateRoomModalProps) {
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button
               onClick={() => {
-                if (selectedBoxIds.length === 0) { setError('请至少选择1个宝箱'); return; }
+                if (totalSelected === 0) { setError('请至少选择1个宝笱'); return; }
                 if (insufficientGold) { setError(`金币不足，需要 ${totalFee.toFixed(0)} 金币，当前 ${myGold.toFixed(0)} 金币`); return; }
                 setError('');
                 createRoom.mutate({ maxPlayers, boxIds: selectedBoxIds });
