@@ -894,3 +894,6 @@
 - [x] 清理 Google 字体引用（已使用 fonts.bunny.net 隐私友好镜像，项目中无 googleapis.com 引用）
 - [x] 充値审批接口添加金币日志记录（approveRechargeOrder 已在第 1202 行调用 insertGoldLog）
 - [x] 赠送记录列表渲染（补充 giftList 有数据时的列表渲染逻辑）
+
+## 背包底部操作栏定位修复（2026-03-13）
+- [x] 修复背包底部操作栏（全选/赠送/分解）悬浮在页面中间，改为 position:absolute 固定在底部导航栏上方

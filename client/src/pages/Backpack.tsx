@@ -796,23 +796,27 @@ export default function Backpack() {
             </div>
           )}
 
-          {/* ── 底部操作栏（全选/赠送/分解） ── */}
-          <div
-            style={{
-              position: 'sticky',
-              bottom: q(90),
-              left: 0,
-              width: q(750),
-              height: q(191),
-              backgroundImage: `url(${B.bottomBarBg})`,
-              backgroundSize: '750px 192px',
-              backgroundRepeat: 'no-repeat',
-              zIndex: 50,
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
+          {/* 底部操作栏占位，防止内容被遮挡 */}
+          <div style={{ height: q(191) }} />
+        </div>
+
+        {/* ── 底部操作栏（全选/赠送/分解）固定在底部导航上方 ── */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: q(90),
+            left: 0,
+            width: q(750),
+            height: q(191),
+            backgroundImage: `url(${B.bottomBarBg})`,
+            backgroundSize: '750px 192px',
+            backgroundRepeat: 'no-repeat',
+            zIndex: 50,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
             {/* 全选 */}
             <div
               onClick={toggleSelectAll}
@@ -936,7 +940,6 @@ export default function Backpack() {
             </div>
           </div>
         </div>
-      </div>
 
       {/* 底部导航 */}
       <BottomNav active="beibao" />
