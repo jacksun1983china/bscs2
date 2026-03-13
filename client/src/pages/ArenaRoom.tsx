@@ -38,8 +38,9 @@ const LEVEL_GLOW: Record<number, string> = {
 
 // ── 老虎机滚动动画组件 ────────────────────────────────────────────────────────
 
-// 卷轴单元格高度（cqw单位的px基准）
-const REEL_ITEM_PX = 160;
+// ── 简洁可靠的 SlotMachine：用 CSS animation 实现滚动，不依赖复杂的 translateY 计算 ──
+
+const ITEM_HEIGHT_PX = 120; // 每个道具格子的高度（px，用于 CSS animation）
 
 interface SlotMachineProps {
   finalItem: {
@@ -52,138 +53,110 @@ interface SlotMachineProps {
   spinning: boolean;
   onDone?: () => void;
   width?: string;
-  /** 跳过动画，直接显示最终结果 */
   skipAnim?: boolean;
-  /** 箱子内道具列表，用于卷轴滚动 */
   reelItems?: Array<{ id: number; name: string; imageUrl: string; goodsLevel: number }>;
 }
 
 function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = false, reelItems = [] }: SlotMachineProps) {
-  const [showFinal, setShowFinal] = useState(false);
+  const [phase, setPhase] = useState<'idle' | 'spinning' | 'done'>('idle');
   const [displayItem, setDisplayItem] = useState<typeof finalItem>(null);
-  const [translateY, setTranslateY] = useState(0);
-  const [transition, setTransition] = useState('none');
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const animFrameRef = useRef<number | null>(null);
-
-  // 构建卷轴条目：随机条目在前，目标放在最后一格
-  // 滚动方向：从上往下（translateY 从 0 增大到 (totalItems-1)*REEL_ITEM_PX）
-  const buildReel = useCallback((target: typeof finalItem, items: typeof reelItems) => {
-    if (!target) return [];
-    const pool = items.length > 0 ? items : [
-      { id: 0, name: '传说武器', imageUrl: '', goodsLevel: 1 },
-      { id: 1, name: '稀有装备', imageUrl: '', goodsLevel: 2 },
-      { id: 2, name: '普通道具', imageUrl: '', goodsLevel: 3 },
-      { id: 3, name: '回收物品', imageUrl: '', goodsLevel: 4 },
-      { id: 4, name: '神秘宝箱', imageUrl: '', goodsLevel: 2 },
-      { id: 5, name: '限定皮肤', imageUrl: '', goodsLevel: 1 },
-    ];
-    // 随机条目在前（9个），目标放在最后一格
-    // 总共 10 格，translateY 最大值 = 9 * REEL_ITEM_PX = 1440（q(1440) ≈ 192cqw，合理范围）
-    const reel: Array<{ id: number; name: string; imageUrl: string; goodsLevel: number }> = [];
-    for (let i = 0; i < 9; i++) {
-      reel.push(pool[Math.floor(Math.random() * pool.length)]);
-    }
-    reel.push({ id: target.goodsId, name: target.goodsName, imageUrl: target.goodsImage, goodsLevel: target.goodsLevel });
-    return reel;
-  }, []);
-
   const [reel, setReel] = useState<Array<{ id: number; name: string; imageUrl: string; goodsLevel: number }>>([]);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 跳过：直接显示最终结果
+  const FALLBACK_POOL = [
+    { id: -1, name: '传说武器', imageUrl: '', goodsLevel: 1 },
+    { id: -2, name: '稀有装备', imageUrl: '', goodsLevel: 2 },
+    { id: -3, name: '普通道具', imageUrl: '', goodsLevel: 3 },
+    { id: -4, name: '回收物品', imageUrl: '', goodsLevel: 4 },
+    { id: -5, name: '神秘宝箱', imageUrl: '', goodsLevel: 2 },
+    { id: -6, name: '限定皮肤', imageUrl: '', goodsLevel: 1 },
+  ];
+
+  // 跳过动画
   useEffect(() => {
     if (skipAnim && finalItem) {
       if (timerRef.current) clearTimeout(timerRef.current);
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-      setTransition('none');
-      setTranslateY(0);
-      setShowFinal(true);
+      setPhase('done');
       setDisplayItem(finalItem);
       onDone?.();
     }
   }, [skipAnim]);
 
-  // 修复：spinning=true 但 finalItem=null 时，立即调用 onDone 避免卡住
+  // spinning=true 但 finalItem=null 时立即完成
   useEffect(() => {
     if (spinning && !finalItem && !skipAnim) {
       onDone?.();
     }
   }, [spinning, finalItem]);
 
+  // 开始旋转
   useEffect(() => {
-    if (spinning && finalItem && !skipAnim) {
-      const newReel = buildReel(finalItem, reelItems);
-      setReel(newReel);
-      setShowFinal(false);
-      setDisplayItem(null);
+    if (!spinning || !finalItem || skipAnim) return;
 
-      // 目标在最后一格（index = totalItems - 1）
-      // 滚动方向：从上往下（translateY 从 0 增大）
-      // 初始位置：卷轴展示第一格（translateY = 0）
-      const totalItems = newReel.length; // = 10
-      const startY = 0; // 展示第一格（随机物品）
-      const finalY = (totalItems - 1) * REEL_ITEM_PX; // 目标：展示最后一格 = 9 * 160 = 1440
-      const preY = (totalItems - 2) * REEL_ITEM_PX; // 先停到目标前一格（弹性起点）= 8 * 160 = 1280
-
-      // 重置到顶部（无动画）
-      setTransition('none');
-      setTranslateY(startY);
-
-      // 第一阶段：快速加速向下滚动（2.2s，从顶部滚到目标前一格）
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setTransition(`transform 2.2s cubic-bezier(0.25, 0.1, 0.1, 1.0)`);
-          setTranslateY(preY);
-        });
-      });
-
-      // 第二阶段：弹性停止到目标（0.4s，弹性曲线）
-      timerRef.current = setTimeout(() => {
-        setTransition(`transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)`);
-        setTranslateY(finalY);
-        playSlotStop(finalItem.goodsLevel);
-
-        // 动画结束后展示最终结果（同步更新两个状态确保一致）
-        timerRef.current = setTimeout(() => {
-          const itemToShow = finalItem; // 单独引用确保闭包捕获正确结果
-          setDisplayItem(itemToShow);
-          setShowFinal(true);
-          onDone?.();
-        }, 450);
-      }, 2200);
+    const pool = reelItems.length > 0 ? reelItems : FALLBACK_POOL;
+    // 构建卷轴：20个随机道具 + 目标道具（总21格）
+    const newReel: typeof reel = [];
+    for (let i = 0; i < 20; i++) {
+      newReel.push(pool[Math.floor(Math.random() * pool.length)]);
     }
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
+    newReel.push({ id: finalItem.goodsId, name: finalItem.goodsName, imageUrl: finalItem.goodsImage, goodsLevel: finalItem.goodsLevel });
+    setReel(newReel);
+    setPhase('spinning');
+    setDisplayItem(null);
+
+    // 2.6s 后停止并显示结果
+    timerRef.current = setTimeout(() => {
+      playSlotStop(finalItem.goodsLevel);
+      setPhase('done');
+      setDisplayItem(finalItem);
+      timerRef.current = setTimeout(() => {
+        onDone?.();
+      }, 300);
+    }, 2600);
+
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [spinning, finalItem]);
 
-  const glowAnimClass = showFinal && displayItem?.goodsLevel === 1
+  // 重置：当 spinning=false 且 finalItem=null 时回到 idle
+  useEffect(() => {
+    if (!spinning && !finalItem) {
+      setPhase('idle');
+      setDisplayItem(null);
+    }
+  }, [spinning, finalItem]);
+
+  const glowAnimClass = phase === 'done' && displayItem?.goodsLevel === 1
     ? 'arena-legendary-glow'
-    : showFinal && displayItem?.goodsLevel === 2
+    : phase === 'done' && displayItem?.goodsLevel === 2
       ? 'arena-rare-pulse'
       : '';
 
-  const itemH = q(REEL_ITEM_PX);
-  // 可见窗口高度 = 3行
-  const windowH = q(REEL_ITEM_PX * 3);
+  const totalH = `${ITEM_HEIGHT_PX * 3}px`;
+  // 卷轴总高度 = 21格
+  const reelTotalH = reel.length * ITEM_HEIGHT_PX;
+  // 滚动距离：让最后一格（目标）停在中间可见格
+  // 中间格位置 = ITEM_HEIGHT_PX（第2格，0-indexed=1）
+  // 目标格位置 = (reel.length - 1) * ITEM_HEIGHT_PX
+  // 需要向上滚动的距离 = 目标格位置 - ITEM_HEIGHT_PX
+  const scrollDist = (reel.length - 1) * ITEM_HEIGHT_PX - ITEM_HEIGHT_PX;
 
   return (
     <div
       className={glowAnimClass}
       style={{
         width,
-        background: showFinal
+        background: phase === 'done'
           ? LEVEL_BG[displayItem?.goodsLevel ?? 3]
           : 'rgba(12,4,30,0.95)',
         border: `2px solid ${
-          showFinal
+          phase === 'done'
             ? LEVEL_GLOW[displayItem?.goodsLevel ?? 3].replace('0.6)', '1)').replace('0.4)', '1)').replace('0.3)', '1)')
             : 'rgba(120,60,220,0.5)'
         }`,
         borderRadius: q(12),
         textAlign: 'center',
         transition: 'background 0.4s, border-color 0.4s, box-shadow 0.4s',
-        boxShadow: showFinal
+        boxShadow: phase === 'done'
           ? displayItem?.goodsLevel === 1
             ? `0 0 30px rgba(245,200,66,0.8), 0 0 60px rgba(245,200,66,0.4)`
             : displayItem?.goodsLevel === 2
@@ -192,63 +165,66 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
           : '0 0 8px rgba(80,20,160,0.4)',
         position: 'relative',
         overflow: 'hidden',
-        height: showFinal ? 'auto' : windowH,
-        minHeight: showFinal ? q(REEL_ITEM_PX + 60) : windowH,
+        height: phase === 'done' ? 'auto' : totalH,
+        minHeight: phase === 'done' ? `${ITEM_HEIGHT_PX + 60}px` : totalH,
       }}
     >
-      {/* 卷轴滚动区域（spinning时显示） */}
-      {!showFinal && (
+      {/* 滚动动画 CSS */}
+      <style>{`
+        @keyframes slotSpin_${reel.length} {
+          0%   { transform: translateY(0); }
+          100% { transform: translateY(-${scrollDist}px); }
+        }
+      `}</style>
+
+      {/* 卷轴滚动区域 */}
+      {phase === 'spinning' && reel.length > 0 && (
         <>
           {/* 顶部/底部渐变遮罩 */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '33%', background: 'linear-gradient(to bottom, rgba(12,4,30,0.95) 0%, transparent 100%)', zIndex: 3, pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '33%', background: 'linear-gradient(to top, rgba(12,4,30,0.95) 0%, transparent 100%)', zIndex: 3, pointerEvents: 'none' }} />
+          {/* 中间高亮选中框 */}
           <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0, height: '35%',
-            background: 'linear-gradient(to bottom, rgba(12,4,30,0.95) 0%, transparent 100%)',
-            zIndex: 3, pointerEvents: 'none',
-          }} />
-          <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, height: '35%',
-            background: 'linear-gradient(to top, rgba(12,4,30,0.95) 0%, transparent 100%)',
-            zIndex: 3, pointerEvents: 'none',
-          }} />
-          {/* 中间选中框 */}
-          <div style={{
-            position: 'absolute', left: 0, right: 0,
-            top: '50%', transform: 'translateY(-50%)',
-            height: itemH,
-            border: '2px solid rgba(192,132,252,0.8)',
-            boxShadow: '0 0 12px rgba(192,132,252,0.5), inset 0 0 8px rgba(192,132,252,0.1)',
+            position: 'absolute', left: 4, right: 4,
+            top: `${ITEM_HEIGHT_PX}px`,
+            height: `${ITEM_HEIGHT_PX}px`,
+            border: '2px solid rgba(192,132,252,0.9)',
+            boxShadow: '0 0 16px rgba(192,132,252,0.6), inset 0 0 10px rgba(192,132,252,0.15)',
             zIndex: 4, pointerEvents: 'none',
-            borderRadius: q(8),
+            borderRadius: 8,
           }} />
-          {/* 卷轴条目 */}
+          {/* 卷轴列表 */}
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center',
-            transform: `translateY(calc(50% - ${q(REEL_ITEM_PX / 2)} + ${q(translateY)}))`,
-            transition,
+            animation: `slotSpin_${reel.length} 2.6s cubic-bezier(0.15, 0.0, 0.1, 1.0) forwards`,
             willChange: 'transform',
           }}>
             {reel.map((item, idx) => (
               <div key={idx} style={{
-                width: '100%', height: itemH,
+                width: '100%',
+                height: `${ITEM_HEIGHT_PX}px`,
                 display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center',
-                padding: `${q(8)} ${q(4)}`,
                 flexShrink: 0,
+                padding: '6px 4px',
+                boxSizing: 'border-box',
               }}>
                 {item.imageUrl ? (
                   <img src={item.imageUrl} alt={item.name}
-                    style={{ width: q(90), height: q(90), objectFit: 'contain', marginBottom: q(4) }} />
+                    style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: 4, display: 'block' }}
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
                 ) : (
                   <div style={{
-                    width: q(90), height: q(90), marginBottom: q(4),
+                    width: 64, height: 64, marginBottom: 4,
                     background: LEVEL_BG[item.goodsLevel] || 'rgba(120,60,220,0.3)',
-                    borderRadius: q(8),
+                    borderRadius: 8,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: q(36),
+                    fontSize: 28, flexShrink: 0,
                   }}>🎁</div>
                 )}
                 <div style={{
-                  color: '#e0d0ff', fontSize: q(16), fontWeight: 500,
+                  color: '#e0d0ff', fontSize: 12, fontWeight: 500,
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   width: '90%', textAlign: 'center',
                 }}>{item.name}</div>
@@ -259,9 +235,9 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
       )}
 
       {/* 最终结果展示 */}
-      {showFinal && displayItem && (
+      {phase === 'done' && displayItem && (
         <div style={{
-          padding: `${q(16)} ${q(12)}`,
+          padding: '16px 12px',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
         }}>
           {displayItem.goodsLevel === 1 && (
@@ -278,7 +254,7 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
               animation: 'arenaPulse 1.5s ease-in-out infinite',
             }} />
           )}
-          <div style={{ width: q(120), height: q(120), marginBottom: q(8), position: 'relative', zIndex: 1 }}>
+          <div style={{ width: 100, height: 100, marginBottom: 8, position: 'relative', zIndex: 1 }}>
             {displayItem.goodsImage ? (
               <img src={displayItem.goodsImage} alt={displayItem.goodsName}
                 style={{ width: '100%', height: '100%', objectFit: 'contain',
@@ -289,38 +265,38 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
               <div style={{
                 width: '100%', height: '100%',
                 background: LEVEL_BG[displayItem.goodsLevel],
-                borderRadius: q(12),
+                borderRadius: 12,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: q(48),
+                fontSize: 40,
               }}>🎁</div>
             )}
           </div>
           <div style={{
-            display: 'inline-block', padding: `${q(3)} ${q(12)}`,
-            background: 'rgba(0,0,0,0.4)', borderRadius: q(4),
-            color: '#fff', fontSize: q(18), fontWeight: 700, marginBottom: q(6), zIndex: 1, position: 'relative',
+            display: 'inline-block', padding: '3px 12px',
+            background: 'rgba(0,0,0,0.4)', borderRadius: 4,
+            color: '#fff', fontSize: 13, fontWeight: 700, marginBottom: 6, zIndex: 1, position: 'relative',
           }}>
             {LEVEL_LABEL[displayItem.goodsLevel]}
           </div>
           <div style={{
-            color: '#fff', fontSize: q(20), fontWeight: 600,
+            color: '#fff', fontSize: 14, fontWeight: 600,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            width: '90%', zIndex: 1, position: 'relative',
+            width: '90%', zIndex: 1, position: 'relative', textAlign: 'center',
           }}>
             {displayItem.goodsName}
           </div>
-          <div style={{ color: '#ffd700', fontSize: q(24), fontWeight: 700, marginTop: q(6), zIndex: 1, position: 'relative' }}>
+          <div style={{ color: '#ffd700', fontSize: 16, fontWeight: 700, marginTop: 6, zIndex: 1, position: 'relative' }}>
             ¥{parseFloat(displayItem.goodsValue).toFixed(2)}
           </div>
         </div>
       )}
 
       {/* 等待状态 */}
-      {!showFinal && !spinning && (
+      {phase === 'idle' && (
         <div style={{
-          height: q(REEL_ITEM_PX + 60),
+          height: `${ITEM_HEIGHT_PX * 3}px`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'rgba(192,132,252,0.4)', fontSize: q(22),
+          color: 'rgba(192,132,252,0.4)', fontSize: 14,
         }}>等待开始</div>
       )}
     </div>
