@@ -629,29 +629,8 @@ export default function ArenaRoom() {
     goodsValue: string;
   }>>([]);;
 
-  const spinRound = trpc.arena.spinRound.useMutation({
-    onSuccess: (data) => {
-      if (!data.alreadyDone) {
-        const itemMap: typeof currentRoundItems = {};
-        for (const r of data.results as any[]) {
-          itemMap[r.playerId] = {
-            goodsId: r.goodsId,
-            goodsName: r.goodsName,
-            goodsImage: r.goodsImage,
-            goodsLevel: r.goodsLevel,
-            goodsValue: r.goodsValue,
-          };
-        }
-        setCurrentRoundItems(itemMap);
-        setSpinning(true);
-        setSpinDoneCount(0);
-        setSkipGameAnim(false); // 新一轮开始，重置跳过状态
-      }
-    },
-    onError: (err) => {
-      alert(err.message);
-    },
-  });
+  // spinRound mutation 已删除：游戏全程由服务端自动驱动（autoSpinAllRounds / botPlayAllRounds）
+  // 前端通过 SSE round_result 事件接收开箱结果并播放动画
 
   // ── 触发开场动画 ──
   // forceReplay=true 时允许重复触发（回放模式每次都需要）
@@ -1673,25 +1652,14 @@ export default function ArenaRoom() {
               </button>
             )}
 
-            {/* 开始按钮：仅参与者且没有机器人时显示（机器人房间由服务端自动开箱，避免并发重复） */}
-            {!spinning && isPresent && players.length >= maxPlayers && !isReplaying && !players.some(p => p.playerId < 0) && (
-              <button
-                onClick={() => spinRound.mutate({ roomId, roundNo: currentRound })}
-                disabled={spinRound.isPending}
-                style={{
-                  display: 'block', width: '100%', marginTop: q(20),
-                  padding: q(20),
-                  background: 'linear-gradient(135deg,#7c3aed,#c084fc)',
-                  border: 'none', borderRadius: q(12),
-                  color: '#fff', fontSize: q(32), fontWeight: 800,
-                  cursor: spinRound.isPending ? 'not-allowed' : 'pointer',
-                  opacity: spinRound.isPending ? 0.6 : 1,
-                  boxShadow: '0 6px 24px rgba(124,58,237,0.6)',
-                  letterSpacing: 2,
-                }}
-              >
-                {spinRound.isPending ? '开箱中...' : `🎰 开始第 ${currentRound} 轮`}
-              </button>
+            {/* 满员后自动开始，显示等待提示 */}
+            {!spinning && players.length >= maxPlayers && !isReplaying && gameStatus === 'playing' && (
+              <div style={{
+                textAlign: 'center', marginTop: q(20), color: '#c084fc', fontSize: q(28),
+                animation: 'pulse 1.5s ease-in-out infinite',
+              }}>
+                游戏即将开始...
+              </div>
             )}
             {players.length < maxPlayers && (
               <div style={{ textAlign: 'center', marginTop: q(20), color: '#9ca3af', fontSize: q(26) }}>
