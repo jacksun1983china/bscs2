@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO playerItems (playerId, itemId, source, status, recycleGold) SELECT 120208, id, 'arena', 0, ROUND(RAND() * 100 + 10, 2) FROM items ORDER BY RAND() LIMIT 6;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute INSERT INTO playerItems (playerId, itemId, source, status, recycleGold) SELECT 120208, id, 'arena', 0, ROUND(RAND() * 100 + 10, 2) FROM items ORDER BY RAND() LIMIT 6;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 77
+}

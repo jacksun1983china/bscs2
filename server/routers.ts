@@ -393,7 +393,7 @@ export const appRouter = router({
           const afterGold = afterRows.length ? parseFloat(afterRows[0].gold) : 0;
           await insertGoldLog(session.playerId, totalGold, afterGold, 'recycle', `回收 ${validItems.length} 件道具，获得 ${totalGold.toFixed(2)} 金币`);
         }
-        return { success: true, count: validItems.length, goldReturned: totalGold };
+        return { success: true, count: validItems.length, goldReturned: parseFloat(totalGold.toFixed(2)) };
       }),
 
     /** 更新个人资料（昵称+头像ID） */

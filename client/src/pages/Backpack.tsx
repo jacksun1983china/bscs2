@@ -84,6 +84,22 @@ const QUALITY_LABELS: Record<string, string> = {
   common:    '普通',
 };
 
+// 品质边框颜色（用于卡片外边框发光）
+const QUALITY_BORDER: Record<string, string> = {
+  legendary: 'rgba(245,200,66,0.8)',
+  epic:      'rgba(192,132,252,0.8)',
+  rare:      'rgba(96,165,250,0.8)',
+  common:    'rgba(154,154,154,0.5)',
+};
+
+// 品质光晕颜色
+const QUALITY_GLOW: Record<string, string> = {
+  legendary: 'rgba(245,200,66,0.35)',
+  epic:      'rgba(192,132,252,0.35)',
+  rare:      'rgba(96,165,250,0.35)',
+  common:    'rgba(154,154,154,0.15)',
+};
+
 interface InventoryItem {
   id: number;
   itemId: number;
@@ -177,7 +193,7 @@ export default function Backpack() {
 
   const recycleMutation = trpc.player.recycleItem.useMutation({
     onSuccess: (data) => {
-      toast.success(`成功回收 ${data.count} 件道具，获得 ${data.goldReturned} 金币`);
+      toast.success(`成功回收 ${data.count} 件道具，获得 ${Number(data.goldReturned).toFixed(2)} 金币`);
       setSelectedIds(new Set());
       setConfirmModal({ type: null });
       utils.player.inventory.invalidate();
@@ -660,9 +676,10 @@ export default function Backpack() {
               )}
               {filteredItems.map((item, idx) => {
                 const isSelected = selectedIds.has(item.itemId);
-                const isRightCol = idx % 2 === 1;
                 const value = Number(item.recycleGold ?? item.itemValue ?? 0);
-                const quality = item.itemQuality ?? 'common';
+                const quality = String(item.itemQuality ?? 'common');
+                const borderColor = QUALITY_BORDER[quality] ?? QUALITY_BORDER.common;
+                const glowColor = QUALITY_GLOW[quality] ?? QUALITY_GLOW.common;
 
                 return (
                   <div
@@ -671,46 +688,84 @@ export default function Backpack() {
                     style={{
                       position: 'relative',
                       width: q(340),
-                      height: q(260),
-                      backgroundImage: isRightCol ? `url(${B.itemCardRightBg})` : 'none',
-                      backgroundSize: '100% 100%',
-                      backgroundRepeat: 'no-repeat',
-                      backgroundColor: isRightCol ? 'transparent' : 'rgba(36,10,113,1)',
-                      borderRadius: q(15),
+                      height: q(280),
+                      borderRadius: q(16),
                       border: isSelected
-                        ? `${q(3)} solid rgba(180,80,255,1)`
-                        : `${q(3)} solid rgba(0,0,0,1)`,
+                        ? `${q(3)} solid rgba(255,220,100,1)`
+                        : `${q(2)} solid ${borderColor}`,
                       cursor: 'pointer',
                       overflow: 'hidden',
-                      boxShadow: isSelected ? '0 0 14px rgba(180,80,255,0.7)' : 'none',
+                      boxShadow: isSelected
+                        ? `0 0 18px rgba(255,220,100,0.6), inset 0 0 20px rgba(255,220,100,0.1)`
+                        : `0 4px 16px rgba(0,0,0,0.4), 0 0 12px ${glowColor}`,
                       display: 'flex',
                       flexDirection: 'column',
+                      background: 'linear-gradient(180deg, rgba(20,8,60,0.95) 0%, rgba(36,12,90,0.98) 60%, rgba(50,18,110,1) 100%)',
+                      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                     }}
                   >
-                    {/* 物品图片 */}
-                    <img
-                      src={item.itemImageUrl || B.itemPlaceholder}
-                      alt={item.itemName ?? ''}
+                    {/* 品质顶部光效条 */}
+                    <div
                       style={{
-                        width: q(212),
-                        height: q(153),
-                        margin: `${q(19)} 0 0 ${q(62)}`,
-                        objectFit: 'contain',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: q(4),
+                        background: QUALITY_BG[quality] ?? QUALITY_BG.common,
+                        zIndex: 5,
                       }}
-                      onError={e => { (e.target as HTMLImageElement).src = B.itemPlaceholder; }}
                     />
+
+                    {/* 物品图片区域 */}
+                    <div
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: `${q(28)} ${q(16)} ${q(8)} ${q(16)}`,
+                        position: 'relative',
+                      }}
+                    >
+                      {/* 微光背景 */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          width: q(180),
+                          height: q(180),
+                          borderRadius: '50%',
+                          background: `radial-gradient(circle, ${glowColor} 0%, transparent 70%)`,
+                          pointerEvents: 'none',
+                        }}
+                      />
+                      <img
+                        src={item.itemImageUrl || B.itemPlaceholder}
+                        alt={item.itemName ?? ''}
+                        style={{
+                          width: q(180),
+                          height: q(140),
+                          objectFit: 'contain',
+                          position: 'relative',
+                          zIndex: 2,
+                          filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
+                        }}
+                        onError={e => { (e.target as HTMLImageElement).src = B.itemPlaceholder; }}
+                      />
+                    </div>
+
                     {/* 名称+价格底栏 */}
                     <div
                       style={{
-                        backgroundColor: 'rgba(116,78,240,1)',
-                        flex: 1,
-                        width: q(334),
-                        margin: `${q(3)} 0 ${q(8)} ${q(3)}`,
-                        padding: `${q(5)} ${q(25)}`,
+                        background: 'linear-gradient(135deg, rgba(90,50,180,0.95) 0%, rgba(120,70,220,0.95) 100%)',
+                        padding: `${q(10)} ${q(16)}`,
                         display: 'flex',
                         flexDirection: 'column',
-                        justifyContent: 'center',
                         gap: q(4),
+                        borderTop: `${q(1)} solid rgba(160,120,255,0.3)`,
                       }}
                     >
                       <span
@@ -721,18 +776,21 @@ export default function Backpack() {
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
+                          fontWeight: 600,
+                          letterSpacing: '0.02em',
                         }}
                       >
                         {item.itemName ?? '未知物品'}
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: q(6) }}>
-                        <img src={B.priceIcon} alt="" style={{ width: q(26), height: q(26) }} />
+                        <img src="/img/jinbi1.png" alt="金币" style={{ width: q(26), height: q(26) }} />
                         <span
                           style={{
-                            color: 'rgba(255,246,13,1)',
+                            color: 'rgba(255,215,0,1)',
                             fontSize: q(24),
                             fontWeight: 700,
                             lineHeight: q(30),
+                            textShadow: '0 0 6px rgba(255,215,0,0.4)',
                           }}
                         >
                           {value.toFixed(2)}
@@ -744,12 +802,13 @@ export default function Backpack() {
                     <div
                       style={{
                         position: 'absolute',
-                        top: q(8),
+                        top: q(10),
                         left: q(8),
                         background: QUALITY_BG[quality] ?? QUALITY_BG.common,
-                        borderRadius: q(6),
-                        padding: `${q(2)} ${q(10)}`,
+                        borderRadius: `0 ${q(8)} ${q(8)} 0`,
+                        padding: `${q(3)} ${q(12)} ${q(3)} ${q(8)}`,
                         zIndex: 5,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
                       }}
                     >
                       <span
@@ -770,19 +829,19 @@ export default function Backpack() {
                       <div
                         style={{
                           position: 'absolute',
-                          top: q(6),
-                          right: q(6),
-                          minWidth: q(36),
-                          height: q(36),
-                          background: 'linear-gradient(135deg, #ff4d4d, #ff2020)',
-                          borderRadius: q(18),
+                          top: q(8),
+                          right: q(8),
+                          minWidth: q(38),
+                          height: q(38),
+                          background: 'linear-gradient(135deg, #ff5555, #ff2222)',
+                          borderRadius: q(19),
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           padding: `0 ${q(8)}`,
-                          boxShadow: '0 2px 6px rgba(255,0,0,0.5)',
+                          boxShadow: '0 2px 8px rgba(255,0,0,0.5)',
                           zIndex: 6,
-                          border: `${q(2)} solid rgba(255,255,255,0.3)`,
+                          border: `${q(2)} solid rgba(255,255,255,0.25)`,
                         }}
                       >
                         <span style={{ color: '#fff', fontSize: q(20), fontWeight: 900, lineHeight: 1 }}>×{item.count}</span>
@@ -794,38 +853,41 @@ export default function Backpack() {
                       <div
                         style={{
                           position: 'absolute',
-                          bottom: q(50),
-                          right: q(8),
+                          bottom: q(60),
+                          right: q(10),
                           width: q(36),
                           height: q(36),
                           borderRadius: '50%',
-                          backgroundColor: 'rgba(180,80,255,1)',
+                          background: 'linear-gradient(135deg, #ffd700, #ffaa00)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           zIndex: 7,
-                          boxShadow: '0 0 8px rgba(180,80,255,0.8)',
+                          boxShadow: '0 0 10px rgba(255,215,0,0.8)',
+                          border: `${q(2)} solid rgba(255,255,255,0.5)`,
                         }}
                       >
-                        <span style={{ color: '#fff', fontSize: q(22), lineHeight: 1 }}>✓</span>
+                        <span style={{ color: '#fff', fontSize: q(22), lineHeight: 1, fontWeight: 900, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>✓</span>
                       </div>
                     )}
 
-                    {/* 详情按鈕（左下角） */}
+                    {/* 详情按钮（左下角） */}
                     <div
                       onClick={e => { e.stopPropagation(); setDetailItem(item); }}
                       style={{
                         position: 'absolute',
-                        bottom: q(50),
-                        left: q(8),
-                        background: 'rgba(0,0,0,0.55)',
+                        bottom: q(62),
+                        left: q(10),
+                        background: 'rgba(0,0,0,0.6)',
+                        backdropFilter: 'blur(4px)',
                         borderRadius: q(8),
-                        padding: `${q(2)} ${q(10)}`,
+                        padding: `${q(3)} ${q(12)}`,
                         cursor: 'pointer',
                         zIndex: 10,
+                        border: `${q(1)} solid rgba(255,255,255,0.15)`,
                       }}
                     >
-                      <span style={{ color: 'rgba(200,170,255,1)', fontSize: q(18), fontWeight: 600 }}>详情</span>
+                      <span style={{ color: 'rgba(220,200,255,1)', fontSize: q(18), fontWeight: 600 }}>详情</span>
                     </div>
                   </div>
                 );
@@ -897,8 +959,8 @@ export default function Backpack() {
 
             {/* 金币图标 + 总价值 */}
             <img
-              src={B.bottomGoldIcon}
-              alt=""
+              src="/img/jinbi1.png"
+              alt="金币"
               style={{ width: q(40), height: q(40), margin: `${q(22)} 0 0 ${q(29)}` }}
             />
             <span
@@ -911,7 +973,7 @@ export default function Backpack() {
                 whiteSpace: 'nowrap',
               }}
             >
-              {selectedValue.toFixed(0)}
+              {selectedValue.toFixed(2)}
             </span>
 
             {/* 赠送按钮 */}
@@ -1013,7 +1075,7 @@ export default function Backpack() {
             </div>
             {confirmModal.type === 'recycle' && (
               <div style={{ color: '#ffd700', fontSize: 13, marginBottom: 16, textAlign: 'center' }}>
-                将获得 {selectedValue.toFixed(0)} 金币
+                将获得 {selectedValue.toFixed(2)} 金币
               </div>
             )}
             <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
@@ -1076,7 +1138,7 @@ export default function Backpack() {
               {detailItem.itemName ?? '未知道具'}
             </div>
             <div style={{ color: '#ffd700', fontSize: 14, marginBottom: 6 }}>
-              回收价值：{Number(detailItem.recycleGold ?? detailItem.itemValue ?? 0).toFixed(0)} 金币
+              回收价值：{Number(detailItem.recycleGold ?? detailItem.itemValue ?? 0).toFixed(2)} 金币
             </div>
             <div style={{ color: '#c0a0ff', fontSize: 12, marginBottom: 6 }}>
               来源：{detailItem.source === 'arena' ? '竞技场' : detailItem.source === 'roll' ? 'Roll房' : '开箱'}

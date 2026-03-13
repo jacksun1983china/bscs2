@@ -132,7 +132,7 @@ export default function ArenaIntroAnimation({ players, onComplete, skip }: Arena
 
             {/* VS */}
             <div style={{
-              flexShrink: 0, width: 60,
+              flexShrink: 0, width: 70, overflow: 'visible',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               transform: vsShow ? 'scale(1)' : 'scale(0)',
               opacity: vsShow ? 1 : 0,
@@ -143,7 +143,7 @@ export default function ArenaIntroAnimation({ players, onComplete, skip }: Arena
                 background: 'linear-gradient(135deg, #c084fc 0%, #60a5fa 50%, #22d3ee 100%)',
                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                 filter: 'drop-shadow(0 0 14px rgba(180,80,255,0.9))',
-                lineHeight: 1, letterSpacing: -2,
+                lineHeight: 1.2, letterSpacing: 2,
               }}>VS</span>
               <div style={{ width: 40, height: 3, borderRadius: 2, marginTop: 6, background: 'linear-gradient(90deg, rgba(192,132,252,0.8), rgba(34,211,238,0.8))', boxShadow: '0 0 10px rgba(192,132,252,0.6)' }} />
             </div>
@@ -191,7 +191,7 @@ export default function ArenaIntroAnimation({ players, onComplete, skip }: Arena
 
           {/* 中间 VS */}
           <div style={{
-            flexShrink: 0, width: 72, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, width: 80, overflow: 'visible', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             transform: vsShow ? 'scale(1)' : 'scale(0)',
             opacity: vsShow ? 1 : 0,
             transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
@@ -201,7 +201,7 @@ export default function ArenaIntroAnimation({ players, onComplete, skip }: Arena
               background: 'linear-gradient(135deg, #c084fc 0%, #60a5fa 50%, #22d3ee 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
               filter: 'drop-shadow(0 0 14px rgba(180,80,255,0.9)) drop-shadow(0 0 28px rgba(0,200,255,0.5))',
-              lineHeight: 1, letterSpacing: -2,
+              lineHeight: 1.2, letterSpacing: 2,
             }}>VS</span>
             <div style={{ width: 48, height: 4, borderRadius: 2, marginTop: 8, background: 'linear-gradient(90deg, rgba(192,132,252,0.8), rgba(34,211,238,0.8))', boxShadow: '0 0 10px rgba(192,132,252,0.6)' }} />
           </div>
