@@ -5,7 +5,7 @@
  * 风格：赛博朋克深紫蓝霓虹，与整体 UI 一致
  */
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 
@@ -61,7 +61,7 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
   const content = (
     <div
       style={{
-        position: 'fixed',
+        position: 'absolute',
         inset: 0,
         zIndex: 9999,
         display: 'flex',
@@ -252,7 +252,7 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
     </div>
   );
 
-  return createPortal(content, document.body);
+  return content;
 }
 
 // 通用设置行

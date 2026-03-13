@@ -5,7 +5,7 @@
  * 用法：<SteamSettingsModal visible={visible} onClose={() => setVisible(false)} />
  */
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 
@@ -127,7 +127,7 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
       <div
         onClick={handleClose}
         style={{
-          position: 'fixed',
+          position: 'absolute',
           inset: 0,
           background: 'rgba(0,0,0,0.65)',
           backdropFilter: 'blur(4px)',
@@ -141,7 +141,7 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
       {/* 弹窗主体 */}
       <div
         style={{
-          position: 'fixed',
+          position: 'absolute',
           left: 0,
           right: 0,
           bottom: 0,
@@ -467,5 +467,5 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
     </>
   );
 
-  return createPortal(content, document.body);
+  return content;
 }
