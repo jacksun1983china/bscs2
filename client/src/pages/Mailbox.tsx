@@ -75,26 +75,13 @@ export default function Mailbox() {
 
   return (
     <PageSlideIn>
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 480,
-          margin: '0 auto',
-          minHeight: '100vh',
-          background: '#0d0621',
-          position: 'relative',
-          containerType: 'inline-size',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="phone-container" style={{ containerType: 'inline-size', display: 'flex', flexDirection: 'column' }}>
         {/* 背景图 */}
         <img
           src={ASSETS.bg}
           alt=""
           style={{
-            position: 'fixed',
+            position: 'absolute',
             top: 0, left: 0,
             width: '100%', height: '100%',
             objectFit: 'cover',

@@ -1,32 +1,10 @@
 /**
  * SteamSettings.tsx — STEAM 设置弹窗组件
- * 按蓝湖 lanhu_steamshezhi 设计稿还原
- * 功能：主号设置、副号绑定、提货绑定码生成
- * 用法：<SteamSettingsModal visible={visible} onClose={() => setVisible(false)} />
+ * 纯 CSS 赛博朋克风格，无 PNG 依赖
  */
 import { useState, useEffect } from 'react';
-
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
-
-const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
-
-// 蓝湖图片映射
-const IMG = {
-  cardBg: CDN + 'f31991704ee2ae0c587bced542f86af9_c8c76942.png',       // 主卡片背景
-  sectionBg1: CDN + 'd09e9b0c41659080572b5e90cc65a06e_0ea3b19a.png',   // 主号区块背景
-  sectionBg2: CDN + 'f6a12549e4cd7f3843b9f1f5a02b6d91_9e281d3f.png',   // 绑定码区块背景
-  titleBar1: CDN + '1d7e261be951086027fd4afa74519eac_e5cc90f2.png',    // 主号设置标题栏
-  titleBar2: CDN + 'fd249b8e32859497c0e3cdaad438be9b_2bfa8228.png',    // 添加副号标题栏
-  titleBar3: CDN + '95b2dc2c538cd12013472581eaa183ea_1c762b74.png',    // 绑定我为副号标题栏
-  inputBg: CDN + '2cd5764ce675cb004fd2948d7d73b8be_897c676f.png',      // 输入框背景
-  deleteBtnBg: CDN + 'da1f4eb057b1627460ee2ef3f162c961_3dda0d8c.png',  // 删除按钮
-  btnLeft: CDN + '30891d6e753664f6eeefe71a7457c648_81cdefe1.png',      // 获取STEAM链接按钮
-  btnRight: CDN + '0e94ebe24f5956232a3627460f2189fa_aab1991a.png',     // 设置库存公开按钮
-  generateBtn: CDN + '86daed5c4fc2cbe2954b7c4c4195aab4_87d91b1c.png', // 生成按钮
-  helpIcon: CDN + '7b9abdce7efd48e4bf794582020cd232_460fee18.png',     // 帮助图标
-  closeIcon: CDN + '77b36a661a44644f99bca08c29eff2fa_abd1ea48.png',    // 关闭图标
-};
 
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 
@@ -43,12 +21,8 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
   const [bindingCode, setBindingCode] = useState('');
   const utils = trpc.useUtils();
 
-  // 读取真实Steam设置
-  const { data: steamData } = trpc.player.getSteam.useQuery(undefined, {
-    enabled: visible,
-  });
+  const { data: steamData } = trpc.player.getSteam.useQuery(undefined, { enabled: visible });
 
-  // 当数据加载后同步到本地state
   useEffect(() => {
     if (steamData) {
       setMainUrl(steamData.mainUrl || '');
@@ -57,32 +31,20 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
     }
   }, [steamData]);
 
-  // 保存Steam设置
   const updateSteam = trpc.player.updateSteam.useMutation({
-    onSuccess: () => {
-      toast.success('Steam设置已保存');
-      utils.player.getSteam.invalidate();
-    },
+    onSuccess: () => { toast.success('Steam设置已保存'); utils.player.getSteam.invalidate(); },
     onError: (err) => toast.error(err.message || '保存失败'),
   });
 
-  // 生成绑定码
   const generateCode = trpc.player.generateBindingCode.useMutation({
-    onSuccess: (data) => {
-      setBindingCode(data.code);
-      toast.success('绑定码已生成');
-      utils.player.getSteam.invalidate();
-    },
+    onSuccess: (data) => { setBindingCode(data.code); toast.success('绑定码已生成'); utils.player.getSteam.invalidate(); },
     onError: (err) => toast.error(err.message || '生成失败'),
   });
 
-  // 控制挂载/卸载动画
   useEffect(() => {
     if (visible) {
       setMounted(true);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setAnimating(true));
-      });
+      requestAnimationFrame(() => requestAnimationFrame(() => setAnimating(true)));
     } else {
       setAnimating(false);
       const t = setTimeout(() => setMounted(false), 300);
@@ -92,25 +54,15 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
 
   if (!mounted) return null;
 
-  const handleGenerate = () => {
-    generateCode.mutate();
-  };
-
-  const handleSave = () => {
-    updateSteam.mutate({ mainUrl, subUrl });
-  };
-
-  const handleClose = () => {
-    setAnimating(false);
-    setTimeout(onClose, 300);
-  };
+  const handleGenerate = () => generateCode.mutate();
+  const handleSave = () => updateSteam.mutate({ mainUrl, subUrl });
+  const handleClose = () => { setAnimating(false); setTimeout(onClose, 300); };
 
   const handleCopyCode = () => {
     if (!bindingCode) return;
     navigator.clipboard.writeText(bindingCode)
       .then(() => toast.success('绑定码已复制到剪贴板'))
       .catch(() => {
-        // 降级方案：使用 execCommand
         const el = document.createElement('textarea');
         el.value = bindingCode;
         document.body.appendChild(el);
@@ -121,351 +73,406 @@ export default function SteamSettingsModal({ visible, onClose }: SteamSettingsMo
       });
   };
 
-  const content = (
+  return (
     <>
-      {/* 遮罩层 */}
+      {/* ── 遮罩 ── */}
       <div
         onClick={handleClose}
         style={{
-          position: 'absolute',
-          inset: 0,
+          position: 'absolute', inset: 0,
           background: 'rgba(0,0,0,0.65)',
-          backdropFilter: 'blur(4px)',
-          WebkitBackdropFilter: 'blur(4px)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
           zIndex: 2000,
-          transition: 'opacity 0.3s ease',
           opacity: animating ? 1 : 0,
+          transition: 'opacity 0.3s ease',
         }}
       />
 
-      {/* 弹窗主体 */}
+      {/* ── 弹窗主体 ── */}
       <div
         style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
+          position: 'absolute', bottom: 0, left: 0, right: 0,
           zIndex: 2001,
           containerType: 'inline-size',
-          transition: 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease',
-          transform: animating ? 'translateY(0)' : 'translateY(100%)',
-          opacity: animating ? 1 : 0,
-          maxHeight: '90%',
+          transform: `translateY(${animating ? '0' : '100%'})`,
+          transition: 'transform 0.35s cubic-bezier(0.32,0.72,0,1)',
+          borderRadius: `${q(28)} ${q(28)} 0 0`,
+          overflow: 'hidden',
+          background: 'linear-gradient(180deg, #1a0b4b 0%, #0f0630 60%, #0a0420 100%)',
+          borderTop: '2px solid rgba(120,60,255,0.7)',
+          borderLeft: '1px solid rgba(80,40,200,0.4)',
+          borderRight: '1px solid rgba(80,40,200,0.4)',
+          boxShadow: '0 -8px 40px rgba(100,40,255,0.35), inset 0 1px 0 rgba(180,100,255,0.2)',
+          maxHeight: '92%',
           display: 'flex',
           flexDirection: 'column',
         }}
       >
-        {/* 顶部标题栏 */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: `${q(32)} ${q(30)} ${q(20)}`,
-            background: 'linear-gradient(180deg, rgba(20,8,55,0.98) 0%, rgba(15,5,40,0.95) 100%)',
-            borderTop: '1.5px solid rgba(120,60,220,0.6)',
-            borderRadius: `${q(24)} ${q(24)} 0 0`,
-          }}
-        >
-          <span
-            style={{
-              color: '#fff',
-              fontSize: q(36),
-              fontWeight: 700,
-              letterSpacing: 1,
-            }}
-          >
-            STEAM设置
-          </span>
-          <img
-            src={IMG.closeIcon}
-            alt="关闭"
-            style={{ width: q(56), height: q(56), objectFit: 'contain', cursor: 'pointer' }}
-            onClick={handleClose}
-          />
+        {/* 扫描线纹理 */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: '100%',
+          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(120,60,255,0.03) 3px, rgba(120,60,255,0.03) 4px)',
+          pointerEvents: 'none', zIndex: 0,
+        }} />
+        {/* 顶部光晕条 */}
+        <div style={{
+          position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+          width: '80%', height: q(4),
+          background: 'linear-gradient(90deg, transparent, rgba(160,80,255,0.8), rgba(80,200,255,0.8), transparent)',
+          pointerEvents: 'none', zIndex: 1,
+        }} />
+
+        {/* ── 标题栏 ── */}
+        <div style={{
+          position: 'relative', zIndex: 2,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: `${q(36)} ${q(32)} ${q(24)}`,
+          flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: q(12) }}>
+            <div style={{
+              width: q(6), height: q(36),
+              background: 'linear-gradient(180deg, #a855f7, #38bdf8)',
+              borderRadius: q(3),
+              boxShadow: '0 0 8px rgba(168,85,247,0.8)',
+            }} />
+            <span style={{
+              color: '#fff', fontSize: q(34), fontWeight: 700,
+              textShadow: '0 0 12px rgba(168,85,247,0.6)',
+              letterSpacing: '0.05em',
+            }}>STEAM设置</span>
+          </div>
+          <CloseButton onClick={handleClose} />
         </div>
 
-        {/* 可滚动内容区 */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            background: 'rgba(10,4,30,0.97)',
-            paddingBottom: q(40),
-          }}
-        >
-          {/* 主卡片 */}
-          <div
-            style={{
-              margin: `${q(10)} ${q(25)} 0`,
-              position: 'relative',
-              borderRadius: q(20),
-              overflow: 'hidden',
-            }}
-          >
-            <img
-              src={IMG.cardBg}
-              alt=""
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center top',
-                zIndex: 0,
-              }}
-            />
+        {/* ── 可滚动内容区 ── */}
+        <div style={{
+          position: 'relative', zIndex: 2,
+          flex: 1, overflowY: 'auto', overflowX: 'hidden',
+          padding: `0 ${q(28)} ${q(50)}`,
+        }}>
 
-            <div style={{ position: 'relative', zIndex: 1, padding: `${q(20)} ${q(20)} ${q(30)}` }}>
-
-              {/* ── 主号设置区块 ── */}
-              <div
-                style={{
-                  position: 'relative',
-                  borderRadius: q(12),
-                  overflow: 'hidden',
-                  marginBottom: q(20),
-                }}
+          {/* ══ 主号设置区块 ══ */}
+          <SectionCard title="主号设置">
+            {/* 主号输入框 + 删除按钮 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: q(10), marginBottom: q(16) }}>
+              <SteamInput
+                value={mainUrl}
+                onChange={setMainUrl}
+                placeholder="请输入您的Steam交易链接"
+                style={{ flex: 1 }}
+              />
+              <CyberButton
+                onClick={() => setMainUrl('')}
+                variant="danger"
+                style={{ width: q(110), height: q(72), flexShrink: 0 }}
               >
-                <img
-                  src={IMG.sectionBg1}
-                  alt=""
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 0 }}
-                />
-                <div style={{ position: 'relative', zIndex: 1, padding: `${q(10)} ${q(10)} ${q(20)}` }}>
-                  {/* 主号设置标题 */}
-                  <div style={{ position: 'relative', height: q(59), marginBottom: q(10) }}>
-                    <img src={IMG.titleBar1} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ color: '#fff', fontSize: q(28), fontWeight: 700 }}>主号设置</span>
-                    </div>
-                  </div>
-
-                  {/* 主号URL输入框 + 删除按钮 */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: q(10), marginBottom: q(16) }}>
-                    <div style={{ flex: 1, position: 'relative', height: q(80) }}>
-                      <img src={IMG.inputBg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
-                      <input
-                        value={mainUrl}
-                        onChange={e => setMainUrl(e.target.value)}
-                        placeholder="请输入您的Steam交易链接"
-                        style={{
-                          position: 'absolute',
-                          inset: 0,
-                          width: '100%',
-                          height: '100%',
-                          background: 'transparent',
-                          border: 'none',
-                          outline: 'none',
-                          color: '#fff',
-                          fontSize: q(22),
-                          padding: `0 ${q(20)}`,
-                          boxSizing: 'border-box',
-                        }}
-                      />
-                    </div>
-                    <div
-                      style={{ position: 'relative', width: q(100), height: q(52), cursor: 'pointer', flexShrink: 0 }}
-                      onClick={() => setMainUrl('')}
-                    >
-                      <img src={IMG.deleteBtnBg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#fbf4ff', fontSize: q(26), fontWeight: 700 }}>删除</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 两个功能按钮 */}
-                  <div style={{ display: 'flex', gap: q(10) }}>
-                    <div
-                      style={{ flex: 1, position: 'relative', height: q(76), cursor: 'pointer' }}
-                      onClick={() => window.open('https://steamcommunity.com/id/me/tradeoffers/privacy', '_blank')}
-                    >
-                      <img src={IMG.btnLeft} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#fff', fontSize: q(20), fontWeight: 500, textAlign: 'center', lineHeight: 1.3 }}>点击获取STEAM链接</span>
-                      </div>
-                    </div>
-                    <div
-                      style={{ flex: 1.5, position: 'relative', height: q(76), cursor: 'pointer' }}
-                      onClick={() => window.open('https://steamcommunity.com/my/edit/settings', '_blank')}
-                    >
-                      <img src={IMG.btnRight} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#fff', fontSize: q(20), fontWeight: 500, textAlign: 'center', lineHeight: 1.3 }}>点击将STEAM库存设置为公开</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── 添加副号 ── */}
-              <div style={{ position: 'relative', height: q(59), marginBottom: q(10) }}>
-                <img src={IMG.titleBar2} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ color: '#fff', fontSize: q(28), fontWeight: 700 }}>添加副号</span>
-                </div>
-              </div>
-              <p style={{ color: '#fff', fontSize: q(26), margin: `0 0 ${q(16)} 0`, textAlign: 'center' }}>
-                点击新增您的副号
-              </p>
-
-              {/* 副号URL输入框 */}
-              <div style={{ position: 'relative', height: q(80), marginBottom: q(12) }}>
-                <img src={IMG.inputBg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
-                <input
-                  value={subUrl}
-                  onChange={e => setSubUrl(e.target.value)}
-                  placeholder="请输入副号Steam交易链接"
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    width: '100%',
-                    height: '100%',
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    color: '#fff',
-                    fontSize: q(22),
-                    padding: `0 ${q(20)}`,
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-
-              {/* 保存按钮 */}
-              <div
-                onClick={handleSave}
-                style={{
-                  position: 'relative',
-                  height: q(76),
-                  marginBottom: q(20),
-                  cursor: 'pointer',
-                  borderRadius: q(8),
-                  overflow: 'hidden',
-                  background: 'linear-gradient(135deg, #6d28d9 0%, #4c1d95 100%)',
-                  border: '1px solid rgba(167,139,250,0.5)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: updateSteam.isPending ? 0.7 : 1,
-                }}
-              >
-                <span style={{ color: '#fff', fontSize: q(28), fontWeight: 700, letterSpacing: 1 }}>
-                  {updateSteam.isPending ? '保存中...' : '保存设置'}
-                </span>
-              </div>
-
-              {/* ── 绑定我为副号区块 ── */}
-              <div
-                style={{
-                  position: 'relative',
-                  borderRadius: q(12),
-                  overflow: 'hidden',
-                  marginBottom: q(20),
-                }}
-              >
-                <img
-                  src={IMG.sectionBg2}
-                  alt=""
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 0 }}
-                />
-                <div style={{ position: 'relative', zIndex: 1, padding: `${q(10)} ${q(10)} ${q(20)}` }}>
-                  {/* 标题 */}
-                  <div style={{ position: 'relative', height: q(59), marginBottom: q(16) }}>
-                    <img src={IMG.titleBar3} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ color: '#fff', fontSize: q(28), fontWeight: 700 }}>绑定我为副号</span>
-                    </div>
-                  </div>
-
-                  {/* 提货绑定码 + 生成按钮 */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${q(10)}` }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ color: '#fff', fontSize: q(26), fontWeight: 500, marginBottom: q(6) }}>提货绑定码</div>
-                      <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: q(22) }}>新增提取饰品的副号时使用</div>
-                      {bindingCode && (
-                        <div
-                          style={{
-                            marginTop: q(10),
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: q(12),
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <span
-                            style={{
-                              color: '#54e7f4',
-                              fontSize: q(30),
-                              fontWeight: 700,
-                              letterSpacing: 3,
-                            }}
-                          >
-                            {bindingCode}
-                          </span>
-                          <span
-                            onClick={handleCopyCode}
-                            style={{
-                              color: '#fff',
-                              fontSize: q(22),
-                              background: 'rgba(84,231,244,0.2)',
-                              border: '1px solid rgba(84,231,244,0.5)',
-                              borderRadius: q(6),
-                              padding: `${q(4)} ${q(14)}`,
-                              cursor: 'pointer',
-                              flexShrink: 0,
-                              userSelect: 'none',
-                            }}
-                          >
-                            复制
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div
-                      style={{ position: 'relative', width: q(130), height: q(62), cursor: 'pointer', flexShrink: 0, marginLeft: q(10) }}
-                      onClick={handleGenerate}
-                    >
-                      <img src={IMG.generateBtn} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ color: '#fbf4ff', fontSize: q(26), fontWeight: 700 }}>
-                          {generateCode.isPending ? '生成中...' : '生成'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 帮助链接 */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: `0 ${q(10)}`,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: q(12) }}>
-                  <img src={IMG.helpIcon} alt="" style={{ width: q(37), height: q(49), objectFit: 'contain' }} />
-                  <span style={{ color: '#fff', fontSize: q(22) }}>打不开Steam怎么办</span>
-                </div>
-                <span
-                  style={{ color: '#54e7f4', fontSize: q(22), cursor: 'pointer' }}
-                  onClick={() => window.open('https://store.steampowered.com/about/', '_blank')}
-                >
-                  查看教程》
-                </span>
-              </div>
+                删除
+              </CyberButton>
             </div>
+
+            {/* 两个功能按钮 */}
+            <div style={{ display: 'flex', gap: q(10) }}>
+              <CyberButton
+                onClick={() => window.open('https://steamcommunity.com/id/me/tradeoffers/privacy', '_blank')}
+                variant="secondary"
+                style={{ flex: 1, height: q(76) }}
+              >
+                点击获取STEAM链接
+              </CyberButton>
+              <CyberButton
+                onClick={() => window.open('https://steamcommunity.com/my/edit/settings', '_blank')}
+                variant="secondary"
+                style={{ flex: 1.5, height: q(76) }}
+              >
+                点击将STEAM库存设置为公开
+              </CyberButton>
+            </div>
+          </SectionCard>
+
+          {/* ══ 添加副号 ══ */}
+          <SectionTitle title="添加副号" />
+          <p style={{
+            color: 'rgba(200,180,255,0.7)', fontSize: q(26),
+            margin: `${q(-4)} 0 ${q(16)} 0`, textAlign: 'center',
+          }}>
+            点击新增您的副号
+          </p>
+          <SteamInput
+            value={subUrl}
+            onChange={setSubUrl}
+            placeholder="请输入副号Steam交易链接"
+            style={{ marginBottom: q(16) }}
+          />
+
+          {/* 保存按钮 */}
+          <CyberButton
+            onClick={handleSave}
+            variant="primary"
+            disabled={updateSteam.isPending}
+            style={{ width: '100%', height: q(80), marginBottom: q(24) }}
+          >
+            {updateSteam.isPending ? '保存中...' : '保存设置'}
+          </CyberButton>
+
+          {/* ══ 绑定我为副号区块 ══ */}
+          <SectionCard title="绑定我为副号">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: '#fff', fontSize: q(26), fontWeight: 600, marginBottom: q(6) }}>
+                  提货绑定码
+                </div>
+                <div style={{ color: 'rgba(200,180,255,0.6)', fontSize: q(22) }}>
+                  新增提取饰品的副号时使用
+                </div>
+                {bindingCode && (
+                  <div style={{ marginTop: q(12), display: 'flex', alignItems: 'center', gap: q(12), flexWrap: 'wrap' }}>
+                    <span style={{
+                      color: '#38bdf8', fontSize: q(30), fontWeight: 700,
+                      letterSpacing: 3, textShadow: '0 0 8px rgba(56,189,248,0.6)',
+                    }}>
+                      {bindingCode}
+                    </span>
+                    <span
+                      onClick={handleCopyCode}
+                      style={{
+                        color: '#38bdf8', fontSize: q(22),
+                        background: 'rgba(56,189,248,0.15)',
+                        border: '1px solid rgba(56,189,248,0.4)',
+                        borderRadius: q(6),
+                        padding: `${q(4)} ${q(14)}`,
+                        cursor: 'pointer', flexShrink: 0, userSelect: 'none',
+                      }}
+                    >
+                      复制
+                    </span>
+                  </div>
+                )}
+              </div>
+              <CyberButton
+                onClick={handleGenerate}
+                variant="accent"
+                disabled={generateCode.isPending}
+                style={{ width: q(130), height: q(62), flexShrink: 0, marginLeft: q(16) }}
+              >
+                {generateCode.isPending ? '生成中...' : '生成'}
+              </CyberButton>
+            </div>
+          </SectionCard>
+
+          {/* 帮助链接 */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: `${q(8)} ${q(4)}`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: q(10) }}>
+              {/* 警告图标 */}
+              <div style={{
+                width: q(32), height: q(32), borderRadius: '50%',
+                background: 'rgba(239,68,68,0.2)',
+                border: '1.5px solid rgba(239,68,68,0.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <span style={{ color: '#ef4444', fontSize: q(20), fontWeight: 700, lineHeight: 1 }}>!</span>
+              </div>
+              <span style={{ color: 'rgba(200,180,255,0.8)', fontSize: q(22) }}>打不开Steam怎么办</span>
+            </div>
+            <span
+              style={{ color: '#38bdf8', fontSize: q(22), cursor: 'pointer' }}
+              onClick={() => window.open('https://store.steampowered.com/about/', '_blank')}
+            >
+              查看教程 »
+            </span>
           </div>
         </div>
       </div>
     </>
   );
+}
 
-  return content;
+/* ── 子组件 ── */
+
+function CloseButton({ onClick }: { onClick: () => void }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        width: q(52), height: q(52), borderRadius: '50%',
+        border: '1.5px solid rgba(120,60,255,0.5)',
+        background: 'rgba(80,40,160,0.3)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer',
+        boxShadow: '0 0 8px rgba(120,60,255,0.3)',
+      }}
+    >
+      <svg width={q(22)} height={q(22)} viewBox="0 0 24 24" fill="none">
+        <path d="M18 6L6 18M6 6l12 12" stroke="rgba(200,160,255,0.9)" strokeWidth="2.5" strokeLinecap="round"/>
+      </svg>
+    </div>
+  );
+}
+
+function SectionTitle({ title }: { title: string }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center',
+      marginBottom: q(16),
+      position: 'relative',
+    }}>
+      {/* 左右延伸线 */}
+      <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(120,60,255,0.5))' }} />
+      <div style={{
+        padding: `${q(8)} ${q(24)}`,
+        background: 'linear-gradient(135deg, rgba(80,20,180,0.6), rgba(40,10,100,0.8))',
+        border: '1px solid rgba(120,60,255,0.5)',
+        borderRadius: q(6),
+        margin: `0 ${q(12)}`,
+        boxShadow: '0 0 12px rgba(100,40,200,0.3)',
+      }}>
+        <span style={{
+          color: '#fff', fontSize: q(26), fontWeight: 700,
+          textShadow: '0 0 8px rgba(168,85,247,0.6)',
+          letterSpacing: '0.05em',
+        }}>{title}</span>
+      </div>
+      <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, rgba(120,60,255,0.5), transparent)' }} />
+    </div>
+  );
+}
+
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{
+      marginBottom: q(24),
+      borderRadius: q(16),
+      background: 'rgba(30,10,70,0.5)',
+      border: '1px solid rgba(100,50,200,0.4)',
+      boxShadow: 'inset 0 1px 0 rgba(180,100,255,0.1), 0 4px 20px rgba(0,0,0,0.3)',
+      overflow: 'hidden',
+    }}>
+      {/* 区块标题 */}
+      <SectionTitle title={title} />
+      <div style={{ padding: `0 ${q(16)} ${q(20)}` }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function SteamInput({
+  value, onChange, placeholder, style,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div style={{
+      height: q(80),
+      borderRadius: q(8),
+      background: 'rgba(20,8,55,0.7)',
+      border: '1px solid rgba(100,60,200,0.5)',
+      position: 'relative',
+      boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.4)',
+      ...style,
+    }}>
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: '1px',
+        background: 'linear-gradient(90deg, transparent, rgba(120,60,255,0.3), transparent)',
+        pointerEvents: 'none',
+      }} />
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          background: 'transparent', border: 'none', outline: 'none',
+          color: '#e8d5ff', fontSize: q(24),
+          padding: `0 ${q(20)}`,
+          boxSizing: 'border-box',
+          caretColor: '#a855f7',
+        }}
+      />
+    </div>
+  );
+}
+
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'accent';
+
+function CyberButton({
+  onClick, variant = 'primary', disabled, children, style,
+}: {
+  onClick?: () => void;
+  variant?: ButtonVariant;
+  disabled?: boolean;
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}) {
+  const configs: Record<ButtonVariant, { bg: string; border: string; shadow: string; color: string }> = {
+    primary: {
+      bg: disabled ? 'rgba(60,20,120,0.4)' : 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+      border: disabled ? 'rgba(80,40,160,0.3)' : 'rgba(168,85,247,0.6)',
+      shadow: disabled ? 'none' : '0 0 16px rgba(120,60,255,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
+      color: disabled ? 'rgba(200,180,255,0.4)' : '#fff',
+    },
+    secondary: {
+      bg: 'rgba(40,15,100,0.6)',
+      border: 'rgba(100,60,200,0.5)',
+      shadow: '0 0 8px rgba(80,40,160,0.3)',
+      color: 'rgba(220,200,255,0.9)',
+    },
+    danger: {
+      bg: 'rgba(120,20,40,0.5)',
+      border: 'rgba(200,60,80,0.5)',
+      shadow: '0 0 8px rgba(200,40,60,0.3)',
+      color: 'rgba(255,150,160,0.95)',
+    },
+    accent: {
+      bg: disabled ? 'rgba(40,20,80,0.4)' : 'linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)',
+      border: disabled ? 'rgba(60,40,120,0.3)' : 'rgba(56,189,248,0.6)',
+      shadow: disabled ? 'none' : '0 0 12px rgba(56,189,248,0.4)',
+      color: disabled ? 'rgba(150,200,255,0.4)' : '#fff',
+    },
+  };
+
+  const cfg = configs[variant];
+
+  return (
+    <div
+      onClick={!disabled ? onClick : undefined}
+      style={{
+        borderRadius: q(8),
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: cfg.bg,
+        border: `1.5px solid ${cfg.border}`,
+        boxShadow: cfg.shadow,
+        transition: 'all 0.2s',
+        position: 'relative', overflow: 'hidden',
+        ...style,
+      }}
+    >
+      {/* 高光 */}
+      {!disabled && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: '40%',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 100%)',
+          pointerEvents: 'none',
+        }} />
+      )}
+      <span style={{
+        color: cfg.color,
+        fontSize: q(24), fontWeight: 700,
+        textAlign: 'center', lineHeight: 1.3,
+        position: 'relative', zIndex: 1,
+        padding: `0 ${q(8)}`,
+      }}>
+        {children}
+      </span>
+    </div>
+  );
 }
