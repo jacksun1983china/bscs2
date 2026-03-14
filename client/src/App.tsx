@@ -126,10 +126,8 @@ function Router() {
         <Route path={"/agent/login"} component={AgentLogin} />
         <Route path={"/404"} component={NotFound} />
 
-        {/* 受保护页面：需要登录 */}
-        <Route path={"/admin"}>
-          {() => <ProtectedRoute component={AdminDashboard} />}
-        </Route>
+        {/* 管理后台：使用自己独立的登录系统，不走玩家ProtectedRoute */}
+        <Route path={"/admin"} component={AdminDashboard} />
         {/* 游戏页面 */}
         <Route path={"/arena"}>
           {() => <ProtectedRoute component={Arena} />}

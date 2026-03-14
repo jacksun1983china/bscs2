@@ -8,7 +8,7 @@
  * 4. 头像修复：使用 getAvatarUrl() 统一处理系统头像ID和URL格式
  */
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { playSlotStop, playWinFanfare, playLoseTone } from '@/lib/arenaSound';
+import { playSlotSpin, stopSlotSpin, playSlotStop, playWinFanfare, playLoseTone } from '@/lib/arenaSound';
 import { useLocation, useParams } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import TopNav from '@/components/TopNav';
@@ -85,6 +85,7 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
   useEffect(() => {
     if (skipAnim && finalItem) {
       if (timerRef.current) clearTimeout(timerRef.current);
+      stopSlotSpin(); // 跳过时也停止旋转音效
       setPhase('done');
       setDisplayItem(finalItem);
       onDone?.();
@@ -119,9 +120,12 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
     setReel(newReel);
     setPhase('spinning');
     setDisplayItem(null);
+    // 播放旋转音效
+    playSlotSpin();
 
     // 2.6s 后停止并显示结果
     timerRef.current = setTimeout(() => {
+      stopSlotSpin(); // 停止旋转音效
       playSlotStop(finalItem.goodsLevel);
       setPhase('done');
       setDisplayItem(finalItem);
@@ -130,7 +134,7 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
       }, 300);
     }, 2600);
 
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); stopSlotSpin(); };
   }, [spinning, finalItem]);
 
   // 重置：当 spinning=false 且 finalItem=null 时回到 idle
@@ -344,6 +348,38 @@ interface PlayerSeatProps {
   compact?: boolean;
 }
 
+/** 数字滚动动画组件：从旧值滚动到新值 */
+function AnimatedValue({ value, duration = 800, style }: { value: number; duration?: number; style?: React.CSSProperties }) {
+  const [display, setDisplay] = useState(value);
+  const prevRef = useRef(value);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    const from = prevRef.current;
+    const to = value;
+    if (from === to) return;
+    const start = performance.now();
+    const diff = to - from;
+
+    const animate = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // easeOutCubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(from + diff * eased);
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(animate);
+      } else {
+        prevRef.current = to;
+      }
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [value, duration]);
+
+  return <span style={style}>¥{display.toFixed(2)}</span>;
+}
+
 function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false, isDraw = false, liveValue, showJoinBtn = false, onJoin, joinLoading = false, compact = false }: PlayerSeatProps) {
   // 价值变化时触发数字跳动动画
   const [prevValue, setPrevValue] = useState(liveValue ?? 0);
@@ -432,7 +468,7 @@ function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false, isDraw 
           <div style={{ color: '#e0d0ff', fontSize: compact ? q(18) : q(22), fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {player?.nickname}
           </div>
-          {/* 实时累计价值（游戏进行中） */}
+          {/* 实时累计价值（游戏进行中）——数字滚动动画 */}
           {liveValue !== undefined && liveValue > 0 && (
             <div style={{
               color: '#ffd700', fontSize: q(22), fontWeight: 700, marginTop: q(4),
@@ -440,7 +476,7 @@ function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false, isDraw 
               transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
               textShadow: bump ? '0 0 12px rgba(255,215,0,0.9)' : 'none',
             }}>
-              ¥{liveValue.toFixed(2)}
+              <AnimatedValue value={liveValue} duration={600} />
             </div>
           )}
           {/* 最终总价值（游戏结束后） */}
@@ -481,6 +517,8 @@ export default function ArenaRoom() {
   const [isPresent, setIsPresent] = useState(false);
   const [joinError, setJoinError] = useState('');
   const [joinLoading, setJoinLoading] = useState(false);
+  // 加入确认弹窗
+  const [showJoinConfirm, setShowJoinConfirm] = useState(false);
   // 控制 getRoomDetail 延迟启动，避免与 joinRoom 并发触发 429
   const [roomDetailEnabled, setRoomDetailEnabled] = useState(false);
 
@@ -1421,6 +1459,86 @@ export default function ArenaRoom() {
         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.4, pointerEvents: 'none' }}
       />
 
+      {/* ── 加入确认弹窗 ── */}
+      {showJoinConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 600,
+          background: 'rgba(5,1,15,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: `${q(40)} ${q(20)}`,
+          animation: 'prizeModalIn 0.3s ease',
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg,rgba(30,10,65,0.98),rgba(15,5,40,0.99))',
+            border: '2px solid rgba(192,132,252,0.6)',
+            borderRadius: q(20),
+            padding: `${q(32)} ${q(28)}`,
+            maxWidth: q(500),
+            width: '90%',
+            textAlign: 'center',
+            boxShadow: '0 0 40px rgba(120,60,220,0.4)',
+          }}>
+            <div style={{ fontSize: q(48), marginBottom: q(16) }}>⚠️</div>
+            <div style={{ color: '#e0d0ff', fontSize: q(30), fontWeight: 700, marginBottom: q(16) }}>
+              确认加入竞技场？
+            </div>
+            <div style={{ color: '#9ca3af', fontSize: q(24), marginBottom: q(8) }}>
+              加入后不可取消，将扣除入场费
+            </div>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: q(8),
+              background: 'rgba(245,200,66,0.15)',
+              border: '1px solid rgba(245,200,66,0.4)',
+              borderRadius: q(12),
+              padding: `${q(10)} ${q(24)}`,
+              marginBottom: q(24),
+            }}>
+              <img src="/img/jinbi1.png" alt="金币" style={{ width: q(32), height: q(32) }} />
+              <span style={{ color: '#ffd700', fontSize: q(32), fontWeight: 800 }}>
+                {room ? parseFloat(room.entryFee).toFixed(0) : '?'}
+              </span>
+              <span style={{ color: '#c084fc', fontSize: q(24) }}>金币</span>
+            </div>
+            <div style={{ display: 'flex', gap: q(16) }}>
+              <button
+                onClick={() => setShowJoinConfirm(false)}
+                style={{
+                  flex: 1, padding: `${q(14)} 0`,
+                  background: 'rgba(120,60,220,0.15)',
+                  border: '1.5px solid rgba(120,60,220,0.4)',
+                  borderRadius: q(12),
+                  color: '#c084fc', fontSize: q(26), fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  setShowJoinConfirm(false);
+                  setJoinLoading(true);
+                  setJoinError('');
+                  joinSeat.mutate({ roomId });
+                }}
+                disabled={joinLoading}
+                style={{
+                  flex: 1, padding: `${q(14)} 0`,
+                  background: 'linear-gradient(135deg,#7c3aed,#a855f7)',
+                  border: '1.5px solid rgba(192,132,252,0.6)',
+                  borderRadius: q(12),
+                  color: '#fff', fontSize: q(26), fontWeight: 700,
+                  cursor: joinLoading ? 'not-allowed' : 'pointer',
+                  opacity: joinLoading ? 0.6 : 1,
+                  boxShadow: '0 4px 16px rgba(120,60,220,0.4)',
+                }}
+              >
+                {joinLoading ? '加入中...' : '确认加入'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── 游戏结束获奖弹窗 ── */}
       {showPrizeModal && myPrizeItems.length > 0 && (
         <div style={{
@@ -1672,9 +1790,7 @@ export default function ArenaRoom() {
                 liveValue={gameStatus === 'playing' && p ? (liveValues[p.playerId] ?? 0) : undefined}
                 showJoinBtn={canShowJoin}
                 onJoin={() => {
-                  setJoinLoading(true);
-                  setJoinError('');
-                  joinSeat.mutate({ roomId });
+                  setShowJoinConfirm(true);
                 }}
                 joinLoading={joinLoading}
                 compact={maxPlayers >= 3}
@@ -1967,12 +2083,55 @@ export default function ArenaRoom() {
                     </span>
                   </div>
                 )}
-                {/* 道具入背包提示 */}
+                {/* 道具入背包提示 / 输家结算提示 */}
                 {(() => {
                   const myData = gameOverData?.players.find((p) => p.playerId === myPlayerId);
                   if (!myData) return null;
-                  // 计算当前玩家获得的道具数量（每轮一件，共 totalRounds 轮）
                   const itemCount = totalRounds;
+                  // 输家专属提示
+                  if (!myData.isWinner && !gameOverData?.isDraw) {
+                    return (
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: q(8),
+                        marginTop: q(10),
+                        background: 'rgba(239,68,68,0.12)',
+                        border: '1px solid rgba(239,68,68,0.35)',
+                        borderRadius: q(20),
+                        padding: `${q(6)} ${q(20)}`,
+                        boxShadow: '0 0 12px rgba(239,68,68,0.15)',
+                      }}>
+                        <span style={{ fontSize: q(28) }}>💔</span>
+                        <span style={{ color: '#ef4444', fontSize: q(22), fontWeight: 700 }}>
+                          本局失利，物品已转移给赢家
+                        </span>
+                      </div>
+                    );
+                  }
+                  // 赢家提示
+                  if (myData.isWinner) {
+                    const allItemCount = totalRounds * maxPlayers;
+                    return (
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: q(8),
+                        marginTop: q(10),
+                        background: 'rgba(34,197,94,0.15)',
+                        border: '1px solid rgba(34,197,94,0.4)',
+                        borderRadius: q(20),
+                        padding: `${q(6)} ${q(20)}`,
+                        boxShadow: '0 0 12px rgba(34,197,94,0.2)',
+                      }}>
+                        <span style={{ fontSize: q(28) }}>🎒</span>
+                        <span style={{ color: '#22c55e', fontSize: q(22), fontWeight: 700 }}>
+                          {allItemCount} 件道具已入背包
+                        </span>
+                      </div>
+                    );
+                  }
+                  // 平局提示
                   return (
                     <div style={{
                       display: 'inline-flex',

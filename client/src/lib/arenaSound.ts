@@ -10,6 +10,11 @@
 
 let audioCtx: AudioContext | null = null;
 
+/** 检查音效是否被静音 */
+function isSfxMuted(): boolean {
+  try { return localStorage.getItem('sfx_muted') === 'true'; } catch { return false; }
+}
+
 function getCtx(): AudioContext {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -17,8 +22,66 @@ function getCtx(): AudioContext {
   return audioCtx;
 }
 
+// ── SLOT 旋转持续音效 ──
+let spinOsc: OscillatorNode | null = null;
+let spinGain: GainNode | null = null;
+let spinLfo: OscillatorNode | null = null;
+
+/** 开始播放 SLOT 旋转循环音效（持续播放直到调用 stopSlotSpin） */
+export function playSlotSpin() {
+  if (isSfxMuted()) return;
+  try {
+    stopSlotSpin(); // 先停止之前的
+    const ctx = getCtx();
+    const now = ctx.currentTime;
+
+    // 主振荡器：模拟滚轮转动的嗡嗡声
+    spinOsc = ctx.createOscillator();
+    spinGain = ctx.createGain();
+    spinOsc.type = 'sawtooth';
+    spinOsc.frequency.setValueAtTime(120, now);
+
+    // LFO 调制频率，产生"滚动"感
+    spinLfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    spinLfo.type = 'sine';
+    spinLfo.frequency.setValueAtTime(8, now); // 8Hz 调制
+    lfoGain.gain.setValueAtTime(30, now); // 频率偏移量
+    spinLfo.connect(lfoGain);
+    lfoGain.connect(spinOsc.frequency);
+
+    // 音量：淡入
+    spinOsc.connect(spinGain);
+    spinGain.connect(ctx.destination);
+    spinGain.gain.setValueAtTime(0, now);
+    spinGain.gain.linearRampToValueAtTime(0.06, now + 0.3);
+
+    spinOsc.start(now);
+    spinLfo.start(now);
+  } catch {}
+}
+
+/** 停止 SLOT 旋转循环音效（淡出） */
+export function stopSlotSpin() {
+  try {
+    if (spinGain && spinOsc) {
+      const ctx = getCtx();
+      const now = ctx.currentTime;
+      spinGain.gain.cancelScheduledValues(now);
+      spinGain.gain.setValueAtTime(spinGain.gain.value, now);
+      spinGain.gain.linearRampToValueAtTime(0, now + 0.15);
+      spinOsc.stop(now + 0.2);
+      spinLfo?.stop(now + 0.2);
+    }
+  } catch {}
+  spinOsc = null;
+  spinGain = null;
+  spinLfo = null;
+}
+
 /** 播放简短的滴答音（老虎机滚动时循环调用） */
 export function playSlotTick() {
+  if (isSfxMuted()) return;
   try {
     const ctx = getCtx();
     const osc = ctx.createOscillator();
@@ -36,6 +99,7 @@ export function playSlotTick() {
 
 /** 播放停止音效，level决定华丽程度 */
 export function playSlotStop(level: number = 3) {
+  if (isSfxMuted()) return;
   try {
     const ctx = getCtx();
     const now = ctx.currentTime;
@@ -98,6 +162,7 @@ export function playSlotStop(level: number = 3) {
 
 /** 胜利号角 */
 export function playWinFanfare() {
+  if (isSfxMuted()) return;
   try {
     const ctx = getCtx();
     const now = ctx.currentTime;
@@ -119,6 +184,7 @@ export function playWinFanfare() {
 
 /** 失败提示音 */
 export function playLoseTone() {
+  if (isSfxMuted()) return;
   try {
     const ctx = getCtx();
     const now = ctx.currentTime;
