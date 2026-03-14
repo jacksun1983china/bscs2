@@ -843,10 +843,16 @@ export default function ArenaRoom() {
         // 只有在确认所有 SLOT 动画都已完成（非 spinning、非 revealing、队列为空、非 intro）
         // 且 gameStatus 不是 playing（说明不是正常游戏流程中）时，才延迟触发
         if (!spinningRef.current && !revealingRef.current && pendingSpinRef.current.length === 0 && !showIntroRef.current) {
-          // 延迟 3 秒检查：如果 pendingGameOverRef 仍未被 handleSlotDone 消费，
+          // 延迟检查：如果 pendingGameOverRef 仍未被 handleSlotDone 消费，
           // 说明没有后续轮次会触发 handleSlotDone，需要手动触发结束
+          // 增加延迟到 8 秒，确保最后一轮 SLOT 动画（2.5s）+ reveal 展示（2.2s）+ 结果延迟（1.8s）都有足够时间
           setTimeout(() => {
             if (pendingGameOverRef.current) {
+              // 再次检查：如果此时 SLOT 正在转或 reveal 正在展示，不要强制触发
+              if (spinningRef.current || revealingRef.current) {
+                console.log(`[SM] game_over fallback skipped: spinning=${spinningRef.current} revealing=${revealingRef.current}`);
+                return;
+              }
               const pending = pendingGameOverRef.current;
               pendingGameOverRef.current = null;
               setGameOverData(pending);
@@ -857,7 +863,7 @@ export default function ArenaRoom() {
                 else playLoseTone();
               }, 500);
             }
-          }, 3500);
+          }, 8000);
         }
         // 兜底定时器：60 秒后如果仍未消费，强制触发结束
         setTimeout(() => {
@@ -1342,22 +1348,24 @@ export default function ArenaRoom() {
               setCurrentRound((r) => r + 1);
               // 不清空 currentRoundItems，等待 SSE round_result 消息覆盖，避免 SlotMachine 动画中断
             } else {
-              // 最后一轮完成，检查是否有缓存的 game_over 数据
-              console.log(`[SM] → last round done, pendingGameOver:${!!pendingGameOverRef.current}`);
-              if (pendingGameOverRef.current) {
-                const overData = pendingGameOverRef.current;
-                pendingGameOverRef.current = null;
-                setGameOverData(overData);
-                setGameStatus('finished');
-                refetchRoom();
-                utils.player.inventory.invalidate();
-                setTimeout(() => {
-                  if (overData.isDraw) playLoseTone();
-                  else if (overData.players.some((p: any) => p.isWinner)) playWinFanfare();
-                  else playLoseTone();
-                }, 500);
-              }
-              // 如果没有 pendingGameOverRef，等待 SSE game_over 事件
+              // 最后一轮完成，增加延迟让玩家消化最后一轮道具结果，再显示比赛结果
+              console.log(`[SM] → last round done, pendingGameOver:${!!pendingGameOverRef.current}, delaying 1.8s before showing result`);
+              setTimeout(() => {
+                if (pendingGameOverRef.current) {
+                  const overData = pendingGameOverRef.current;
+                  pendingGameOverRef.current = null;
+                  setGameOverData(overData);
+                  setGameStatus('finished');
+                  refetchRoom();
+                  utils.player.inventory.invalidate();
+                  setTimeout(() => {
+                    if (overData.isDraw) playLoseTone();
+                    else if (overData.players.some((p: any) => p.isWinner)) playWinFanfare();
+                    else playLoseTone();
+                  }, 500);
+                }
+                // 如果没有 pendingGameOverRef，等待 SSE game_over 事件
+              }, 1800);
             }
           }, 2200);
         }
