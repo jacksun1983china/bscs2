@@ -270,7 +270,9 @@ export default function Login() {
         }}>
           {/* LOGO 居中在卡片上方 */}
           <div style={{
-            textAlign: 'center',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
             marginBottom: 12,
             opacity: logoLoaded ? 1 : 0,
             transform: logoLoaded ? 'translateY(0)' : 'translateY(-20px)',
@@ -280,9 +282,11 @@ export default function Login() {
               src={NEW_LOGO}
               alt="BDCS2"
               style={{
+                display: 'block',
                 width: 320,
                 maxWidth: '80%',
                 objectFit: 'contain',
+                margin: '0 auto',
                 filter: 'drop-shadow(0 0 16px rgba(180,80,255,0.6)) drop-shadow(0 0 32px rgba(0,180,255,0.3))',
                 animation: 'logoPulse 4s ease-in-out infinite',
               }}
