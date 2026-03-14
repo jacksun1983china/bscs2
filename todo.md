@@ -1081,3 +1081,6 @@
 
 ## 背包页面重复key修复（2026-03-14）
 - [x] 修复Backpack.tsx物品列表渲染使用item.itemId作为key导致重复，改用`${itemId}-${source}-${idx}`确保唯一
+
+## 退出游戏响应慢二次修复（2026-03-14）
+- [x] 退出游戏按钮点击后仍然等待很久才跳转，改用window.location.href强制整页刷新跳转（SettingsModal + PlayerInfoBar）

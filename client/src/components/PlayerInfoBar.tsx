@@ -35,7 +35,8 @@ export default function PlayerInfoBar({ showLogout = false, onAddFriend }: Playe
   const logoutMutation = trpc.player.logout.useMutation();
   const handleLogout = () => {
     logoutMutation.mutate();
-    navigate('/login');
+    // 强制整页刷新跳转，避免 SPA 路由延迟
+    window.location.href = '/login';
   };
 
   const vipGradients: Record<number, string> = {

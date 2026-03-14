@@ -29,10 +29,12 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
   const logoutMutation = trpc.player.logout.useMutation();
 
   const handleLogout = () => {
-    // 立即关闭弹窗并跳转，不等待后端响应
+    // 立即关闭弹窗并强制跳转，不等待后端响应
     onClose();
+    // 异步调后端清cookie，不阻塞
     logoutMutation.mutate();
-    navigate('/login');
+    // 使用 window.location.href 强制整页刷新跳转，避免 SPA 路由延迟
+    window.location.href = '/login';
   };
 
   // 动画关闭
