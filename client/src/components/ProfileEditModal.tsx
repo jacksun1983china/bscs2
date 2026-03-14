@@ -1,28 +1,39 @@
 /**
- * NicknameSetupModal — 首次登录昵称+头像设置弹窗
- * 触发条件：player.needSetNickname === true
+ * ProfileEditModal — 修改昵称+头像弹窗
+ * 在"我的"页面点击头像或昵称区域弹出
  * 功能：
- *  - 用户手动输入昵称（1-20字符）
- *  - 实时检查昵称是否可用（不可重复）
- *  - 16个系统头像选择
+ *  - 显示当前昵称和头像
+ *  - 用户可修改昵称（实时检查重复）
+ *  - 用户可更换头像
  *  - 确认后调用 updateProfile 保存
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { trpc } from '@/lib/trpc';
-import { SYSTEM_AVATARS } from '@/lib/assets';
+import { SYSTEM_AVATARS, getAvatarUrl } from '@/lib/assets';
 
-interface NicknameSetupModalProps {
+interface ProfileEditModalProps {
   visible: boolean;
   onClose: () => void;
+  currentNickname?: string;
+  currentAvatar?: string;
 }
 
-export default function NicknameSetupModal({ visible, onClose }: NicknameSetupModalProps) {
+export default function ProfileEditModal({ visible, onClose, currentNickname, currentAvatar }: ProfileEditModalProps) {
   const [nickname, setNickname] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('001');
-  const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
+  const [nicknameStatus, setNicknameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'unchanged'>('idle');
   const checkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const utils = trpc.useUtils();
+
+  // 初始化当前值
+  useEffect(() => {
+    if (visible) {
+      setNickname(currentNickname || '');
+      setSelectedAvatar(currentAvatar || '001');
+      setNicknameStatus('unchanged');
+    }
+  }, [visible, currentNickname, currentAvatar]);
 
   // 更新资料
   const updateProfile = trpc.player.updateProfile.useMutation({
@@ -31,7 +42,6 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
       onClose();
     },
     onError: (err) => {
-      // 如果是昵称冲突
       if (err.data?.code === 'CONFLICT') {
         setNicknameStatus('taken');
       }
@@ -42,15 +52,18 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
   const handleNicknameChange = useCallback((value: string) => {
     setNickname(value);
 
-    // 清除之前的定时器
     if (checkTimerRef.current) {
       clearTimeout(checkTimerRef.current);
     }
 
-    // 基础校验
     const trimmed = value.trim();
     if (trimmed.length === 0) {
       setNicknameStatus('idle');
+      return;
+    }
+    // 如果和当前昵称一样
+    if (trimmed === currentNickname) {
+      setNicknameStatus('unchanged');
       return;
     }
     if (trimmed.length < 2) {
@@ -58,7 +71,6 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
       return;
     }
 
-    // 防抖500ms后检查
     setNicknameStatus('checking');
     checkTimerRef.current = setTimeout(async () => {
       try {
@@ -68,9 +80,8 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
         setNicknameStatus('idle');
       }
     }, 500);
-  }, [utils]);
+  }, [utils, currentNickname]);
 
-  // 清理定时器
   useEffect(() => {
     return () => {
       if (checkTimerRef.current) clearTimeout(checkTimerRef.current);
@@ -79,18 +90,38 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
 
   const handleConfirm = () => {
     const trimmed = nickname.trim();
-    if (!trimmed || trimmed.length < 2 || nicknameStatus !== 'available') return;
-    updateProfile.mutate({ nickname: trimmed, avatar: selectedAvatar });
+    const nicknameChanged = trimmed !== currentNickname;
+    const avatarChanged = selectedAvatar !== currentAvatar;
+
+    if (!nicknameChanged && !avatarChanged) {
+      onClose();
+      return;
+    }
+
+    const updates: { nickname?: string; avatar?: string } = {};
+    if (nicknameChanged) {
+      if (trimmed.length < 2 || nicknameStatus === 'taken' || nicknameStatus === 'invalid') return;
+      updates.nickname = trimmed;
+    }
+    if (avatarChanged) {
+      updates.avatar = selectedAvatar;
+    }
+
+    updateProfile.mutate(updates);
   };
 
-  const canConfirm = nickname.trim().length >= 2 && nicknameStatus === 'available' && !updateProfile.isPending;
+  const nicknameChanged = nickname.trim() !== currentNickname;
+  const avatarChanged = selectedAvatar !== currentAvatar;
+  const hasChanges = nicknameChanged || avatarChanged;
+  const nicknameValid = !nicknameChanged || nicknameStatus === 'available';
+  const canConfirm = hasChanges && nicknameValid && !updateProfile.isPending;
 
   if (!visible) return null;
 
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
+        position: 'absolute', inset: 0, zIndex: 9999,
         background: 'rgba(0,0,0,0.85)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '0 16px',
@@ -116,48 +147,74 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
           pointerEvents: 'none',
         }} />
 
+        {/* 关闭按钮 */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute', top: 12, right: 12,
+            width: 32, height: 32,
+            background: 'rgba(255,255,255,0.1)',
+            border: 'none', borderRadius: '50%',
+            color: '#fff', fontSize: 18,
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1,
+          }}
+        >
+          ✕
+        </button>
+
         {/* 标题 */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', letterSpacing: 2 }}>
-            设置你的昵称
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: 2 }}>
+            修改资料
           </div>
-          <div style={{ fontSize: 13, color: 'rgba(200,160,255,0.7)', marginTop: 6 }}>
-            输入一个独一无二的昵称
+        </div>
+
+        {/* 当前头像预览 */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+          <div style={{
+            width: 72, height: 72,
+            borderRadius: '50%',
+            overflow: 'hidden',
+            border: '3px solid rgba(168,85,247,0.8)',
+            boxShadow: '0 0 20px rgba(168,85,247,0.5)',
+          }}>
+            <img
+              src={getAvatarUrl(selectedAvatar)}
+              alt="当前头像"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           </div>
         </div>
 
         {/* 昵称输入区 */}
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 13, color: 'rgba(200,160,255,0.8)', marginBottom: 8 }}>昵称</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <input
-                type="text"
-                value={nickname}
-                onChange={(e) => handleNicknameChange(e.target.value)}
-                maxLength={20}
-                placeholder="请输入昵称（2-20个字符）"
-                style={{
-                  width: '100%', boxSizing: 'border-box',
-                  background: 'rgba(255,255,255,0.07)',
-                  border: `1.5px solid ${
-                    nicknameStatus === 'available' ? 'rgba(102,255,153,0.6)' :
-                    nicknameStatus === 'taken' || nicknameStatus === 'invalid' ? 'rgba(255,80,80,0.6)' :
-                    'rgba(160,80,255,0.4)'
-                  }`,
-                  borderRadius: 10,
-                  padding: '10px 14px',
-                  color: '#fff',
-                  fontSize: 16,
-                  fontWeight: 600,
-                  letterSpacing: 1,
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                }}
-              />
-            </div>
-          </div>
-          {/* 状态提示 */}
+          <input
+            type="text"
+            value={nickname}
+            onChange={(e) => handleNicknameChange(e.target.value)}
+            maxLength={20}
+            placeholder="请输入昵称（2-20个字符）"
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              background: 'rgba(255,255,255,0.07)',
+              border: `1.5px solid ${
+                nicknameStatus === 'available' ? 'rgba(102,255,153,0.6)' :
+                nicknameStatus === 'taken' || nicknameStatus === 'invalid' ? 'rgba(255,80,80,0.6)' :
+                'rgba(160,80,255,0.4)'
+              }`,
+              borderRadius: 10,
+              padding: '10px 14px',
+              color: '#fff',
+              fontSize: 16,
+              fontWeight: 600,
+              letterSpacing: 1,
+              outline: 'none',
+              transition: 'border-color 0.2s',
+            }}
+          />
           {nicknameStatus === 'checking' && (
             <div style={{ color: 'rgba(200,160,255,0.7)', fontSize: 12, marginTop: 6, paddingLeft: 4 }}>
               检查中...
@@ -245,7 +302,7 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
             transition: 'all 0.2s',
           }}
         >
-          {updateProfile.isPending ? '保存中...' : '确认，进入游戏'}
+          {updateProfile.isPending ? '保存中...' : '保存修改'}
         </button>
       </div>
     </div>

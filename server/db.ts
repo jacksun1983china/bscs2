@@ -414,10 +414,11 @@ export async function joinRollRoom(roomId: number, playerId: number) {
 export async function addRollBots(roomId: number, count: number) {
   const db = await getDb();
   if (!db) throw new Error("数据库不可用");
-  const botNames = ["幸运玩家", "神秘用户", "匿名大佬", "隐身高手", "暗影战士", "星际游侠", "银河猎手", "量子战士"];
+  const { generateRealisticBotNames } = await import("../shared/realisticBotNames");
+  const botNameList = generateRealisticBotNames(count);
   const bots = Array.from({ length: count }, (_, i) => ({
     rollRoomId: roomId, playerId: 0, isBot: 1,
-    botNickname: `${botNames[i % botNames.length]}${Math.floor(Math.random() * 9000) + 1000}`,
+    botNickname: botNameList[i] || `玩家${Math.floor(Math.random() * 9000) + 1000}`,
     botAvatar: "",
   }));
   await db.insert(rollParticipants).values(bots);

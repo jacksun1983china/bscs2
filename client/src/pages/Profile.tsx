@@ -13,6 +13,7 @@ import PlayerInfoCard from '@/components/PlayerInfoCard';
 import SettingsModal from '@/components/SettingsModal';
 import SteamSettingsModal from '@/pages/SteamSettings';
 import SecurityPasswordModal from '@/pages/SecurityPassword';
+import ProfileEditModal from '@/components/ProfileEditModal';
 
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
 
@@ -67,6 +68,7 @@ export default function Profile() {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [steamVisible, setSteamVisible] = useState(false);
   const [securityPwdVisible, setSecurityPwdVisible] = useState(false);
+  const [profileEditVisible, setProfileEditVisible] = useState(false);
 
   const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
   const logoutMutation = trpc.player.logout.useMutation();
@@ -76,6 +78,7 @@ export default function Profile() {
   };
 
   const menuItems = [
+    { icon: WD.menuIcon0, bg: WD.menuBg0, label: '修改资料', sub: '昵称/头像', onClick: () => setProfileEditVisible(true) },
     { icon: WD.menuIcon0, bg: WD.menuBg0, label: '我的记录', sub: '资产明细', onClick: () => navigate('/my-records') },
     { icon: WD.menuIcon1, bg: WD.menuBg1, label: 'STEAM', sub: '已绑定', onClick: () => setSteamVisible(true) },
     { icon: WD.menuIcon2, bg: WD.menuBg2, label: '安全密码', sub: '已设置', onClick: () => setSecurityPwdVisible(true) },
@@ -365,6 +368,12 @@ export default function Profile() {
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
       <SteamSettingsModal visible={steamVisible} onClose={() => setSteamVisible(false)} />
       <SecurityPasswordModal visible={securityPwdVisible} onClose={() => setSecurityPwdVisible(false)} />
+      <ProfileEditModal
+        visible={profileEditVisible}
+        onClose={() => setProfileEditVisible(false)}
+        currentNickname={player?.nickname}
+        currentAvatar={player?.avatar}
+      />
     </div>
     </PageSlideIn>
   );

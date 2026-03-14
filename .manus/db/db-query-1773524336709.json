@@ -1,0 +1,190 @@
+{
+  "query": "SELECT id, nickname, avatar, isBot FROM players WHERE isBot = 1 LIMIT 30;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT id, nickname, avatar, isBot FROM players WHERE isBot = 1 LIMIT 30;",
+  "rows": [
+    {
+      "id": "120106",
+      "nickname": "凌驾狼牙",
+      "avatar": "014",
+      "isBot": "1"
+    },
+    {
+      "id": "120107",
+      "nickname": "烈豹勇将",
+      "avatar": "013",
+      "isBot": "1"
+    },
+    {
+      "id": "120108",
+      "nickname": "爆头战力",
+      "avatar": "016",
+      "isBot": "1"
+    },
+    {
+      "id": "120109",
+      "nickname": "壮阔豪才",
+      "avatar": "009",
+      "isBot": "1"
+    },
+    {
+      "id": "120110",
+      "nickname": "狙击独一",
+      "avatar": "009",
+      "isBot": "1"
+    },
+    {
+      "id": "120111",
+      "nickname": "热血精锐",
+      "avatar": "001",
+      "isBot": "1"
+    },
+    {
+      "id": "120112",
+      "nickname": "靛蓝宇宙",
+      "avatar": "005",
+      "isBot": "1"
+    },
+    {
+      "id": "120113",
+      "nickname": "伏羲枪手",
+      "avatar": "005",
+      "isBot": "1"
+    },
+    {
+      "id": "120114",
+      "nickname": "绯红之魂",
+      "avatar": "011",
+      "isBot": "1"
+    },
+    {
+      "id": "120115",
+      "nickname": "烟雾神能",
+      "avatar": "009",
+      "isBot": "1"
+    },
+    {
+      "id": "120116",
+      "nickname": "极光铁盔",
+      "avatar": "007",
+      "isBot": "1"
+    },
+    {
+      "id": "120117",
+      "nickname": "沉默之霜",
+      "avatar": "010",
+      "isBot": "1"
+    },
+    {
+      "id": "120118",
+      "nickname": "悲壮第六",
+      "avatar": "006",
+      "isBot": "1"
+    },
+    {
+      "id": "120119",
+      "nickname": "竞技冠军",
+      "avatar": "002",
+      "isBot": "1"
+    },
+    {
+      "id": "120120",
+      "nickname": "爆头雄才",
+      "avatar": "013",
+      "isBot": "1"
+    },
+    {
+      "id": "120121",
+      "nickname": "雷鹰强者",
+      "avatar": "009",
+      "isBot": "1"
+    },
+    {
+      "id": "120122",
+      "nickname": "深邃之芒",
+      "avatar": "015",
+      "isBot": "1"
+    },
+    {
+      "id": "120123",
+      "nickname": "斩仙宇宙",
+      "avatar": "001",
+      "isBot": "1"
+    },
+    {
+      "id": "120124",
+      "nickname": "冰虎之枪",
+      "avatar": "007",
+      "isBot": "1"
+    },
+    {
+      "id": "120125",
+      "nickname": "守点智者",
+      "avatar": "012",
+      "isBot": "1"
+    },
+    {
+      "id": "120126",
+      "nickname": "闪电至一",
+      "avatar": "012",
+      "isBot": "1"
+    },
+    {
+      "id": "120127",
+      "nickname": "睥睨之闪",
+      "avatar": "015",
+      "isBot": "1"
+    },
+    {
+      "id": "120128",
+      "nickname": "孤傲冰火",
+      "avatar": "003",
+      "isBot": "1"
+    },
+    {
+      "id": "120129",
+      "nickname": "突击第五",
+      "avatar": "010",
+      "isBot": "1"
+    },
+    {
+      "id": "120130",
+      "nickname": "圣枪唯一",
+      "avatar": "016",
+      "isBot": "1"
+    },
+    {
+      "id": "120131",
+      "nickname": "毁道侠士",
+      "avatar": "006",
+      "isBot": "1"
+    },
+    {
+      "id": "120132",
+      "nickname": "破坏之术",
+      "avatar": "016",
+      "isBot": "1"
+    },
+    {
+      "id": "120133",
+      "nickname": "铁血宇宙",
+      "avatar": "006",
+      "isBot": "1"
+    },
+    {
+      "id": "120134",
+      "nickname": "猎鹰杀器",
+      "avatar": "005",
+      "isBot": "1"
+    },
+    {
+      "id": "120135",
+      "nickname": "冰矛仙人",
+      "avatar": "007",
+      "isBot": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tnickname\tavatar\tisBot\n120106\t凌驾狼牙\t014\t1\n120107\t烈豹勇将\t013\t1\n120108\t爆头战力\t016\t1\n120109\t壮阔豪才\t009\t1\n120110\t狙击独一\t009\t1\n120111\t热血精锐\t001\t1\n120112\t靛蓝宇宙\t005\t1\n120113\t伏羲枪手\t005\t1\n120114\t绯红之魂\t011\t1\n120115\t烟雾神能\t009\t1\n120116\t极光铁盔\t007\t1\n120117\t沉默之霜\t010\t1\n120118\t悲壮第六\t006\t1\n120119\t竞技冠军\t002\t1\n120120\t爆头雄才\t013\t1\n120121\t雷鹰强者\t009\t1\n120122\t深邃之芒\t015\t1\n120123\t斩仙宇宙\t001\t1\n120124\t冰虎之枪\t007\t1\n120125\t守点智者\t012\t1\n120126\t闪电至一\t012\t1\n120127\t睥睨之闪\t015\t1\n120128\t孤傲冰火\t003\t1\n120129\t突击第五\t010\t1\n120130\t圣枪唯一\t016\t1\n120131\t毁道侠士\t006\t1\n120132\t破坏之术\t016\t1\n120133\t铁血宇宙\t006\t1\n120134\t猎鹰杀器\t005\t1\n120135\t冰矛仙人\t007\t1\n",
+  "stderr": "",
+  "execution_time_ms": 132
+}
