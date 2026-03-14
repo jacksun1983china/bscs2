@@ -36,8 +36,37 @@ const LEVEL_GLOW: Record<number, string> = {
   4: 'rgba(156,163,175,0.3)',
 };
 
-// ── 老虎机滚动动画组件 ────────────────────────────────────────────────────────
+// ── 辅助函数：构建 gameOverData，统一平局检测 ────────────────────────────────────────────
+function buildGameOverData(
+  playerList: Array<{ playerId: number; nickname: string; avatar: string; seatNo: number }>,
+  playerTotals: Record<number, number>,
+) {
+  const vals = Object.values(playerTotals);
+  const maxVal = vals.length > 0 ? Math.max(...vals) : 0;
+  // 平局检测：所有玩家总价值相同（且至少有 2 个玩家）
+  const allSame = vals.length >= 2 && vals.every((v) => v === vals[0]);
+  const isDraw = allSame;
 
+  const overPlayers = playerList.map((p) => ({
+    playerId: p.playerId,
+    nickname: p.nickname,
+    avatar: p.avatar,
+    seatNo: p.seatNo,
+    totalValue: (playerTotals[p.playerId] ?? 0).toFixed(2),
+    // 平局时没有赢家
+    isWinner: !isDraw && maxVal > 0 && (playerTotals[p.playerId] ?? 0) === maxVal,
+    isDraw,
+  }));
+
+  const winner = isDraw ? null : overPlayers.find((p) => p.isWinner);
+  return {
+    winnerId: winner?.playerId ?? 0,
+    isDraw,
+    players: overPlayers,
+  };
+}
+
+// ── 老虎机滚动动画组件 ────────────────────────────────────────────────────────────
 // ── 简洁可靠的 SlotMachine：用 CSS animation 实现滚动，不依赖复杂的 translateY 计算 ──
 
 const ITEM_HEIGHT_NORMAL = 120; // 2人模式每个道具格子的高度
@@ -805,25 +834,17 @@ export default function ArenaRoom() {
         };
         refetchRoom();
         utils.player.inventory.invalidate();
-        // ── 线性状态机：检查当前是否空闲 ──
+        // ── 统一缓存 game_over 数据，由 handleSlotDone 在最后一轮完成后线性消费 ──
+        // 不再区分"空闲"和"忙碌"分支，因为 game_over 和最后一轮 round_result 几乎同时到达，
+        // 直接触发会截断最后一轮的 SLOT 动画。
         console.log(`[SM] game_over | spinning:${spinningRef.current} revealing:${revealingRef.current} queue:${pendingSpinRef.current.length} intro:${showIntroRef.current}`);
+        pendingGameOverRef.current = overData;
+        // 检查是否真的已经全部完成（gameStatus 已经是 finished，或者没有任何轮次在进行）
+        // 只有在确认所有 SLOT 动画都已完成（非 spinning、非 revealing、队列为空、非 intro）
+        // 且 gameStatus 不是 playing（说明不是正常游戏流程中）时，才延迟触发
         if (!spinningRef.current && !revealingRef.current && pendingSpinRef.current.length === 0 && !showIntroRef.current) {
-          // SLOT 空闲且队列为空，所有轮次已完成，直接触发结束
-          // 延迟 2.5 秒，等待最后一轮的 reveal 动画完成
-          setTimeout(() => {
-            setGameOverData(overData);
-            setGameStatus('finished');
-            setTimeout(() => {
-              if (overData.isDraw) playLoseTone();
-              else if (overData.players.some((p: any) => p.isWinner)) playWinFanfare();
-              else playLoseTone();
-            }, 500);
-          }, 2500);
-        } else {
-          // SLOT 还在转或队列中还有待处理轮次，缓存 game_over 数据
-          // 由 handleSlotDone 在最后一轮完成后线性消费
-          pendingGameOverRef.current = overData;
-          // 兜底定时器：60 秒后如果仍未消费，强制触发结束
+          // 延迟 3 秒检查：如果 pendingGameOverRef 仍未被 handleSlotDone 消费，
+          // 说明没有后续轮次会触发 handleSlotDone，需要手动触发结束
           setTimeout(() => {
             if (pendingGameOverRef.current) {
               const pending = pendingGameOverRef.current;
@@ -836,8 +857,22 @@ export default function ArenaRoom() {
                 else playLoseTone();
               }, 500);
             }
-          }, 60000);
+          }, 3500);
         }
+        // 兜底定时器：60 秒后如果仍未消费，强制触发结束
+        setTimeout(() => {
+          if (pendingGameOverRef.current) {
+            const pending = pendingGameOverRef.current;
+            pendingGameOverRef.current = null;
+            setGameOverData(pending);
+            setGameStatus('finished');
+            setTimeout(() => {
+              if (pending.isDraw) playLoseTone();
+              else if (pending.players.some((p: any) => p.isWinner)) playWinFanfare();
+              else playLoseTone();
+            }, 500);
+          }
+        }, 60000);
         break;
       }
       case 'room_cancelled':
@@ -944,17 +979,7 @@ export default function ArenaRoom() {
           for (const r of roomDetail.roundResults) {
             playerTotals[r.playerId] = Math.round(((playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue)) * 100) / 100;
           }
-          const maxVal = Math.max(...Object.values(playerTotals));
-          const overPlayers = roomDetail.players.map((p) => ({
-            playerId: p.playerId,
-            nickname: p.nickname,
-            avatar: p.avatar,
-            seatNo: p.seatNo,
-            totalValue: (playerTotals[p.playerId] ?? 0).toFixed(2),
-            isWinner: (playerTotals[p.playerId] ?? 0) === maxVal,
-          }));
-          const winner = overPlayers.find((p) => p.isWinner);
-          setGameOverData({ winnerId: winner?.playerId ?? 0, players: overPlayers });
+          setGameOverData(buildGameOverData(roomDetail.players, playerTotals));
         }
       }
       // 只在非实时游戏时同步 currentRound，避免覆盖实时轮次进度
@@ -1007,17 +1032,7 @@ export default function ArenaRoom() {
       for (const r of roomDetail.roundResults) {
         playerTotals[r.playerId] = Math.round(((playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue)) * 100) / 100;
       }
-      const maxVal = Math.max(...Object.values(playerTotals));
-      const overPlayers = roomDetail.players.map((p: any) => ({
-        playerId: p.playerId,
-        nickname: p.nickname,
-        avatar: p.avatar,
-        seatNo: p.seatNo,
-        totalValue: (playerTotals[p.playerId] ?? 0).toFixed(2),
-        isWinner: (playerTotals[p.playerId] ?? 0) === maxVal,
-      }));
-      const winner = overPlayers.find((p: any) => p.isWinner);
-      setGameOverData({ winnerId: winner?.playerId ?? 0, players: overPlayers });
+      setGameOverData(buildGameOverData(roomDetail.players, playerTotals));
       setGameStatus('finished');
     }
   }, [roomDetail?.room?.status, roomDetail?.roundResults, roomDetail?.players, isReplaying, spinning, showIntro, gameStatus]);
@@ -1209,21 +1224,12 @@ export default function ArenaRoom() {
       }
     }
 
-    const maxVal = Object.values(playerTotals).length > 0 ? Math.max(...Object.values(playerTotals)) : 0;
-    const overPlayers = players.map((p) => ({
-      playerId: p.playerId,
-      nickname: p.nickname,
-      avatar: p.avatar,
-      seatNo: p.seatNo,
-      totalValue: (playerTotals[p.playerId] ?? 0).toFixed(2),
-      isWinner: maxVal > 0 && (playerTotals[p.playerId] ?? 0) === maxVal,
-    }));
-    const winner = overPlayers.find((p) => p.isWinner);
-    setGameOverData({ winnerId: winner?.playerId ?? 0, players: overPlayers });
+    const overData = buildGameOverData(players, playerTotals);
+    setGameOverData(overData);
     setGameStatus('finished');
     setIsReplaying(false);
     setReplayWaitingIntro(false);
-    if (winner?.playerId === myPlayerId) playWinFanfare();
+    if (!overData.isDraw && overData.players.find((p) => p.isWinner)?.playerId === myPlayerId) playWinFanfare();
     else playLoseTone();
   }, [roomDetail, isReplaying, roundResults, currentRoundItems, players, myPlayerId]);
 
@@ -1281,20 +1287,11 @@ export default function ArenaRoom() {
               for (const r of roomDetail.roundResults) {
                 playerTotals[r.playerId] = Math.round(((playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue)) * 100) / 100;
               }
-              const maxVal = Math.max(...Object.values(playerTotals));
-              const overPlayers = (roomDetail?.players ?? []).map((p) => ({
-                playerId: p.playerId,
-                nickname: p.nickname,
-                avatar: p.avatar,
-                seatNo: p.seatNo,
-                totalValue: (playerTotals[p.playerId] ?? 0).toFixed(2),
-                isWinner: (playerTotals[p.playerId] ?? 0) === maxVal,
-              }));
-              const winner = overPlayers.find((p) => p.isWinner);
-              setGameOverData({ winnerId: winner?.playerId ?? 0, players: overPlayers });
+              const overData = buildGameOverData(roomDetail?.players ?? [], playerTotals);
+              setGameOverData(overData);
               setGameStatus('finished');
               setIsReplaying(false);
-              if (winner?.playerId === myPlayerId) playWinFanfare();
+              if (!overData.isDraw && overData.players.find((p) => p.isWinner)?.playerId === myPlayerId) playWinFanfare();
               else playLoseTone();
             }
           }, 2200);

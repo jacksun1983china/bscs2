@@ -1122,3 +1122,7 @@
 ## 删除SLOT滚轴旋转音效（2026-03-15）
 - [x] 删除playSlotSpin/stopSlotSpin在ArenaRoom中的调用
 - [x] 删除arenaSound.ts中playSlotSpin/stopSlotSpin的实现和旋转CDN资源
+
+## 竞技场Bug修复（2026-03-15）
+- [x] 平局时文字显示不正确：两人总价值相同时应显示"平局"而非"XX获胜"，标签也应显示"平局"而非"胜利"
+- [x] 最后一轮SLOT动画不播放：最后一个箱子直接跳出结果，没有正常播放转盘动画
