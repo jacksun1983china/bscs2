@@ -481,8 +481,8 @@ export default function Arena() {
 
   const displayRooms = liveRooms ?? roomsData;
 
-  // 点击房间卡片：直接进入房间页面，不在列表页调 joinRoom
-  // joinRoom 逻辑移到 ArenaRoom.tsx 内部处理（进入时自动判断是否已在房间）
+  // 点击房间卡片：直接进入房间页面（观战模式）
+  // 玩家需在 ArenaRoom 内主动点击“加入”按钮占座（joinSeat）
 
   return (
 <PageSlideIn>

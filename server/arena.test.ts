@@ -100,7 +100,7 @@ describe("arenaRouter exports", () => {
     expect(procedures).toHaveProperty("getRooms");
     expect(procedures).toHaveProperty("getRoomDetail");
     expect(procedures).toHaveProperty("createRoom");
-    expect(procedures).toHaveProperty("joinRoom");
+    expect(procedures).toHaveProperty("joinSeat");
     expect(procedures).toHaveProperty("spinRound");
     expect(procedures).toHaveProperty("cancelRoom");
     expect(procedures).toHaveProperty("getMyRecords");

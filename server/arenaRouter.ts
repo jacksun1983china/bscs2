@@ -1,10 +1,16 @@
 /**
  * arenaRouter.ts — 竞技场 tRPC 路由
  *
+ * 规则重构：进入房间 ≠ 加入游戏
+ *   - 进入房间默认为观战模式
+ *   - 玩家需主动点击“加入”按钮占座，加入后不可取消
+ *   - 所有座位满员后自动开始游戏
+ *   - 机器人也走同样的加入流程
+ *
  * 功能：
  *   arena.getRooms       — 获取等待中的房间列表
- *   arena.createRoom     — 创建房间（选宝箱、设置人数）
- *   arena.joinRoom       — 加入房间
+ *   arena.createRoom     — 创建房间（选宝箱、设置人数，创建者自动占座1号位）
+ *   arena.joinSeat       — 加入座位（主动占座，扣费，不可取消）
  *   arena.getRoomDetail  — 获取房间详情（含玩家列表和已有轮次结果）
  *   arena.spinRound      — 执行一轮开箱（服务端决定物品，广播结果）
  *   arena.cancelRoom     — 取消房间（仅创建者，仅 waiting 状态）
@@ -232,8 +238,8 @@ export const arenaRouter = router({
       return { roomId, roomNo, entryFee };
     }),
 
-  /** 加入房间 */
-  joinRoom: publicProcedure
+  /** 加入座位（主动占座，扣费，不可取消） */
+  joinSeat: publicProcedure
     .input(z.object({ roomId: z.number() }))
     .mutation(async ({ input, ctx }) => {
       const session = await getPlayerFromCookie((ctx as any).req);
@@ -241,45 +247,37 @@ export const arenaRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      // 先在事务外检查玩家是否已在房间（已在则直接返回，不需要加锁）
+      // 检查玩家是否已在房间座位上
       const [existingCheck] = await db
         .select()
         .from(arenaRoomPlayers)
         .where(and(eq(arenaRoomPlayers.roomId, input.roomId), eq(arenaRoomPlayers.playerId, session.playerId)));
       if (existingCheck) {
-        // 返回房间当前状态，让前端知道游戏是否已开始/结束
         const [roomStatus] = await db.select({ status: arenaRooms.status }).from(arenaRooms).where(eq(arenaRooms.id, input.roomId));
         return {
           roomId: input.roomId,
           alreadyJoined: true,
+          seatNo: existingCheck.seatNo,
           roomStatus: roomStatus?.status ?? 'waiting',
           isFull: roomStatus?.status === 'playing' || roomStatus?.status === 'finished',
         };
       }
 
-      // 查询玩家信息（事务外）
+      // 查询玩家信息
       const [player] = await db.select().from(players).where(eq(players.id, session.playerId));
       if (!player) throw new TRPCError({ code: "NOT_FOUND", message: "玩家不存在" });
 
-      // 使用原子 SQL 操作防止超员竞态条件
-      // 策略：先用原子操作尝试占座（current_players + 1 WHERE current_players < max_players AND status = 'waiting'）
-      // 检查影响行数：0 行 = 房间已满或已开始，1 行 = 占座成功
-      let seatNo = 0;
-      let isFull = false;
-      let entryFee = 0;
-
-      // 先获取房间信息（不加锁）
+      // 获取房间信息
       const [roomInfo] = await db.select().from(arenaRooms).where(eq(arenaRooms.id, input.roomId));
       if (!roomInfo) throw new TRPCError({ code: "NOT_FOUND", message: "房间不存在" });
       if (roomInfo.status !== "waiting") throw new TRPCError({ code: "BAD_REQUEST", message: "房间已不在等待状态" });
       if (roomInfo.currentPlayers >= roomInfo.maxPlayers) throw new TRPCError({ code: "BAD_REQUEST", message: "房间已满" });
 
-      entryFee = parseFloat(roomInfo.entryFee);
+      const entryFee = parseFloat(roomInfo.entryFee);
       const gold = parseFloat(player.gold ?? "0");
       if (gold < entryFee) throw new TRPCError({ code: "BAD_REQUEST", message: `金币不足，需要 ${entryFee} 金币` });
 
-      // 关键操作：原子占座（一条 SQL，并发安全）
-      // WHERE status='waiting' AND current_players < max_players 确保不超员
+      // 原子占座（并发安全）
       const [updateResult] = await db.execute(
         sql`UPDATE arenaRooms
             SET currentPlayers = currentPlayers + 1,
@@ -291,14 +289,13 @@ export const arenaRouter = router({
       );
       const affectedRows = (updateResult as any).affectedRows ?? (updateResult as any)[0]?.affectedRows ?? 0;
       if (affectedRows === 0) {
-        // 占座失败：房间已满或已开始
         throw new TRPCError({ code: "BAD_REQUEST", message: "房间已满" });
       }
 
-      // 占座成功，读取最新房间状态确认座位号和是否已满
+      // 读取最新房间状态
       const [updatedRoom] = await db.select().from(arenaRooms).where(eq(arenaRooms.id, input.roomId));
-      seatNo = updatedRoom!.currentPlayers; // 更新后的 current_players 就是我的座位号
-      isFull = updatedRoom!.status === 'playing';
+      const seatNo = updatedRoom!.currentPlayers;
+      const isFull = updatedRoom!.status === 'playing';
 
       // 添加参与者记录
       await db.insert(arenaRoomPlayers).values({
@@ -309,27 +306,26 @@ export const arenaRouter = router({
         seatNo,
       });
 
-      // 扣除金币（占座成功后才扣）
+      // 扣除金币
       await db
         .update(players)
         .set({ gold: (gold - entryFee).toFixed(2) })
         .where(eq(players.id, session.playerId));
 
-      // 记录金币日志（加入竞技场房间入场费）
+      // 记录金币日志
       const goldAfterJoin = parseFloat((await (await getDb())!.select().from(players).where(eq(players.id, session.playerId)).then(r => r[0]?.gold ?? '0')));
-      await insertGoldLog(session.playerId, -entryFee, goldAfterJoin, 'arena', `竞技场入场费（加入房间）`);
+      await insertGoldLog(session.playerId, -entryFee, goldAfterJoin, 'arena', `竞技场入场费（加入座位）`);
 
-      // 事务外广播事件
+      // 广播玩家加入事件
       broadcastPlayerJoined(
         input.roomId,
         { playerId: session.playerId, nickname: player.nickname || player.phone, avatar: player.avatar || "001", seatNo },
         null
       );
 
-      // 如果房间满了，广播游戏开始，并异步自动执行所有轮次
+      // 满员后自动开始游戏
       if (isFull) {
         broadcastGameStarted(input.roomId);
-        // 延迟 5 秒等开场动画完整播放完毕（开场动画约 3-4 秒）再开始开笱
         setTimeout(() => {
           autoSpinAllRounds(input.roomId).catch((err) => {
             console.error('[Arena] autoSpinAllRounds error:', err);
@@ -479,41 +475,7 @@ export const arenaRouter = router({
       return { success: true };
     }),
 
-  /** 离开房间（仅 waiting 状态，退还入场费，房间继续等待） */
-  leaveRoom: publicProcedure
-    .input(z.object({ roomId: z.number() }))
-    .mutation(async ({ input, ctx }) => {
-      const session = await getPlayerFromCookie((ctx as any).req);
-      if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [room] = await db.select().from(arenaRooms).where(eq(arenaRooms.id, input.roomId));
-      if (!room) return { success: true }; // 房间不存在，直接返回
-      if (room.status !== "waiting") return { success: true }; // 游戏已开始，不能离开
-      // 检查玩家是否在房间内
-      const [rp] = await db.select().from(arenaRoomPlayers)
-        .where(and(eq(arenaRoomPlayers.roomId, input.roomId), eq(arenaRoomPlayers.playerId, session.playerId)));
-      if (!rp) return { success: true }; // 玩家不在房间内
-      // 退还入场费
-      const entryFee = parseFloat(room.entryFee);
-      const [p] = await db.select().from(players).where(eq(players.id, session.playerId));
-      if (p) {
-        const newGold = (parseFloat(p.gold ?? "0") + entryFee).toFixed(2);
-        await db.update(players).set({ gold: newGold }).where(eq(players.id, session.playerId));
-        // 记录金币日志（主动离开竞技场房间退款）
-        await insertGoldLog(session.playerId, entryFee, parseFloat(newGold), 'arena', `竞技场离开房间退款`);
-      }
-      // 删除玩家记录
-      await db.delete(arenaRoomPlayers)
-        .where(and(eq(arenaRoomPlayers.roomId, input.roomId), eq(arenaRoomPlayers.playerId, session.playerId)));
-      // 更新房间人数（房间继续等待，不取消）
-      const newCount = Math.max(0, room.currentPlayers - 1);
-      await db.update(arenaRooms).set({ currentPlayers: newCount }).where(eq(arenaRooms.id, input.roomId));
-      // 广播房间列表更新
-      const summaries = await fetchRoomSummaries();
-      broadcastRoomListUpdate(summaries);
-      return { success: true };
-    }),
+  // leaveRoom 已移除：加入座位后不可取消/离开
 
   /** 获取我当前所在的活跃房间（waiting/playing） */
   getMyActiveRoom: publicProcedure

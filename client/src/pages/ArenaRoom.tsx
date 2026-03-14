@@ -325,9 +325,15 @@ interface PlayerSeatProps {
   isDraw?: boolean;
   /** 实时累计价値（游戏进行中） */
   liveValue?: number;
+  /** 显示加入按钮（空座位且房间等待中） */
+  showJoinBtn?: boolean;
+  /** 加入按钮点击回调 */
+  onJoin?: () => void;
+  /** 加入中加载状态 */
+  joinLoading?: boolean;
 }
 
-function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false, isDraw = false, liveValue }: PlayerSeatProps) {
+function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false, isDraw = false, liveValue, showJoinBtn = false, onJoin, joinLoading = false }: PlayerSeatProps) {
   // 价值变化时触发数字跳动动画
   const [prevValue, setPrevValue] = useState(liveValue ?? 0);
   const [bump, setBump] = useState(false);
@@ -377,6 +383,27 @@ function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false, isDraw 
             <span style={{ color: '#6b7280', fontSize: q(28) }}>?</span>
           </div>
           <div style={{ color: '#6b7280', fontSize: q(22) }}>等待加入</div>
+          {showJoinBtn && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onJoin?.(); }}
+              disabled={joinLoading}
+              style={{
+                marginTop: q(8),
+                padding: `${q(6)} ${q(16)}`,
+                background: joinLoading ? 'rgba(120,60,220,0.2)' : 'linear-gradient(135deg,#7c3aed,#a855f7)',
+                border: '1px solid rgba(192,132,252,0.6)',
+                borderRadius: q(8),
+                color: '#fff',
+                fontSize: q(20),
+                fontWeight: 700,
+                cursor: joinLoading ? 'not-allowed' : 'pointer',
+                opacity: joinLoading ? 0.6 : 1,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {joinLoading ? '加入中...' : '加入'}
+            </button>
+          )}
         </>
       ) : (
         <>
@@ -517,70 +544,49 @@ export default function ArenaRoom() {
     { enabled: boxIds.length > 0, refetchOnWindowFocus: false }
   );
 
-  // 重试计数，避免 429 时无限重试
+  // ── 加入座位（主动点击加入，不可取消） ──
   const joinRetryRef = useRef(0);
 
-  const joinRoom = trpc.arena.joinRoom.useMutation({
-    onSuccess: (data) => {
+  const joinSeat = trpc.arena.joinSeat.useMutation({
+    onSuccess: (data: any) => {
       joinRetryRef.current = 0;
       setIsPresent(true);
       setJoinLoading(false);
-      // 立即启用 roomDetail，缩短延迟到 100ms（仅用于避免同一批次并发）
-      setTimeout(() => {
-        setRoomDetailEnabled(true);
-        // 如果 joinRoom 返回的状态已是 playing（房间已满），直接触发游戏开始逻辑
-        // 这样即使错过了 SSE 的 game_started 广播也能正常开始
-        if (data?.roomStatus === 'playing' || data?.roomStatus === 'finished' || data?.isFull) {
-          setGameStatus(data?.roomStatus === 'finished' ? 'finished' : 'playing');
-          setCurrentRound(1);
-          // 再延迟 50ms 让 roomDetailEnabled 状态生效后再 refetch
-          setTimeout(() => refetchRoom(), 50);
-        }
-      }, 100);
+      // 刷新房间详情
+      refetchRoom();
+      // 如果加入后房间已满，直接触发游戏开始
+      if (data?.roomStatus === 'playing' || data?.roomStatus === 'finished' || data?.isFull) {
+        setGameStatus(data?.roomStatus === 'finished' ? 'finished' : 'playing');
+        setCurrentRound(1);
+        setTimeout(() => refetchRoom(), 50);
+      }
     },
-    onError: (err) => {
+    onError: (err: any) => {
       setJoinLoading(false);
-      // 429 Too Many Requests：自动重试（最多 2 次，逐次加长延迟）
       const httpStatus = (err as any)?.data?.httpStatus;
       const is429 = httpStatus === 429 || err.message?.includes('429') || err.message?.includes('Rate exceeded') || err.message?.includes('Too Many');
       if (is429 && joinRetryRef.current < 2) {
         joinRetryRef.current += 1;
-        const delay = 1500 * joinRetryRef.current; // 1.5s, 3s
+        const delay = 1500 * joinRetryRef.current;
         setTimeout(() => {
           setJoinLoading(true);
-          joinRoom.mutate({ roomId });
+          joinSeat.mutate({ roomId });
         }, delay);
         return;
       }
       joinRetryRef.current = 0;
-      // 房间已满、已不在等待状态（playing/finished）时，不显示错误，让roomDetail的useEffect处理展示
       if (err.message.includes('已满') || err.message.includes('不在等待') || err.message.includes('已不在等待')) {
-        setIsPresent(false);
-        // 延迟启用 getRoomDetail，以便显示房间当前状态
-        setTimeout(() => setRoomDetailEnabled(true), 800);
+        // 房间已满，不显示错误，继续观战
       } else {
         setJoinError(err.message);
-        // 其他错误也要启用 getRoomDetail，让用户能看到房间信息
-        setTimeout(() => setRoomDetailEnabled(true), 800);
       }
     },
   });
 
-  // 超时兜底：5 秒后若仍在加载中，强制退出加载状态并启用 roomDetail
+  // 进入房间时直接启用 roomDetail（观战模式），不再自动加入
   useEffect(() => {
     if (roomId > 0) {
-      const timer = setTimeout(() => {
-        setJoinLoading(false);
-        setRoomDetailEnabled(true);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [roomId]);
-
-  useEffect(() => {
-    if (roomId > 0) {
-      setJoinLoading(true);
-      joinRoom.mutate({ roomId });
+      setRoomDetailEnabled(true);
     }
   }, [roomId]);
 
@@ -848,16 +854,17 @@ export default function ArenaRoom() {
   // ── 同步房间状态 ──
   useEffect(() => {
     if (roomDetail?.room) {
+      // 根据 myPlayerId 是否在玩家列表中判断是否为参与者
+      const myId = roomDetail.myPlayerId ?? 0;
+      const amISeated = myId > 0 && (roomDetail.players ?? []).some((p: any) => p.playerId === myId);
+      setIsPresent(amISeated);
+
       const status = roomDetail.room.status as 'waiting' | 'playing' | 'finished' | 'cancelled';
       if (status === 'playing') {
         setGameStatus('playing');
-        // 如果实时游戏正在进行中（已经通过 SSE 收到了 round_result），不要触发回放或重复开场动画
-        // 这是最关键的保护：防止 roomDetail 刷新时干扰正在进行的实时游戏
         if (liveGameActiveRef.current) {
-          // 实时游戏中，不做任何干预，让 SSE 事件驱动流程
           return;
         }
-        // 不强制设置 isPresent，保留原有状态（参与者=true, 观战者=false）
         if (roomDetail.roundResults && roomDetail.roundResults.length > 0 && !isReplaying && !spinning) {
           // 已有历史轮次结果，说明游戏已经开始了（服务器重启后重进房间）
           // 跳过开场动画，直接触发回放
@@ -1368,22 +1375,7 @@ export default function ArenaRoom() {
     }
   }, [isReplaying]); // isReplaying 是唯一需要的依赖，其余通过 ref 访问
 
-  if (joinLoading && !room) {
-    return (
-      <div className="phone-container" style={{ display: 'flex', flexDirection: 'column', containerType: 'inline-size', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#9ca3af', fontSize: q(28) }}>进入房间中...</div>
-      </div>
-    );
-  }
-
-  if (joinError) {
-    return (
-      <div className="phone-container" style={{ display: 'flex', flexDirection: 'column', containerType: 'inline-size', alignItems: 'center', justifyContent: 'center', gap: q(20) }}>
-        <div style={{ color: '#ef4444', fontSize: q(28) }}>{joinError}</div>
-        <button onClick={() => navigate('/arena')} style={{ padding: `${q(12)} ${q(32)}`, background: 'rgba(120,60,220,0.3)', border: '1px solid #c084fc', borderRadius: q(10), color: '#c084fc', fontSize: q(24), cursor: 'pointer' }}>返回大厅</button>
-      </div>
-    );
-  }
+  // joinError 现在在等待状态区域内展示，不再全屏拦截
 
   if (!room) {
     return (
@@ -1640,6 +1632,8 @@ export default function ArenaRoom() {
             const seatNo = i + 1;
             const p = players.find((pl) => pl.seatNo === seatNo);
             const winnerData = gameOverData?.players.find((pl) => pl.seatNo === seatNo);
+            // 显示加入按钮条件：空座位 + 房间等待中 + 当前玩家未加入 + 已登录
+            const canShowJoin = !p && gameStatus === 'waiting' && !isPresent && myPlayerId > 0;
             return (
               <PlayerSeat
                 key={seatNo}
@@ -1649,6 +1643,13 @@ export default function ArenaRoom() {
                 isWinner={winnerData?.isWinner ?? false}
                 isDraw={gameOverData?.isDraw ?? false}
                 liveValue={gameStatus === 'playing' && p ? (liveValues[p.playerId] ?? 0) : undefined}
+                showJoinBtn={canShowJoin}
+                onJoin={() => {
+                  setJoinLoading(true);
+                  setJoinError('');
+                  joinSeat.mutate({ roomId });
+                }}
+                joinLoading={joinLoading}
               />
             );
           })}
@@ -1887,10 +1888,24 @@ export default function ArenaRoom() {
             color: '#9ca3af', fontSize: q(26),
           }}>
             <div style={{ fontSize: q(60), marginBottom: q(16), animation: 'pulse 1.5s ease-in-out infinite' }}>⏳</div>
-            等待玩家加入... ({players.length}/{maxPlayers})
+            {isPresent ? (
+              <>已加入，等待其他玩家... ({players.length}/{maxPlayers})</>
+            ) : (
+              <>等待玩家加入... ({players.length}/{maxPlayers})</>
+            )}
             <div style={{ color: '#6b7280', fontSize: q(22), marginTop: q(12) }}>
               入场费：{parseFloat(room.entryFee).toFixed(0)} 金币/人
             </div>
+            {!isPresent && myPlayerId > 0 && (
+              <div style={{ color: '#60a5fa', fontSize: q(22), marginTop: q(8) }}>
+                点击上方空座位的“加入”按钮参与游戏
+              </div>
+            )}
+            {joinError && (
+              <div style={{ color: '#ef4444', fontSize: q(22), marginTop: q(8) }}>
+                {joinError}
+              </div>
+            )}
           </div>
         )}
 
