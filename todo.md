@@ -1099,3 +1099,7 @@
 
 ## 三人竞技场SLOT布局修复（2026-03-15）
 - [x] 三人竞技场时SLOT区域显示3列，SlotMachine/PlayerSeat/历史轮次奖品全部根据 maxPlayers>=3 动态缩小尺寸，确保屏幕内完整显示
+
+## 竞技场SLOT转盘时序修复（2026-03-15）
+- [x] 顶部座位区金额在每轮SLOT转盘动画结束后才逐步更新（从round_result SSE中移除setLiveValues，只保留handleSlotDone中的更新）
+- [x] "胜利"标签在最后一轮转盘动画结束后才显示（已通过pendingGameOverRef机制保证）

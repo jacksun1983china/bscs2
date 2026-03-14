@@ -720,14 +720,8 @@ export default function ArenaRoom() {
           const enriched = results.map((r: any) => ({ ...r }));
           return { ...prev, [roundNo]: enriched };
         });
-        // 更新实时累计价値
-        setLiveValues((prev) => {
-          const next = { ...prev };
-          for (const r of results) {
-            next[r.playerId] = (next[r.playerId] ?? 0) + parseFloat(r.goodsValue);
-          }
-          return next;
-        });
+        // 注意：不在此处更新 liveValues，而是在 handleSlotDone 中更新
+        // 这样顶部金额会在每轮 SLOT 转盘动画结束后才逐步累加，而不是一收到消息就立即显示
         const itemMap: typeof currentRoundItems = {};
         for (const r of results) {
           itemMap[r.playerId] = {
