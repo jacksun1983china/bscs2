@@ -1096,3 +1096,6 @@
 
 ## 大厅音效/音乐关闭不生效修复（2026-03-15）
 - [x] 大厅的音效关闭和音乐关闭功能修复：SettingsModal接入useSound hook，音乐和音效独立控制，状态持久化到localStorage
+
+## 三人竞技场SLOT布局修复（2026-03-15）
+- [x] 三人竞技场时SLOT区域显示3列，SlotMachine/PlayerSeat/历史轮次奖品全部根据 maxPlayers>=3 动态缩小尺寸，确保屏幕内完整显示

@@ -40,7 +40,8 @@ const LEVEL_GLOW: Record<number, string> = {
 
 // ── 简洁可靠的 SlotMachine：用 CSS animation 实现滚动，不依赖复杂的 translateY 计算 ──
 
-const ITEM_HEIGHT_PX = 120; // 每个道具格子的高度（px，用于 CSS animation）
+const ITEM_HEIGHT_NORMAL = 120; // 2人模式每个道具格子的高度
+const ITEM_HEIGHT_COMPACT = 90; // 3人模式每个道具格子的高度
 
 interface SlotMachineProps {
   finalItem: {
@@ -55,9 +56,17 @@ interface SlotMachineProps {
   width?: string;
   skipAnim?: boolean;
   reelItems?: Array<{ id: number; name: string; imageUrl: string; goodsLevel: number }>;
+  /** 紧凑模式（3人竞技场） */
+  compact?: boolean;
 }
 
-function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = false, reelItems = [] }: SlotMachineProps) {
+function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = false, reelItems = [], compact = false }: SlotMachineProps) {
+  const ITEM_HEIGHT_PX = compact ? ITEM_HEIGHT_COMPACT : ITEM_HEIGHT_NORMAL;
+  const imgSize = compact ? 48 : 64;
+  const doneImgSize = compact ? 70 : 100;
+  const doneFontSize = compact ? 11 : 13;
+  const doneNameSize = compact ? 12 : 14;
+  const doneValueSize = compact ? 14 : 16;
   const [phase, setPhase] = useState<'idle' | 'spinning' | 'done'>('idle');
   const [displayItem, setDisplayItem] = useState<typeof finalItem>(null);
   const [reel, setReel] = useState<Array<{ id: number; name: string; imageUrl: string; goodsLevel: number }>>([]);
@@ -216,16 +225,16 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
               }}>
                 {item.imageUrl ? (
                   <img src={item.imageUrl} alt={item.name}
-                    style={{ width: 64, height: 64, objectFit: 'contain', marginBottom: 4, display: 'block' }}
+                    style={{ width: imgSize, height: imgSize, objectFit: 'contain', marginBottom: 4, display: 'block' }}
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
                 ) : (
                   <div style={{
-                    width: 64, height: 64, marginBottom: 4,
+                    width: imgSize, height: imgSize, marginBottom: 4,
                     background: LEVEL_BG[item.goodsLevel] || 'rgba(120,60,220,0.3)',
                     borderRadius: 8,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 28, flexShrink: 0,
+                    fontSize: compact ? 20 : 28, flexShrink: 0,
                   }}>🎁</div>
                 )}
                 <div style={{
@@ -242,7 +251,7 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
       {/* 最终结果展示 */}
       {phase === 'done' && displayItem && (
         <div style={{
-          padding: '16px 12px',
+          padding: compact ? '10px 6px' : '16px 12px',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
         }}>
           {displayItem.goodsLevel === 1 && (
@@ -259,7 +268,7 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
               animation: 'arenaPulse 1.5s ease-in-out infinite',
             }} />
           )}
-          <div style={{ width: 100, height: 100, marginBottom: 8, position: 'relative', zIndex: 1 }}>
+          <div style={{ width: doneImgSize, height: doneImgSize, marginBottom: compact ? 4 : 8, position: 'relative', zIndex: 1 }}>
             {displayItem.goodsImage ? (
               <img src={displayItem.goodsImage} alt={displayItem.goodsName}
                 style={{ width: '100%', height: '100%', objectFit: 'contain',
@@ -277,20 +286,20 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
             )}
           </div>
           <div style={{
-            display: 'inline-block', padding: '3px 12px',
+            display: 'inline-block', padding: compact ? '2px 8px' : '3px 12px',
             background: 'rgba(0,0,0,0.4)', borderRadius: 4,
-            color: '#fff', fontSize: 13, fontWeight: 700, marginBottom: 6, zIndex: 1, position: 'relative',
+            color: '#fff', fontSize: doneFontSize, fontWeight: 700, marginBottom: compact ? 3 : 6, zIndex: 1, position: 'relative',
           }}>
             {LEVEL_LABEL[displayItem.goodsLevel]}
           </div>
           <div style={{
-            color: '#fff', fontSize: 14, fontWeight: 600,
+            color: '#fff', fontSize: doneNameSize, fontWeight: 600,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             width: '90%', zIndex: 1, position: 'relative', textAlign: 'center',
           }}>
             {displayItem.goodsName}
           </div>
-          <div style={{ color: '#ffd700', fontSize: 16, fontWeight: 700, marginTop: 6, zIndex: 1, position: 'relative' }}>
+          <div style={{ color: '#ffd700', fontSize: doneValueSize, fontWeight: 700, marginTop: compact ? 3 : 6, zIndex: 1, position: 'relative' }}>
             ¥{parseFloat(displayItem.goodsValue).toFixed(2)}
           </div>
         </div>
@@ -301,7 +310,7 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
         <div style={{
           height: `${ITEM_HEIGHT_PX * 3}px`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'rgba(192,132,252,0.4)', fontSize: 14,
+          color: 'rgba(192,132,252,0.4)', fontSize: compact ? 12 : 14,
         }}>等待开始</div>
       )}
     </div>
@@ -331,9 +340,11 @@ interface PlayerSeatProps {
   onJoin?: () => void;
   /** 加入中加载状态 */
   joinLoading?: boolean;
+  /** 紧凑模式（3人竞技场） */
+  compact?: boolean;
 }
 
-function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false, isDraw = false, liveValue, showJoinBtn = false, onJoin, joinLoading = false }: PlayerSeatProps) {
+function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false, isDraw = false, liveValue, showJoinBtn = false, onJoin, joinLoading = false, compact = false }: PlayerSeatProps) {
   // 价值变化时触发数字跳动动画
   const [prevValue, setPrevValue] = useState(liveValue ?? 0);
   const [bump, setBump] = useState(false);
@@ -354,11 +365,12 @@ function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false, isDraw 
           ? 'rgba(20,8,50,0.5)'
           : 'rgba(30,10,65,0.8)',
       border: `2px solid ${isWinner ? '#f5c842' : isDraw ? '#9ca3af' : isEmpty ? 'rgba(120,60,220,0.2)' : 'rgba(120,60,220,0.4)'}`,
-      borderRadius: q(12), padding: q(12),
+      borderRadius: q(12), padding: compact ? q(8) : q(12),
       textAlign: 'center',
       boxShadow: isWinner ? '0 0 20px rgba(245,200,66,0.5)' : isDraw ? '0 0 12px rgba(156,163,175,0.3)' : 'none',
       position: 'relative',
       transition: 'box-shadow 0.3s ease',
+      minWidth: 0,
     }}>
       {(isWinner || isDraw) && (
         <div style={{
@@ -374,15 +386,15 @@ function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false, isDraw 
       {isEmpty ? (
         <>
           <div style={{
-            width: q(60), height: q(60), borderRadius: '50%',
+            width: compact ? q(44) : q(60), height: compact ? q(44) : q(60), borderRadius: '50%',
             background: 'rgba(120,60,220,0.15)',
             border: '2px dashed rgba(120,60,220,0.3)',
-            margin: '0 auto', marginBottom: q(8),
+            margin: '0 auto', marginBottom: compact ? q(4) : q(8),
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <span style={{ color: '#6b7280', fontSize: q(28) }}>?</span>
+            <span style={{ color: '#6b7280', fontSize: compact ? q(22) : q(28) }}>?</span>
           </div>
-          <div style={{ color: '#6b7280', fontSize: q(22) }}>等待加入</div>
+          <div style={{ color: '#6b7280', fontSize: compact ? q(18) : q(22) }}>等待加入</div>
           {showJoinBtn && (
             <button
               onClick={(e) => { e.stopPropagation(); onJoin?.(); }}
@@ -411,13 +423,13 @@ function PlayerSeat({ player, seatNo, isEmpty = false, isWinner = false, isDraw 
             src={getAvatarUrl(player?.avatar)}
             alt=""
             style={{
-              width: q(60), height: q(60), borderRadius: '50%',
+              width: compact ? q(44) : q(60), height: compact ? q(44) : q(60), borderRadius: '50%',
               border: `2px solid ${isWinner ? '#f5c842' : 'rgba(120,60,220,0.5)'}`,
-              marginBottom: q(8),
+              marginBottom: compact ? q(4) : q(8),
               objectFit: 'cover',
             }}
           />
-          <div style={{ color: '#e0d0ff', fontSize: q(22), fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ color: '#e0d0ff', fontSize: compact ? q(18) : q(22), fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {player?.nickname}
           </div>
           {/* 实时累计价值（游戏进行中） */}
@@ -1648,7 +1660,7 @@ export default function ArenaRoom() {
         </div>
 
         {/* 玩家座位区 */}
-        <div style={{ display: 'flex', gap: q(12), marginBottom: q(20) }}>
+        <div style={{ display: 'flex', gap: maxPlayers >= 3 ? q(6) : q(12), marginBottom: q(20) }}>
           {Array.from({ length: maxPlayers }).map((_, i) => {
             const seatNo = i + 1;
             const p = players.find((pl) => pl.seatNo === seatNo);
@@ -1671,6 +1683,7 @@ export default function ArenaRoom() {
                   joinSeat.mutate({ roomId });
                 }}
                 joinLoading={joinLoading}
+                compact={maxPlayers >= 3}
               />
             );
           })}
@@ -1747,7 +1760,7 @@ export default function ArenaRoom() {
             <div style={{ color: '#c084fc', fontSize: q(26), fontWeight: 700, marginBottom: q(12), textAlign: 'center' }}>
               第 {currentRound} 轮开箱
             </div>
-            <div style={{ display: 'flex', gap: q(12) }}>
+            <div style={{ display: 'flex', gap: maxPlayers >= 3 ? q(6) : q(12) }}>
               {Array.from({ length: maxPlayers }).map((_, i) => {
                 const seatNo = i + 1;
                 const p = players.find((pl) => pl.seatNo === seatNo);
@@ -1756,8 +1769,8 @@ export default function ArenaRoom() {
                 const currentBoxId = roomDetail?.boxList?.[currentRound - 1]?.id;
                 const reelItems = currentBoxId && boxGoodsMap ? (boxGoodsMap[currentBoxId] ?? []) : [];
                 return (
-                  <div key={seatNo} style={{ flex: 1 }}>
-                    <div style={{ color: '#9ca3af', fontSize: q(20), textAlign: 'center', marginBottom: q(6) }}>
+                  <div key={seatNo} style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: '#9ca3af', fontSize: maxPlayers >= 3 ? q(18) : q(20), textAlign: 'center', marginBottom: q(4), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {p?.nickname ?? `玩家${seatNo}`}
                     </div>
                     <SlotMachine
@@ -1766,6 +1779,7 @@ export default function ArenaRoom() {
                       onDone={handleSlotDone}
                       skipAnim={skipGameAnim}
                       reelItems={reelItems}
+                      compact={maxPlayers >= 3}
                     />
                   </div>
                 );
@@ -1828,7 +1842,7 @@ export default function ArenaRoom() {
                     }}>
                       第 {roundNo} 轮开箱
                     </div>
-                    <div style={{ display: 'flex', gap: q(8) }}>
+                    <div style={{ display: 'flex', gap: maxPlayers >= 3 ? q(4) : q(8) }}>
                       {sortedResults.map((item, idx) => {
                         const p = players.find(pl => pl.playerId === item.playerId);
                         const borderColor = item.goodsLevel === 1 ? 'rgba(245,200,66,0.8)'
@@ -1861,7 +1875,7 @@ export default function ArenaRoom() {
                             </div>
                             {/* 物品图片 */}
                             <div style={{
-                              width: q(120), height: q(120), margin: '0 auto',
+                              width: maxPlayers >= 3 ? q(80) : q(120), height: maxPlayers >= 3 ? q(80) : q(120), margin: '0 auto',
                               marginBottom: q(6),
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                             }}>
@@ -1880,7 +1894,7 @@ export default function ArenaRoom() {
                             </div>
                             {/* 物品名称 */}
                             <div style={{
-                              color: '#e0d0ff', fontSize: q(18), fontWeight: 600,
+                              color: '#e0d0ff', fontSize: maxPlayers >= 3 ? q(16) : q(18), fontWeight: 600,
                               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                               marginBottom: q(4),
                             }}>
@@ -1888,7 +1902,7 @@ export default function ArenaRoom() {
                             </div>
                             {/* 物品价值 */}
                             <div style={{
-                              color: '#ffd700', fontSize: q(22), fontWeight: 800,
+                              color: '#ffd700', fontSize: maxPlayers >= 3 ? q(18) : q(22), fontWeight: 800,
                             }}>
                               ¥{parseFloat(item.goodsValue).toFixed(2)}
                             </div>
