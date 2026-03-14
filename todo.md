@@ -1118,3 +1118,7 @@
 - [x] 使用Mixkit免费授权音效文件（slot-wheel-arcade.mp3旋转 + slot-win-alert.mp3停止）
 - [x] 音效通过CDN加载，带缓存机制避免重复下载
 - [x] 旋转音效循环播放，停止时淡出，受SFX静音设置控制
+
+## 删除SLOT滚轴旋转音效（2026-03-15）
+- [x] 删除playSlotSpin/stopSlotSpin在ArenaRoom中的调用
+- [x] 删除arenaSound.ts中playSlotSpin/stopSlotSpin的实现和旋转CDN资源

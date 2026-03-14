@@ -8,7 +8,7 @@
  * 4. 头像修复：使用 getAvatarUrl() 统一处理系统头像ID和URL格式
  */
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { playSlotSpin, stopSlotSpin, playSlotStop, playWinFanfare, playLoseTone } from '@/lib/arenaSound';
+import { playSlotStop, playWinFanfare, playLoseTone } from '@/lib/arenaSound';
 import { useLocation, useParams } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import TopNav from '@/components/TopNav';
@@ -85,7 +85,6 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
   useEffect(() => {
     if (skipAnim && finalItem) {
       if (timerRef.current) clearTimeout(timerRef.current);
-      stopSlotSpin(); // 跳过时也停止旋转音效
       setPhase('done');
       setDisplayItem(finalItem);
       onDone?.();
@@ -120,12 +119,8 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
     setReel(newReel);
     setPhase('spinning');
     setDisplayItem(null);
-    // 播放旋转音效
-    playSlotSpin();
-
     // 2.6s 后停止并显示结果
     timerRef.current = setTimeout(() => {
-      stopSlotSpin(); // 停止旋转音效
       playSlotStop(finalItem.goodsLevel);
       setPhase('done');
       setDisplayItem(finalItem);
@@ -134,7 +129,7 @@ function SlotMachine({ finalItem, spinning, onDone, width = '100%', skipAnim = f
       }, 300);
     }, 2600);
 
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); stopSlotSpin(); };
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [spinning, finalItem]);
 
   // 重置：当 spinning=false 且 finalItem=null 时回到 idle
