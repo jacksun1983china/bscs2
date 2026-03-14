@@ -207,11 +207,11 @@ export default function Login() {
       {/* ── 角色图（居中偏上，四边渐变淡出） ── */}
       <div style={{
         position: 'absolute',
-        top: '3%',
+        top: '0%',
         left: '50%',
         transform: 'translateX(-50%)',
-        width: '140%',
-        height: '72%',
+        width: '200%',
+        height: '80%',
         zIndex: 3,
         pointerEvents: 'none',
       }}>
