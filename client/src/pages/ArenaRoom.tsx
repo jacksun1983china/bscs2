@@ -1081,6 +1081,12 @@ export default function ArenaRoom() {
   // 游戏结束时，展示我的获奖弹窗
   useEffect(() => {
     if (gameStatus !== 'finished' || myPlayerId === 0) return;
+    // 判断当前玩家是否是赢家或平局
+    const myOverData = gameOverData?.players.find((p) => p.playerId === myPlayerId);
+    // 输家不弹出奖励弹窗（物品已输给赢家）
+    if (myOverData && !myOverData.isWinner && !gameOverData?.isDraw) return;
+    // 观战者也不弹窗
+    if (!myOverData) return;
     // 收集所有轮次中我的物品
     const items: Array<{ goodsId: number; goodsName: string; goodsImage: string; goodsLevel: number; goodsValue: string }> = [];
     for (const roundArr of Object.values(roundResults)) {
@@ -1090,16 +1096,31 @@ export default function ArenaRoom() {
         }
       }
     }
-    // 如果没有轮次结果（如观战者没有参与），就不弹窗
+    // 如果没有轮次结果，就不弹窗
     if (items.length === 0) return;
-    // 延迟 1.5s 再弹出，等待背景音效播完
+    // 赢家：收集所有玩家的物品（赢家获得全部物品）
+    if (myOverData.isWinner && !gameOverData?.isDraw) {
+      const allItems: typeof items = [];
+      for (const roundArr of Object.values(roundResults)) {
+        for (const r of roundArr) {
+          allItems.push({ goodsId: r.goodsId, goodsName: r.goodsName, goodsImage: r.goodsImage, goodsLevel: r.goodsLevel, goodsValue: r.goodsValue });
+        }
+      }
+      // 延迟 1.5s 再弹出
+      const timer = setTimeout(() => {
+        setMyPrizeItems(allItems);
+        setShowPrizeModal(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+    // 平局：只显示自己的物品
     const timer = setTimeout(() => {
       setMyPrizeItems(items);
       setShowPrizeModal(true);
     }, 1500);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameStatus, myPlayerId]);
+  }, [gameStatus, myPlayerId, gameOverData]);
 
   // ── 发送弹幕 ──
   const handleSendDanmaku = useCallback(async () => {

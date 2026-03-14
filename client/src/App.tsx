@@ -191,9 +191,7 @@ function Router() {
         <Route path={"/kefu"}>
           {() => <ProtectedRoute component={CustomerService} />}
         </Route>
-        <Route path={"/agent"}>
-          {() => <ProtectedRoute component={AgentDashboard} />}
-        </Route>
+        <Route path={"/agent"} component={AgentDashboard} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>
