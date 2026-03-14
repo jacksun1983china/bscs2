@@ -1084,3 +1084,6 @@
 
 ## 退出游戏响应慢二次修复（2026-03-14）
 - [x] 退出游戏按钮点击后仍然等待很久才跳转，改用window.location.href强制整页刷新跳转（SettingsModal + PlayerInfoBar）
+
+## 退出时清理本地缓存（2026-03-14）
+- [x] 退出游戏时同步清除localStorage中的玩家相关数据（sound_muted等，保留theme/sidebar_width设备级偏好）

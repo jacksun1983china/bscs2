@@ -35,6 +35,10 @@ export default function PlayerInfoBar({ showLogout = false, onAddFriend }: Playe
   const logoutMutation = trpc.player.logout.useMutation();
   const handleLogout = () => {
     logoutMutation.mutate();
+    // 清除玩家相关的 localStorage 数据
+    try {
+      localStorage.removeItem('sound_muted');
+    } catch { /* 忽略 */ }
     // 强制整页刷新跳转，避免 SPA 路由延迟
     window.location.href = '/login';
   };

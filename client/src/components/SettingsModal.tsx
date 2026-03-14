@@ -33,6 +33,12 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
     onClose();
     // 异步调后端清cookie，不阻塞
     logoutMutation.mutate();
+    // 清除玩家相关的 localStorage 数据
+    try {
+      localStorage.removeItem('sound_muted');
+      // 保留 theme 偏好（设备级别设置，非玩家数据）
+      // 保留 sidebar_width（UI偏好，非玩家数据）
+    } catch { /* 忽略 */ }
     // 使用 window.location.href 强制整页刷新跳转，避免 SPA 路由延迟
     window.location.href = '/login';
   };
