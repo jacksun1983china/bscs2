@@ -947,7 +947,7 @@ export default function ArenaRoom() {
         if (!gameOverData && roomDetail.players.length > 0 && roomDetail.roundResults?.length > 0) {
           const playerTotals: Record<number, number> = {};
           for (const r of roomDetail.roundResults) {
-            playerTotals[r.playerId] = (playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue);
+            playerTotals[r.playerId] = Math.round(((playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue)) * 100) / 100;
           }
           const maxVal = Math.max(...Object.values(playerTotals));
           const overPlayers = roomDetail.players.map((p) => ({
@@ -1010,7 +1010,7 @@ export default function ArenaRoom() {
       // 直接设置 game_over 数据
       const playerTotals: Record<number, number> = {};
       for (const r of roomDetail.roundResults) {
-        playerTotals[r.playerId] = (playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue);
+        playerTotals[r.playerId] = Math.round(((playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue)) * 100) / 100;
       }
       const maxVal = Math.max(...Object.values(playerTotals));
       const overPlayers = roomDetail.players.map((p: any) => ({
@@ -1199,18 +1199,18 @@ export default function ArenaRoom() {
     const playerTotals: Record<number, number> = {};
     if (isReplaying && roomDetail.roundResults) {
       for (const r of roomDetail.roundResults) {
-        playerTotals[r.playerId] = (playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue);
+        playerTotals[r.playerId] = Math.round(((playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue)) * 100) / 100;
       }
     } else {
       // 正常游戏中：累加已完成轮次
       for (const roundArr of Object.values(roundResults)) {
         for (const r of roundArr) {
-          playerTotals[r.playerId] = (playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue);
+          playerTotals[r.playerId] = Math.round(((playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue)) * 100) / 100;
         }
       }
       // 加上当前轮次（如果有）
       for (const [pid, item] of Object.entries(currentRoundItems)) {
-        playerTotals[Number(pid)] = (playerTotals[Number(pid)] ?? 0) + parseFloat(item.goodsValue);
+        playerTotals[Number(pid)] = Math.round(((playerTotals[Number(pid)] ?? 0) + parseFloat(item.goodsValue)) * 100) / 100;
       }
     }
 
@@ -1256,7 +1256,7 @@ export default function ArenaRoom() {
           setLiveValues((prev2) => {
             const next2 = { ...prev2 };
             for (const r of resultsForRound) {
-              next2[r.playerId] = (next2[r.playerId] ?? 0) + parseFloat(r.goodsValue);
+              next2[r.playerId] = Math.round(((next2[r.playerId] ?? 0) + parseFloat(r.goodsValue)) * 100) / 100;
             }
             return next2;
           });
@@ -1284,7 +1284,7 @@ export default function ArenaRoom() {
             } else {
               const playerTotals: Record<number, number> = {};
               for (const r of roomDetail.roundResults) {
-                playerTotals[r.playerId] = (playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue);
+                playerTotals[r.playerId] = Math.round(((playerTotals[r.playerId] ?? 0) + parseFloat(r.goodsValue)) * 100) / 100;
               }
               const maxVal = Math.max(...Object.values(playerTotals));
               const overPlayers = (roomDetail?.players ?? []).map((p) => ({
@@ -1313,7 +1313,7 @@ export default function ArenaRoom() {
           setLiveValues((prev2) => {
             const next2 = { ...prev2 };
             for (const [pid, item] of Object.entries(currentRoundItems)) {
-              next2[Number(pid)] = (next2[Number(pid)] ?? 0) + parseFloat(item.goodsValue);
+              next2[Number(pid)] = Math.round(((next2[Number(pid)] ?? 0) + parseFloat(item.goodsValue)) * 100) / 100;
             }
             return next2;
           });
@@ -2079,7 +2079,7 @@ export default function ArenaRoom() {
                   <div style={{ color: '#9ca3af', fontSize: q(22), marginTop: q(6) }}>
                     奖励总价值：
                     <span style={{ color: '#ffd700', fontWeight: 700 }}>
-                      ¥{sortedPlayers.reduce((s, p) => s + parseFloat(p.totalValue), 0).toFixed(2)}
+                      ¥{(Math.round(sortedPlayers.reduce((s, p) => s + parseFloat(p.totalValue), 0) * 100) / 100).toFixed(2)}
                     </span>
                   </div>
                 )}

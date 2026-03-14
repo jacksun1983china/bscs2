@@ -377,7 +377,7 @@ export const appRouter = router({
           .where(eq(playerItems.playerId, session.playerId));
         const validItems = items.filter(i => input.ids.includes(i.id) && i.status === 0);
         if (validItems.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "没有可回收的道具" });
-        const totalGold = validItems.reduce((s, i) => s + Number(i.recycleGold ?? 0), 0);
+        const totalGold = Math.round(validItems.reduce((s, i) => s + Number(i.recycleGold ?? 0), 0) * 100) / 100;
         for (const item of validItems) {
           await db.update(playerItems)
             .set({ status: 2 })

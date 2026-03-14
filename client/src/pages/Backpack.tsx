@@ -236,9 +236,9 @@ export default function Backpack() {
     );
   }, [filteredItems]);
 
-  const selectedValue = filteredItems
+  const selectedValue = Math.round(filteredItems
     .filter(i => selectedIds.has(i.itemId))
-    .reduce((s, i) => s + Number(i.recycleGold ?? i.itemValue ?? 0) * i.count, 0);
+    .reduce((s, i) => s + Number(i.recycleGold ?? i.itemValue ?? 0) * i.count, 0) * 100) / 100;
 
   const hasSelected = selectedIds.size > 0;
 
