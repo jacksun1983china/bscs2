@@ -2,8 +2,7 @@
  * NicknameSetupModal — 首次登录昵称+头像设置弹窗
  * 触发条件：player.needSetNickname === true
  * 功能：
- *  - 显示随机生成的昵称候选（摇骰子）
- *  - 支持手动输入昵称（实时检查唯一性）
+ *  - 昵称只能通过摇骰子随机生成，不允许手动输入
  *  - 16个系统头像选择
  *  - 确认后调用 updateProfile 保存
  */
@@ -20,9 +19,6 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
   const [nickname, setNickname] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('001');
   const [isRolling, setIsRolling] = useState(false);
-  const [nicknameError, setNicknameError] = useState('');
-  const [isChecking, setIsChecking] = useState(false);
-  const [checkTimer, setCheckTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const utils = trpc.useUtils();
 
@@ -38,8 +34,9 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
       utils.player.me.invalidate();
       onClose();
     },
-    onError: (err) => {
-      setNicknameError(err.message || '保存失败，请重试');
+    onError: () => {
+      // 保存失败时重新摇骰子
+      handleRoll();
     },
   });
 
@@ -54,7 +51,6 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
   const handleRoll = useCallback(async () => {
     if (isRolling) return;
     setIsRolling(true);
-    setNicknameError('');
     // 动画效果：快速切换几次
     const frames = 6;
     for (let i = 0; i < frames; i++) {
@@ -67,41 +63,8 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
     setIsRolling(false);
   }, [isRolling, refetchNicknames]);
 
-  // 手动输入时检查唯一性（防抖）
-  const handleNicknameChange = (val: string) => {
-    setNickname(val);
-    setNicknameError('');
-    if (checkTimer) clearTimeout(checkTimer);
-    if (val.length < 2) {
-      setNicknameError('昵称至少2个字');
-      return;
-    }
-    if (val.length > 8) {
-      setNicknameError('昵称最多8个字');
-      return;
-    }
-    setIsChecking(true);
-    const t = setTimeout(async () => {
-      try {
-        const result = await utils.player.checkNickname.fetch({ nickname: val });
-        if (!result.available) {
-          setNicknameError('昵称已被使用，换一个吧');
-        }
-      } catch {
-        // ignore
-      } finally {
-        setIsChecking(false);
-      }
-    }, 500);
-    setCheckTimer(t);
-  };
-
   const handleConfirm = () => {
-    if (!nickname || nickname.length < 2) {
-      setNicknameError('请输入昵称');
-      return;
-    }
-    if (nicknameError) return;
+    if (!nickname || nickname.length < 2) return;
     updateProfile.mutate({ nickname, avatar: selectedAvatar });
   };
 
@@ -142,44 +105,39 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
             🎮 设置你的昵称
           </div>
           <div style={{ fontSize: 13, color: 'rgba(200,160,255,0.7)', marginTop: 6 }}>
-            昵称一旦设置不可更改，请谨慎选择
+            点击骰子随机生成昵称，不支持手动输入
           </div>
         </div>
 
-        {/* 昵称输入区 */}
+        {/* 昵称显示区 */}
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 13, color: 'rgba(200,160,255,0.8)', marginBottom: 8 }}>昵称</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <div style={{ position: 'relative', flex: 1 }}>
-              <input
-                value={nickname}
-                onChange={e => handleNicknameChange(e.target.value)}
-                maxLength={8}
-                placeholder="2-8个汉字"
+              {/* 只读显示，不允许编辑 */}
+              <div
                 style={{
                   width: '100%', boxSizing: 'border-box',
                   background: 'rgba(255,255,255,0.07)',
-                  border: `1.5px solid ${nicknameError ? '#ff4444' : 'rgba(160,80,255,0.4)'}`,
+                  border: '1.5px solid rgba(160,80,255,0.4)',
                   borderRadius: 10,
                   padding: '10px 14px',
                   color: '#fff',
                   fontSize: 18,
                   fontWeight: 700,
                   letterSpacing: 2,
-                  outline: 'none',
                   textAlign: 'center',
+                  minHeight: 44,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  userSelect: 'none',
                 }}
-              />
-              {isChecking && (
-                <div style={{
-                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                  width: 16, height: 16,
-                  border: '2px solid rgba(160,80,255,0.5)',
-                  borderTopColor: '#a050ff',
-                  borderRadius: '50%',
-                  animation: 'spin 0.8s linear infinite',
-                }} />
-              )}
+              >
+                {nickname || (
+                  <span style={{ color: 'rgba(200,160,255,0.4)' }}>点击骰子生成</span>
+                )}
+              </div>
             </div>
             {/* 摇骰子按钮 */}
             <button
@@ -203,14 +161,9 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
               🎲
             </button>
           </div>
-          {nicknameError && (
-            <div style={{ color: '#ff6666', fontSize: 12, marginTop: 6, paddingLeft: 4 }}>
-              {nicknameError}
-            </div>
-          )}
-          {!nicknameError && nickname.length >= 2 && !isChecking && (
+          {nickname.length >= 2 && (
             <div style={{ color: '#66ff99', fontSize: 12, marginTop: 6, paddingLeft: 4 }}>
-              ✓ 昵称可用
+              ✓ 昵称可用，不满意可继续摇骰子
             </div>
           )}
         </div>
@@ -265,17 +218,17 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
         {/* 确认按钮 */}
         <button
           onClick={handleConfirm}
-          disabled={updateProfile.isPending || !!nicknameError || nickname.length < 2 || isChecking}
+          disabled={updateProfile.isPending || nickname.length < 2}
           style={{
             width: '100%',
             padding: '14px 0',
-            background: (updateProfile.isPending || !!nicknameError || nickname.length < 2 || isChecking)
+            background: (updateProfile.isPending || nickname.length < 2)
               ? 'rgba(160,80,255,0.3)'
               : 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%)',
             border: 'none', borderRadius: 12,
             color: '#fff',
             fontSize: 17, fontWeight: 800, letterSpacing: 2,
-            cursor: (updateProfile.isPending || !!nicknameError || nickname.length < 2 || isChecking)
+            cursor: (updateProfile.isPending || nickname.length < 2)
               ? 'not-allowed' : 'pointer',
             boxShadow: '0 4px 20px rgba(120,40,220,0.4)',
             transition: 'all 0.2s',
@@ -283,10 +236,6 @@ export default function NicknameSetupModal({ visible, onClose }: NicknameSetupMo
         >
           {updateProfile.isPending ? '保存中...' : '✨ 确认，进入游戏'}
         </button>
-
-        <style>{`
-          @keyframes spin { from { transform: translateY(-50%) rotate(0deg); } to { transform: translateY(-50%) rotate(360deg); } }
-        `}</style>
       </div>
     </div>
   );

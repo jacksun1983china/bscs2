@@ -1790,6 +1790,96 @@ export default function ArenaRoom() {
           </div>
         )}
 
+        {/* ── 已完成轮次的奖品罗列 ── */}
+        {Object.keys(roundResults).length > 0 && (gameStatus === 'playing' || gameStatus === 'finished') && (
+          <div style={{ marginBottom: q(20) }}>
+            {Object.entries(roundResults)
+              .sort(([a], [b]) => Number(a) - Number(b))
+              .map(([roundNo, results]) => {
+                const sortedResults = [...results].sort((a, b) => a.seatNo - b.seatNo);
+                return (
+                  <div key={`round-${roundNo}`} style={{ marginBottom: q(16) }}>
+                    <div style={{
+                      color: '#c084fc', fontSize: q(24), fontWeight: 700,
+                      marginBottom: q(8), textAlign: 'center',
+                      textShadow: '0 0 8px rgba(192,132,252,0.5)',
+                    }}>
+                      第 {roundNo} 轮开箱
+                    </div>
+                    <div style={{ display: 'flex', gap: q(8) }}>
+                      {sortedResults.map((item, idx) => {
+                        const p = players.find(pl => pl.playerId === item.playerId);
+                        const borderColor = item.goodsLevel === 1 ? 'rgba(245,200,66,0.8)'
+                          : item.goodsLevel === 2 ? 'rgba(192,132,252,0.8)'
+                          : item.goodsLevel === 3 ? 'rgba(96,165,250,0.6)'
+                          : 'rgba(156,163,175,0.4)';
+                        const bgGrad = item.goodsLevel === 1
+                          ? 'linear-gradient(135deg,rgba(200,134,10,0.2),rgba(245,200,66,0.1))'
+                          : item.goodsLevel === 2
+                            ? 'linear-gradient(135deg,rgba(106,13,173,0.2),rgba(192,132,252,0.1))'
+                            : 'rgba(20,8,50,0.8)';
+                        return (
+                          <div key={`r${roundNo}-${idx}`} style={{
+                            flex: 1, minWidth: 0,
+                            background: bgGrad,
+                            border: `1.5px solid ${borderColor}`,
+                            borderRadius: q(12),
+                            padding: `${q(10)} ${q(8)}`,
+                            textAlign: 'center',
+                            boxShadow: item.goodsLevel <= 2
+                              ? `0 0 12px ${borderColor.replace('0.8)', '0.3)').replace('0.6)', '0.2)')}`
+                              : 'none',
+                          }}>
+                            {/* 玩家昵称 */}
+                            <div style={{
+                              color: '#9ca3af', fontSize: q(18), marginBottom: q(6),
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
+                              {p?.nickname ?? item.nickname ?? `玩家${item.seatNo}`}
+                            </div>
+                            {/* 物品图片 */}
+                            <div style={{
+                              width: q(120), height: q(120), margin: '0 auto',
+                              marginBottom: q(6),
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              {item.goodsImage ? (
+                                <img src={item.goodsImage} alt={item.goodsName} style={{
+                                  width: '100%', height: '100%', objectFit: 'contain',
+                                  filter: item.goodsLevel === 1
+                                    ? 'drop-shadow(0 0 10px rgba(245,200,66,0.7))'
+                                    : item.goodsLevel === 2
+                                      ? 'drop-shadow(0 0 8px rgba(192,132,252,0.7))'
+                                      : 'none',
+                                }} />
+                              ) : (
+                                <div style={{ fontSize: q(48) }}>🎁</div>
+                              )}
+                            </div>
+                            {/* 物品名称 */}
+                            <div style={{
+                              color: '#e0d0ff', fontSize: q(18), fontWeight: 600,
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              marginBottom: q(4),
+                            }}>
+                              {item.goodsName}
+                            </div>
+                            {/* 物品价值 */}
+                            <div style={{
+                              color: '#ffd700', fontSize: q(22), fontWeight: 800,
+                            }}>
+                              ¥{parseFloat(item.goodsValue).toFixed(2)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+
         {/* 等待状态 */}
         {gameStatus === 'waiting' && (
           <div style={{
