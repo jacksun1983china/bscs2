@@ -121,6 +121,8 @@ export default function Backpack() {
   const [sortBy, setSortBy] = useState<'price' | 'time'>('time');
   const [sourceFilter, setSourceFilter] = useState<'all' | 'box' | 'arena' | 'roll'>('all');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  // 堆叠道具数量选择：key=itemId, value=选中数量（默认=count全选）
+  const [selectedQty, setSelectedQty] = useState<Map<number, number>>(new Map());
   const [settingsVisible, setSettingsVisible] = useState(false);
   // 弹窗状态
   const [confirmModal, setConfirmModal] = useState<{ type: 'extract' | 'recycle' | null }>({ type: null });
@@ -223,22 +225,43 @@ export default function Backpack() {
   const toggleSelect = useCallback((itemId: number) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+        setSelectedQty(qm => { const m = new Map(qm); m.delete(itemId); return m; });
+      } else {
+        next.add(itemId);
+        // 默认全选：找到该道具的 count
+        const item = filteredItems.find(i => i.itemId === itemId);
+        if (item && item.count > 1) {
+          setSelectedQty(qm => { const m = new Map(qm); m.set(itemId, item.count); return m; });
+        }
+      }
       return next;
     });
-  }, []);
+  }, [filteredItems]);
 
   const toggleSelectAll = useCallback(() => {
-    setSelectedIds(prev =>
-      prev.size === filteredItems.length
-        ? new Set()
-        : new Set(filteredItems.map(i => i.itemId))
-    );
+    setSelectedIds(prev => {
+      if (prev.size === filteredItems.length) {
+        setSelectedQty(new Map());
+        return new Set();
+      } else {
+        const qm = new Map<number, number>();
+        for (const i of filteredItems) {
+          if (i.count > 1) qm.set(i.itemId, i.count);
+        }
+        setSelectedQty(qm);
+        return new Set(filteredItems.map(i => i.itemId));
+      }
+    });
   }, [filteredItems]);
 
   const selectedValue = Math.round(filteredItems
     .filter(i => selectedIds.has(i.itemId))
-    .reduce((s, i) => s + Number(i.recycleGold ?? i.itemValue ?? 0) * i.count, 0) * 100) / 100;
+    .reduce((s, i) => {
+      const qty = selectedQty.get(i.itemId) ?? i.count; // 有数量选择用选择的，否则全部
+      return s + Number(i.recycleGold ?? i.itemValue ?? 0) * qty;
+    }, 0) * 100) / 100;
 
   const hasSelected = selectedIds.size > 0;
 
@@ -262,11 +285,19 @@ export default function Backpack() {
     toast.info('赠送功能即将上线');
   }, [hasSelected]);
 
+  // 计算实际选中的总件数（考虑部分选择）
+  const totalSelectedCount = filteredItems
+    .filter(i => selectedIds.has(i.itemId))
+    .reduce((s, i) => s + (selectedQty.get(i.itemId) ?? i.count), 0);
+
   const handleConfirmAction = () => {
-    // 收集所有选中物品的全部 playerItems.id（叠加物品每个都要包含）
+    // 收集选中物品的 playerItems.id，根据 selectedQty 只取对应数量
     const allIds = filteredItems
       .filter(i => selectedIds.has(i.itemId))
-      .flatMap(i => i.ids);
+      .flatMap(i => {
+        const qty = selectedQty.get(i.itemId) ?? i.count;
+        return i.ids.slice(0, qty); // 只取前 qty 个 id
+      });
     if (allIds.length === 0) return;
     if (confirmModal.type === 'extract') {
       extractMutation.mutate({ ids: allIds });
@@ -871,6 +902,70 @@ export default function Backpack() {
                       </div>
                     )}
 
+                    {/* 数量选择器（堆叠道具且已选中时显示） */}
+                    {isSelected && item.count > 1 && (
+                      <div
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                          position: 'absolute',
+                          bottom: q(60),
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: q(4),
+                          background: 'rgba(0,0,0,0.75)',
+                          backdropFilter: 'blur(4px)',
+                          borderRadius: q(20),
+                          padding: `${q(3)} ${q(6)}`,
+                          zIndex: 8,
+                          border: `${q(1)} solid rgba(255,215,0,0.4)`,
+                        }}
+                      >
+                        <button
+                          onClick={() => {
+                            setSelectedQty(qm => {
+                              const m = new Map(qm);
+                              const cur = m.get(item.itemId) ?? item.count;
+                              m.set(item.itemId, Math.max(1, cur - 1));
+                              return m;
+                            });
+                          }}
+                          style={{
+                            width: q(32), height: q(32), borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.15)', border: 'none',
+                            color: '#fff', fontSize: q(22), fontWeight: 700,
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            lineHeight: 1,
+                          }}
+                        >
+                          −
+                        </button>
+                        <span style={{ color: '#ffd700', fontSize: q(20), fontWeight: 700, minWidth: q(28), textAlign: 'center' }}>
+                          {selectedQty.get(item.itemId) ?? item.count}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setSelectedQty(qm => {
+                              const m = new Map(qm);
+                              const cur = m.get(item.itemId) ?? item.count;
+                              m.set(item.itemId, Math.min(item.count, cur + 1));
+                              return m;
+                            });
+                          }}
+                          style={{
+                            width: q(32), height: q(32), borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.15)', border: 'none',
+                            color: '#fff', fontSize: q(22), fontWeight: 700,
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            lineHeight: 1,
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
+                    )}
+
                     {/* 详情按钮（左下角） */}
                     <div
                       onClick={e => { e.stopPropagation(); setDetailItem(item); }}
@@ -954,7 +1049,7 @@ export default function Backpack() {
                 whiteSpace: 'nowrap',
               }}
             >
-              |&nbsp;{selectedIds.size}/{filteredItems.length}件
+              |&nbsp;{totalSelectedCount}/{filteredItems.reduce((s, i) => s + i.count, 0)}件
             </span>
 
             {/* 金币图标 + 总价值 */}
@@ -1069,8 +1164,8 @@ export default function Backpack() {
             </div>
             <div style={{ color: '#c0a0ff', fontSize: 14, marginBottom: 8, textAlign: 'center' }}>
               {confirmModal.type === 'extract'
-                ? `确认提取已选的 ${selectedIds.size} 件道具？`
-                : `确认分解已选的 ${selectedIds.size} 件道具？`
+                ? `确认提取已选的 ${totalSelectedCount} 件道具？`
+                : `确认分解已选的 ${totalSelectedCount} 件道具？`
               }
             </div>
             {confirmModal.type === 'recycle' && (
