@@ -4,16 +4,13 @@
  * 功能：关闭/开启音乐、关闭/开启音效、客服、关于我们、退出游戏（退出登录）
  * 风格：赛博朋克深紫蓝霓虹，与整体 UI 一致
  */
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
+import { useSound } from '@/hooks/useSound';
 
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
-
-// 全局音乐/音效状态（简单模拟，实际可接入 Howler.js 等）
-let _musicOn = true;
-let _sfxOn = true;
 
 interface SettingsModalProps {
   visible: boolean;
@@ -22,9 +19,8 @@ interface SettingsModalProps {
 
 export default function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const [, navigate] = useLocation();
-  const [musicOn, setMusicOn] = useState(_musicOn);
-  const [sfxOn, setSfxOn] = useState(_sfxOn);
   const [closing, setClosing] = useState(false);
+  const { isMusicOn, isSfxOn, toggleMusic, toggleSfx } = useSound();
 
   const logoutMutation = trpc.player.logout.useMutation();
 
@@ -35,6 +31,8 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
     logoutMutation.mutate();
     // 清除玩家相关的 localStorage 数据
     try {
+      localStorage.removeItem('music_muted');
+      localStorage.removeItem('sfx_muted');
       localStorage.removeItem('sound_muted');
       // 保留 theme 偏好（设备级别设置，非玩家数据）
       // 保留 sidebar_width（UI偏好，非玩家数据）
@@ -50,20 +48,6 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
       setClosing(false);
       onClose();
     }, 250);
-  };
-
-  // 音乐开关
-  const toggleMusic = () => {
-    const next = !musicOn;
-    setMusicOn(next);
-    _musicOn = next;
-  };
-
-  // 音效开关
-  const toggleSfx = () => {
-    const next = !sfxOn;
-    setSfxOn(next);
-    _sfxOn = next;
   };
 
   if (!visible && !closing) return null;
@@ -168,7 +152,7 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
             icon="🎵"
             label="背景音乐"
             right={
-              <Toggle value={musicOn} onChange={toggleMusic} />
+              <Toggle value={isMusicOn} onChange={toggleMusic} />
             }
           />
 
@@ -177,7 +161,7 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
             icon="🔊"
             label="游戏音效"
             right={
-              <Toggle value={sfxOn} onChange={toggleSfx} />
+              <Toggle value={isSfxOn} onChange={toggleSfx} />
             }
           />
 

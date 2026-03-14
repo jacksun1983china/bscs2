@@ -1093,3 +1093,6 @@
 
 ## /agent路由跳转异常修复（2026-03-15）
 - [x] /agent路径从 ProtectedRoute 中移出，改为公开路由（AgentDashboard内部有自己的登录检查）
+
+## 大厅音效/音乐关闭不生效修复（2026-03-15）
+- [x] 大厅的音效关闭和音乐关闭功能修复：SettingsModal接入useSound hook，音乐和音效独立控制，状态持久化到localStorage

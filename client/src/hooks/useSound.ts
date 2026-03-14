@@ -4,12 +4,12 @@
  * 功能：
  * - 背景音乐（BGM）全局循环播放，用户首次交互后自动开始
  * - 音效播放（点击、中奖、失败、旋转停止、铃声等）
- * - 音量控制和静音切换，状态持久化到 localStorage
+ * - **音乐和音效独立控制**：分别持久化到 localStorage
  *
  * 使用方式：
- *   const { playClick, playWin, playLose, playSpinStop, isMuted, toggleMute } = useSound();
+ *   const { playClick, isMusicOn, isSfxOn, toggleMusic, toggleSfx } = useSound();
  */
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 // ── CDN 音效地址 ──────────────────────────────────────────────────
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym';
@@ -25,10 +25,29 @@ export const SOUND_URLS = {
   betDown:  `${CDN}/bet_down_fad60c93.mp3`,
 } as const;
 
-// ── 全局音频实例（单例，避免重复创建）────────────────────────────
+// ── 全局状态 ─────────────────────────────────────────────────────
 let bgmAudio: HTMLAudioElement | null = null;
-let isMutedGlobal = (() => {
-  try { return localStorage.getItem('sound_muted') === 'true'; } catch { return false; }
+
+// 分离音乐和音效的静音状态
+let isMusicMutedGlobal = (() => {
+  try { return localStorage.getItem('music_muted') === 'true'; } catch { return false; }
+})();
+let isSfxMutedGlobal = (() => {
+  try { return localStorage.getItem('sfx_muted') === 'true'; } catch { return false; }
+})();
+
+// 兼容旧的 sound_muted（如果存在，迁移到新的 key）
+(() => {
+  try {
+    const oldMuted = localStorage.getItem('sound_muted');
+    if (oldMuted === 'true') {
+      isMusicMutedGlobal = true;
+      isSfxMutedGlobal = true;
+      localStorage.setItem('music_muted', 'true');
+      localStorage.setItem('sfx_muted', 'true');
+      localStorage.removeItem('sound_muted');
+    }
+  } catch {/* 忽略 */}
 })();
 
 // ── 音效缓存池 ────────────────────────────────────────────────────
@@ -44,7 +63,7 @@ function getSfxAudio(url: string): HTMLAudioElement {
 }
 
 function playSfx(url: string, volume = 0.7) {
-  if (isMutedGlobal) return;
+  if (isSfxMutedGlobal) return;
   try {
     const audio = getSfxAudio(url);
     // 克隆节点以支持快速连续播放
@@ -64,7 +83,7 @@ function initBgm() {
 }
 
 function startBgm() {
-  if (isMutedGlobal) return;
+  if (isMusicMutedGlobal) return;
   initBgm();
   if (bgmAudio && bgmAudio.paused) {
     bgmAudio.play().catch(() => {/* 忽略自动播放限制 */});
@@ -92,39 +111,82 @@ if (typeof document !== 'undefined') {
   document.addEventListener('touchstart', onFirstInteraction, { once: true });
 }
 
+// ── 事件名 ───────────────────────────────────────────────────────
+const MUSIC_CHANGE_EVENT = 'musicMuteChange';
+const SFX_CHANGE_EVENT = 'sfxMuteChange';
+
 // ── Hook ─────────────────────────────────────────────────────────
 export function useSound() {
-  // 使用 ref 追踪当前静音状态（避免闭包问题）
-  const mutedRef = useRef(isMutedGlobal);
+  const [musicOn, setMusicOn] = useState(!isMusicMutedGlobal);
+  const [sfxOn, setSfxOn] = useState(!isSfxMutedGlobal);
 
-  // 同步 ref 与全局状态
-  const getMuted = useCallback(() => isMutedGlobal, []);
-
-  const toggleMute = useCallback(() => {
-    isMutedGlobal = !isMutedGlobal;
-    mutedRef.current = isMutedGlobal;
-    try { localStorage.setItem('sound_muted', String(isMutedGlobal)); } catch {/* 忽略 */}
-    if (isMutedGlobal) {
+  // 切换背景音乐
+  const toggleMusic = useCallback(() => {
+    isMusicMutedGlobal = !isMusicMutedGlobal;
+    try { localStorage.setItem('music_muted', String(isMusicMutedGlobal)); } catch {/* 忽略 */}
+    if (isMusicMutedGlobal) {
       stopBgm();
     } else {
       startBgm();
     }
-    // 触发重渲染
-    window.dispatchEvent(new CustomEvent('soundMuteChange', { detail: isMutedGlobal }));
+    setMusicOn(!isMusicMutedGlobal);
+    window.dispatchEvent(new CustomEvent(MUSIC_CHANGE_EVENT, { detail: isMusicMutedGlobal }));
   }, []);
 
-  // 监听静音状态变化（跨组件同步）
+  // 切换音效
+  const toggleSfx = useCallback(() => {
+    isSfxMutedGlobal = !isSfxMutedGlobal;
+    try { localStorage.setItem('sfx_muted', String(isSfxMutedGlobal)); } catch {/* 忽略 */}
+    setSfxOn(!isSfxMutedGlobal);
+    window.dispatchEvent(new CustomEvent(SFX_CHANGE_EVENT, { detail: isSfxMutedGlobal }));
+  }, []);
+
+  // 兼容旧的 toggleMute（同时切换音乐和音效）
+  const toggleMute = useCallback(() => {
+    // 如果任一开着，就全关；否则全开
+    const shouldMute = !isMusicMutedGlobal || !isSfxMutedGlobal;
+    isMusicMutedGlobal = shouldMute;
+    isSfxMutedGlobal = shouldMute;
+    try {
+      localStorage.setItem('music_muted', String(shouldMute));
+      localStorage.setItem('sfx_muted', String(shouldMute));
+    } catch {/* 忽略 */}
+    if (shouldMute) {
+      stopBgm();
+    } else {
+      startBgm();
+    }
+    setMusicOn(!shouldMute);
+    setSfxOn(!shouldMute);
+    window.dispatchEvent(new CustomEvent(MUSIC_CHANGE_EVENT, { detail: shouldMute }));
+    window.dispatchEvent(new CustomEvent(SFX_CHANGE_EVENT, { detail: shouldMute }));
+  }, []);
+
+  // 监听跨组件状态变化
   useEffect(() => {
-    const handler = (e: Event) => {
-      mutedRef.current = (e as CustomEvent).detail;
+    const handleMusic = (e: Event) => {
+      setMusicOn(!(e as CustomEvent).detail);
     };
-    window.addEventListener('soundMuteChange', handler);
-    return () => window.removeEventListener('soundMuteChange', handler);
+    const handleSfx = (e: Event) => {
+      setSfxOn(!(e as CustomEvent).detail);
+    };
+    window.addEventListener(MUSIC_CHANGE_EVENT, handleMusic);
+    window.addEventListener(SFX_CHANGE_EVENT, handleSfx);
+    return () => {
+      window.removeEventListener(MUSIC_CHANGE_EVENT, handleMusic);
+      window.removeEventListener(SFX_CHANGE_EVENT, handleSfx);
+    };
   }, []);
 
   return {
-    isMuted: getMuted(),
-    toggleMute,
+    // 状态
+    isMusicOn: musicOn,
+    isSfxOn: sfxOn,
+    isMuted: !musicOn && !sfxOn, // 兼容旧接口
+    // 控制
+    toggleMusic,
+    toggleSfx,
+    toggleMute, // 兼容旧接口：同时切换
     // 各类音效播放函数
     playClick:    () => playSfx(SOUND_URLS.click, 0.6),
     playWin:      () => playSfx(SOUND_URLS.win, 0.8),

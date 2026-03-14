@@ -37,6 +37,8 @@ export default function PlayerInfoBar({ showLogout = false, onAddFriend }: Playe
     logoutMutation.mutate();
     // 清除玩家相关的 localStorage 数据
     try {
+      localStorage.removeItem('music_muted');
+      localStorage.removeItem('sfx_muted');
       localStorage.removeItem('sound_muted');
     } catch { /* 忽略 */ }
     // 强制整页刷新跳转，避免 SPA 路由延迟
