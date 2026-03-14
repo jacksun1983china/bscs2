@@ -1149,3 +1149,4 @@
 - [x] GameMenuList.tsx 添加第6个Vortex游戏卡片（链接/vortex）
 - [x] 左侧保持5个功能图标不变，第6行添加对应图标
 - [x] 用户信息区右侧加号按钮点击后跳转到充值页面(/deposit)
+- [x] Vortex卡片改为复用现有卡片背景图（如彩虹转盘的gameCard3Bg），labelImage设为null，用文字渲染Vortex

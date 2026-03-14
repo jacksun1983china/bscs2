@@ -75,10 +75,10 @@ const GAMES: GameItem[] = [
   },
   {
     id: 'vortex',
-    bgImage: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/vortex_card_bg-SAdbTLrDoyQoEhiAjLFmLg.webp',
-    labelImage: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/vortex_label-A3435aKVmErkSDzC3HBp6N.png',
+    bgImage: LANHU.gameCard3Bg,
+    labelImage: null,
     labelText: 'Vortex',
-    avatarImage: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/vortex_avatar-U9SNVcxNujtTCQ6rXMEeUD.webp',
+    avatarImage: LANHU.gameAvatar3,
     route: '/vortex',
   },
 ];
