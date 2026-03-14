@@ -335,7 +335,7 @@ function PlayerDetailModal({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {[
                 [t.id, player.id],
-                [t.phone, player.phone?.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')],
+                [t.phone, player.phone],
                 [t.nickname, player.nickname],
                 [t.vip, `VIP${player.vipLevel}`],
                 [t.gold, parseFloat(player.gold || '0').toFixed(2)],
@@ -1049,7 +1049,7 @@ export default function AdminDashboard() {
                     >
                       <td style={{ padding: '12px 16px', color: 'rgba(180,150,255,0.6)', fontSize: 13 }}>#{p.id}</td>
                       <td style={{ padding: '12px 16px', color: '#e0d0ff', fontSize: 13 }}>
-                        {p.phone?.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')}
+                        {p.phone}
                       </td>
                       <td style={{ padding: '12px 16px', color: '#fff', fontSize: 13, fontWeight: 500 }}>{p.nickname}</td>
                       <td style={{ padding: '12px 16px' }}>

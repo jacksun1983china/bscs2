@@ -69,9 +69,11 @@ export default function Profile() {
   const [securityPwdVisible, setSecurityPwdVisible] = useState(false);
 
   const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
-  const logoutMutation = trpc.player.logout.useMutation({
-    onSuccess: () => navigate('/login'),
-  });
+  const logoutMutation = trpc.player.logout.useMutation();
+  const handleLogout = () => {
+    logoutMutation.mutate();
+    navigate('/login');
+  };
 
   const menuItems = [
     { icon: WD.menuIcon0, bg: WD.menuBg0, label: '我的记录', sub: '资产明细', onClick: () => navigate('/my-records') },
@@ -338,7 +340,7 @@ export default function Profile() {
             justifyContent: 'space-between',
             cursor: 'pointer',
           }}
-          onClick={() => logoutMutation.mutate()}
+          onClick={handleLogout}
         >
           <img src={WD.logoutLeft} alt="" style={{ height: q(2), flex: 1, objectFit: 'fill', opacity: 0.6 }} />
           <div

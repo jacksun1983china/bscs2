@@ -32,7 +32,11 @@ interface PlayerInfoBarProps {
 export default function PlayerInfoBar({ showLogout = false, onAddFriend }: PlayerInfoBarProps) {
   const [, navigate] = useLocation();
   const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
-  const logoutMutation = trpc.player.logout.useMutation({ onSuccess: () => navigate('/login') });
+  const logoutMutation = trpc.player.logout.useMutation();
+  const handleLogout = () => {
+    logoutMutation.mutate();
+    navigate('/login');
+  };
 
   const vipGradients: Record<number, string> = {
     0: 'linear-gradient(135deg, #888 0%, #555 100%)',
@@ -222,7 +226,7 @@ export default function PlayerInfoBar({ showLogout = false, onAddFriend }: Playe
             />
             {showLogout && (
               <div
-                onClick={() => logoutMutation.mutate()}
+                onClick={handleLogout}
                 style={{
                   color: 'rgba(180,150,255,0.7)',
                   fontSize: 10,

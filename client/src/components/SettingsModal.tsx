@@ -26,12 +26,14 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
   const [sfxOn, setSfxOn] = useState(_sfxOn);
   const [closing, setClosing] = useState(false);
 
-  const logoutMutation = trpc.player.logout.useMutation({
-    onSuccess: () => {
-      onClose();
-      navigate('/login');
-    },
-  });
+  const logoutMutation = trpc.player.logout.useMutation();
+
+  const handleLogout = () => {
+    // 立即关闭弹窗并跳转，不等待后端响应
+    onClose();
+    logoutMutation.mutate();
+    navigate('/login');
+  };
 
   // 动画关闭
   const handleClose = () => {
@@ -195,7 +197,7 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
 
           {/* 退出游戏（退出登录） */}
           <div
-            onClick={() => logoutMutation.mutate()}
+            onClick={handleLogout}
             style={{
               display: 'flex',
               flexDirection: 'row',

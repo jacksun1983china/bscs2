@@ -1057,3 +1057,9 @@
 - [x] 修复Permissions policy violation: unload is not allowed（浏览器/代理环境限制，非代码问题）
 - [x] 修复meta标签过时警告（apple-mobile-web-app-capable → mobile-web-app-capable）
 - [x] 修复Manifest图标尺寸错误（生成192x192和512x512正确尺寸图标）
+
+## 管理后台手机号显示修复（2026-03-14）
+- [x] 管理员查看玩家列表时手机号显示完整号码，不做脱敏处理
+
+## 退出游戏响应慢修复（2026-03-14）
+- [x] 优化“退出游戏”按钮响应速度，点击后立即跳转登录页（不等待后端响应）
