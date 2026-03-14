@@ -458,6 +458,10 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
   const loginMutation = trpc.admin.login.useMutation({
     onSuccess: (data) => {
       localStorage.setItem('bdcs2_admin_session', JSON.stringify({ account: data.account, loginAt: Date.now() }));
+      // 存储 token 到 localStorage，通过 Authorization header 传递（解决代理环境 cookie 丢失问题）
+      if ((data as any).token) {
+        localStorage.setItem('bdcs2_admin_token', (data as any).token);
+      }
       onLogin(data.account);
       toast.success(lang === 'zh' ? '登录成功' : 'Login successful');
       setLoading(false);
@@ -680,12 +684,14 @@ export default function AdminDashboard() {
   const logoutMutation = trpc.admin.logout.useMutation({
     onSuccess: () => {
       localStorage.removeItem('bdcs2_admin_session');
+      localStorage.removeItem('bdcs2_admin_token');
       setAdminAccount(null);
       toast.success(lang === 'zh' ? '已退出登录' : 'Logged out');
     },
     onError: () => {
       // 即使服务端失败，也清除本地session
       localStorage.removeItem('bdcs2_admin_session');
+      localStorage.removeItem('bdcs2_admin_token');
       setAdminAccount(null);
     },
   });

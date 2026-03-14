@@ -1,0 +1,21 @@
+{
+  "query": "SELECT * FROM users;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2d1S7viP934C9u9.root --database f39rghmcCDkVuc3rBX8cym --execute SELECT * FROM users;",
+  "rows": [
+    {
+      "id": "1",
+      "openId": "aaMKN6GCdFoabE8uWNWing",
+      "name": "Jinbao li",
+      "email": "lijinbao2014@gmail.com",
+      "loginMethod": "google",
+      "role": "admin",
+      "createdAt": "2026-03-09 14:31:17",
+      "updatedAt": "2026-03-10 19:30:07",
+      "lastSignedIn": "2026-03-10 19:30:07"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\tloginMethod\trole\tcreatedAt\tupdatedAt\tlastSignedIn\n1\taaMKN6GCdFoabE8uWNWing\tJinbao li\tlijinbao2014@gmail.com\tgoogle\tadmin\t2026-03-09 14:31:17\t2026-03-10 19:30:07\t2026-03-10 19:30:07\n",
+  "stderr": "",
+  "execution_time_ms": 61
+}

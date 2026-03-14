@@ -55,8 +55,15 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       fetch(input, init) {
+        const headers = new Headers((init as any)?.headers);
+        // 从 localStorage 读取 admin token，通过 Authorization header 传递
+        const adminToken = localStorage.getItem('bdcs2_admin_token');
+        if (adminToken) {
+          headers.set('Authorization', `Bearer ${adminToken}`);
+        }
         return globalThis.fetch(input, {
           ...(init ?? {}),
+          headers,
           credentials: "include",
         });
       },

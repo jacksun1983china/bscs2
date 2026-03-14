@@ -89,7 +89,7 @@ export const adminRouter = router({
         maxAge: 8 * 3600 * 1000,
         path: '/',
       });
-      return { success: true, account: input.account };
+      return { success: true, account: input.account, token };
     }),
 
   // 管理员退出

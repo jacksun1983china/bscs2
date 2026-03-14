@@ -22,6 +22,56 @@ async function tryAuthFromPlayerJwt(req: any): Promise<User | null> {
   try {
     const cookieHeader = req.headers?.cookie || "";
 
+    // 优先从 Authorization header 读取 admin token（解决代理环境下 cookie 丢失问题）
+    const authHeader = req.headers?.authorization || "";
+    if (authHeader.startsWith('Bearer ')) {
+      try {
+        const headerToken = authHeader.slice(7);
+        const { payload } = await jwtVerify(headerToken, JWT_SECRET);
+        if (payload.type === 'admin') {
+          return {
+            id: 0,
+            openId: 'admin',
+            name: (payload.account as string) || 'admin',
+            email: null,
+            loginMethod: 'admin',
+            role: 'admin',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            lastSignedIn: new Date(),
+          } as User;
+        }
+        if (payload.type === 'player' && payload.playerId) {
+          return {
+            id: payload.playerId as number,
+            openId: `player_${payload.playerId}`,
+            name: (payload.phone as string) || null,
+            email: null,
+            loginMethod: 'phone',
+            role: 'user',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            lastSignedIn: new Date(),
+          } as User;
+        }
+        if (payload.type === 'csagent' && payload.agentId) {
+          return {
+            id: payload.agentId as number,
+            openId: `agent_${payload.agentId}`,
+            name: (payload.username as string) || null,
+            email: null,
+            loginMethod: 'csagent',
+            role: 'user',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            lastSignedIn: new Date(),
+          } as User;
+        }
+      } catch {
+        // Authorization header token 无效，继续尝试 cookie
+      }
+    }
+
     // 尝试玩家token
     const playerMatch = cookieHeader.match(new RegExp(`${PLAYER_COOKIE}=([^;]+)`));
     if (playerMatch) {
