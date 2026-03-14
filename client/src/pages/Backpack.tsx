@@ -683,7 +683,7 @@ export default function Backpack() {
 
                 return (
                   <div
-                    key={item.itemId}
+                    key={`${item.itemId}-${item.source}-${idx}`}
                     onClick={() => toggleSelect(item.itemId)}
                     style={{
                       position: 'relative',
