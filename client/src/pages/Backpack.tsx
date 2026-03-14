@@ -230,10 +230,10 @@ export default function Backpack() {
         setSelectedQty(qm => { const m = new Map(qm); m.delete(itemId); return m; });
       } else {
         next.add(itemId);
-        // 默认全选：找到该道具的 count
+        // 默认选1个：找到该道具的 count
         const item = filteredItems.find(i => i.itemId === itemId);
         if (item && item.count > 1) {
-          setSelectedQty(qm => { const m = new Map(qm); m.set(itemId, item.count); return m; });
+          setSelectedQty(qm => { const m = new Map(qm); m.set(itemId, 1); return m; });
         }
       }
       return next;
@@ -248,7 +248,7 @@ export default function Backpack() {
       } else {
         const qm = new Map<number, number>();
         for (const i of filteredItems) {
-          if (i.count > 1) qm.set(i.itemId, i.count);
+          if (i.count > 1) qm.set(i.itemId, 1);
         }
         setSelectedQty(qm);
         return new Set(filteredItems.map(i => i.itemId));
