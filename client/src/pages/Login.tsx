@@ -257,35 +257,10 @@ export default function Login() {
         display: 'flex', flexDirection: 'column', width: '100%',
         minHeight: 0,
       }}>
-        {/* LOGO 区域（左上角） */}
-        <div style={{
-          padding: '24px 20px 0 20px',
-          opacity: logoLoaded ? 1 : 0,
-          transform: logoLoaded ? 'translateY(0)' : 'translateY(-20px)',
-          transition: 'opacity 0.6s ease, transform 0.6s ease',
-        }}>
-          <img
-            src={NEW_LOGO}
-            alt="BDCS2"
-            style={{
-              width: 180,
-              objectFit: 'contain',
-              filter: 'drop-shadow(0 0 16px rgba(180,80,255,0.6)) drop-shadow(0 0 32px rgba(0,180,255,0.3))',
-              animation: 'logoPulse 4s ease-in-out infinite',
-            }}
-          />
-          <p style={{
-            color: 'rgba(180,140,255,0.55)', fontSize: 10,
-            letterSpacing: 3, marginTop: 3, textTransform: 'uppercase',
-          }}>
-            BATTLE · DESTINY · CYBER · SPACE · 2026
-          </p>
-        </div>
-
-        {/* ── 登录卡片 ── */}
+        {/* ── LOGO + 登录卡片（整体靠下） ── */}
         <div style={{
           position: 'absolute',
-          top: '38%',
+          bottom: '8%',
           left: 0,
           right: 0,
           padding: '0 16px',
@@ -293,6 +268,25 @@ export default function Login() {
           transform: formVisible ? 'translateY(0)' : 'translateY(30px)',
           transition: 'opacity 0.5s ease, transform 0.5s ease',
         }}>
+          {/* LOGO 居中在卡片上方 */}
+          <div style={{
+            textAlign: 'center',
+            marginBottom: 12,
+            opacity: logoLoaded ? 1 : 0,
+            transform: logoLoaded ? 'translateY(0)' : 'translateY(-20px)',
+            transition: 'opacity 0.6s ease, transform 0.6s ease',
+          }}>
+            <img
+              src={NEW_LOGO}
+              alt="BDCS2"
+              style={{
+                width: 200,
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 0 16px rgba(180,80,255,0.6)) drop-shadow(0 0 32px rgba(0,180,255,0.3))',
+                animation: 'logoPulse 4s ease-in-out infinite',
+              }}
+            />
+          </div>
           {/* 卡片顶部霓虹线 */}
           <div style={{
             height: 1,
