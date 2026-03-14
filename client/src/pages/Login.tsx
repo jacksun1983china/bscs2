@@ -207,11 +207,11 @@ export default function Login() {
       {/* ── 角色图（居中偏上，四边渐变淡出） ── */}
       <div style={{
         position: 'absolute',
-        top: '0%',
+        top: '-5%',
         left: '50%',
         transform: 'translateX(-50%)',
-        width: '200%',
-        height: '80%',
+        width: '280%',
+        height: '85%',
         zIndex: 3,
         pointerEvents: 'none',
       }}>
@@ -280,7 +280,8 @@ export default function Login() {
               src={NEW_LOGO}
               alt="BDCS2"
               style={{
-                width: 200,
+                width: 320,
+                maxWidth: '80%',
                 objectFit: 'contain',
                 filter: 'drop-shadow(0 0 16px rgba(180,80,255,0.6)) drop-shadow(0 0 32px rgba(0,180,255,0.3))',
                 animation: 'logoPulse 4s ease-in-out infinite',
