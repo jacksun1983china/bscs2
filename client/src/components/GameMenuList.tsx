@@ -29,6 +29,7 @@ const FUNC_LABELS = [
   { id: 'event',   label: '活动', route: undefined },
   { id: 'mail',    label: '邮件', route: '/mailbox' },
   { id: 'records', label: '记录', route: '/my-records' },
+  { id: 'vortex',  label: 'Vortex', route: '/vortex' },
 ];
 
 const GAMES: GameItem[] = [
@@ -71,6 +72,14 @@ const GAMES: GameItem[] = [
     labelText: '过马路',
     avatarImage: LANHU.gameAvatar5,
     route: '/rush',
+  },
+  {
+    id: 'vortex',
+    bgImage: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/vortex_card_bg-SAdbTLrDoyQoEhiAjLFmLg.webp',
+    labelImage: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/vortex_label-A3435aKVmErkSDzC3HBp6N.png',
+    labelText: 'Vortex',
+    avatarImage: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/vortex_avatar-U9SNVcxNujtTCQ6rXMEeUD.webp',
+    route: '/vortex',
   },
 ];
 

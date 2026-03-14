@@ -9,6 +9,7 @@
  * - ID + 金币/钻石行
  */
 import { LANHU, getAvatarUrl } from '@/lib/assets';
+import { useLocation } from 'wouter';
 
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -27,6 +28,7 @@ interface UserInfoCardProps {
 }
 
 export default function UserInfoCard({ player }: UserInfoCardProps) {
+  const [, navigate] = useLocation();
   return (
     /* 外层相对定位容器，宽度撑满 section_2 */
     <div style={{ position: 'relative', width: q(750) }}>
@@ -75,9 +77,10 @@ export default function UserInfoCard({ player }: UserInfoCardProps) {
           <img src={LANHU.badge} alt="徽章"
             style={{ width: q(67), height: q(46), marginLeft: q(12), objectFit: 'contain', flexShrink: 0 }}
           />
-          {/* 加号 35×35px，推到右侧 */}
-          <img src={LANHU.addFriend} alt="加好友"
+          {/* 加号 35×35px，推到右侧，点击跳转充值 */}
+          <img src={LANHU.addFriend} alt="充值"
             style={{ width: q(35), height: q(35), marginLeft: 'auto', objectFit: 'contain', cursor: 'pointer', flexShrink: 0 }}
+            onClick={() => navigate('/deposit')}
           />
         </div>
 

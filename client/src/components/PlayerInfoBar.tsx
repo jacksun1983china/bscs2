@@ -224,12 +224,12 @@ export default function PlayerInfoBar({ showLogout = false, onAddFriend }: Playe
 
           {/* ── 右侧按钮 ── */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            {/* 加号：jiahao 35x35 → 28x28 */}
+            {/* 加号：jiahao 35x35 → 28x28，默认跳转充值页 */}
             <img
               src={ASSETS.jiahao}
-              alt="加好友"
+              alt="充值"
               style={{ width: 28, height: 28, objectFit: 'contain', cursor: 'pointer' }}
-              onClick={onAddFriend}
+              onClick={onAddFriend || (() => navigate('/deposit'))}
             />
             {showLogout && (
               <div

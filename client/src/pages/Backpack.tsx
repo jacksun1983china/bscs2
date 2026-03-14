@@ -471,9 +471,7 @@ export default function Backpack() {
             position: 'relative',
             zIndex: 5,
             width: q(750),
-            backgroundImage: `url(${B.listAreaBg})`,
-            backgroundSize: '100% 100%',
-            backgroundRepeat: 'no-repeat',
+
             paddingBottom: q(220),
           }}
         >
