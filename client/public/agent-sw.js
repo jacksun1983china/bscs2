@@ -1,6 +1,6 @@
 // YouMe 坐席系统 Service Worker
 // 版本号 - 更新时修改此值以触发缓存刷新
-const CACHE_VERSION = 'agent-v1';
+const CACHE_VERSION = 'agent-v2';
 const CACHE_NAME = `youme-agent-${CACHE_VERSION}`;
 
 // 需要缓存的静态资源
@@ -38,9 +38,13 @@ self.addEventListener('activate', (event) => {
 
 // ── Fetch 事件：网络优先，失败时回退缓存 ──
 self.addEventListener('fetch', (event) => {
-  // 只处理 GET 请求，跳过 API 请求
+  // 只处理 GET 请求
   if (event.request.method !== 'GET') return;
+  // 跳过 API 请求
   if (event.request.url.includes('/api/')) return;
+  // 只处理 http/https 请求，跳过 chrome-extension:// 等非标准协议
+  const url = new URL(event.request.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
   event.respondWith(
     fetch(event.request)
@@ -49,7 +53,11 @@ self.addEventListener('fetch', (event) => {
         if (response.ok) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
+            try {
+              cache.put(event.request, responseClone);
+            } catch (e) {
+              // 忽略缓存写入错误
+            }
           });
         }
         return response;

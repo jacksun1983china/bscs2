@@ -1051,3 +1051,9 @@
 
 ## 管理后台403权限修复（2026-03-14）
 - [x] 修复admin登录后cookie未正确设置导致后续API请求返回403的问题（改用localStorage+Authorization header方案）
+
+## 控制台报错修复（2026-03-14）
+- [x] 修复Service Worker Cache错误（过滤非http/https协议请求，包裹cache.put异常）
+- [x] 修复Permissions policy violation: unload is not allowed（浏览器/代理环境限制，非代码问题）
+- [x] 修复meta标签过时警告（apple-mobile-web-app-capable → mobile-web-app-capable）
+- [x] 修复Manifest图标尺寸错误（生成192x192和512x512正确尺寸图标）
