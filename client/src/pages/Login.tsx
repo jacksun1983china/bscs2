@@ -1,8 +1,8 @@
 /**
  * Login.tsx — bdcs2 游戏平台登录/注册页
  * 设计风格：赛博朋克深紫蓝霓虹，与首页同色系
- * 布局：女战士角色图（右侧，四边渐变淡出）+ 新LOGO + 登录表单（居中偏下）
- * 特效：浮动粒子、扫描线、霓虹脉冲、底部装饰
+ * 布局：新角色图（居中偏上）+ LOGO + 登录表单
+ * 背景：丰富的赛博朋克元素贯穿整个画面（网格、光线、粒子、霓虹）
  */
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
@@ -10,13 +10,13 @@ import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 
 const NEW_LOGO = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/bdcs2logo2026_753f0156.png';
-const GIRL_WARRIOR = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/girl-warrior_b27c8502.png';
+const CHARACTER_IMG = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/login_character_compressed_9e8bf725.webp';
 
-// 浮动粒子组件
+// ── 浮动粒子组件 ──
 function FloatingParticles() {
   return (
-    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 1 }}>
-      {Array.from({ length: 18 }).map((_, i) => (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 2 }}>
+      {Array.from({ length: 22 }).map((_, i) => (
         <div
           key={i}
           style={{
@@ -24,13 +24,13 @@ function FloatingParticles() {
             width: i % 3 === 0 ? 3 : i % 3 === 1 ? 2 : 1.5,
             height: i % 3 === 0 ? 3 : i % 3 === 1 ? 2 : 1.5,
             borderRadius: '50%',
-            background: i % 4 === 0 ? '#7b2fff' : i % 4 === 1 ? '#00b4ff' : i % 4 === 2 ? '#a78bfa' : '#06b6d4',
-            left: `${(i * 17 + 5) % 95}%`,
-            top: `${(i * 23 + 10) % 90}%`,
+            background: i % 4 === 0 ? '#7b2fff' : i % 4 === 1 ? '#00b4ff' : i % 4 === 2 ? '#ff2d95' : '#06b6d4',
+            left: `${(i * 13 + 3) % 95}%`,
+            top: `${(i * 19 + 5) % 95}%`,
             animation: `floatParticle${i % 4} ${4 + (i % 5)}s ease-in-out infinite`,
-            animationDelay: `${(i * 0.4) % 3}s`,
-            opacity: 0.6 + (i % 3) * 0.15,
-            boxShadow: `0 0 6px currentColor`,
+            animationDelay: `${(i * 0.3) % 3}s`,
+            opacity: 0.5 + (i % 3) * 0.15,
+            boxShadow: `0 0 8px currentColor`,
           }}
         />
       ))}
@@ -81,7 +81,6 @@ export default function Login() {
   const loginMutation = trpc.player.login.useMutation({
     onSuccess: async (data) => {
       toast.success(data.isNew ? '注册成功，欢迎加入 BDCS2！' : '登录成功！');
-      // 先刷新 player.me 缓存，确保首页加载时已有数据，避免竞态条件跳回登录页
       await utils.player.me.refetch();
       navigate('/');
     },
@@ -112,67 +111,143 @@ export default function Login() {
         overflow: 'hidden',
       }}
     >
-      {/* ── 全局深色渐变背景 ── */}
+      {/* ── 层1：赛博朋克透视网格背景（贯穿全屏） ── */}
       <div style={{
-        position: 'absolute', inset: 0,
-        background: 'radial-gradient(ellipse at 60% 20%, rgba(80,20,160,0.5) 0%, rgba(10,4,24,0) 60%), radial-gradient(ellipse at 20% 80%, rgba(0,80,180,0.25) 0%, transparent 50%)',
-        zIndex: 0, pointerEvents: 'none',
+        position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
+        background: `
+          linear-gradient(180deg, 
+            rgba(10,4,24,0.3) 0%, 
+            rgba(20,8,50,0.6) 30%, 
+            rgba(10,4,24,0.8) 60%, 
+            rgba(10,4,24,0.95) 100%
+          )
+        `,
+      }}>
+        {/* 透视网格线 */}
+        <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0, opacity: 0.12 }}>
+          {/* 水平线 */}
+          {Array.from({ length: 20 }).map((_, i) => (
+            <line key={`h${i}`} x1="0" y1={`${i * 5}%`} x2="100%" y2={`${i * 5}%`}
+              stroke="url(#gridGrad)" strokeWidth="0.5" />
+          ))}
+          {/* 垂直线 */}
+          {Array.from({ length: 12 }).map((_, i) => (
+            <line key={`v${i}`} x1={`${i * 8.33}%`} y1="0" x2={`${i * 8.33}%`} y2="100%"
+              stroke="url(#gridGrad)" strokeWidth="0.5" />
+          ))}
+          <defs>
+            <linearGradient id="gridGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#7b2fff" stopOpacity="0.3" />
+              <stop offset="50%" stopColor="#00b4ff" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#7b2fff" stopOpacity="0.3" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      {/* ── 层2：多层径向光晕（贯穿全屏） ── */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none',
+        background: `
+          radial-gradient(ellipse 80% 40% at 50% 15%, rgba(123,47,255,0.35) 0%, transparent 70%),
+          radial-gradient(ellipse 60% 30% at 20% 50%, rgba(0,100,200,0.2) 0%, transparent 60%),
+          radial-gradient(ellipse 60% 30% at 80% 70%, rgba(180,40,120,0.15) 0%, transparent 60%),
+          radial-gradient(ellipse 100% 50% at 50% 90%, rgba(123,47,255,0.2) 0%, transparent 50%)
+        `,
       }} />
 
-      {/* ── 扫描线特效 ── */}
+      {/* ── 层3：对角光线条纹 ── */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', opacity: 0.06,
+        background: `repeating-linear-gradient(
+          -45deg,
+          transparent,
+          transparent 30px,
+          rgba(123,47,255,0.5) 30px,
+          rgba(123,47,255,0.5) 31px
+        )`,
+      }} />
+
+      {/* ── 层4：扫描线特效 ── */}
       <div style={{
         position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none',
         backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(120,60,220,0.03) 2px, rgba(120,60,220,0.03) 4px)',
         animation: 'scanlines 8s linear infinite',
       }} />
 
+      {/* ── 层5：顶部和底部霓虹光带 ── */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+        background: 'linear-gradient(to right, transparent, #7b2fff, #00b4ff, #ff2d95, transparent)',
+        zIndex: 5, opacity: 0.8,
+        boxShadow: '0 0 20px rgba(123,47,255,0.6), 0 0 40px rgba(0,180,255,0.3)',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
+        background: 'linear-gradient(to right, transparent, #ff2d95, #00b4ff, #7b2fff, transparent)',
+        zIndex: 5, opacity: 0.6,
+        boxShadow: '0 0 15px rgba(255,45,149,0.4), 0 0 30px rgba(0,180,255,0.2)',
+      }} />
+
+      {/* ── 层6：左右两侧霓虹竖线 ── */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, bottom: 0, width: 1,
+        background: 'linear-gradient(to bottom, transparent 10%, rgba(123,47,255,0.4) 30%, rgba(0,180,255,0.3) 70%, transparent 90%)',
+        zIndex: 3, pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'absolute', top: 0, right: 0, bottom: 0, width: 1,
+        background: 'linear-gradient(to bottom, transparent 10%, rgba(0,180,255,0.3) 30%, rgba(123,47,255,0.4) 70%, transparent 90%)',
+        zIndex: 3, pointerEvents: 'none',
+      }} />
+
       {/* ── 浮动粒子 ── */}
       <FloatingParticles />
 
-      {/* ── 女战士角色图（右侧，四边渐变淡出，不露裁切边） ── */}
+      {/* ── 角色图（居中偏上，四边渐变淡出） ── */}
       <div style={{
         position: 'absolute',
-        top: '-2%',
-        right: 0,
-        width: '85%',
-        height: '68%',
-        zIndex: 2,
+        top: '-5%',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '90%',
+        height: '62%',
+        zIndex: 3,
         pointerEvents: 'none',
       }}>
         <img
-          src={GIRL_WARRIOR}
+          src={CHARACTER_IMG}
           alt="角色"
           style={{
             width: '100%',
             height: '100%',
             objectFit: 'contain',
-            objectPosition: 'top right',
-            // 四边渐变淡出：右侧、左侧、底部都淡出，不露裁切边
+            objectPosition: 'center top',
             WebkitMaskImage: `
-              linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 12%, rgba(0,0,0,1) 30%, rgba(0,0,0,1) 72%, rgba(0,0,0,0) 100%),
-              linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%)
+              linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.5) 8%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 80%, rgba(0,0,0,0.5) 92%, rgba(0,0,0,0) 100%),
+              linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 100%)
             `,
             WebkitMaskComposite: 'destination-in',
             maskImage: `
-              linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 12%, rgba(0,0,0,1) 30%, rgba(0,0,0,1) 72%, rgba(0,0,0,0) 100%),
-              linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%)
+              linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.5) 8%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 80%, rgba(0,0,0,0.5) 92%, rgba(0,0,0,0) 100%),
+              linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 100%)
             `,
             maskComposite: 'intersect',
           }}
         />
         {/* 角色身上的霓虹光晕 */}
         <div style={{
-          position: 'absolute', bottom: '15%', left: '15%',
-          width: '70%', height: '45%',
-          background: 'radial-gradient(ellipse, rgba(0,180,255,0.12) 0%, transparent 70%)',
+          position: 'absolute', bottom: '10%', left: '15%',
+          width: '70%', height: '40%',
+          background: 'radial-gradient(ellipse, rgba(123,47,255,0.15) 0%, transparent 70%)',
           animation: 'neonPulse 3s ease-in-out infinite',
         }} />
       </div>
 
-      {/* ── 底部渐变遮罩 ── */}
+      {/* ── 底部渐变遮罩（让角色底部自然融入背景） ── */}
       <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%',
-        background: 'linear-gradient(to top, rgba(10,4,24,1) 35%, rgba(10,4,24,0.9) 60%, rgba(10,4,24,0) 100%)',
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: '55%',
+        background: 'linear-gradient(to top, rgba(10,4,24,1) 30%, rgba(10,4,24,0.95) 50%, rgba(10,4,24,0) 100%)',
         zIndex: 3, pointerEvents: 'none',
       }} />
 
@@ -203,11 +278,11 @@ export default function Login() {
             color: 'rgba(180,140,255,0.55)', fontSize: 10,
             letterSpacing: 3, marginTop: 3, textTransform: 'uppercase',
           }}>
-            BATTLE · DESTINY · CYBER · SPACE
+            BATTLE · DESTINY · CYBER · SPACE · 2026
           </p>
         </div>
 
-        {/* ── 登录卡片（黄金分割位置：上边在页面高38%处） ── */}
+        {/* ── 登录卡片 ── */}
         <div style={{
           position: 'absolute',
           top: '38%',
