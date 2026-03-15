@@ -91,7 +91,7 @@ export default function PlayerInfoCard({ style }: PlayerInfoCardProps) {
           {/* 加号 35×35px，推到右侧，点击跳转充值 */}
           <img src={LANHU.addFriend} alt="充值"
             style={{ width: q(35), height: q(35), marginLeft: 'auto', objectFit: 'contain', cursor: 'pointer', flexShrink: 0 }}
-            onClick={() => navigate('/deposit')}
+            onClick={() => navigate('/recharge')}
           />
         </div>
         {/* ID + 金币行 557×34px, margin: 18px 0 0 82px */}
