@@ -165,6 +165,7 @@ export default function Profile() {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexShrink: 0,
           }}
         >
           <div>
@@ -209,6 +210,7 @@ export default function Profile() {
             cursor: 'pointer',
             borderRadius: q(20),
             overflow: 'hidden',
+            flexShrink: 0,
           }}
           onClick={() => navigate('/share')}
         >
@@ -224,11 +226,11 @@ export default function Profile() {
         </div>
 
         {/* 功能菜单列表 */}
-        <div style={{ margin: `${q(11)} ${q(30)} 0`, display: 'flex', flexDirection: 'column', gap: q(11) }}>
+        <div style={{ margin: `${q(11)} ${q(30)} 0`, display: 'flex', flexDirection: 'column', gap: q(11), flexShrink: 0 }}>
           {menuItems.map((item, idx) => (
             <div
               key={idx}
-              style={{ position: 'relative', height: q(100), cursor: 'pointer', borderRadius: q(20), overflow: 'hidden' }}
+              style={{ position: 'relative', height: q(100), cursor: 'pointer', borderRadius: q(20), overflow: 'hidden', flexShrink: 0 }}
               onClick={item.onClick}
             >
               <img src={item.bg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
@@ -251,6 +253,7 @@ export default function Profile() {
             cursor: 'pointer',
             borderRadius: q(20),
             overflow: 'hidden',
+            flexShrink: 0,
           }}
         >
           <img src={WD.menuBg0} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
@@ -270,6 +273,7 @@ export default function Profile() {
             margin: `${q(11)} ${q(30)} 0`,
             position: 'relative',
             height: q(100),
+            flexShrink: 0,
           }}
         >
           <img src={WD.musicBg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
