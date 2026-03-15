@@ -633,16 +633,15 @@ export default function Backpack() {
                       backdropFilter: 'blur(12px)',
                     }}
                   >
-                    {/* 品质指示条（左侧竖条） */}
+                    {/* 品质顶部光条 */}
                     <div
                       style={{
                         position: 'absolute',
-                        top: q(12),
+                        top: 0,
                         left: 0,
-                        bottom: q(12),
-                        width: q(4),
+                        right: 0,
+                        height: q(3),
                         background: qualityBg,
-                        borderRadius: `0 ${q(4)} ${q(4)} 0`,
                         zIndex: 5,
                       }}
                     />
@@ -736,14 +735,15 @@ export default function Backpack() {
                       </span>
 
                       {/* 价格 */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: q(5), marginTop: q(2) }}>
-                        <img src={item.source === 'arena' ? '/img/jinbi2.png' : '/img/jinbi1.png'} alt="" style={{ width: q(22), height: q(22) }} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: q(8), marginTop: q(4) }}>
+                        <img src={item.source === 'arena' ? '/img/jinbi2.png' : '/img/jinbi1.png'} alt="" style={{ width: q(32), height: q(32) }} />
                         <span
                           style={{
-                            color: item.source === 'arena' ? 'rgba(125,249,255,0.95)' : 'rgba(255,215,0,0.95)',
-                            fontSize: q(22),
-                            fontWeight: 700,
-                            lineHeight: q(28),
+                            color: item.source === 'arena' ? 'rgba(125,249,255,1)' : 'rgba(255,215,0,1)',
+                            fontSize: q(30),
+                            fontWeight: 800,
+                            lineHeight: q(36),
+                            textShadow: item.source === 'arena' ? '0 0 8px rgba(125,249,255,0.5)' : '0 0 8px rgba(255,215,0,0.4)',
                           }}
                         >
                           {value.toFixed(2)}
