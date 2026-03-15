@@ -1204,12 +1204,15 @@ export default function Backpack() {
               maxWidth: 320,
               boxShadow: '0 0 40px rgba(120,40,220,0.5)',
               textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
             }}
           >
             <img
               src={detailItem.itemImageUrl ?? B.itemPlaceholder}
               alt={detailItem.itemName ?? ''}
-              style={{ width: 120, height: 120, objectFit: 'contain', borderRadius: 12, marginBottom: 12 }}
+              style={{ width: 120, height: 120, objectFit: 'contain', borderRadius: 12, marginBottom: 12, display: 'block' }}
             />
             <div style={{ color: '#fff', fontSize: 18, fontWeight: 700, marginBottom: 6 }}>
               {detailItem.itemName ?? '未知道具'}
