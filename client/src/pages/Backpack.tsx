@@ -460,7 +460,7 @@ export default function Backpack() {
               flex: 1,
               height: q(81),
               maxWidth: q(230),
-              backgroundImage: `url(${B.protectBtn})`,
+              backgroundImage: `url(${B.pickupBtn})`,
               backgroundSize: '100% 100%',
               backgroundRepeat: 'no-repeat',
               display: 'flex',
