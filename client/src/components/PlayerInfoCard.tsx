@@ -121,18 +121,18 @@ export default function PlayerInfoCard({ style }: PlayerInfoCardProps) {
           >
             ID：{player?.id ?? ''}
           </span>
-          {/* 金币框 170×34px */}
-          <div style={{ position: 'relative', width: q(170), height: q(34), backgroundImage: `url(${LANHU.coinBg1})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', marginLeft: q(60), display: 'flex', flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}>
-            <span style={{ flex: 1, color: 'rgba(255,255,255,1)', fontSize: q(26), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500, whiteSpace: 'nowrap', lineHeight: q(34), textAlign: 'center', paddingLeft: q(28) }}>
-              {parseFloat(player?.gold || '0').toFixed(0)}
+          {/* 金币框 */}
+          <div style={{ position: 'relative', width: q(200), height: q(34), backgroundImage: `url(${LANHU.coinBg1})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', marginLeft: q(40), display: 'flex', flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}>
+            <span style={{ flex: 1, color: 'rgba(255,255,255,1)', fontSize: q(22), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500, whiteSpace: 'nowrap', lineHeight: q(34), textAlign: 'center', paddingLeft: q(28) }}>
+              {parseFloat(player?.gold || '0').toFixed(2)}
             </span>
             <img src={LANHU.arrowIcon} alt="" style={{ width: q(10), height: q(19), marginLeft: 'auto', marginRight: q(10), objectFit: 'contain' }} />
             <img src={LANHU.coinArrow} alt="金币" style={{ position: 'absolute', left: q(-13), top: q(-4), width: q(42), height: q(42), objectFit: 'contain' }} />
           </div>
-          {/* 钒石框 170×34px */}
-          <div style={{ position: 'relative', width: q(170), height: q(34), backgroundImage: `url(${LANHU.coinBg2})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', marginLeft: q(50), display: 'flex', flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}>
-            <span style={{ flex: 1, color: 'rgba(255,255,255,1)', fontSize: q(26), fontFamily: 'Alibaba-PuHuiTi-B, sans-serif', fontWeight: 700, whiteSpace: 'nowrap', lineHeight: q(34), textAlign: 'center', paddingLeft: q(28) }}>
-              {parseFloat(player?.diamond || '0').toFixed(0)}
+          {/* 钻石框 */}
+          <div style={{ position: 'relative', width: q(200), height: q(34), backgroundImage: `url(${LANHU.coinBg2})`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', marginLeft: q(30), display: 'flex', flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}>
+            <span style={{ flex: 1, color: 'rgba(255,255,255,1)', fontSize: q(22), fontFamily: 'Alibaba-PuHuiTi-B, sans-serif', fontWeight: 700, whiteSpace: 'nowrap', lineHeight: q(34), textAlign: 'center', paddingLeft: q(28) }}>
+              {parseFloat(player?.diamond || '0').toFixed(2)}
             </span>
             <img src={LANHU.arrowIcon} alt="" style={{ width: q(10), height: q(19), marginLeft: 'auto', marginRight: q(10), objectFit: 'contain' }} />
             <img src={LANHU.diamondArrow} alt="钒石" style={{ position: 'absolute', left: q(-21), top: q(-4), width: q(42), height: q(42), objectFit: 'contain' }} />
