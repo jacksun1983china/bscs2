@@ -1069,41 +1069,6 @@ export default function Backpack() {
             {/* 弹性间距 */}
             <div style={{ flex: 1 }} />
 
-            {/* 赠送按钮 */}
-            <div
-              onClick={handleGift}
-              style={{
-                height: q(64),
-                width: q(140),
-                background: hasSelected
-                  ? 'linear-gradient(135deg, #1a3a8a, #2563eb)'
-                  : 'linear-gradient(135deg, rgba(30,50,100,0.5), rgba(40,60,120,0.5))',
-                border: hasSelected
-                  ? '1.5px solid rgba(96,165,250,0.8)'
-                  : '1.5px solid rgba(80,80,120,0.4)',
-                borderRadius: q(10),
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: hasSelected ? 'pointer' : 'not-allowed',
-                opacity: hasSelected ? 1 : 0.5,
-                transition: 'all 0.2s ease',
-                boxShadow: hasSelected ? '0 0 12px rgba(37,99,235,0.4)' : 'none',
-                flexShrink: 0,
-              }}
-            >
-              <span
-                style={{
-                  color: '#fff',
-                  fontSize: q(26),
-                  fontWeight: 700,
-                  letterSpacing: q(2),
-                }}
-              >
-                赠送
-              </span>
-            </div>
-
             {/* 分解按钮 */}
             <div
               onClick={handleDecompose}
