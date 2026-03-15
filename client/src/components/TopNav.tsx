@@ -57,8 +57,8 @@ export default function TopNav({ showLogo = false, onBackClick, style, onSetting
   const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
 
   const vipLevel = player?.vipLevel ?? 0;
-  // 根据VIP等级动态选择图标：VIP0用默认图标，VIP1-10用对应CDN图标
-  const vipIconSrc = vipLevel > 0 && VIP_ICONS[vipLevel] ? VIP_ICONS[vipLevel] : LANHU.vipIcon;
+  // 始终使用默认VIP图标，保持导航栏风格统一
+  const vipIconSrc = LANHU.vipIcon;
 
   const handleBack = () => {
     if (onBackClick) {
@@ -111,7 +111,7 @@ export default function TopNav({ showLogo = false, onBackClick, style, onSetting
         />
         <img
           src={vipIconSrc}
-          alt={`VIP${vipLevel}`}
+          alt="VIP"
           onClick={() => navigate('/vip')}
           style={{ width: q(79), height: q(80), cursor: 'pointer', objectFit: 'contain' }}
         />
