@@ -20,9 +20,24 @@
  */
 import { useLocation } from 'wouter';
 import { LANHU, ASSETS } from '@/lib/assets';
+import { trpc } from '@/lib/trpc';
 
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
+
+// VIP 图标 CDN URLs（VIP1-10），与 VipPage.tsx 保持一致
+const VIP_ICONS: Record<number, string> = {
+  1: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/1@2x_544e8be4.png',
+  2: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/2@2x_a0938465.png',
+  3: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/3@2x_2347673a.png',
+  4: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/4@2x_3ef4ca2d.png',
+  5: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/5@2x_f850ddcf.png',
+  6: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/6@2x_506a1d24.png',
+  7: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/7@2x_a432c161.png',
+  8: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/8@2x_c782b5ce.png',
+  9: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/9@2x_cf5ebd49.png',
+  10: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/10@2x_1cb51de9.png',
+};
 
 interface TopNavProps {
   /** true = 首页模式（显示LOGO），false = 子页面模式（显示返回按钮）。默认 false */
@@ -39,6 +54,11 @@ interface TopNavProps {
 
 export default function TopNav({ showLogo = false, onBackClick, style, onSettingsOpen, settingsOpen }: TopNavProps) {
   const [, navigate] = useLocation();
+  const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
+
+  const vipLevel = player?.vipLevel ?? 0;
+  // 根据VIP等级动态选择图标：VIP0用默认图标，VIP1-10用对应CDN图标
+  const vipIconSrc = vipLevel > 0 && VIP_ICONS[vipLevel] ? VIP_ICONS[vipLevel] : LANHU.vipIcon;
 
   const handleBack = () => {
     if (onBackClick) {
@@ -90,8 +110,8 @@ export default function TopNav({ showLogo = false, onBackClick, style, onSetting
           style={{ width: q(79), height: q(80), cursor: 'pointer', objectFit: 'contain' }}
         />
         <img
-          src={LANHU.vipIcon}
-          alt="VIP"
+          src={vipIconSrc}
+          alt={`VIP${vipLevel}`}
           onClick={() => navigate('/vip')}
           style={{ width: q(79), height: q(80), cursor: 'pointer', objectFit: 'contain' }}
         />

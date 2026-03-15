@@ -5,6 +5,7 @@
  */
 import { PageSlideIn } from '@/components/PageTransition';
 import { useState } from 'react';
+import { useSound } from '@/hooks/useSound';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import TopNav from '@/components/TopNav';
@@ -63,8 +64,7 @@ const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 
 export default function Profile() {
   const [, navigate] = useLocation();
-  const [musicOn, setMusicOn] = useState(true);
-  const [sfxOn, setSfxOn] = useState(true);
+  const { isMusicOn: musicOn, isSfxOn: sfxOn, toggleMusic, toggleSfx } = useSound();
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [steamVisible, setSteamVisible] = useState(false);
   const [securityPwdVisible, setSecurityPwdVisible] = useState(false);
@@ -198,7 +198,25 @@ export default function Profile() {
               距VIP{(player?.vipLevel ?? 0) + 1}还差200积分
             </span>
           </div>
-          <img src={WD.vipProgress} alt="VIP进度" style={{ width: q(173), height: q(171), objectFit: 'contain' }} />
+          <img src={(() => {
+            const vipLevel = player?.vipLevel ?? 0;
+            if (vipLevel > 0) {
+              const VIP_ICONS: Record<number, string> = {
+                1: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/1@2x_544e8be4.png',
+                2: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/2@2x_a0938465.png',
+                3: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/3@2x_2347673a.png',
+                4: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/4@2x_3ef4ca2d.png',
+                5: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/5@2x_f850ddcf.png',
+                6: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/6@2x_506a1d24.png',
+                7: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/7@2x_a432c161.png',
+                8: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/8@2x_c782b5ce.png',
+                9: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/9@2x_cf5ebd49.png',
+                10: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/10@2x_1cb51de9.png',
+              };
+              return VIP_ICONS[vipLevel] || WD.vipProgress;
+            }
+            return WD.vipProgress;
+          })()} alt={`VIP${player?.vipLevel ?? 0}`} style={{ width: q(173), height: q(171), objectFit: 'contain' }} />
         </div>
 
         {/* 分享招募行 */}
@@ -282,7 +300,7 @@ export default function Profile() {
           <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500, marginLeft: q(16) }}>音乐</span>
           {/* 音乐开关 */}
           <div
-            onClick={() => setMusicOn(v => !v)}
+            onClick={() => toggleMusic()}
             style={{
               marginLeft: q(20),
               width: q(80),
@@ -310,7 +328,7 @@ export default function Profile() {
           {/* 音效 */}
           <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500, marginLeft: q(30) }}>音效</span>
           <div
-            onClick={() => setSfxOn(v => !v)}
+            onClick={() => toggleSfx()}
             style={{
               marginLeft: q(20),
               width: q(80),
