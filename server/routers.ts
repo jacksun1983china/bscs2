@@ -1028,6 +1028,10 @@ export const appRouter = router({
         if (!agent) throw new TRPCError({ code: "UNAUTHORIZED" });
         const session = await getCsSessionById(input.sessionId);
         if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+        // 幂等：如果已被同一坐席接入，直接返回成功
+        if (session.status === "active" && session.agentId === agentAuth.agentId) {
+          return { success: true };
+        }
         if (session.status !== "waiting") throw new TRPCError({ code: "BAD_REQUEST", message: "会话已被接入" });
         await assignSessionToAgent(input.sessionId, agentAuth.agentId);
         // 发送系统消息

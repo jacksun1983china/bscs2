@@ -53,7 +53,10 @@ export default function AgentLogin() {
   }, []);
 
   const loginMutation = trpc.cs.agentLogin.useMutation({
-    onSuccess: () => navigate('/agent'),
+    onSuccess: () => {
+      // 延迟跳转，确保cookie已被浏览器设置
+      setTimeout(() => navigate('/agent'), 300);
+    },
     onError: (e) => setError(e.message),
   });
 

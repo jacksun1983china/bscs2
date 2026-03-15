@@ -273,12 +273,14 @@ function ChatPage({
   onBack,
   onAccept,
   onClose,
+  accepting = false,
 }: {
   session: Session;
   agent: Agent;
   onBack: () => void;
   onAccept: () => void;
   onClose: () => void;
+  accepting?: boolean;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [lastMsgId, setLastMsgId] = useState(0);
@@ -406,18 +408,20 @@ function ChatPage({
           {session.status === 'waiting' && (
             <button
               onClick={onAccept}
+              disabled={accepting}
               style={{
-                background: '#07c160',
+                background: accepting ? '#555' : '#07c160',
                 border: 'none',
                 borderRadius: 8,
                 color: '#fff',
                 fontSize: 13,
                 fontWeight: 700,
                 padding: '6px 12px',
-                cursor: 'pointer',
+                cursor: accepting ? 'not-allowed' : 'pointer',
+                opacity: accepting ? 0.7 : 1,
               }}
             >
-              接入
+              {accepting ? '接入中...' : '接入'}
             </button>
           )}
           {session.status === 'active' && (
@@ -602,12 +606,15 @@ export default function AgentDashboard() {
   const [historyPage, setHistoryPage] = useState(1);
   const utils = trpc.useUtils();
 
-  const { data: agentData, refetch: refetchAgent } = trpc.cs.agentMe.useQuery(undefined, { retry: false });
+  const { data: agentData, refetch: refetchAgent, isLoading: agentLoading, isFetched: agentFetched } = trpc.cs.agentMe.useQuery(undefined, {
+    retry: 2,
+    retryDelay: 500,
+  });
 
   useEffect(() => {
     if (agentData) setAgent(agentData as any);
-    else if (agentData === null) navigate('/agent/login');
-  }, [agentData]);
+    else if (agentFetched && agentData === null) navigate('/agent/login');
+  }, [agentData, agentFetched]);
 
   // 设置 agent-mode class（与游戏前台 phone-container 共用竖屏布局）
   useEffect(() => {
@@ -670,11 +677,10 @@ export default function AgentDashboard() {
 
   const acceptMutation = trpc.cs.agentAcceptSession.useMutation({
     onSuccess: () => {
+      // 立即更新当前会话状态（不等轮询）
+      setActiveSession(prev => prev ? { ...prev, status: 'active' as const, agentId: agent?.id ?? null } : null);
+      // 同时刷新会话列表
       fetchSessions();
-      // 刷新当前会话状态
-      if (activeSession) {
-        setActiveSession(prev => prev ? { ...prev, status: 'active', agentId: agent?.id ?? null } : null);
-      }
     },
   });
 
@@ -753,6 +759,7 @@ export default function AgentDashboard() {
           onBack={() => { setActiveSession(null); fetchSessions(); }}
           onAccept={() => acceptMutation.mutate({ sessionId: activeSession.id })}
           onClose={() => closeMutation.mutate({ sessionId: activeSession.id })}
+          accepting={acceptMutation.isPending}
         />
       </div>
     );
