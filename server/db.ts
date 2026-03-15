@@ -616,8 +616,7 @@ export async function getAdminRollRoomList(opts: {
 export async function getPlayerInventory(playerId: number, page: number = 1, limit: number = 20) {
   const db = await getDb();
   if (!db) return { list: [], total: 0 };
-  // 按 itemId 分组叠加：每种物品合并为一条，count 为数量，ids 为所有对应的 playerItems.id
-  // 先查出所有待处理物品（status=0），再在应用层分组
+  // 不堆叠：每个 playerItems 记录独立返回
   const allRaw = await db
     .select({
       id: playerItems.id,
@@ -637,37 +636,18 @@ export async function getPlayerInventory(playerId: number, page: number = 1, lim
     .where(and(eq(playerItems.playerId, playerId), eq(playerItems.status, 0)))
     .orderBy(desc(playerItems.createdAt));
 
-  // 按 itemId 分组叠加
-  const groupMap = new Map<number, {
-    id: number; playerId: number; itemId: number; source: string;
-    status: number; recycleGold: string; createdAt: Date;
-    itemName: string | null; itemImageUrl: string | null;
-    itemQuality: number | null; itemValue: string | null;
-    count: number; ids: number[];
-  }>();
-  for (const row of allRaw) {
-    const key = row.itemId;
-    if (groupMap.has(key)) {
-      const g = groupMap.get(key)!;
-      g.count += 1;
-      g.ids.push(row.id);
-    } else {
-      groupMap.set(key, {
-        ...row,
-        recycleGold: String(row.recycleGold ?? '0'),
-        itemValue: row.itemValue !== null && row.itemValue !== undefined ? String(row.itemValue) : null,
-        count: 1,
-        ids: [row.id],
-      });
-    }
-  }
-  const grouped = Array.from(groupMap.values());
-  // 按最新获得时间排序
-  grouped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  // 每个物品独立，count=1，ids=[自身id]
+  const flat = allRaw.map(row => ({
+    ...row,
+    recycleGold: String(row.recycleGold ?? '0'),
+    itemValue: row.itemValue !== null && row.itemValue !== undefined ? String(row.itemValue) : null,
+    count: 1,
+    ids: [row.id],
+  }));
   // 分页
-  const total = grouped.length;
+  const total = flat.length;
   const offset = (page - 1) * limit;
-  const list = grouped.slice(offset, offset + limit);
+  const list = flat.slice(offset, offset + limit);
   return { list, total };
 }
 

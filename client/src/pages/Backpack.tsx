@@ -123,8 +123,6 @@ export default function Backpack() {
   // 顶部分类筛选：分解 / 提货 / 提货保护
   const [topFilter, setTopFilter] = useState<'decompose' | 'pickup' | 'protect'>('decompose');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  // 堆叠道具数量选择：key=itemId, value=选中数量（默认=count全选）
-  const [selectedQty, setSelectedQty] = useState<Map<number, number>>(new Map());
   const [settingsVisible, setSettingsVisible] = useState(false);
   // 弹窗状态
   const [confirmModal, setConfirmModal] = useState<{ type: 'extract' | 'recycle' | null }>({ type: null });
@@ -158,14 +156,13 @@ export default function Backpack() {
     setLoadingMore(false);
   }, [inventoryData, page]);
 
-  // 搜索/筛选/排序变化时清空选中状态（过滤和排序在前端完成，不需要重置分页和数据）
+  // 搜索/筛选/排序变化时清空选中状态
   const prevSearchRef = useRef(searchText);
   const prevSourceRef = useRef(sourceFilter);
   const prevSortRef = useRef(sortBy);
   useEffect(() => {
     if (prevSearchRef.current !== searchText || prevSourceRef.current !== sourceFilter || prevSortRef.current !== sortBy) {
       setSelectedIds(new Set());
-      setSelectedQty(new Map());
       prevSearchRef.current = searchText;
       prevSourceRef.current = sourceFilter;
       prevSortRef.current = sortBy;
@@ -232,54 +229,30 @@ export default function Backpack() {
         : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-  // selectedIds 存储选中物品的 itemId（叠加后每种物品用 itemId 区分）
-  const toggleSelect = useCallback((itemId: number) => {
+  // selectedIds 存储选中物品的 playerItems.id（每个物品独立）
+  const toggleSelect = useCallback((id: number) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (next.has(itemId)) {
-        next.delete(itemId);
-        setSelectedQty(qm => { const m = new Map(qm); m.delete(itemId); return m; });
-      } else {
-        next.add(itemId);
-        // 默认选1个：找到该道具的 count
-        const item = filteredItems.find(i => i.itemId === itemId);
-        if (item && item.count > 1) {
-          setSelectedQty(qm => { const m = new Map(qm); m.set(itemId, 1); return m; });
-        }
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
-  }, [filteredItems]);
+  }, []);
 
   const toggleSelectAll = useCallback(() => {
     setSelectedIds(prev => {
-      if (prev.size === filteredItems.length) {
-        setSelectedQty(new Map());
-        return new Set();
-      } else {
-        const qm = new Map<number, number>();
-        for (const i of filteredItems) {
-          if (i.count > 1) qm.set(i.itemId, 1);
-        }
-        setSelectedQty(qm);
-        return new Set(filteredItems.map(i => i.itemId));
-      }
+      if (prev.size === filteredItems.length) return new Set();
+      return new Set(filteredItems.map(i => i.id));
     });
   }, [filteredItems]);
 
   // 按来源分别计算金币和钻石价值
   const selectedGoldValue = Math.round(filteredItems
-    .filter(i => selectedIds.has(i.itemId) && i.source !== 'arena')
-    .reduce((s, i) => {
-      const qty = selectedQty.get(i.itemId) ?? i.count;
-      return s + Number(i.recycleGold ?? i.itemValue ?? 0) * qty;
-    }, 0) * 100) / 100;
+    .filter(i => selectedIds.has(i.id) && i.source !== 'arena')
+    .reduce((s, i) => s + Number(i.recycleGold ?? i.itemValue ?? 0), 0) * 100) / 100;
   const selectedDiamondValue = Math.round(filteredItems
-    .filter(i => selectedIds.has(i.itemId) && i.source === 'arena')
-    .reduce((s, i) => {
-      const qty = selectedQty.get(i.itemId) ?? i.count;
-      return s + Number(i.recycleGold ?? i.itemValue ?? 0) * qty;
-    }, 0) * 100) / 100;
+    .filter(i => selectedIds.has(i.id) && i.source === 'arena')
+    .reduce((s, i) => s + Number(i.recycleGold ?? i.itemValue ?? 0), 0) * 100) / 100;
   const selectedValue = selectedGoldValue + selectedDiamondValue;
 
   const hasSelected = selectedIds.size > 0;
@@ -304,19 +277,12 @@ export default function Backpack() {
     toast.info('赠送功能即将上线');
   }, [hasSelected]);
 
-  // 计算实际选中的总件数（考虑部分选择）
-  const totalSelectedCount = filteredItems
-    .filter(i => selectedIds.has(i.itemId))
-    .reduce((s, i) => s + (selectedQty.get(i.itemId) ?? i.count), 0);
+  // 计算实际选中的总件数
+  const totalSelectedCount = selectedIds.size;
 
   const handleConfirmAction = () => {
-    // 收集选中物品的 playerItems.id，根据 selectedQty 只取对应数量
-    const allIds = filteredItems
-      .filter(i => selectedIds.has(i.itemId))
-      .flatMap(i => {
-        const qty = selectedQty.get(i.itemId) ?? i.count;
-        return i.ids.slice(0, qty); // 只取前 qty 个 id
-      });
+    // 收集选中物品的 playerItems.id
+    const allIds = Array.from(selectedIds);
     if (allIds.length === 0) return;
     if (confirmModal.type === 'extract') {
       extractMutation.mutate({ ids: allIds });
@@ -634,45 +600,49 @@ export default function Backpack() {
                   <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: q(18) }}>— 已加载全部物品 —</span>
                 </div>
               )}
-              {filteredItems.map((item, idx) => {
-                const isSelected = selectedIds.has(item.itemId);
+              {filteredItems.map((item) => {
+                const isSelected = selectedIds.has(item.id);
                 const value = Number(item.recycleGold ?? item.itemValue ?? 0);
                 const quality = String(item.itemQuality ?? 'common');
                 const borderColor = QUALITY_BORDER[quality] ?? QUALITY_BORDER.common;
                 const glowColor = QUALITY_GLOW[quality] ?? QUALITY_GLOW.common;
+                const qualityBg = QUALITY_BG[quality] ?? QUALITY_BG.common;
 
                 return (
                   <div
-                    key={`${item.itemId}-${item.source}-${idx}`}
-                    onClick={() => toggleSelect(item.itemId)}
+                    key={item.id}
+                    onClick={() => toggleSelect(item.id)}
                     style={{
                       position: 'relative',
                       width: q(340),
-                      height: q(280),
-                      borderRadius: q(16),
-                      border: isSelected
-                        ? `${q(3)} solid rgba(255,220,100,1)`
-                        : `${q(2)} solid ${borderColor}`,
+                      borderRadius: q(18),
                       cursor: 'pointer',
                       overflow: 'hidden',
+                      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                      transform: isSelected ? 'scale(0.97)' : 'scale(1)',
+                      /* 玻璃拟态卡片 */
+                      background: isSelected
+                        ? 'linear-gradient(160deg, rgba(255,220,100,0.12) 0%, rgba(30,12,70,0.92) 40%, rgba(20,8,50,0.96) 100%)'
+                        : 'linear-gradient(160deg, rgba(40,18,90,0.85) 0%, rgba(18,8,45,0.95) 60%, rgba(12,4,30,0.98) 100%)',
+                      border: isSelected
+                        ? `${q(2)} solid rgba(255,215,0,0.8)`
+                        : `${q(1)} solid rgba(120,80,200,0.25)`,
                       boxShadow: isSelected
-                        ? `0 0 18px rgba(255,220,100,0.6), inset 0 0 20px rgba(255,220,100,0.1)`
-                        : `0 4px 16px rgba(0,0,0,0.4), 0 0 12px ${glowColor}`,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      background: 'linear-gradient(180deg, rgba(20,8,60,0.95) 0%, rgba(36,12,90,0.98) 60%, rgba(50,18,110,1) 100%)',
-                      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                        ? `0 0 20px rgba(255,215,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)`
+                        : `0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)`,
+                      backdropFilter: 'blur(12px)',
                     }}
                   >
-                    {/* 品质顶部光效条 */}
+                    {/* 品质指示条（左侧竖条） */}
                     <div
                       style={{
                         position: 'absolute',
-                        top: 0,
+                        top: q(12),
                         left: 0,
-                        right: 0,
-                        height: q(4),
-                        background: QUALITY_BG[quality] ?? QUALITY_BG.common,
+                        bottom: q(12),
+                        width: q(4),
+                        background: qualityBg,
+                        borderRadius: `0 ${q(4)} ${q(4)} 0`,
                         zIndex: 5,
                       }}
                     />
@@ -680,11 +650,10 @@ export default function Backpack() {
                     {/* 物品图片区域 */}
                     <div
                       style={{
-                        flex: 1,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        padding: `${q(28)} ${q(16)} ${q(8)} ${q(16)}`,
+                        padding: `${q(32)} ${q(20)} ${q(12)} ${q(20)}`,
                         position: 'relative',
                       }}
                     >
@@ -692,65 +661,89 @@ export default function Backpack() {
                       <div
                         style={{
                           position: 'absolute',
-                          top: '50%',
+                          top: '45%',
                           left: '50%',
                           transform: 'translate(-50%, -50%)',
-                          width: q(180),
-                          height: q(180),
+                          width: q(160),
+                          height: q(160),
                           borderRadius: '50%',
                           background: `radial-gradient(circle, ${glowColor} 0%, transparent 70%)`,
                           pointerEvents: 'none',
+                          opacity: 0.6,
                         }}
                       />
                       <img
                         src={item.itemImageUrl || B.itemPlaceholder}
                         alt={item.itemName ?? ''}
                         style={{
-                          width: q(180),
-                          height: q(140),
+                          width: q(170),
+                          height: q(130),
                           objectFit: 'contain',
                           position: 'relative',
                           zIndex: 2,
-                          filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
+                          filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.4))',
                         }}
                         onError={e => { (e.target as HTMLImageElement).src = B.itemPlaceholder; }}
                       />
                     </div>
 
-                    {/* 名称+价格底栏 */}
+                    {/* 信息区域 */}
                     <div
                       style={{
-                        background: 'linear-gradient(135deg, rgba(90,50,180,0.95) 0%, rgba(120,70,220,0.95) 100%)',
-                        padding: `${q(10)} ${q(16)}`,
+                        padding: `0 ${q(16)} ${q(14)} ${q(16)}`,
                         display: 'flex',
                         flexDirection: 'column',
                         gap: q(4),
-                        borderTop: `${q(1)} solid rgba(160,120,255,0.3)`,
                       }}
                     >
+                      {/* 品质标签 */}
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignSelf: 'flex-start',
+                          background: qualityBg,
+                          borderRadius: q(6),
+                          padding: `${q(2)} ${q(10)}`,
+                          marginBottom: q(2),
+                        }}
+                      >
+                        <span
+                          style={{
+                            color: '#fff',
+                            fontSize: q(16),
+                            fontWeight: 700,
+                            letterSpacing: '0.05em',
+                          }}
+                        >
+                          {QUALITY_LABELS[quality] ?? '普通'}
+                        </span>
+                      </div>
+
+                      {/* 物品名称 */}
                       <span
                         style={{
-                          color: '#fff',
-                          fontSize: q(22),
-                          lineHeight: q(30),
+                          color: 'rgba(255,255,255,0.92)',
+                          fontSize: q(21),
+                          lineHeight: q(28),
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
                           fontWeight: 600,
-                          letterSpacing: '0.02em',
+                          letterSpacing: '0.01em',
                         }}
                       >
                         {item.itemName ?? '未知物品'}
                       </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: q(6) }}>
-                        <img src={item.source === 'arena' ? '/img/jinbi2.png' : '/img/jinbi1.png'} alt={item.source === 'arena' ? '钻石' : '金币'} style={{ width: q(26), height: q(26) }} />
+
+                      {/* 价格 */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: q(5), marginTop: q(2) }}>
+                        <img src={item.source === 'arena' ? '/img/jinbi2.png' : '/img/jinbi1.png'} alt="" style={{ width: q(22), height: q(22) }} />
                         <span
                           style={{
-                            color: item.source === 'arena' ? 'rgba(125,249,255,1)' : 'rgba(255,215,0,1)',
-                            fontSize: q(24),
+                            color: item.source === 'arena' ? 'rgba(125,249,255,0.95)' : 'rgba(255,215,0,0.95)',
+                            fontSize: q(22),
                             fontWeight: 700,
-                            lineHeight: q(30),
-                            textShadow: item.source === 'arena' ? '0 0 6px rgba(125,249,255,0.4)' : '0 0 6px rgba(255,215,0,0.4)',
+                            lineHeight: q(28),
                           }}
                         >
                           {value.toFixed(2)}
@@ -758,160 +751,46 @@ export default function Backpack() {
                       </div>
                     </div>
 
-                    {/* 品质标签（左上角） */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: q(10),
-                        left: q(8),
-                        background: QUALITY_BG[quality] ?? QUALITY_BG.common,
-                        borderRadius: `0 ${q(8)} ${q(8)} 0`,
-                        padding: `${q(3)} ${q(12)} ${q(3)} ${q(8)}`,
-                        zIndex: 5,
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
-                      }}
-                    >
-                      <span
-                        style={{
-                          color: '#fff',
-                          fontSize: q(18),
-                          fontWeight: 700,
-                          textShadow: '0 1px 3px rgba(0,0,0,0.5)',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {QUALITY_LABELS[quality] ?? '普通'}
-                      </span>
-                    </div>
-
-                    {/* 数量角标（右上角，count > 1 时显示） */}
-                    {item.count > 1 && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: q(8),
-                          right: q(8),
-                          minWidth: q(38),
-                          height: q(38),
-                          background: 'linear-gradient(135deg, #ff5555, #ff2222)',
-                          borderRadius: q(19),
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: `0 ${q(8)}`,
-                          boxShadow: '0 2px 8px rgba(255,0,0,0.5)',
-                          zIndex: 6,
-                          border: `${q(2)} solid rgba(255,255,255,0.25)`,
-                        }}
-                      >
-                        <span style={{ color: '#fff', fontSize: q(20), fontWeight: 900, lineHeight: 1 }}>×{item.count}</span>
-                      </div>
-                    )}
-
-                    {/* 选中标记（右下角） */}
+                    {/* 选中标记（右上角） */}
                     {isSelected && (
                       <div
                         style={{
                           position: 'absolute',
-                          bottom: q(60),
+                          top: q(10),
                           right: q(10),
-                          width: q(36),
-                          height: q(36),
+                          width: q(30),
+                          height: q(30),
                           borderRadius: '50%',
                           background: 'linear-gradient(135deg, #ffd700, #ffaa00)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           zIndex: 7,
-                          boxShadow: '0 0 10px rgba(255,215,0,0.8)',
-                          border: `${q(2)} solid rgba(255,255,255,0.5)`,
+                          boxShadow: '0 0 8px rgba(255,215,0,0.6)',
                         }}
                       >
-                        <span style={{ color: '#fff', fontSize: q(22), lineHeight: 1, fontWeight: 900, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>✓</span>
+                        <span style={{ color: '#fff', fontSize: q(18), lineHeight: 1, fontWeight: 900 }}>✓</span>
                       </div>
                     )}
 
-                    {/* 数量选择器（堆叠道具且已选中时显示） */}
-                    {isSelected && item.count > 1 && (
-                      <div
-                        onClick={e => e.stopPropagation()}
-                        style={{
-                          position: 'absolute',
-                          bottom: q(60),
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: q(4),
-                          background: 'rgba(0,0,0,0.75)',
-                          backdropFilter: 'blur(4px)',
-                          borderRadius: q(20),
-                          padding: `${q(3)} ${q(6)}`,
-                          zIndex: 8,
-                          border: `${q(1)} solid rgba(255,215,0,0.4)`,
-                        }}
-                      >
-                        <button
-                          onClick={() => {
-                            setSelectedQty(qm => {
-                              const m = new Map(qm);
-                              const cur = m.get(item.itemId) ?? item.count;
-                              m.set(item.itemId, Math.max(1, cur - 1));
-                              return m;
-                            });
-                          }}
-                          style={{
-                            width: q(32), height: q(32), borderRadius: '50%',
-                            background: 'rgba(255,255,255,0.15)', border: 'none',
-                            color: '#fff', fontSize: q(22), fontWeight: 700,
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            lineHeight: 1,
-                          }}
-                        >
-                          −
-                        </button>
-                        <span style={{ color: '#ffd700', fontSize: q(20), fontWeight: 700, minWidth: q(28), textAlign: 'center' }}>
-                          {selectedQty.get(item.itemId) ?? item.count}
-                        </span>
-                        <button
-                          onClick={() => {
-                            setSelectedQty(qm => {
-                              const m = new Map(qm);
-                              const cur = m.get(item.itemId) ?? item.count;
-                              m.set(item.itemId, Math.min(item.count, cur + 1));
-                              return m;
-                            });
-                          }}
-                          style={{
-                            width: q(32), height: q(32), borderRadius: '50%',
-                            background: 'rgba(255,255,255,0.15)', border: 'none',
-                            color: '#fff', fontSize: q(22), fontWeight: 700,
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            lineHeight: 1,
-                          }}
-                        >
-                          +
-                        </button>
-                      </div>
-                    )}
-
-                    {/* 详情按钮（左下角） */}
+                    {/* 详情按钮（右下角） */}
                     <div
                       onClick={e => { e.stopPropagation(); setDetailItem(item); }}
                       style={{
                         position: 'absolute',
-                        bottom: q(62),
-                        left: q(10),
-                        background: 'rgba(0,0,0,0.6)',
-                        backdropFilter: 'blur(4px)',
+                        bottom: q(14),
+                        right: q(12),
+                        background: 'rgba(255,255,255,0.08)',
+                        backdropFilter: 'blur(8px)',
                         borderRadius: q(8),
-                        padding: `${q(3)} ${q(12)}`,
+                        padding: `${q(4)} ${q(12)}`,
                         cursor: 'pointer',
                         zIndex: 10,
-                        border: `${q(1)} solid rgba(255,255,255,0.15)`,
+                        border: `${q(1)} solid rgba(255,255,255,0.12)`,
+                        transition: 'background 0.2s',
                       }}
                     >
-                      <span style={{ color: 'rgba(220,200,255,1)', fontSize: q(18), fontWeight: 600 }}>详情</span>
+                      <span style={{ color: 'rgba(200,180,255,0.9)', fontSize: q(17), fontWeight: 500 }}>详情</span>
                     </div>
                   </div>
                 );
@@ -993,7 +872,7 @@ export default function Backpack() {
                 flexShrink: 0,
               }}
             >
-              |&nbsp;{totalSelectedCount}/{filteredItems.reduce((s, i) => s + i.count, 0)}件
+              |&nbsp;{totalSelectedCount}/{filteredItems.length}件
             </span>
 
             {/* 金币价值 */}
