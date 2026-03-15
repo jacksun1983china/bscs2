@@ -61,7 +61,9 @@ export default function PlayerInfoBar({ showLogout = false, onAddFriend }: Playe
       <div
         style={{
           position: 'relative',
-          margin: '6px 10px',
+          margin: '6px auto',
+          width: '95%',
+          maxWidth: 520,
           borderRadius: 12,
           overflow: 'hidden',
           cursor: 'pointer',
@@ -83,7 +85,9 @@ export default function PlayerInfoBar({ showLogout = false, onAddFriend }: Playe
     <div
       style={{
         position: 'relative',
-        margin: '6px 10px',
+        margin: '6px auto',
+        width: '95%',
+        maxWidth: 520,
         borderRadius: 12,
         overflow: 'hidden',
       }}
