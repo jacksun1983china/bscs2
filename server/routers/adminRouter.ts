@@ -794,4 +794,79 @@ export const adminRouter = router({
       );
       return { success: true, newGold };
     }),
+
+  // ── X-Game 分类管理 ──────────────────────────────────────────────
+  // X-Game 列表（从 gameSettings 表中查询 rollx/rush/dingdong/vortex）
+  xgameList: adminProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+    const XGAME_KEYS = ['rollx', 'rush', 'dingdong', 'vortex'];
+    const rows = await db.select().from(gameSettings).where(
+      sql`${gameSettings.gameKey} IN ('rollx', 'rush', 'dingdong', 'vortex')`
+    );
+    // 添加中文名称映射
+    const nameMap: Record<string, { name: string; nameEn: string; path: string }> = {
+      rollx: { name: 'ROLL-X 转盘', nameEn: 'ROLL-X', path: '/rollx' },
+      rush: { name: '\u4e0d\u53ef\u80fd\u7684\u51b2\u523a', nameEn: 'Uncrossable Rush', path: '/uncrossable-rush' },
+      dingdong: { name: '\u53ee\u549a\u6e38\u620f', nameEn: 'DingDong', path: '/dingdong' },
+      vortex: { name: '\u6f29\u6da1', nameEn: 'Vortex', path: '/vortex' },
+    };
+    return rows.map(r => ({
+      ...r,
+      rtp: parseFloat(String(r.rtp)),
+      minBet: parseFloat(String(r.minBet)),
+      maxBet: parseFloat(String(r.maxBet)),
+      name: nameMap[r.gameKey]?.name || r.gameKey,
+      nameEn: nameMap[r.gameKey]?.nameEn || r.gameKey,
+      path: nameMap[r.gameKey]?.path || '',
+    }));
+  }),
+
+  // 更新单个 X-Game 的配置（RTP / 开关 / 投注范围）
+  xgameUpdate: adminProcedure
+    .input(z.object({
+      gameKey: z.string(),
+      rtp: z.number().min(1).max(200).optional(),
+      enabled: z.number().min(0).max(1).optional(),
+      minBet: z.number().min(0).optional(),
+      maxBet: z.number().min(0).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const updateData: any = {};
+      if (input.rtp !== undefined) updateData.rtp = String(input.rtp.toFixed(2));
+      if (input.enabled !== undefined) updateData.enabled = input.enabled;
+      if (input.minBet !== undefined) updateData.minBet = String(input.minBet.toFixed(2));
+      if (input.maxBet !== undefined) updateData.maxBet = String(input.maxBet.toFixed(2));
+      await db.update(gameSettings).set(updateData).where(eq(gameSettings.gameKey, input.gameKey));
+      // 同步到 vortexConfig 表（Vortex 用独立配置表）
+      if (input.gameKey === 'vortex') {
+        const vortexUpdate: any = {};
+        if (input.rtp !== undefined) vortexUpdate.rtp = String(input.rtp.toFixed(2));
+        if (input.minBet !== undefined) vortexUpdate.minBet = String(input.minBet.toFixed(2));
+        if (input.maxBet !== undefined) vortexUpdate.maxBet = String(input.maxBet.toFixed(2));
+        if (Object.keys(vortexUpdate).length > 0) {
+          await (db as any).execute(sql`UPDATE vortexConfig SET ${sql.raw(
+            Object.entries(vortexUpdate).map(([k, v]) => `${k} = '${v}'`).join(', ')
+          )} ORDER BY id DESC LIMIT 1`);
+        }
+      }
+      return { success: true };
+    }),
+
+  // 批量设置所有 X-Game 的 RTP
+  xgameBatchRtp: adminProcedure
+    .input(z.object({ rtp: z.number().min(1).max(200) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const rtpStr = String(input.rtp.toFixed(2));
+      await db.update(gameSettings).set({ rtp: rtpStr }).where(
+        sql`${gameSettings.gameKey} IN ('rollx', 'rush', 'dingdong', 'vortex')`
+      );
+      // 同步到 vortexConfig
+      await (db as any).execute(sql`UPDATE vortexConfig SET rtp = ${rtpStr} ORDER BY id DESC LIMIT 1`);
+      return { success: true };
+    }),
 });

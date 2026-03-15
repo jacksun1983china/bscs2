@@ -128,6 +128,7 @@ export default function RollX() {
 
   const [wheelSize, setWheelSize] = useState(300);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [rulesVisible, setRulesVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -233,19 +234,39 @@ export default function RollX() {
           zIndex: 1,
         }}
       >
-        {/* Online 人数 */}
+        {/* Online 人数 + 规则按钮 */}
         <div
           style={{
             width: '100%',
             display: 'flex',
-            justifyContent: 'flex-end',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             padding: `${q(8)} ${q(20)} 0`,
             color: CYBER.textSecondary,
             fontSize: q(22),
           }}
         >
-          <span>Online: </span>
-          <span style={{ color: CYBER.accentCyan, marginLeft: 4, textShadow: `0 0 8px ${CYBER.accentCyan}` }}>165</span>
+          <div
+            onClick={() => setRulesVisible(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: q(6),
+              cursor: 'pointer',
+              padding: `${q(6)} ${q(16)}`,
+              borderRadius: q(20),
+              background: 'rgba(120,60,220,0.15)',
+              border: `1px solid ${CYBER.border}`,
+              transition: 'all 0.2s',
+            }}
+          >
+            <span style={{ fontSize: q(22) }}>\u2753</span>
+            <span style={{ color: CYBER.accent, fontSize: q(20), fontWeight: 600 }}>\u89c4\u5219</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <span>Online: </span>
+            <span style={{ color: CYBER.accentCyan, marginLeft: 4, textShadow: `0 0 8px ${CYBER.accentCyan}` }}>165</span>
+          </div>
         </div>
 
         {/* ── 转盘区域 ── */}
@@ -638,6 +659,159 @@ export default function RollX() {
 
       {/* 设置弹窗 */}
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+
+      {/* 规则说明弹窗 */}
+      {rulesVisible && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(5,2,20,0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(6px)',
+          }}
+          onClick={() => setRulesVisible(false)}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(26,8,64,0.98) 0%, rgba(13,6,33,0.99) 100%)',
+              border: `2px solid ${CYBER.border}`,
+              borderRadius: 20,
+              padding: '28px 24px',
+              maxWidth: 380,
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: `0 0 40px rgba(120,60,220,0.3), 0 0 80px rgba(120,60,220,0.1)`,
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* 标题 */}
+            <div style={{
+              textAlign: 'center',
+              marginBottom: 20,
+            }}>
+              <div style={{
+                fontSize: 22,
+                fontWeight: 900,
+                color: CYBER.accent,
+                letterSpacing: 2,
+                textShadow: `0 0 12px rgba(192,132,252,0.5)`,
+                marginBottom: 4,
+              }}>ROLL-X 规则说明</div>
+              <div style={{ width: 60, height: 2, background: `linear-gradient(90deg, transparent, ${CYBER.accent}, transparent)`, margin: '0 auto' }} />
+            </div>
+
+            {/* 规则内容 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* 游戏简介 */}
+              <div>
+                <div style={{ color: CYBER.accentCyan, fontSize: 14, fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 16 }}>\ud83c\udfb0</span> 游戏简介
+                </div>
+                <div style={{ color: CYBER.textPrimary, fontSize: 13, lineHeight: 1.7 }}>
+                  ROLL-X 是一款刺激的转盘博弈游戏。转盘分为<span style={{ color: CYBER.win, fontWeight: 700 }}>绿色（胜利）</span>和<span style={{ color: '#555', fontWeight: 700 }}>黑色（失败）</span>两个区域。指针停在绿色区域即为中奖，停在黑色区域则未中奖。
+                </div>
+              </div>
+
+              {/* 倍率说明 */}
+              <div>
+                <div style={{ color: CYBER.accentCyan, fontSize: 14, fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 16 }}>\ud83d\udcc8</span> 倍率说明
+                </div>
+                <div style={{ color: CYBER.textPrimary, fontSize: 13, lineHeight: 1.7 }}>
+                  倍率范围为 <span style={{ color: CYBER.accent, fontWeight: 700 }}>1.1x ~ 30x</span>。倍率越高，绿色区域越小，中奖概率越低，但中奖后的收益越高。
+                </div>
+                <div style={{
+                  marginTop: 8,
+                  padding: '10px 12px',
+                  background: 'rgba(120,60,220,0.1)',
+                  borderRadius: 8,
+                  border: `1px solid rgba(120,60,220,0.2)`,
+                }}>
+                  <div style={{ color: CYBER.textSecondary, fontSize: 12, lineHeight: 1.8 }}>
+                    <div>\u2022 <span style={{ color: CYBER.win }}>1.1x</span> → 绿色区域最大，胜率最高</div>
+                    <div>\u2022 <span style={{ color: '#fbbf24' }}>2x~5x</span> → 中等倍率，攻守平衡</div>
+                    <div>\u2022 <span style={{ color: CYBER.lose }}>10x~30x</span> → 高倍率高回报，但胜率较低</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 投注规则 */}
+              <div>
+                <div style={{ color: CYBER.accentCyan, fontSize: 14, fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 16 }}>\ud83d\udcb0</span> 投注规则
+                </div>
+                <div style={{ color: CYBER.textPrimary, fontSize: 13, lineHeight: 1.7 }}>
+                  投注范围为 <span style={{ color: CYBER.accent, fontWeight: 700 }}>1.00 ~ 10,000.00</span> 金币。每次旋转前请确认您的倍率和投注金额。
+                </div>
+              </div>
+
+              {/* 中奖计算 */}
+              <div>
+                <div style={{ color: CYBER.accentCyan, fontSize: 14, fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 16 }}>\ud83c\udfc6</span> 中奖计算
+                </div>
+                <div style={{ color: CYBER.textPrimary, fontSize: 13, lineHeight: 1.7 }}>
+                  中奖金额 = 投注金额 \u00d7 倍率
+                </div>
+                <div style={{
+                  marginTop: 8,
+                  padding: '10px 12px',
+                  background: 'rgba(0,245,160,0.06)',
+                  borderRadius: 8,
+                  border: `1px solid rgba(0,245,160,0.15)`,
+                }}>
+                  <div style={{ color: CYBER.textSecondary, fontSize: 12, lineHeight: 1.8 }}>
+                    <div>例如：投注 <span style={{ color: CYBER.accent }}>100</span> 金币，倍率 <span style={{ color: CYBER.accent }}>2x</span></div>
+                    <div>→ 中奖可获得 <span style={{ color: CYBER.win, fontWeight: 700 }}>200</span> 金币（净赚 100）</div>
+                    <div>→ 未中奖则失去 <span style={{ color: CYBER.lose, fontWeight: 700 }}>100</span> 金币</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 温馨提示 */}
+              <div style={{
+                padding: '12px 14px',
+                background: 'rgba(245,158,11,0.08)',
+                borderRadius: 10,
+                border: '1px solid rgba(245,158,11,0.2)',
+              }}>
+                <div style={{ color: '#fbbf24', fontSize: 13, fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 14 }}>\u26a0\ufe0f</span> 温馨提示
+                </div>
+                <div style={{ color: 'rgba(245,158,11,0.8)', fontSize: 12, lineHeight: 1.7 }}>
+                  请理性游戏，合理控制投注金额。游戏结果由服务器随机生成，确保公平公正。
+                </div>
+              </div>
+            </div>
+
+            {/* 关闭按钮 */}
+            <button
+              onClick={() => setRulesVisible(false)}
+              style={{
+                display: 'block',
+                margin: '20px auto 0',
+                padding: '10px 40px',
+                borderRadius: 30,
+                border: `1px solid ${CYBER.border}`,
+                background: CYBER.spinBtn,
+                color: '#fff',
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: `0 0 15px ${CYBER.spinBtnGlow}`,
+                letterSpacing: 2,
+              }}
+            >
+              我知道了
+            </button>
+          </div>
+        </div>
+      )}
       {/* 结果弹窗 */}
       {showResult && result && (
         <div
