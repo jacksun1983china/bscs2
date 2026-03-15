@@ -998,36 +998,52 @@ export default function Backpack() {
           zIndex: 50,
           flexShrink: 0,
           width: '100%',
-          height: q(191),
-          backgroundImage: `url(${B.bottomBarBg})`,
-          backgroundSize: '750px 192px',
-          backgroundRepeat: 'no-repeat',
+          height: q(100),
+          background: 'linear-gradient(180deg, rgba(30,10,60,0.95) 0%, rgba(15,5,35,0.98) 100%)',
+          borderTop: '1px solid rgba(120,60,220,0.4)',
+          boxShadow: '0 -4px 20px rgba(80,20,160,0.3)',
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
+          padding: `0 ${q(16)}`,
         }}
       >
-            {/* 全选 */}
+            {/* 全选复选框 */}
             <div
               onClick={toggleSelectAll}
               style={{
                 display: 'flex',
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: q(6),
-                margin: `${q(21)} 0 0 ${q(23)}`,
+                gap: q(8),
                 cursor: 'pointer',
+                flexShrink: 0,
               }}
             >
-              <img src={B.selectAllIcon} alt="" style={{ width: q(42), height: q(42) }} />
+              <div style={{
+                width: q(36),
+                height: q(36),
+                borderRadius: q(6),
+                border: selectedIds.size === filteredItems.length && filteredItems.length > 0
+                  ? '2px solid rgba(200,100,255,0.9)'
+                  : '2px solid rgba(160,120,200,0.5)',
+                background: selectedIds.size === filteredItems.length && filteredItems.length > 0
+                  ? 'linear-gradient(135deg, rgba(160,60,240,0.8), rgba(200,80,255,0.6))'
+                  : 'rgba(40,20,70,0.6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+              }}>
+                {selectedIds.size === filteredItems.length && filteredItems.length > 0 && (
+                  <span style={{ color: '#fff', fontSize: q(22), lineHeight: 1 }}>✓</span>
+                )}
+              </div>
               <span
                 style={{
-                  color: 'rgba(251,244,255,1)',
+                  color: 'rgba(230,210,255,0.9)',
                   fontSize: q(24),
                   fontWeight: 500,
-                  lineHeight: q(34),
-                  marginTop: q(10),
-                  textShadow: '0 1px 5px rgba(33,0,80,0.67)',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -1035,16 +1051,15 @@ export default function Backpack() {
               </span>
             </div>
 
-            {/* 已选数量 */}
+            {/* 分隔符 + 已选数量 */}
             <span
               style={{
-                color: 'rgba(251,244,255,1)',
+                color: 'rgba(200,180,230,0.7)',
                 fontSize: q(22),
                 fontWeight: 500,
-                lineHeight: q(34),
-                margin: `${q(31)} 0 0 ${q(11)}`,
-                textShadow: '0 1px 5px rgba(33,0,80,0.67)',
+                marginLeft: q(8),
                 whiteSpace: 'nowrap',
+                flexShrink: 0,
               }}
             >
               |&nbsp;{totalSelectedCount}/{filteredItems.reduce((s, i) => s + i.count, 0)}件
@@ -1054,45 +1069,53 @@ export default function Backpack() {
             <img
               src="/img/jinbi1.png"
               alt="金币"
-              style={{ width: q(40), height: q(40), margin: `${q(22)} 0 0 ${q(29)}` }}
+              style={{ width: q(34), height: q(34), marginLeft: q(16), flexShrink: 0 }}
             />
             <span
               style={{
                 color: 'rgba(255,246,13,1)',
-                fontSize: q(28),
+                fontSize: q(26),
                 fontWeight: 700,
-                lineHeight: q(34),
-                margin: `${q(32)} 0 0 ${q(11)}`,
+                marginLeft: q(6),
                 whiteSpace: 'nowrap',
+                flexShrink: 0,
               }}
             >
               {selectedValue.toFixed(2)}
             </span>
 
+            {/* 弹性间距 */}
+            <div style={{ flex: 1 }} />
+
             {/* 赠送按钮 */}
             <div
               onClick={handleGift}
               style={{
-                height: q(62),
-                backgroundImage: `url(${B.giftBtnBg})`,
-                backgroundSize: '100% 100%',
-                backgroundRepeat: 'no-repeat',
-                width: q(163),
-                margin: `${q(10)} 0 0 ${q(72)}`,
+                height: q(64),
+                width: q(140),
+                background: hasSelected
+                  ? 'linear-gradient(135deg, #1a3a8a, #2563eb)'
+                  : 'linear-gradient(135deg, rgba(30,50,100,0.5), rgba(40,60,120,0.5))',
+                border: hasSelected
+                  ? '1.5px solid rgba(96,165,250,0.8)'
+                  : '1.5px solid rgba(80,80,120,0.4)',
+                borderRadius: q(10),
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: hasSelected ? 'pointer' : 'not-allowed',
+                opacity: hasSelected ? 1 : 0.5,
+                transition: 'all 0.2s ease',
+                boxShadow: hasSelected ? '0 0 12px rgba(37,99,235,0.4)' : 'none',
+                flexShrink: 0,
               }}
             >
               <span
                 style={{
-                  color: 'rgba(251,244,255,1)',
+                  color: '#fff',
                   fontSize: q(26),
                   fontWeight: 700,
-                  lineHeight: q(34),
-                  textShadow: '0 1px 5px rgba(33,0,80,0.67)',
-                  whiteSpace: 'nowrap',
+                  letterSpacing: q(2),
                 }}
               >
                 赠送
@@ -1103,26 +1126,32 @@ export default function Backpack() {
             <div
               onClick={handleDecompose}
               style={{
-                height: q(62),
-                backgroundImage: `url(${B.decomposeBtnBg})`,
-                backgroundSize: '100% 100%',
-                backgroundRepeat: 'no-repeat',
-                width: q(163),
-                margin: `${q(10)} ${q(24)} 0 ${q(14)}`,
+                height: q(64),
+                width: q(140),
+                background: hasSelected
+                  ? 'linear-gradient(135deg, #b45309, #f59e0b)'
+                  : 'linear-gradient(135deg, rgba(120,60,10,0.5), rgba(160,100,20,0.5))',
+                border: hasSelected
+                  ? '1.5px solid rgba(245,158,11,0.8)'
+                  : '1.5px solid rgba(120,100,60,0.4)',
+                borderRadius: q(10),
+                marginLeft: q(12),
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: hasSelected ? 'pointer' : 'not-allowed',
+                opacity: hasSelected ? 1 : 0.5,
+                transition: 'all 0.2s ease',
+                boxShadow: hasSelected ? '0 0 12px rgba(245,158,11,0.4)' : 'none',
+                flexShrink: 0,
               }}
             >
               <span
                 style={{
-                  color: 'rgba(251,244,255,1)',
+                  color: '#fff',
                   fontSize: q(26),
                   fontWeight: 700,
-                  lineHeight: q(34),
-                  textShadow: '0 1px 5px rgba(33,0,80,0.67)',
-                  whiteSpace: 'nowrap',
+                  letterSpacing: q(2),
                 }}
               >
                 分解
