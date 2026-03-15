@@ -313,11 +313,13 @@ export default function Backpack() {
           left: '50%',
           transform: 'translateX(-50%)',
           width: '100cqw',
-          height: '100%',
+          height: '100vh',
           objectFit: 'cover',
+          objectPosition: 'center top',
           zIndex: 0,
           opacity: 0.65,
           pointerEvents: 'none',
+          bottom: 0,
         }}
       />
 
