@@ -36,6 +36,7 @@ import {
   skuCategories,
   shopItems,
   shopOrders,
+  vipConfigs,
 } from "../../drizzle/schema";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
@@ -567,14 +568,34 @@ export const adminRouter = router({
       const newGold = parseFloat(player.gold) + goldToAdd;
       const newDiamond = parseFloat(player.diamond) + diamondToAdd;
       const newTotalRecharge = parseFloat(String(player.totalRecharge ?? '0')) + amountToAdd;
+      // 根据新的累计充值自动计算VIP等级
+      const { asc } = await import('drizzle-orm');
+      let vipRows = await db.select().from(vipConfigs).orderBy(asc(vipConfigs.level));
+      // 如果数据库中没有VIP配置，使用默认配置（每级1000元）
+      if (vipRows.length === 0) {
+        vipRows = Array.from({ length: 11 }, (_, i) => ({
+          id: i, level: i, name: `VIP${i}`,
+          requiredPoints: i === 0 ? 0 : i * 1000,
+          rechargeBonus: '0.00', privileges: null, createdAt: new Date(),
+        }));
+      }
+      let newVipLevel = 0;
+      for (const vc of vipRows) {
+        if (newTotalRecharge >= vc.requiredPoints) {
+          newVipLevel = vc.level;
+        } else {
+          break;
+        }
+      }
       await db.update(players).set({
         gold: newGold.toFixed(2),
         diamond: newDiamond.toFixed(2),
         totalRecharge: newTotalRecharge.toFixed(2),
+        vipLevel: newVipLevel,
       }).where(eq(players.id, order.playerId));
       // 记录金币流水
       await insertGoldLog(order.playerId, goldToAdd, newGold, 'recharge', `充值审批到账 ${goldToAdd.toFixed(2)} 金币 (订单号: ${order.orderNo})`);
-      return { success: true, orderNo: order.orderNo, goldAdded: goldToAdd, diamondAdded: diamondToAdd };
+      return { success: true, orderNo: order.orderNo, goldAdded: goldToAdd, diamondAdded: diamondToAdd, newVipLevel };
     }),
 
   /** 拒绝充值订单 */

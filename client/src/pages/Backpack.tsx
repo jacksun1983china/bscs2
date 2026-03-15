@@ -120,6 +120,8 @@ export default function Backpack() {
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<'price' | 'time'>('time');
   const [sourceFilter, setSourceFilter] = useState<'all' | 'box' | 'arena' | 'roll'>('all');
+  // 顶部分类筛选：分解 / 提货 / 提货保护
+  const [topFilter, setTopFilter] = useState<'decompose' | 'pickup' | 'protect'>('decompose');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   // 堆叠道具数量选择：key=itemId, value=选中数量（默认=count全选）
   const [selectedQty, setSelectedQty] = useState<Map<number, number>>(new Map());
@@ -156,15 +158,14 @@ export default function Backpack() {
     setLoadingMore(false);
   }, [inventoryData, page]);
 
-  // 搜索/筛选/排序变化时重置
+  // 搜索/筛选/排序变化时清空选中状态（过滤和排序在前端完成，不需要重置分页和数据）
   const prevSearchRef = useRef(searchText);
   const prevSourceRef = useRef(sourceFilter);
   const prevSortRef = useRef(sortBy);
   useEffect(() => {
     if (prevSearchRef.current !== searchText || prevSourceRef.current !== sourceFilter || prevSortRef.current !== sortBy) {
-      setPage(1);
-      setAllItems([]);
-      setHasMore(true);
+      setSelectedIds(new Set());
+      setSelectedQty(new Map());
       prevSearchRef.current = searchText;
       prevSourceRef.current = sourceFilter;
       prevSortRef.current = sortBy;
@@ -194,8 +195,11 @@ export default function Backpack() {
   });
 
   const recycleMutation = trpc.player.recycleItem.useMutation({
-    onSuccess: (data) => {
-      toast.success(`成功回收 ${data.count} 件道具，获得 ${Number(data.goldReturned).toFixed(2)} 金币`);
+    onSuccess: (data: { count: number; goldReturned: number; diamondReturned?: number }) => {
+      const msgs: string[] = [];
+      if ((data.diamondReturned ?? 0) > 0) msgs.push(`${Number(data.diamondReturned).toFixed(2)} 钻石`);
+      if ((data.goldReturned ?? 0) > 0) msgs.push(`${Number(data.goldReturned).toFixed(2)} 金币`);
+      toast.success(`成功分解 ${data.count} 件道具，获得 ${msgs.join(' + ')}`);
       setSelectedIds(new Set());
       setConfirmModal({ type: null });
       utils.player.inventory.invalidate();
@@ -208,6 +212,13 @@ export default function Backpack() {
 
   const filteredItems = allItems
     .filter(item => !searchText || (item.itemName ?? '').includes(searchText))
+    .filter(item => {
+      // 顶部分类筛选：分解=待处理(status 0), 提货=已提取(status 1), 提货保护=保护中(status 3)
+      if (topFilter === 'decompose') return item.status === 0;
+      if (topFilter === 'pickup') return item.status === 1;
+      if (topFilter === 'protect') return item.status === 3;
+      return true;
+    })
     .filter(item => {
       if (sourceFilter === 'all') return true;
       if (sourceFilter === 'box') return item.source === 'box' || item.source === 'unbox';
@@ -256,12 +267,20 @@ export default function Backpack() {
     });
   }, [filteredItems]);
 
-  const selectedValue = Math.round(filteredItems
-    .filter(i => selectedIds.has(i.itemId))
+  // 按来源分别计算金币和钻石价值
+  const selectedGoldValue = Math.round(filteredItems
+    .filter(i => selectedIds.has(i.itemId) && i.source !== 'arena')
     .reduce((s, i) => {
-      const qty = selectedQty.get(i.itemId) ?? i.count; // 有数量选择用选择的，否则全部
+      const qty = selectedQty.get(i.itemId) ?? i.count;
       return s + Number(i.recycleGold ?? i.itemValue ?? 0) * qty;
     }, 0) * 100) / 100;
+  const selectedDiamondValue = Math.round(filteredItems
+    .filter(i => selectedIds.has(i.itemId) && i.source === 'arena')
+    .reduce((s, i) => {
+      const qty = selectedQty.get(i.itemId) ?? i.count;
+      return s + Number(i.recycleGold ?? i.itemValue ?? 0) * qty;
+    }, 0) * 100) / 100;
+  const selectedValue = selectedGoldValue + selectedDiamondValue;
 
   const hasSelected = selectedIds.size > 0;
 
@@ -363,7 +382,7 @@ export default function Backpack() {
             zIndex: 1,
           }}
         />
-        {/* ── 操作按钮行（分解 / 提货 / 提货保护），三态图 ── */}
+        {/* ── 分类筛选按钮行（分解 / 提货 / 提货保护） ── */}
         <div
           style={{
             position: 'relative',
@@ -383,9 +402,9 @@ export default function Backpack() {
             boxSizing: 'border-box',
           }}
         >
-          {/* 分解按钮 */}
+          {/* 分解分类 */}
           <div
-            onClick={handleDecompose}
+            onClick={() => { setTopFilter('decompose'); setSelectedIds(new Set()); }}
             style={{
               flex: 1,
               height: q(81),
@@ -397,22 +416,22 @@ export default function Backpack() {
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: hasSelected ? 'pointer' : 'not-allowed',
+              cursor: 'pointer',
               gap: q(8),
-              opacity: hasSelected ? 1 : 0.6,
+              opacity: topFilter === 'decompose' ? 1 : 0.5,
               position: 'relative',
               zIndex: 30,
             }}
           >
-            <img src={hasSelected ? B.decomposeIconOn : B.decomposeIconOff} alt="" style={{ width: q(40), height: q(40) }} />
-            <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500 }}>
+            <img src={topFilter === 'decompose' ? B.decomposeIconOn : B.decomposeIconOff} alt="" style={{ width: q(40), height: q(40) }} />
+            <span style={{ color: '#fff', fontSize: q(26), fontWeight: topFilter === 'decompose' ? 700 : 500 }}>
               分解
             </span>
           </div>
 
-          {/* 提货按钮 */}
+          {/* 提货分类 */}
           <div
-            onClick={handlePickup}
+            onClick={() => { setTopFilter('pickup'); setSelectedIds(new Set()); }}
             style={{
               flex: 1,
               height: q(81),
@@ -424,22 +443,22 @@ export default function Backpack() {
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: hasSelected ? 'pointer' : 'not-allowed',
+              cursor: 'pointer',
               gap: q(8),
-              opacity: hasSelected ? 1 : 0.6,
+              opacity: topFilter === 'pickup' ? 1 : 0.5,
               position: 'relative',
               zIndex: 30,
             }}
           >
-            <img src={hasSelected ? B.pickupIconOn : B.pickupIconOff} alt="" style={{ width: q(40), height: q(40) }} />
-            <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500 }}>
+            <img src={topFilter === 'pickup' ? B.pickupIconOn : B.pickupIconOff} alt="" style={{ width: q(40), height: q(40) }} />
+            <span style={{ color: '#fff', fontSize: q(26), fontWeight: topFilter === 'pickup' ? 700 : 500 }}>
               提货
             </span>
           </div>
 
-          {/* 提货保护按钮 */}
+          {/* 提货保护分类 */}
           <div
-            onClick={handleProtect}
+            onClick={() => { setTopFilter('protect'); setSelectedIds(new Set()); }}
             style={{
               flex: 1,
               height: q(81),
@@ -451,15 +470,15 @@ export default function Backpack() {
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: hasSelected ? 'pointer' : 'not-allowed',
+              cursor: 'pointer',
               gap: q(8),
-              opacity: hasSelected ? 1 : 0.6,
+              opacity: topFilter === 'protect' ? 1 : 0.5,
               position: 'relative',
               zIndex: 30,
             }}
           >
-            <img src={hasSelected ? B.protectIconOn : B.protectIconOff} alt="" style={{ width: q(40), height: q(40) }} />
-            <span style={{ color: 'rgba(249,197,255,1)', fontSize: q(26), fontWeight: 500 }}>
+            <img src={topFilter === 'protect' ? B.protectIconOn : B.protectIconOff} alt="" style={{ width: q(40), height: q(40) }} />
+            <span style={{ color: 'rgba(249,197,255,1)', fontSize: q(26), fontWeight: topFilter === 'protect' ? 700 : 500 }}>
               提货保护
             </span>
           </div>
@@ -471,94 +490,9 @@ export default function Backpack() {
             position: 'relative',
             zIndex: 5,
             width: q(750),
-
             paddingBottom: q(220),
           }}
         >
-          {/* 赠送提示栏 */}
-          <div
-            style={{
-              width: q(750),
-              height: q(62),
-              backgroundImage: `url(${B.giftBarBg})`,
-              backgroundSize: '100% 100%',
-              backgroundRepeat: 'no-repeat',
-              marginTop: q(20),
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
-            <div
-              style={{
-                margin: `${q(15)} 0 0 ${q(215)}`,
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                fontSize: q(26),
-                fontWeight: 700,
-                lineHeight: q(34),
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <span style={{ color: '#fff' }}>当前VIP{player?.vipLevel ?? 0},今日可赠送</span>
-              <span style={{ color: 'rgba(255,246,13,1)' }}>0</span>
-              <span style={{ color: '#fff' }}>次</span>
-            </div>
-            <img
-              src={B.giftIcon}
-              alt=""
-              style={{ width: q(24), height: q(32), margin: `${q(15)} ${q(69)} 0 ${q(122)}` }}
-            />
-          </div>
-
-          {/* 来源筛选 Tab */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'row',
-              gap: q(12),
-              margin: `${q(12)} 0 0 ${q(24)}`,
-              width: q(702),
-            }}
-          >
-            {(['all', 'box', 'arena', 'roll'] as const).map(src => {
-              const labels = { all: '全部', box: '开筱', arena: '竞技场', roll: 'Roll房' };
-              const isActive = sourceFilter === src;
-              return (
-                <div
-                  key={src}
-                  onClick={() => { setSourceFilter(src); setSelectedIds(new Set()); }}
-                  style={{
-                    flex: 1,
-                    height: q(52),
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: q(10),
-                    background: isActive
-                      ? 'linear-gradient(135deg, rgba(120,40,200,0.9), rgba(180,80,255,0.9))'
-                      : 'rgba(30,10,70,0.7)',
-                    border: isActive
-                      ? '1.5px solid rgba(180,80,255,0.8)'
-                      : '1px solid rgba(120,60,200,0.3)',
-                    cursor: 'pointer',
-                    boxShadow: isActive ? '0 0 10px rgba(180,80,255,0.4)' : 'none',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <span style={{
-                    color: isActive ? '#fff' : 'rgba(180,150,255,0.7)',
-                    fontSize: q(22),
-                    fontWeight: isActive ? 700 : 400,
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {labels[src]}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
 
           {/* 搜索+排序栏 */}
           <div
@@ -569,7 +503,7 @@ export default function Backpack() {
               backgroundImage: `url(${B.searchBarBg})`,
               backgroundSize: '100% 100%',
               backgroundRepeat: 'no-repeat',
-              margin: `${q(20)} 0 0 ${q(24)}`,
+              margin: `${q(8)} 0 0 ${q(24)}`,
               display: 'flex',
               flexDirection: 'row',
               alignItems: 'center',
@@ -688,7 +622,7 @@ export default function Backpack() {
                 display: 'grid',
                 gridTemplateColumns: `repeat(2, ${q(340)})`,
                 gap: `${q(22)} ${q(27)}`,
-                margin: `${q(20)} 0 0 ${q(22)}`,
+                margin: `${q(8)} 0 0 ${q(22)}`,
               }}
             >
               {/* 加载更多 / 全部加载完毕 提示 */}
@@ -699,8 +633,8 @@ export default function Backpack() {
                 </div>
               )}
               {!hasMore && allItems.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: `${q(24)} 0`, gridColumn: '1 / -1' }}>
-                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: q(20) }}>— 已加载全部物品 —</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: `${q(6)} 0`, gridColumn: '1 / -1' }}>
+                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: q(18) }}>— 已加载全部物品 —</span>
                 </div>
               )}
               {filteredItems.map((item, idx) => {
@@ -812,14 +746,14 @@ export default function Backpack() {
                         {item.itemName ?? '未知物品'}
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: q(6) }}>
-                        <img src="/img/jinbi1.png" alt="金币" style={{ width: q(26), height: q(26) }} />
+                        <img src={item.source === 'arena' ? '/img/jinbi2.png' : '/img/jinbi1.png'} alt={item.source === 'arena' ? '钻石' : '金币'} style={{ width: q(26), height: q(26) }} />
                         <span
                           style={{
-                            color: 'rgba(255,215,0,1)',
+                            color: item.source === 'arena' ? 'rgba(125,249,255,1)' : 'rgba(255,215,0,1)',
                             fontSize: q(24),
                             fontWeight: 700,
                             lineHeight: q(30),
-                            textShadow: '0 0 6px rgba(255,215,0,0.4)',
+                            textShadow: item.source === 'arena' ? '0 0 6px rgba(125,249,255,0.4)' : '0 0 6px rgba(255,215,0,0.4)',
                           }}
                         >
                           {value.toFixed(2)}
@@ -1065,24 +999,72 @@ export default function Backpack() {
               |&nbsp;{totalSelectedCount}/{filteredItems.reduce((s, i) => s + i.count, 0)}件
             </span>
 
-            {/* 金币图标 + 总价值 */}
-            <img
-              src="/img/jinbi1.png"
-              alt="金币"
-              style={{ width: q(34), height: q(34), marginLeft: q(16), flexShrink: 0 }}
-            />
-            <span
-              style={{
-                color: 'rgba(255,246,13,1)',
-                fontSize: q(26),
-                fontWeight: 700,
-                marginLeft: q(6),
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}
-            >
-              {selectedValue.toFixed(2)}
-            </span>
+            {/* 金币价值 */}
+            {selectedGoldValue > 0 && (
+              <>
+                <img
+                  src="/img/jinbi1.png"
+                  alt="金币"
+                  style={{ width: q(34), height: q(34), marginLeft: q(16), flexShrink: 0 }}
+                />
+                <span
+                  style={{
+                    color: 'rgba(255,246,13,1)',
+                    fontSize: q(26),
+                    fontWeight: 700,
+                    marginLeft: q(6),
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  {selectedGoldValue.toFixed(2)}
+                </span>
+              </>
+            )}
+            {/* 钻石价值 */}
+            {selectedDiamondValue > 0 && (
+              <>
+                <img
+                  src="/img/jinbi2.png"
+                  alt="钻石"
+                  style={{ width: q(34), height: q(34), marginLeft: q(selectedGoldValue > 0 ? 12 : 16), flexShrink: 0 }}
+                />
+                <span
+                  style={{
+                    color: 'rgba(125,249,255,1)',
+                    fontSize: q(26),
+                    fontWeight: 700,
+                    marginLeft: q(6),
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  {selectedDiamondValue.toFixed(2)}
+                </span>
+              </>
+            )}
+            {/* 未选择时显示 0.00 */}
+            {selectedGoldValue === 0 && selectedDiamondValue === 0 && (
+              <>
+                <img
+                  src="/img/jinbi1.png"
+                  alt="金币"
+                  style={{ width: q(34), height: q(34), marginLeft: q(16), flexShrink: 0 }}
+                />
+                <span
+                  style={{
+                    color: 'rgba(255,246,13,1)',
+                    fontSize: q(26),
+                    fontWeight: 700,
+                    marginLeft: q(6),
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  0.00
+                </span>
+              </>
+            )}
 
             {/* 弹性间距 */}
             <div style={{ flex: 1 }} />
@@ -1196,8 +1178,19 @@ export default function Backpack() {
               }
             </div>
             {confirmModal.type === 'recycle' && (
-              <div style={{ color: '#ffd700', fontSize: 13, marginBottom: 16, textAlign: 'center' }}>
-                将获得 {selectedValue.toFixed(2)} 金币
+              <div style={{ fontSize: 13, marginBottom: 16, textAlign: 'center' }}>
+                {selectedGoldValue > 0 && (
+                  <span style={{ color: '#ffd700' }}>将获得 {selectedGoldValue.toFixed(2)} 金币</span>
+                )}
+                {selectedGoldValue > 0 && selectedDiamondValue > 0 && (
+                  <span style={{ color: '#c0a0ff' }}> + </span>
+                )}
+                {selectedDiamondValue > 0 && (
+                  <span style={{ color: '#7df9ff' }}>{selectedGoldValue > 0 ? '' : '将获得 '}{selectedDiamondValue.toFixed(2)} 钻石</span>
+                )}
+                {selectedGoldValue === 0 && selectedDiamondValue === 0 && (
+                  <span style={{ color: '#ffd700' }}>将获得 0.00 金币</span>
+                )}
               </div>
             )}
             <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
@@ -1259,8 +1252,8 @@ export default function Backpack() {
             <div style={{ color: '#fff', fontSize: 18, fontWeight: 700, marginBottom: 6 }}>
               {detailItem.itemName ?? '未知道具'}
             </div>
-            <div style={{ color: '#ffd700', fontSize: 14, marginBottom: 6 }}>
-              回收价值：{Number(detailItem.recycleGold ?? detailItem.itemValue ?? 0).toFixed(2)} 金币
+            <div style={{ color: detailItem.source === 'arena' ? '#7df9ff' : '#ffd700', fontSize: 14, marginBottom: 6 }}>
+              分解价值：{Number(detailItem.recycleGold ?? detailItem.itemValue ?? 0).toFixed(2)} {detailItem.source === 'arena' ? '钻石' : '金币'}
             </div>
             <div style={{ color: '#c0a0ff', fontSize: 12, marginBottom: 6 }}>
               来源：{detailItem.source === 'arena' ? '竞技场' : detailItem.source === 'roll' ? 'Roll房' : '开箱'}

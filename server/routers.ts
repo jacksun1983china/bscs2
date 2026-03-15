@@ -363,7 +363,7 @@ export const appRouter = router({
         return { success: true, count: validIds.length };
       }),
 
-    /** 回收道具（status 0→2，金币返还给玩家） */
+    /** 回收道具（status 0→2，竞技场物品返钻石，其他返金币） */
     recycleItem: publicProcedure
       .input(z.object({ ids: z.array(z.number()).min(1) }))
       .mutation(async ({ input, ctx }) => {
@@ -371,29 +371,58 @@ export const appRouter = router({
         if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接失败" });
-        // 只能回收自己的、状态为 0（待处理）的道具
-        const items = await db.select({ id: playerItems.id, recycleGold: playerItems.recycleGold, status: playerItems.status, playerId: playerItems.playerId })
+        // 只能回收自己的、状态为 0（待处理）的道具，同时查出 source 字段
+        const items = await db.select({
+          id: playerItems.id,
+          recycleGold: playerItems.recycleGold,
+          status: playerItems.status,
+          playerId: playerItems.playerId,
+          source: playerItems.source,
+        })
           .from(playerItems)
           .where(eq(playerItems.playerId, session.playerId));
         const validItems = items.filter(i => input.ids.includes(i.id) && i.status === 0);
         if (validItems.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "没有可回收的道具" });
-        const totalGold = Math.round(validItems.reduce((s, i) => s + Number(i.recycleGold ?? 0), 0) * 100) / 100;
+
+        // 按来源分组：竞技场物品分解为钻石，其他来源分解为金币
+        const arenaItems = validItems.filter(i => i.source === 'arena');
+        const otherItems = validItems.filter(i => i.source !== 'arena');
+        const totalDiamond = Math.round(arenaItems.reduce((s, i) => s + Number(i.recycleGold ?? 0), 0) * 100) / 100;
+        const totalGold = Math.round(otherItems.reduce((s, i) => s + Number(i.recycleGold ?? 0), 0) * 100) / 100;
+
+        // 更新所有物品状态为已回收
         for (const item of validItems) {
           await db.update(playerItems)
             .set({ status: 2 })
             .where(eq(playerItems.id, item.id));
         }
-        // 金币返还给玩家
+
+        // 竞技场物品 → 返钻石
+        if (totalDiamond > 0) {
+          await db.update(players)
+            .set({ diamond: sql`diamond + ${totalDiamond}` })
+            .where(eq(players.id, session.playerId));
+          const afterRows = await db.select({ diamond: players.diamond }).from(players).where(eq(players.id, session.playerId));
+          const afterDiamond = afterRows.length ? parseFloat(afterRows[0].diamond) : 0;
+          await insertGoldLog(session.playerId, totalDiamond, afterDiamond, 'recycle', `分解 ${arenaItems.length} 件竞技场道具，获得 ${totalDiamond.toFixed(2)} 钻石`);
+        }
+
+        // 其他来源物品 → 返金币
         if (totalGold > 0) {
           await db.update(players)
             .set({ gold: sql`gold + ${totalGold}` })
             .where(eq(players.id, session.playerId));
-          // 记录金币流水
           const afterRows = await db.select({ gold: players.gold }).from(players).where(eq(players.id, session.playerId));
           const afterGold = afterRows.length ? parseFloat(afterRows[0].gold) : 0;
-          await insertGoldLog(session.playerId, totalGold, afterGold, 'recycle', `回收 ${validItems.length} 件道具，获得 ${totalGold.toFixed(2)} 金币`);
+          await insertGoldLog(session.playerId, totalGold, afterGold, 'recycle', `分解 ${otherItems.length} 件道具，获得 ${totalGold.toFixed(2)} 金币`);
         }
-        return { success: true, count: validItems.length, goldReturned: parseFloat(totalGold.toFixed(2)) };
+
+        return {
+          success: true,
+          count: validItems.length,
+          goldReturned: parseFloat(totalGold.toFixed(2)),
+          diamondReturned: parseFloat(totalDiamond.toFixed(2)),
+        };
       }),
 
     /** 更新个人资料（昵称+头像ID） */
