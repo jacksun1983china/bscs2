@@ -127,9 +127,7 @@ export default function Deposit() {
       {/* 顶部固定区：TopNav + PlayerInfoCard */}
       <div style={{ flexShrink: 0, position: 'relative', zIndex: 2, width: '100%' }}>
         <TopNav showLogo={false} onSettingsOpen={() => setSettingsVisible(true)} settingsOpen={settingsVisible} />
-        <div style={{ padding: `0 ${q(30)}`, marginTop: q(8) }}>
-          <PlayerInfoCard />
-        </div>
+        <PlayerInfoCard style={{ marginTop: q(8) }} />
       </div>
 
       {/* 内容滚动区 */}
