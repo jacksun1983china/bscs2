@@ -23,15 +23,15 @@ const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 // ── CDN 素材 URL ─────────────────────────────────────────────────
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym';
 
-// ── 7 种武器定义（与服务端索引对应）────────────────────────────
+// ── 7 种武器定义（使用竞技场盲盒真实武器图片）────────────────────
 const FRUITS = [
-  { id: 0, name: '格洛克',   img: `${CDN}/8116c7a7702a34b92537d1a8a6ed31f2_f8f03db0.png`,  multiplier: 2.5,  color: '#38bdf8', weight: 40 },
-  { id: 1, name: 'AK-47',    img: `${CDN}/a1c5c21f376aab93e300ed064501e957_753a644f.png`,  multiplier: 5,    color: '#f97316', weight: 20 },
-  { id: 2, name: 'AWP',      img: `${CDN}/c129451fcab144f6e68e1db45947c268_83720daf.png`,  multiplier: 5,    color: '#22c55e', weight: 20 },
-  { id: 3, name: 'M4A4',     img: `${CDN}/b4173b907690ed51e12a772ecbfd5cb5_9ccda618.png`,  multiplier: 10,   color: '#a855f7', weight: 10 },
-  { id: 4, name: 'M9刺刀',   img: `${CDN}/5688d32a86417448b55164d4cb14fd9e_e33839ce.png`,  multiplier: 10,   color: '#ec4899', weight: 10 },
-  { id: 5, name: '蝴蝶刀',   img: `${CDN}/29f82e47f68c4a388031776b987b74d2_0843e4d4.png`,  multiplier: 20,   color: '#fbbf24', weight: 5  },
-  { id: 6, name: '沙漠之鹰', img: `${CDN}/8b82a0f1b0eb8732c1fba806be0e2e7a_8a08ab40.png`,  multiplier: 20,   color: '#f43f5e', weight: 5  },
+  { id: 0, name: '沙漠之鹰', img: '/img/boxes/20250906_cd56380ee1a61b4a5d18b87107a852f8.png',  multiplier: 2.5,  color: '#38bdf8', weight: 40 },
+  { id: 1, name: 'AK-47',    img: '/img/boxes/20250907_9fe9a4f449d91bd3a744670b437d8787.png',  multiplier: 5,    color: '#f97316', weight: 20 },
+  { id: 2, name: 'AWP',      img: '/img/boxes/20250907_be7fd2e08845ca8f9df94796572c20a4.png',  multiplier: 5,    color: '#22c55e', weight: 20 },
+  { id: 3, name: 'M4A4',     img: '/img/boxes/20250909_fc939374c8f6536b8e081a3f8775b66e_XHLNKd.png',  multiplier: 10,   color: '#a855f7', weight: 10 },
+  { id: 4, name: 'M4A1',     img: '/img/boxes/20250907_090b489805701967b92ea286e465d8bc.png',  multiplier: 10,   color: '#ec4899', weight: 10 },
+  { id: 5, name: 'USP',      img: '/img/boxes/20250909_ab42bd96639e8ff2c8e9de9c68db828d_gRVKvu.png',  multiplier: 20,   color: '#fbbf24', weight: 5  },
+  { id: 6, name: '格洛克',   img: '/img/boxes/20250906_277634507ed4ed929e6aec4cb8f556e4.png',  multiplier: 20,   color: '#f43f5e', weight: 5  },
 ];
 
 // 蓝色底座和黄色光标图标
