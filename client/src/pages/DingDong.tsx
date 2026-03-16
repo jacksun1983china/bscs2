@@ -23,15 +23,15 @@ const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 // ── CDN 素材 URL ─────────────────────────────────────────────────
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym';
 
-// ── 7 种水果定义（与服务端索引对应）────────────────────────────
+// ── 7 种武器定义（与服务端索引对应）────────────────────────────
 const FRUITS = [
-  { id: 0, name: '铃铛',   img: `${CDN}/bell_e5597e98.png`,          multiplier: 2.5,  color: '#f59e0b', weight: 40 },
-  { id: 1, name: '西瓜',   img: `${CDN}/watermelon_eb129441.png`,    multiplier: 5,    color: '#22c55e', weight: 20 },
-  { id: 2, name: '葡萄',   img: `${CDN}/grape_4bcc9bc9.png`,         multiplier: 5,    color: '#a855f7', weight: 20 },
-  { id: 3, name: '苹果',   img: `${CDN}/apple_523cd9c7.png`,         multiplier: 10,   color: '#84cc16', weight: 10 },
-  { id: 4, name: '粉钻石', img: `${CDN}/pink_diamond_2f9484f3.png`,  multiplier: 10,   color: '#ec4899', weight: 10 },
-  { id: 5, name: '草莓',   img: `${CDN}/strawberry_62f90b5c.png`,    multiplier: 20,   color: '#f43f5e', weight: 5  },
-  { id: 6, name: 'LUCKY',  img: `${CDN}/lucky_a3ec1ad3.png`,         multiplier: 20,   color: '#fbbf24', weight: 5  },
+  { id: 0, name: '格洛克',   img: `${CDN}/8116c7a7702a34b92537d1a8a6ed31f2_f8f03db0.png`,  multiplier: 2.5,  color: '#38bdf8', weight: 40 },
+  { id: 1, name: 'AK-47',    img: `${CDN}/a1c5c21f376aab93e300ed064501e957_753a644f.png`,  multiplier: 5,    color: '#f97316', weight: 20 },
+  { id: 2, name: 'AWP',      img: `${CDN}/c129451fcab144f6e68e1db45947c268_83720daf.png`,  multiplier: 5,    color: '#22c55e', weight: 20 },
+  { id: 3, name: 'M4A4',     img: `${CDN}/b4173b907690ed51e12a772ecbfd5cb5_9ccda618.png`,  multiplier: 10,   color: '#a855f7', weight: 10 },
+  { id: 4, name: 'M9刺刀',   img: `${CDN}/5688d32a86417448b55164d4cb14fd9e_e33839ce.png`,  multiplier: 10,   color: '#ec4899', weight: 10 },
+  { id: 5, name: '蝴蝶刀',   img: `${CDN}/29f82e47f68c4a388031776b987b74d2_0843e4d4.png`,  multiplier: 20,   color: '#fbbf24', weight: 5  },
+  { id: 6, name: '沙漠之鹰', img: `${CDN}/8b82a0f1b0eb8732c1fba806be0e2e7a_8a08ab40.png`,  multiplier: 20,   color: '#f43f5e', weight: 5  },
 ];
 
 // 蓝色底座和黄色光标图标
@@ -423,7 +423,7 @@ export default function DingDong() {
           padding: `${q(8)} ${q(16)} ${q(4)}`,
         }}>
           <div style={{ color: '#f0e6ff', fontSize: q(28), fontWeight: 900, letterSpacing: 2, textShadow: '0 0 20px rgba(160,80,255,0.7)' }}>
-            🍉 水果机
+            🔫 武器机
           </div>
           <div style={{ color: '#ffd700', fontSize: q(24), fontWeight: 700 }}>
             💰 {gold.toFixed(2)}
@@ -698,7 +698,7 @@ export default function DingDong() {
             {isSpinning ? '转动中...' : totalBet <= 0 ? '请先下注' : '开 始'}
           </button>
           <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: q(18), textAlign: 'center', marginTop: q(6) }}>
-            先选金额，再点水果下注
+            先选金额，再点武器下注
           </div>
         </div>
 
@@ -712,7 +712,7 @@ export default function DingDong() {
           padding: `${q(10)} ${q(10)}`,
         }}>
           <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: q(18), marginBottom: q(6), textAlign: 'center' }}>
-            选择水果下注
+            选择武器下注
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: q(6) }}>
             {FRUITS.map(fruit => {
