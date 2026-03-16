@@ -50,6 +50,7 @@ const IMG = {
 export default function Share() {
   const [activePeriod, setActivePeriod] = useState<'current' | 'last'>('current');
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [showExplain, setShowExplain] = useState(false);
 
   const { data: player } = trpc.player.me.useQuery(undefined, { retry: false, staleTime: 30_000 });
   const { data: teamStats } = trpc.player.teamStats.useQuery(undefined, { enabled: !!player, retry: false });
@@ -205,21 +206,21 @@ export default function Share() {
                 {player?.inviteCode ?? '---'}
               </span>
             </div>
-            {/* 复制按钮（text-wrapper_4，114×44px，固定宽度） */}
+            {/* 复制网址按钮 */}
             <div
-              onClick={copyCode}
+              onClick={copyLink}
               style={{
                 background: `url(${IMG.copyBtn}) center/100% 100% no-repeat`,
-                width: q(114), height: q(44),
+                width: q(160), height: q(44),
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', flexShrink: 0,
               }}
             >
-              <span style={{ color: 'rgba(255,246,13,1)', fontSize: q(22), fontWeight: 700 }}>复制</span>
+              <span style={{ color: 'rgba(255,246,13,1)', fontSize: q(22), fontWeight: 700 }}>复制网址</span>
             </div>
-            {/* 说明按钮（text-wrapper_5，59×59px 圆形图标，只显示"说"字，设计稿如此） */}
+            {/* 说明按钮 */}
             <div
-              onClick={() => toast.info('说明功能即将上线')}
+              onClick={() => setShowExplain(true)}
               style={{
                 background: `url(${IMG.explainBtn}) center/100% 100% no-repeat`,
                 width: q(59), height: q(59),
@@ -403,6 +404,139 @@ export default function Share() {
       {/* ── 公共底部导航（永远沉底） ── */}
       <BottomNav active="fenxiang" />
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+
+      {/* ══════════════════════════════════════════════════════
+          推广说明弹窗
+          ══════════════════════════════════════════════════════ */}
+      {showExplain && (
+        <div
+          onClick={() => setShowExplain(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: q(40),
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: q(670),
+              maxHeight: '80vh',
+              background: 'linear-gradient(180deg, #1a0a3e 0%, #0d0621 100%)',
+              border: '1px solid rgba(150,80,255,0.5)',
+              borderRadius: q(20),
+              padding: `${q(32)} ${q(28)}`,
+              overflowY: 'auto',
+              boxShadow: '0 0 40px rgba(120,40,220,0.4)',
+            }}
+          >
+            {/* 标题 */}
+            <div style={{
+              textAlign: 'center', marginBottom: q(24),
+              fontSize: q(34), fontWeight: 700,
+              color: '#fff',
+              background: 'linear-gradient(90deg, #ffd700, #ff8c00)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}>
+              推广说明
+            </div>
+
+            {/* 分隔线 */}
+            <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, rgba(150,80,255,0.6), transparent)', marginBottom: q(20) }} />
+
+            {/* 推广规则 */}
+            <div style={{ marginBottom: q(20) }}>
+              <div style={{ color: '#ffd700', fontSize: q(26), fontWeight: 700, marginBottom: q(12) }}>一、推广方式</div>
+              <div style={{ color: 'rgba(230,210,255,0.9)', fontSize: q(22), lineHeight: 1.8 }}>
+                分享您的专属邀请码或邀请链接给好友，好友通过您的邀请码注册即成为您的下级成员。您可以点击上方「复制网址」按钮快速复制邀请链接分享给好友。
+              </div>
+            </div>
+
+            {/* 佣金说明 */}
+            <div style={{ marginBottom: q(20) }}>
+              <div style={{ color: '#ffd700', fontSize: q(26), fontWeight: 700, marginBottom: q(12) }}>二、佣金规则</div>
+              <div style={{ color: 'rgba(230,210,255,0.9)', fontSize: q(22), lineHeight: 1.8 }}>
+                您的下级成员每次充值，系统将按照当前佣金比例自动计算佣金并累计到您的佣金余额中。佣金比例根据您的团队规模和活跃度动态调整，团队越大、越活跃，佣金比例越高。
+              </div>
+            </div>
+
+            {/* 佣金比例表 */}
+            <div style={{ marginBottom: q(20) }}>
+              <div style={{ color: '#ffd700', fontSize: q(26), fontWeight: 700, marginBottom: q(12) }}>三、佣金比例</div>
+              <div style={{
+                border: '1px solid rgba(150,80,255,0.3)',
+                borderRadius: q(10),
+                overflow: 'hidden',
+              }}>
+                {/* 表头 */}
+                <div style={{
+                  display: 'flex',
+                  background: 'rgba(120,40,220,0.3)',
+                  padding: `${q(10)} 0`,
+                }}>
+                  <div style={{ flex: 1, textAlign: 'center', color: '#ffd700', fontSize: q(22), fontWeight: 700 }}>团队人数</div>
+                  <div style={{ flex: 1, textAlign: 'center', color: '#ffd700', fontSize: q(22), fontWeight: 700 }}>佣金比例</div>
+                </div>
+                {/* 数据行 */}
+                {[
+                  { range: '1 ~ 10 人', rate: '4%' },
+                  { range: '11 ~ 50 人', rate: '6%' },
+                  { range: '51 ~ 200 人', rate: '8%' },
+                  { range: '201 ~ 500 人', rate: '10%' },
+                  { range: '500 人以上', rate: '12%' },
+                ].map((row, i) => (
+                  <div key={i} style={{
+                    display: 'flex',
+                    padding: `${q(10)} 0`,
+                    borderTop: '1px solid rgba(150,80,255,0.15)',
+                    background: i % 2 === 0 ? 'rgba(120,40,220,0.08)' : 'transparent',
+                  }}>
+                    <div style={{ flex: 1, textAlign: 'center', color: 'rgba(230,210,255,0.9)', fontSize: q(22) }}>{row.range}</div>
+                    <div style={{ flex: 1, textAlign: 'center', color: 'rgba(255,246,13,1)', fontSize: q(22), fontWeight: 700 }}>{row.rate}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 提现说明 */}
+            <div style={{ marginBottom: q(20) }}>
+              <div style={{ color: '#ffd700', fontSize: q(26), fontWeight: 700, marginBottom: q(12) }}>四、佣金提现</div>
+              <div style={{ color: 'rgba(230,210,255,0.9)', fontSize: q(22), lineHeight: 1.8 }}>
+                佣金余额达到最低提现额度后，可点击「提现」按钮将佣金转入游戏余额。佣金按周结算，每周一自动统计上周数据。
+              </div>
+            </div>
+
+            {/* 注意事项 */}
+            <div style={{ marginBottom: q(20) }}>
+              <div style={{ color: '#ffd700', fontSize: q(26), fontWeight: 700, marginBottom: q(12) }}>五、注意事项</div>
+              <div style={{ color: 'rgba(230,210,255,0.9)', fontSize: q(22), lineHeight: 1.8 }}>
+                1. 每位用户只能绑定一个推荐人，绑定后不可更改。<br/>
+                2. 禁止通过虚假注册、刷单等方式骗取佣金，一经发现将冻结账户。<br/>
+                3. 平台保留对推广活动的最终解释权。<br/>
+                4. 如有疑问请联系在线客服。
+              </div>
+            </div>
+
+            {/* 关闭按钮 */}
+            <div
+              onClick={() => setShowExplain(false)}
+              style={{
+                margin: `${q(10)} auto 0`,
+                width: q(300), height: q(60),
+                background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+                borderRadius: q(30),
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(120,40,220,0.5)',
+              }}
+            >
+              <span style={{ color: '#fff', fontSize: q(28), fontWeight: 700 }}>我知道了</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </PageSlideIn>
   );
