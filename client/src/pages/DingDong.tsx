@@ -534,8 +534,8 @@ export default function DingDong() {
                         alt={fruit.name}
                         style={{
                           position: 'relative', zIndex: 3,
-                          width: q(CELL_PX * 0.62),
-                          height: q(CELL_PX * 0.62),
+                          width: q(CELL_PX * 0.88),
+                          height: q(CELL_PX * 0.88),
                           objectFit: 'contain',
                           transform: `scale(${fruitScale})`,
                           transition: 'transform 0.12s ease-out',
@@ -733,7 +733,7 @@ export default function DingDong() {
                 >
                   {/* 水果图标 */}
                   <img src={fruit.img} alt={fruit.name}
-                    style={{ width: q(40), height: q(40), objectFit: 'contain', flexShrink: 0 }} />
+                    style={{ width: q(52), height: q(52), objectFit: 'contain', flexShrink: 0 }} />
 
                   {/* 名称 + 倍率 */}
                   <div style={{ flex: 1, minWidth: 0 }}>
