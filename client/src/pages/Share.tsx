@@ -210,25 +210,35 @@ export default function Share() {
             <div
               onClick={copyLink}
               style={{
-                background: `url(${IMG.copyBtn}) center/100% 100% no-repeat`,
-                width: q(160), height: q(44),
+                background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #7c3aed 100%)',
+                border: '1px solid rgba(168,85,247,0.7)',
+                borderRadius: q(8),
+                width: q(160), height: q(48),
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: q(6),
                 cursor: 'pointer', flexShrink: 0,
+                boxShadow: '0 0 12px rgba(168,85,247,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
               }}
             >
-              <span style={{ color: 'rgba(255,246,13,1)', fontSize: q(22), fontWeight: 700 }}>复制网址</span>
+              <span style={{ fontSize: q(22), lineHeight: 1 }}>📋</span>
+              <span style={{ color: '#fff', fontSize: q(22), fontWeight: 700, textShadow: '0 0 8px rgba(168,85,247,0.8)' }}>复制网址</span>
             </div>
             {/* 说明按钮 */}
             <div
               onClick={() => setShowExplain(true)}
               style={{
-                background: `url(${IMG.explainBtn}) center/100% 100% no-repeat`,
-                width: q(59), height: q(59),
+                background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #1e40af 100%)',
+                border: '1px solid rgba(59,130,246,0.7)',
+                borderRadius: q(8),
+                width: q(80), height: q(48),
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: q(4),
                 cursor: 'pointer', flexShrink: 0,
+                boxShadow: '0 0 12px rgba(59,130,246,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
               }}
             >
-              <span style={{ color: '#fff', fontSize: q(18), lineHeight: 1 }}>说明</span>
+              <span style={{ fontSize: q(20), lineHeight: 1 }}>📖</span>
+              <span style={{ color: '#fff', fontSize: q(20), fontWeight: 700, textShadow: '0 0 8px rgba(59,130,246,0.8)' }}>说明</span>
             </div>
           </div>
 
