@@ -127,6 +127,10 @@ export const playerItems = mysqlTable("playerItems", {
   extractedAt: timestamp("extractedAt"),
   /** 回收金币数 */
   recycleGold: decimal("recycleGold", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  /** cs2pifa模板ID（商城购买物品用于提货） */
+  csTemplateId: varchar("csTemplateId", { length: 50 }).notNull().default(""),
+  /** cs2pifa提货订单号 */
+  csOrderNo: varchar("csOrderNo", { length: 100 }).notNull().default(""),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({
   // 按玩家ID查询背包

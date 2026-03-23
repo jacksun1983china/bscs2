@@ -341,7 +341,7 @@ export const appRouter = router({
         return { success: true, orderNo, amount: parseFloat(String(config.amount)), gold: parseFloat(String(config.gold)) };
       }),
 
-    /** 提取道具（status 0→1），需要先绑定Steam账号 */
+    /** 提取道具（status 0→1），需要先绑定Steam账号，调用cs2pifa API创建提货订单 */
     extractItem: publicProcedure
       .input(z.object({ ids: z.array(z.number()).min(1) }))
       .mutation(async ({ input, ctx }) => {
@@ -355,19 +355,48 @@ export const appRouter = router({
         if (!playerInfo?.steamAccount) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "STEAM_NOT_BOUND" });
         }
+        const tradeLink = playerInfo.steamAccount;
         // 只能提取自己的、状态为 0（待处理）且来源为 shop 的道具
         const items = await db.select().from(playerItems)
           .where(eq(playerItems.playerId, session.playerId));
-        const validIds = items
-          .filter(i => input.ids.includes(i.id) && i.status === 0 && i.source === 'shop')
-          .map(i => i.id);
-        if (validIds.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "没有可提取的道具（只有商城购买的物品才能提货）" });
-        for (const id of validIds) {
-          await db.update(playerItems)
-            .set({ status: 1, extractedAt: new Date() })
-            .where(eq(playerItems.id, id));
+        const validItems = items
+          .filter(i => input.ids.includes(i.id) && i.status === 0 && i.source === 'shop');
+        if (validItems.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "没有可提取的道具（只有商城购买的物品才能提货）" });
+
+        const { createTemplateOrder } = await import("./cs2pifaApi");
+        const results: { id: number; csOrderNo: string; success: boolean; error?: string }[] = [];
+
+        for (const item of validItems) {
+          const outOrderNo = `extract_${session.playerId}_${item.id}_${Date.now()}`;
+          try {
+            if (!item.csTemplateId) {
+              throw new Error("缺少cs2pifa模板ID，无法提货");
+            }
+            // 调用cs2pifa API创建提货订单
+            const orderResult = await createTemplateOrder({
+              templateId: parseInt(item.csTemplateId),
+              tradeLink: tradeLink,
+              outOrderNo: outOrderNo,
+            });
+            // 更新物品状态和订单号
+            await db.update(playerItems)
+              .set({ status: 1, extractedAt: new Date(), csOrderNo: orderResult.orderNo || outOrderNo })
+              .where(eq(playerItems.id, item.id));
+            results.push({ id: item.id, csOrderNo: orderResult.orderNo || outOrderNo, success: true });
+            console.log(`[extract] 提货成功: 物品${item.id}, cs2pifa订单号: ${orderResult.orderNo}`);
+          } catch (err: unknown) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+            console.error(`[extract] 提货失败: 物品${item.id}, 错误: ${errMsg}`);
+            results.push({ id: item.id, csOrderNo: '', success: false, error: errMsg });
+          }
         }
-        return { success: true, count: validIds.length };
+
+        const successCount = results.filter(r => r.success).length;
+        const failCount = results.filter(r => !r.success).length;
+        if (successCount === 0) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `提货失败: ${results[0]?.error || '未知错误'}` });
+        }
+        return { success: true, count: successCount, failCount, results };
       }),
 
     /** 回收道具（status 0→2，竞技场物品返钻石，其他返金币） */
@@ -1785,6 +1814,7 @@ export const appRouter = router({
           source: 'shop',
           status: 0,
           recycleGold: String(price),
+          csTemplateId: String(input.templateId),
         });
 
         // 记录钻石流水
