@@ -341,7 +341,7 @@ export const appRouter = router({
         return { success: true, orderNo, amount: parseFloat(String(config.amount)), gold: parseFloat(String(config.gold)) };
       }),
 
-    /** 提取道具（status 0→1） */
+    /** 提取道具（status 0→1），需要先绑定Steam账号 */
     extractItem: publicProcedure
       .input(z.object({ ids: z.array(z.number()).min(1) }))
       .mutation(async ({ input, ctx }) => {
@@ -349,13 +349,19 @@ export const appRouter = router({
         if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接失败" });
-        // 只能提取自己的、状态为 0（待处理）的道具
+        // 检查Steam绑定
+        const [playerInfo] = await db.select({ steamAccount: players.steamAccount })
+          .from(players).where(eq(players.id, session.playerId)).limit(1);
+        if (!playerInfo?.steamAccount) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "STEAM_NOT_BOUND" });
+        }
+        // 只能提取自己的、状态为 0（待处理）且来源为 shop 的道具
         const items = await db.select().from(playerItems)
           .where(eq(playerItems.playerId, session.playerId));
         const validIds = items
-          .filter(i => input.ids.includes(i.id) && i.status === 0)
+          .filter(i => input.ids.includes(i.id) && i.status === 0 && i.source === 'shop')
           .map(i => i.id);
-        if (validIds.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "没有可提取的道具" });
+        if (validIds.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "没有可提取的道具（只有商城购买的物品才能提货）" });
         for (const id of validIds) {
           await db.update(playerItems)
             .set({ status: 1, extractedAt: new Date() })

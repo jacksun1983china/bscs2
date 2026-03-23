@@ -288,6 +288,7 @@ export default function Shop() {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [buyItem, setBuyItem] = useState<Cs2Product | null>(null);
   const [buyLoading, setBuyLoading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const { data: playerData } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
 
@@ -376,12 +377,32 @@ export default function Shop() {
           {/* 页面标题 */}
           <div style={{
             margin: `${q(16)} ${q(20)} ${q(8)}`,
-            color: '#e0d0ff',
-            fontSize: q(32),
-            fontWeight: 700,
-            letterSpacing: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
           }}>
-            🛒 商城
+            <span style={{
+              color: '#e0d0ff',
+              fontSize: q(32),
+              fontWeight: 700,
+              letterSpacing: 1,
+            }}>
+              🛒 商城
+            </span>
+            <span
+              onClick={() => setShowHistory(true)}
+              style={{
+                color: '#c0a0ff',
+                fontSize: q(24),
+                cursor: 'pointer',
+                padding: `${q(6)} ${q(16)}`,
+                background: 'rgba(120,60,220,0.2)',
+                border: '1px solid rgba(160,80,255,0.4)',
+                borderRadius: q(16),
+              }}
+            >
+              📜 购买记录
+            </span>
           </div>
 
           {/* 分类标签栏 */}
@@ -645,7 +666,120 @@ export default function Shop() {
         {settingsVisible && (
           <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
         )}
+
+        {/* 购买历史弹窗 */}
+        {showHistory && <ShopHistoryModal onClose={() => setShowHistory(false)} />}
     </div>
     </PageSlideIn>
+  );
+}
+
+/** 商城购买历史弹窗 */
+function ShopHistoryModal({ onClose }: { onClose: () => void }) {
+  const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
+  const [page, setPage] = useState(1);
+  const { data: orders, isLoading } = trpc.shop.getMyOrders.useQuery({ page, pageSize: 20 }, { staleTime: 10_000 });
+  const list = orders || [];
+
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case 'completed': return { label: '已完成', color: '#10b981' };
+      case 'processing': return { label: '处理中', color: '#f59e0b' };
+      case 'failed': return { label: '失败', color: '#ef4444' };
+      default: return { label: status, color: '#9980cc' };
+    }
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.7)', zIndex: 9999,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'linear-gradient(135deg,#1a0840,#2d0f6b)',
+          border: '1.5px solid rgba(160,80,255,0.6)',
+          borderRadius: 16, padding: '20px', width: '90%', maxWidth: 400,
+          maxHeight: '75vh', display: 'flex', flexDirection: 'column',
+          boxShadow: '0 0 40px rgba(120,40,220,0.5)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ color: '#fff', fontSize: 18, fontWeight: 700 }}>📜 购买记录</div>
+          <div onClick={onClose} style={{ color: '#9980cc', fontSize: 22, cursor: 'pointer', padding: '4px 8px' }}>✕</div>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 100 }}>
+          {isLoading ? (
+            <div style={{ color: '#9980cc', textAlign: 'center', padding: 40 }}>加载中...</div>
+          ) : list.length === 0 ? (
+            <div style={{ color: '#9980cc', textAlign: 'center', padding: 40 }}>暂无购买记录</div>
+          ) : (
+            list.map((order: any) => {
+              const si = getStatusInfo(order.status);
+              return (
+                <div key={order.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px', marginBottom: 8,
+                  background: 'rgba(20,8,50,0.6)', borderRadius: 10,
+                  border: '1px solid rgba(120,60,220,0.2)',
+                }}>
+                  <img
+                    src={order.itemIcon || ''}
+                    alt=""
+                    style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 8, background: 'rgba(0,0,0,0.3)' }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: '#e0d0ff', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {order.itemName || '未知商品'}
+                    </div>
+                    <div style={{ color: '#7df9ff', fontSize: 12, marginTop: 4 }}>
+                      {Number(order.payAmount ?? 0).toFixed(2)} 钻石
+                    </div>
+                    <div style={{ color: '#888', fontSize: 11, marginTop: 2 }}>
+                      {order.createdAt ? new Date(order.createdAt).toLocaleString('zh-CN') : '-'}
+                    </div>
+                  </div>
+                  <div style={{
+                    padding: '4px 10px', borderRadius: 6,
+                    background: `${si.color}15`, border: `1px solid ${si.color}40`,
+                  }}>
+                    <span style={{ color: si.color, fontSize: 12, fontWeight: 600 }}>{si.label}</span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {list.length >= 20 && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 12 }}>
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              style={{
+                padding: '6px 16px', borderRadius: 6,
+                background: page <= 1 ? 'rgba(60,30,120,0.3)' : 'rgba(120,60,220,0.3)',
+                border: '1px solid rgba(160,80,255,0.3)', color: '#c0a0ff', fontSize: 13, cursor: 'pointer',
+              }}
+            >上一页</button>
+            <span style={{ color: '#9980cc', fontSize: 13, alignSelf: 'center' }}>第 {page} 页</span>
+            <button
+              onClick={() => setPage(p => p + 1)}
+              style={{
+                padding: '6px 16px', borderRadius: 6,
+                background: 'rgba(120,60,220,0.3)',
+                border: '1px solid rgba(160,80,255,0.3)', color: '#c0a0ff', fontSize: 13, cursor: 'pointer',
+              }}
+            >下一页</button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

@@ -4,6 +4,7 @@
  */
 import { PageSlideIn } from '@/components/PageTransition';
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import BottomNav from '@/components/BottomNav';
 import TopNav from '@/components/TopNav';
@@ -117,6 +118,7 @@ interface InventoryItem {
 }
 
 export default function Backpack() {
+  const [, navigate] = useLocation();
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<'price' | 'time'>('time');
   const [sourceFilter, setSourceFilter] = useState<'all' | 'box' | 'arena' | 'roll' | 'shop'>('all');
@@ -139,6 +141,9 @@ export default function Backpack() {
   const PAGE_SIZE = 20;
 
   const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
+  const { data: steamInfo } = trpc.player.getSteam.useQuery(undefined, { staleTime: 60_000 });
+  const [showExtractLogs, setShowExtractLogs] = useState(false);
+  const [showSteamBindTip, setShowSteamBindTip] = useState(false);
   const utils = trpc.useUtils();
   const { data: inventoryData, isLoading } = trpc.player.inventory.useQuery(
     { page, limit: PAGE_SIZE },
@@ -185,12 +190,19 @@ export default function Backpack() {
 
   const extractMutation = trpc.player.extractItem.useMutation({
     onSuccess: (data) => {
-      toast.success(`成功提取 ${data.count} 件道具`);
+      toast.success(`成功提货 ${data.count} 件道具，请在提货进度中查看状态`);
       setSelectedIds(new Set());
       setConfirmModal({ type: null });
       utils.player.inventory.invalidate();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      if (err.message === 'STEAM_NOT_BOUND') {
+        setConfirmModal({ type: null });
+        setShowSteamBindTip(true);
+      } else {
+        toast.error(err.message);
+      }
+    },
   });
 
   const giftMutation = trpc.player.giftItem.useMutation({
@@ -281,8 +293,13 @@ export default function Backpack() {
 
   const handlePickup = useCallback(() => {
     if (!hasSelected) return;
+    // 前端也检查Steam绑定，提前拦截
+    if (!steamInfo?.mainUrl) {
+      setShowSteamBindTip(true);
+      return;
+    }
     setConfirmModal({ type: 'extract' });
-  }, [hasSelected]);
+  }, [hasSelected, steamInfo]);
 
   const handleProtect = useCallback(() => {
     if (!hasSelected) return;
@@ -472,6 +489,32 @@ export default function Backpack() {
             </span>
           </div>
         </div>
+
+        {/* ── 提货进度入口（仅在提货tab显示） ── */}
+        {topFilter === 'pickup' && (
+          <div
+            onClick={() => setShowExtractLogs(true)}
+            style={{
+              position: 'relative',
+              zIndex: 5,
+              margin: `${q(8)} auto ${q(0)}`,
+              width: q(710),
+              padding: `${q(14)} ${q(20)}`,
+              background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(6,95,70,0.25))',
+              border: '1px solid rgba(16,185,129,0.4)',
+              borderRadius: q(12),
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ color: '#10b981', fontSize: q(24), fontWeight: 600 }}>
+              📦 查看提货进度
+            </span>
+            <span style={{ color: '#6ee7b7', fontSize: q(22) }}>→</span>
+          </div>
+        )}
 
         {/* ── 物品列表区域 ── */}
         <div
@@ -1270,6 +1313,55 @@ export default function Backpack() {
           </div>
         </div>
       )}
+      {/* ── Steam绑定提示弹窗 ── */}
+      {showSteamBindTip && (
+        <div
+          onClick={() => setShowSteamBindTip(false)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.7)', zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(135deg,#1a0840,#2d0f6b)',
+              border: '1.5px solid rgba(160,80,255,0.6)',
+              borderRadius: 16, padding: '28px 24px', width: '80%', maxWidth: 320,
+              boxShadow: '0 0 40px rgba(120,40,220,0.5)', textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+            <div style={{ color: '#fff', fontSize: 18, fontWeight: 700, marginBottom: 12 }}>需要绑定Steam账号</div>
+            <div style={{ color: '#c0a0ff', fontSize: 14, marginBottom: 20, lineHeight: 1.6 }}>
+              提货前需要先绑定您的Steam交易链接，请前往个人设置中完成绑定。
+            </div>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button
+                onClick={() => setShowSteamBindTip(false)}
+                style={{
+                  padding: '10px 24px', borderRadius: 8,
+                  background: 'rgba(100,60,180,0.3)', border: '1px solid rgba(160,80,255,0.4)',
+                  color: '#c0a0ff', fontSize: 14, cursor: 'pointer',
+                }}
+              >取消</button>
+              <button
+                onClick={() => { setShowSteamBindTip(false); navigate('/settings'); }}
+                style={{
+                  padding: '10px 24px', borderRadius: 8,
+                  background: 'linear-gradient(135deg,#065f46,#10b981)',
+                  border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                }}
+              >去绑定</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 提货进度弹窗 ── */}
+      {showExtractLogs && <ExtractLogsModal onClose={() => setShowExtractLogs(false)} />}
+
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
@@ -1278,5 +1370,120 @@ export default function Backpack() {
       `}</style>
     </div>
     </PageSlideIn>
+  );
+}
+
+/** 提货进度弹窗组件 */
+function ExtractLogsModal({ onClose }: { onClose: () => void }) {
+  const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
+  const [page, setPage] = useState(1);
+  const { data, isLoading } = trpc.player.extractLogs.useQuery({ page, limit: 20 }, { staleTime: 10_000 });
+  const list = data?.list || [];
+  const total = data?.total || 0;
+
+  const getStatusInfo = (status: number) => {
+    switch (status) {
+      case 1: return { label: '处理中', color: '#f59e0b', icon: '⏳' };
+      case 4: return { label: '已发货', color: '#10b981', icon: '✅' };
+      case 5: return { label: '发货失败', color: '#ef4444', icon: '❌' };
+      default: return { label: '处理中', color: '#f59e0b', icon: '⏳' };
+    }
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.7)', zIndex: 9999,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'linear-gradient(135deg,#1a0840,#2d0f6b)',
+          border: '1.5px solid rgba(160,80,255,0.6)',
+          borderRadius: 16, padding: '20px', width: '90%', maxWidth: 400,
+          maxHeight: '70vh', display: 'flex', flexDirection: 'column',
+          boxShadow: '0 0 40px rgba(120,40,220,0.5)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ color: '#fff', fontSize: 18, fontWeight: 700 }}>📦 提货进度</div>
+          <div onClick={onClose} style={{ color: '#9980cc', fontSize: 22, cursor: 'pointer', padding: '4px 8px' }}>✕</div>
+        </div>
+        <div style={{ color: '#9980cc', fontSize: 13, marginBottom: 12 }}>共 {total} 条提货记录</div>
+
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 100 }}>
+          {isLoading ? (
+            <div style={{ color: '#9980cc', textAlign: 'center', padding: 40 }}>加载中...</div>
+          ) : list.length === 0 ? (
+            <div style={{ color: '#9980cc', textAlign: 'center', padding: 40 }}>暂无提货记录</div>
+          ) : (
+            list.map((item: any) => {
+              const si = getStatusInfo(item.status);
+              return (
+                <div key={item.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px', marginBottom: 8,
+                  background: 'rgba(20,8,50,0.6)', borderRadius: 10,
+                  border: '1px solid rgba(120,60,220,0.2)',
+                }}>
+                  <img
+                    src={item.itemImageUrl || ''}
+                    alt=""
+                    style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 8, background: 'rgba(0,0,0,0.3)' }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: '#e0d0ff', fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.itemName || '未知道具'}
+                    </div>
+                    <div style={{ color: '#7df9ff', fontSize: 12, marginTop: 4 }}>
+                      价值：{Number(item.itemValue ?? 0).toFixed(2)} 钻石
+                    </div>
+                    <div style={{ color: '#888', fontSize: 11, marginTop: 2 }}>
+                      提货时间：{item.extractedAt ? new Date(item.extractedAt).toLocaleString('zh-CN') : '-'}
+                    </div>
+                  </div>
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                    padding: '6px 10px', borderRadius: 8,
+                    background: `${si.color}15`, border: `1px solid ${si.color}40`,
+                  }}>
+                    <span style={{ fontSize: 16 }}>{si.icon}</span>
+                    <span style={{ color: si.color, fontSize: 11, fontWeight: 600 }}>{si.label}</span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {total > 20 && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 12 }}>
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              style={{
+                padding: '6px 16px', borderRadius: 6,
+                background: page <= 1 ? 'rgba(60,30,120,0.3)' : 'rgba(120,60,220,0.3)',
+                border: '1px solid rgba(160,80,255,0.3)', color: '#c0a0ff', fontSize: 13, cursor: 'pointer',
+              }}
+            >上一页</button>
+            <span style={{ color: '#9980cc', fontSize: 13, alignSelf: 'center' }}>第 {page} 页</span>
+            <button
+              disabled={page * 20 >= total}
+              onClick={() => setPage(p => p + 1)}
+              style={{
+                padding: '6px 16px', borderRadius: 6,
+                background: page * 20 >= total ? 'rgba(60,30,120,0.3)' : 'rgba(120,60,220,0.3)',
+                border: '1px solid rgba(160,80,255,0.3)', color: '#c0a0ff', fontSize: 13, cursor: 'pointer',
+              }}
+            >下一页</button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
