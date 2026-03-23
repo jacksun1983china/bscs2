@@ -253,16 +253,21 @@ export async function batchGetOnSaleInfo(templateIds: number[]): Promise<BatchSa
 
 /**
  * 通过模板ID创建提货订单（byTemplateCreateOrder 接口）
+ * 文档参数：merchantOrderNo, tradeLinks, commodityTemplateId, commodityHashName, purchasePrice
  */
 export async function createTemplateOrder(params: {
   templateId: number;
   tradeLink: string;
   outOrderNo: string;
-}): Promise<{ orderNo: string; status: number }> {
-  const data = await apiPost<{ orderNo: string; status: number }>("byTemplateCreateOrder", {
-    templateId: String(params.templateId),
-    steamTradeUrl: params.tradeLink,
+  hashName?: string;
+  purchasePrice?: string;
+}): Promise<{ orderNo: string; status: number; merchantOrderNo?: string; payAmount?: number; orderStatus?: number }> {
+  const data = await apiPost<{ orderNo: string; status: number; merchantOrderNo?: string; payAmount?: number; orderStatus?: number }>("byTemplateCreateOrder", {
     merchantOrderNo: params.outOrderNo,
+    tradeLinks: params.tradeLink,
+    commodityTemplateId: String(params.templateId),
+    commodityHashName: params.hashName || "",
+    purchasePrice: params.purchasePrice || "9999",
   });
   return data;
 }

@@ -372,11 +372,30 @@ export const appRouter = router({
             if (!item.csTemplateId) {
               throw new Error("缺少cs2pifa模板ID，无法提货");
             }
+            // 从shopItems表查询hashName和价格
+            let hashName = "";
+            let purchasePrice = "9999";
+            const [shopItem] = await db.select({
+              templateHashName: shopItems.templateHashName,
+              minSellPrice: shopItems.minSellPrice,
+              referencePrice: shopItems.referencePrice,
+            }).from(shopItems)
+              .where(eq(shopItems.templateId, item.csTemplateId))
+              .limit(1);
+            if (shopItem) {
+              hashName = shopItem.templateHashName || "";
+              // 购买最高价设为参考价的 1.5 倍，确保能买到
+              const refPrice = parseFloat(shopItem.referencePrice || shopItem.minSellPrice || '0');
+              purchasePrice = (refPrice * 1.5).toFixed(2);
+            }
+            console.log(`[extract] 提货参数: templateId=${item.csTemplateId}, hashName=${hashName}, purchasePrice=${purchasePrice}, tradeLink=${tradeLink}`);
             // 调用cs2pifa API创建提货订单
             const orderResult = await createTemplateOrder({
               templateId: parseInt(item.csTemplateId),
               tradeLink: tradeLink,
               outOrderNo: outOrderNo,
+              hashName: hashName,
+              purchasePrice: purchasePrice,
             });
             // 更新物品状态和订单号
             await db.update(playerItems)
