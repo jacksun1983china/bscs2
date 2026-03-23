@@ -74,16 +74,19 @@ export default function Profile() {
   const [profileEditVisible, setProfileEditVisible] = useState(false);
 
   const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
+  const { data: steamInfo } = trpc.player.getSteam.useQuery(undefined, { staleTime: 30_000 });
   const logoutMutation = trpc.player.logout.useMutation();
   const handleLogout = () => {
     logoutMutation.mutate();
     navigate('/login');
   };
 
+  const isSteamBound = !!(steamInfo?.mainUrl);
+
   const menuItems = [
     { icon: WD.menuIcon0, bg: WD.menuBg0, label: '修改资料', sub: '昵称/头像', onClick: () => setProfileEditVisible(true) },
     { icon: WD.menuIcon0, bg: WD.menuBg0, label: '我的记录', sub: '资产明细', onClick: () => navigate('/my-records') },
-    { icon: WD.menuIcon1, bg: WD.menuBg1, label: 'STEAM', sub: '已绑定', onClick: () => setSteamVisible(true) },
+    { icon: WD.menuIcon1, bg: WD.menuBg1, label: 'STEAM', sub: isSteamBound ? '已绑定' : '未绑定', onClick: () => setSteamVisible(true) },
     { icon: WD.menuIcon2, bg: WD.menuBg2, label: '安全密码', sub: '已设置', onClick: () => setSecurityPwdVisible(true) },
     { icon: WD.menuIcon0, bg: WD.menuBg1, label: '邮件', sub: '站内信', onClick: () => navigate('/mailbox') },
   ];
