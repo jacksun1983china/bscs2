@@ -262,7 +262,7 @@ export async function createTemplateOrder(params: {
   const data = await apiPost<{ orderNo: string; status: number }>("byTemplateCreateOrder", {
     templateId: String(params.templateId),
     tradeLink: params.tradeLink,
-    outOrderNo: params.outOrderNo,
+    merchantOrderNo: params.outOrderNo,
   });
   return data;
 }
