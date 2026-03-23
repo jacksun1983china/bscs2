@@ -77,8 +77,16 @@ export default function Profile() {
   const { data: steamInfo } = trpc.player.getSteam.useQuery(undefined, { staleTime: 30_000 });
   const logoutMutation = trpc.player.logout.useMutation();
   const handleLogout = () => {
+    // 异步调后端清cookie，不阻塞
     logoutMutation.mutate();
-    navigate('/login');
+    // 清除玩家相关的 localStorage 数据
+    try {
+      localStorage.removeItem('music_muted');
+      localStorage.removeItem('sfx_muted');
+      localStorage.removeItem('sound_muted');
+    } catch { /* 忽略 */ }
+    // 强制整页刷新跳转，避免 SPA 路由延迟
+    window.location.href = '/login';
   };
 
   const isSteamBound = !!(steamInfo?.mainUrl);
