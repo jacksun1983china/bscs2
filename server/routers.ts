@@ -86,6 +86,7 @@ import {
   players,
   playerItems,
   agentPushSubscriptions,
+  giftLogs,
 } from "../drizzle/schema";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
@@ -384,9 +385,9 @@ export const appRouter = router({
         const validItems = items.filter(i => input.ids.includes(i.id) && i.status === 0);
         if (validItems.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "没有可回收的道具" });
 
-        // 按来源分组：竞技场物品分解为钻石，其他来源分解为金币
-        const arenaItems = validItems.filter(i => i.source === 'arena');
-        const otherItems = validItems.filter(i => i.source !== 'arena');
+        // 按来源分组：竞技场/商城物品分解为钻石，其他来源分解为金币
+        const arenaItems = validItems.filter(i => i.source === 'arena' || i.source === 'shop');
+        const otherItems = validItems.filter(i => i.source !== 'arena' && i.source !== 'shop');
         const totalDiamond = Math.round(arenaItems.reduce((s, i) => s + Number(i.recycleGold ?? 0), 0) * 100) / 100;
         const totalGold = Math.round(otherItems.reduce((s, i) => s + Number(i.recycleGold ?? 0), 0) * 100) / 100;
 
@@ -404,7 +405,7 @@ export const appRouter = router({
             .where(eq(players.id, session.playerId));
           const afterRows = await db.select({ diamond: players.diamond }).from(players).where(eq(players.id, session.playerId));
           const afterDiamond = afterRows.length ? parseFloat(afterRows[0].diamond) : 0;
-          await insertGoldLog(session.playerId, totalDiamond, afterDiamond, 'recycle', `分解 ${arenaItems.length} 件竞技场道具，获得 ${totalDiamond.toFixed(2)} 钻石`);
+          await insertGoldLog(session.playerId, totalDiamond, afterDiamond, 'recycle', `分解 ${arenaItems.length} 件道具，获得 ${totalDiamond.toFixed(2)} 钻石`);
         }
 
         // 其他来源物品 → 返金币
@@ -627,7 +628,7 @@ export const appRouter = router({
         };
       }),
 
-    /** 赠送记录（暂无赠送功能，返回空列表） */
+    /** 赠送记录 */
     giftLogs: publicProcedure
       .input(z.object({
         page: z.number().min(1).default(1),
@@ -636,8 +637,132 @@ export const appRouter = router({
       .query(async ({ input, ctx }) => {
         const session = await getPlayerFromCookie(ctx.req);
         if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
-        // 赠送功能尚未实现，返回空列表
-        return { list: [], total: 0 };
+        const db = await getDb();
+        if (!db) return { list: [], total: 0 };
+        const { or } = await import("drizzle-orm");
+        const offset = (input.page - 1) * input.limit;
+        const whereClause = or(
+          eq(giftLogs.fromPlayerId, session.playerId),
+          eq(giftLogs.toPlayerId, session.playerId)
+        );
+        const [list, countResult] = await Promise.all([
+          db.select({
+            id: giftLogs.id,
+            fromPlayerId: giftLogs.fromPlayerId,
+            toPlayerId: giftLogs.toPlayerId,
+            itemName: giftLogs.itemName,
+            itemImageUrl: giftLogs.itemImageUrl,
+            itemValue: giftLogs.itemValue,
+            status: giftLogs.status,
+            createdAt: giftLogs.createdAt,
+          })
+            .from(giftLogs)
+            .where(whereClause)
+            .orderBy(desc(giftLogs.createdAt))
+            .limit(input.limit)
+            .offset(offset),
+          db.select({ count: sql<number>`count(*)` }).from(giftLogs).where(whereClause),
+        ]);
+        // 获取相关玩家昵称
+        const playerIds = [...new Set(list.flatMap(l => [l.fromPlayerId, l.toPlayerId]))];
+        const playerMap: Record<number, string> = {};
+        if (playerIds.length > 0) {
+          const { inArray } = await import("drizzle-orm");
+          const pRows = await db.select({ id: players.id, nickname: players.nickname }).from(players).where(inArray(players.id, playerIds));
+          for (const p of pRows) playerMap[p.id] = p.nickname;
+        }
+        return {
+          list: list.map(r => ({
+            ...r,
+            itemValue: parseFloat(String(r.itemValue ?? '0')),
+            fromNickname: playerMap[r.fromPlayerId] ?? '未知',
+            toNickname: playerMap[r.toPlayerId] ?? '未知',
+            direction: r.fromPlayerId === session.playerId ? 'sent' : 'received',
+          })),
+          total: Number(countResult[0]?.count ?? 0),
+        };
+      }),
+
+    /** 赠送物品给其他玩家 */
+    giftItem: publicProcedure
+      .input(z.object({
+        /** 要赠送的playerItems ID列表 */
+        ids: z.array(z.number()).min(1).max(50),
+        /** 接收者的手机号或昵称 */
+        toIdentifier: z.string().min(1),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接失败" });
+        const { or, like } = await import("drizzle-orm");
+
+        // 查找接收者
+        const [toPlayer] = await db.select().from(players)
+          .where(or(
+            eq(players.phone, input.toIdentifier),
+            eq(players.nickname, input.toIdentifier)
+          ));
+        if (!toPlayer) throw new TRPCError({ code: "NOT_FOUND", message: "未找到该玩家，请检查手机号或昵称" });
+        if (toPlayer.id === session.playerId) throw new TRPCError({ code: "BAD_REQUEST", message: "不能赠送给自己" });
+        if (toPlayer.status !== 1) throw new TRPCError({ code: "BAD_REQUEST", message: "该玩家账号已被封禁" });
+
+        // 查找要赠送的物品
+        const items = await db.select({
+          id: playerItems.id,
+          itemId: playerItems.itemId,
+          status: playerItems.status,
+          playerId: playerItems.playerId,
+          source: playerItems.source,
+          recycleGold: playerItems.recycleGold,
+        }).from(playerItems).where(eq(playerItems.playerId, session.playerId));
+
+        const validItems = items.filter(i => input.ids.includes(i.id) && i.status === 0);
+        if (validItems.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "没有可赠送的道具" });
+
+        // 获取物品详情
+        const { inArray } = await import("drizzle-orm");
+        const itemIds = validItems.map(i => i.itemId);
+        const goodsList = await db.select().from(boxGoods).where(inArray(boxGoods.id, itemIds));
+        const goodsMap: Record<number, typeof goodsList[0]> = {};
+        for (const g of goodsList) goodsMap[g.id] = g;
+
+        // 执行赠送：更新playerItems归属
+        for (const item of validItems) {
+          // 将物品转移给接收者（创建新记录）
+          await db.insert(playerItems).values({
+            playerId: toPlayer.id,
+            itemId: item.itemId,
+            source: 'gift',
+            status: 0,
+            recycleGold: item.recycleGold,
+          });
+          // 标记原物品为已赠送（status=4）
+          await db.update(playerItems)
+            .set({ status: 4 })
+            .where(eq(playerItems.id, item.id));
+
+          // 写入赠送记录
+          const goods = goodsMap[item.itemId];
+          await db.insert(giftLogs).values({
+            fromPlayerId: session.playerId,
+            toPlayerId: toPlayer.id,
+            playerItemId: item.id,
+            itemId: item.itemId,
+            itemName: goods?.name ?? '未知物品',
+            itemImageUrl: goods?.imageUrl ?? '',
+            itemValue: goods?.price ?? '0',
+            status: 'completed',
+          });
+        }
+
+        return {
+          success: true,
+          count: validItems.length,
+          toNickname: toPlayer.nickname,
+          message: `成功赠送 ${validItems.length} 件道具给 ${toPlayer.nickname}`,
+        };
       }),
   }),
   // ── Roll房 ──────────────────────────────────────────────────
@@ -1603,7 +1728,7 @@ export const appRouter = router({
         return result;
       }),
 
-    /** 购买商品（扣除shopCoin，写入shopOrders，调用cs2pifa下单） */
+    /** 购买商品（扣除钻石，写入shopOrders，物品进入背包） */
     buyProduct: publicProcedure
       .input(z.object({
         templateId: z.number(),
@@ -1632,10 +1757,34 @@ export const appRouter = router({
           itemName: input.templateName,
           itemIcon: input.iconUrl,
           payAmount: String(price),
-          status: 'processing',
+          status: 'completed',
           csOrderNo: outOrderNo,
         });
-        return { success: true, orderNo: outOrderNo, message: "购买成功，正在处理中" };
+
+        // 在boxGoods表中创建物品记录（boxId=0表示商城来源）
+        const [newGood] = await db.insert(boxGoods).values({
+          boxId: 0,
+          name: input.templateName,
+          imageUrl: input.iconUrl,
+          level: 3,
+          price: String(price),
+          probability: '0',
+          sort: 0,
+        }).$returningId();
+
+        // 写入playeritems背包（source='shop', status=0待处理）
+        await db.insert(playerItems).values({
+          playerId: player.playerId,
+          itemId: newGood.id,
+          source: 'shop',
+          status: 0,
+          recycleGold: String(price),
+        });
+
+        // 记录钻石流水
+        await insertGoldLog(player.playerId, -price, parseFloat(newBalance), 'shop', `商城购买: ${input.templateName}`);
+
+        return { success: true, orderNo: outOrderNo, message: "购买成功，物品已放入背包" };
       }),
 
     /** 获取我的商城订单 */

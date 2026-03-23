@@ -119,14 +119,16 @@ interface InventoryItem {
 export default function Backpack() {
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState<'price' | 'time'>('time');
-  const [sourceFilter, setSourceFilter] = useState<'all' | 'box' | 'arena' | 'roll'>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'box' | 'arena' | 'roll' | 'shop'>('all');
   // 顶部分类筛选：分解 / 提货 / 提货保护
   const [topFilter, setTopFilter] = useState<'decompose' | 'pickup' | 'protect'>('decompose');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [settingsVisible, setSettingsVisible] = useState(false);
   // 弹窗状态
-  const [confirmModal, setConfirmModal] = useState<{ type: 'extract' | 'recycle' | null }>({ type: null });
+  const [confirmModal, setConfirmModal] = useState<{ type: 'extract' | 'recycle' | 'gift' | null }>({ type: null });
   const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
+  // 赠送相关状态
+  const [giftTarget, setGiftTarget] = useState('');
 
   // 无限滚动状态
   const [page, setPage] = useState(1);
@@ -191,6 +193,17 @@ export default function Backpack() {
     onError: (err) => toast.error(err.message),
   });
 
+  const giftMutation = trpc.player.giftItem.useMutation({
+    onSuccess: (data: { count: number; toNickname: string; message: string }) => {
+      toast.success(data.message);
+      setSelectedIds(new Set());
+      setConfirmModal({ type: null });
+      setGiftTarget('');
+      utils.player.inventory.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const recycleMutation = trpc.player.recycleItem.useMutation({
     onSuccess: (data: { count: number; goldReturned: number; diamondReturned?: number }) => {
       const msgs: string[] = [];
@@ -221,6 +234,7 @@ export default function Backpack() {
       if (sourceFilter === 'box') return item.source === 'box' || item.source === 'unbox';
       if (sourceFilter === 'arena') return item.source === 'arena';
       if (sourceFilter === 'roll') return item.source === 'roll';
+      if (sourceFilter === 'shop') return item.source === 'shop';
       return true;
     })
     .sort((a, b) =>
@@ -248,10 +262,10 @@ export default function Backpack() {
 
   // 按来源分别计算金币和钻石价值
   const selectedGoldValue = Math.round(filteredItems
-    .filter(i => selectedIds.has(i.id) && i.source !== 'arena')
+    .filter(i => selectedIds.has(i.id) && i.source !== 'arena' && i.source !== 'shop')
     .reduce((s, i) => s + Number(i.recycleGold ?? i.itemValue ?? 0), 0) * 100) / 100;
   const selectedDiamondValue = Math.round(filteredItems
-    .filter(i => selectedIds.has(i.id) && i.source === 'arena')
+    .filter(i => selectedIds.has(i.id) && (i.source === 'arena' || i.source === 'shop'))
     .reduce((s, i) => s + Number(i.recycleGold ?? i.itemValue ?? 0), 0) * 100) / 100;
   const selectedValue = selectedGoldValue + selectedDiamondValue;
 
@@ -274,7 +288,8 @@ export default function Backpack() {
 
   const handleGift = useCallback(() => {
     if (!hasSelected) return;
-    toast.info('赠送功能即将上线');
+    setGiftTarget('');
+    setConfirmModal({ type: 'gift' });
   }, [hasSelected]);
 
   // 计算实际选中的总件数
@@ -286,6 +301,12 @@ export default function Backpack() {
     if (allIds.length === 0) return;
     if (confirmModal.type === 'extract') {
       extractMutation.mutate({ ids: allIds });
+    } else if (confirmModal.type === 'gift') {
+      if (!giftTarget.trim()) {
+        toast.error('请输入接收者的手机号或昵称');
+        return;
+      }
+      giftMutation.mutate({ ids: allIds, toIdentifier: giftTarget.trim() });
     } else if (confirmModal.type === 'recycle') {
       recycleMutation.mutate({ ids: allIds });
     }
@@ -947,6 +968,41 @@ export default function Backpack() {
             {/* 弹性间距 */}
             <div style={{ flex: 1 }} />
 
+            {/* 赠送按钮 */}
+            <div
+              onClick={handleGift}
+              style={{
+                height: q(64),
+                width: q(120),
+                background: hasSelected
+                  ? 'linear-gradient(135deg, #0891b2, #22d3ee)'
+                  : 'linear-gradient(135deg, rgba(8,91,120,0.5), rgba(34,160,180,0.5))',
+                border: hasSelected
+                  ? '1.5px solid rgba(34,211,238,0.8)'
+                  : '1.5px solid rgba(34,160,180,0.4)',
+                borderRadius: q(10),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: hasSelected ? 'pointer' : 'not-allowed',
+                opacity: hasSelected ? 1 : 0.5,
+                transition: 'all 0.2s ease',
+                boxShadow: hasSelected ? '0 0 12px rgba(34,211,238,0.4)' : 'none',
+                flexShrink: 0,
+              }}
+            >
+              <span
+                style={{
+                  color: '#fff',
+                  fontSize: q(26),
+                  fontWeight: 700,
+                  letterSpacing: q(2),
+                }}
+              >
+                赠送
+              </span>
+            </div>
+
             {/* 分解按钮 */}
             <div
               onClick={handleDecompose}
@@ -1012,14 +1068,31 @@ export default function Backpack() {
             }}
           >
             <div style={{ color: '#fff', fontSize: 18, fontWeight: 700, marginBottom: 12, textAlign: 'center' }}>
-              {confirmModal.type === 'extract' ? '确认提货' : '确认分解'}
+              {confirmModal.type === 'extract' ? '确认提货' : confirmModal.type === 'gift' ? '赠送道具' : '确认分解'}
             </div>
             <div style={{ color: '#c0a0ff', fontSize: 14, marginBottom: 8, textAlign: 'center' }}>
               {confirmModal.type === 'extract'
                 ? `确认提取已选的 ${totalSelectedCount} 件道具？`
+                : confirmModal.type === 'gift'
+                ? `将 ${totalSelectedCount} 件道具赠送给其他玩家`
                 : `确认分解已选的 ${totalSelectedCount} 件道具？`
               }
             </div>
+            {confirmModal.type === 'gift' && (
+              <div style={{ marginBottom: 12 }}>
+                <input
+                  type="text"
+                  placeholder="请输入接收者手机号或昵称"
+                  value={giftTarget}
+                  onChange={e => setGiftTarget(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 8,
+                    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(160,80,255,0.4)',
+                    color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            )}
             {confirmModal.type === 'recycle' && (
               <div style={{ fontSize: 13, marginBottom: 16, textAlign: 'center' }}>
                 {selectedGoldValue > 0 && (
@@ -1049,15 +1122,15 @@ export default function Backpack() {
               </button>
               <button
                 onClick={handleConfirmAction}
-                disabled={extractMutation.isPending || recycleMutation.isPending}
+                disabled={extractMutation.isPending || recycleMutation.isPending || giftMutation.isPending}
                 style={{
                   flex: 1, padding: '10px 0', borderRadius: 8,
                   background: 'linear-gradient(135deg,#8b2be2,#c084fc)',
                   border: 'none', color: '#fff', fontSize: 15, fontWeight: 700,
-                  cursor: 'pointer', opacity: (extractMutation.isPending || recycleMutation.isPending) ? 0.6 : 1,
+                  cursor: 'pointer', opacity: (extractMutation.isPending || recycleMutation.isPending || giftMutation.isPending) ? 0.6 : 1,
                 }}
               >
-                {(extractMutation.isPending || recycleMutation.isPending) ? '处理中...' : '确认'}
+                {(extractMutation.isPending || recycleMutation.isPending || giftMutation.isPending) ? '处理中...' : '确认'}
               </button>
             </div>
           </div>

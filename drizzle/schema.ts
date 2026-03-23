@@ -955,3 +955,32 @@ export const rushPendingSessions = mysqlTable("rushPendingSessions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type RushPendingSession = typeof rushPendingSessions.$inferSelect;
+
+
+// ── 赠送记录表 ──────────────────────────────────────────────────────
+export const giftLogs = mysqlTable("giftLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 赠送者玩家ID */
+  fromPlayerId: int("fromPlayerId").notNull(),
+  /** 接收者玩家ID */
+  toPlayerId: int("toPlayerId").notNull(),
+  /** playerItems记录ID */
+  playerItemId: int("playerItemId").notNull(),
+  /** boxGoods记录ID（物品ID） */
+  itemId: int("itemId").notNull(),
+  /** 物品名称（冗余存储） */
+  itemName: varchar("itemName", { length: 255 }).notNull().default(""),
+  /** 物品图片（冗余存储） */
+  itemImageUrl: varchar("itemImageUrl", { length: 500 }).notNull().default(""),
+  /** 物品价值（冗余存储） */
+  itemValue: decimal("itemValue", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  /** 状态：completed/cancelled */
+  status: varchar("status", { length: 20 }).notNull().default("completed"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  fromPlayerIdIdx: index("giftLogs_fromPlayerId_idx").on(t.fromPlayerId),
+  toPlayerIdIdx: index("giftLogs_toPlayerId_idx").on(t.toPlayerId),
+  createdAtIdx: index("giftLogs_createdAt_idx").on(t.createdAt),
+}));
+
+export type GiftLog = typeof giftLogs.$inferSelect;
