@@ -281,8 +281,9 @@ export default function MyRecords() {
   const [giftLoadingMore, setGiftLoadingMore] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const utils = trpc.useUtils();
 
-  // 切换 tab 或时间筛选时重置分页
+  // 切换 tab 或时间筛选时重置分页并强制刷新缓存
   const prevTabRef = useRef(activeTab);
   const prevTimeRef = useRef(timeFilter);
   useEffect(() => {
@@ -291,11 +292,16 @@ export default function MyRecords() {
       setRechargePage(1); setRechargeList([]); setRechargeHasMore(true);
       setExtractPage(1); setExtractList([]); setExtractHasMore(true);
       setGiftPage(1); setGiftList([]); setGiftHasMore(true);
+      // 强制 invalidate 当前 tab 的查询缓存，确保切回时重新请求数据
+      utils.player.goldLogs.invalidate();
+      utils.player.rechargeOrders.invalidate();
+      utils.player.extractLogs.invalidate();
+      utils.player.giftLogs.invalidate();
       prevTabRef.current = activeTab;
       prevTimeRef.current = timeFilter;
       if (scrollRef.current) scrollRef.current.scrollTop = 0;
     }
-  }, [activeTab, timeFilter]);
+  }, [activeTab, timeFilter, utils]);
 
   // 余额记录查询
   const { data: goldLogsData, isLoading: goldLogsLoading } = trpc.player.goldLogs.useQuery(
