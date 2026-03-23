@@ -22,23 +22,17 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
   const [closing, setClosing] = useState(false);
   const { isMusicOn, isSfxOn, toggleMusic, toggleSfx } = useSound();
 
-  const logoutMutation = trpc.player.logout.useMutation();
-
   const handleLogout = () => {
-    // 立即关闭弹窗并强制跳转，不等待后端响应
-    onClose();
-    // 异步调后端清cookie，不阻塞
-    logoutMutation.mutate();
     // 清除玩家相关的 localStorage 数据
     try {
       localStorage.removeItem('music_muted');
       localStorage.removeItem('sfx_muted');
       localStorage.removeItem('sound_muted');
-      // 保留 theme 偏好（设备级别设置，非玩家数据）
-      // 保留 sidebar_width（UI偏好，非玩家数据）
     } catch { /* 忽略 */ }
-    // 使用 window.location.href 强制整页刷新跳转，避免 SPA 路由延迟
-    window.location.href = '/login';
+    // 用 fetch 异步调后端清cookie，完全不阻塞
+    fetch('/api/trpc/player.logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+    // 立即强制整页跳转到登录页，不等待任何响应
+    window.location.replace('/login');
   };
 
   // 动画关闭
