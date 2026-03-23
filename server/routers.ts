@@ -1493,17 +1493,28 @@ export const appRouter = router({
       }),
   }),
 
-  // ── 商城（cs2pifa商品，实时从API读取，不存数据库） ──────────────────────────────
+  // ── 商城（cs2pifa商品，从数据库读取，后台定时150秒同步） ──────────────────────────────
   shop: router({
-    /** 获取商品分类列表（实时从cs2pifa API读取） */
+    /** 获取商品分类列表（从数据库读取去重分类） */
     getCategories: publicProcedure
       .query(async () => {
-        const { getCategories } = await import("./cs2pifaApi");
-        const categories = await getCategories();
-        return categories;
+        const db = await getDb();
+        if (!db) return [];
+        try {
+          const [rows] = await (db as any).execute(
+            sql`SELECT DISTINCT typeId, typeName, typeHashName FROM shopItems WHERE enabled = 1 AND sellNum > 0 ORDER BY typeName`
+          );
+          return (rows as any[]).map((r: any) => ({
+            typeId: parseInt(r.typeId) || 0,
+            typeName: r.typeName || '',
+            typeHashName: r.typeHashName || '',
+          }));
+        } catch {
+          return [];
+        }
       }),
 
-    /** 获取商品列表（实时从cs2pifa API读取，支持分类/关键词/价格/排序/分页） */
+    /** 获取商品列表（从数据库读取，支持分类/关键词/价格/排序/分页） */
     getProducts: publicProcedure
       .input(z.object({
         typeId: z.number().optional(),
@@ -1515,22 +1526,81 @@ export const appRouter = router({
         pageSize: z.number().min(1).max(100).default(20),
       }))
       .query(async ({ input }) => {
-        const { getProductsByCategory } = await import("./cs2pifaApi");
-        const result = await getProductsByCategory({
-          typeId: input.typeId,
-          keyword: input.keyword,
-          minPrice: input.minPrice,
-          maxPrice: input.maxPrice,
-          pageNum: input.pageNum,
-          pageSize: input.pageSize,
-          sortDesc: input.sortDesc,
-        });
-        return {
-          items: result.saleTemplateByCategoryResponseList,
-          total: result.total ?? result.saleTemplateByCategoryResponseList.length,
-          pageNum: input.pageNum,
-          pageSize: input.pageSize,
-        };
+        const db = await getDb();
+        if (!db) return { items: [], total: 0, pageNum: input.pageNum, pageSize: input.pageSize };
+        try {
+          // 构建WHERE条件
+          const conditions: string[] = ['enabled = 1', 'sellNum > 0'];
+          if (input.typeId) conditions.push(`typeId = '${input.typeId}'`);
+          if (input.keyword) conditions.push(`templateName LIKE '%${input.keyword.replace(/'/g, "\\'").replace(/%/g, '\\%')}%'`);
+          if (input.minPrice !== undefined) conditions.push(`referencePrice >= ${input.minPrice}`);
+          if (input.maxPrice !== undefined) conditions.push(`referencePrice <= ${input.maxPrice}`);
+          const whereClause = conditions.join(' AND ');
+          const orderBy = input.sortDesc ? 'referencePrice DESC' : 'referencePrice ASC';
+          const offset = (input.pageNum - 1) * input.pageSize;
+
+          // 查询总数
+          const [countRows] = await (db as any).execute(
+            sql.raw(`SELECT COUNT(*) as total FROM shopItems WHERE ${whereClause}`)
+          );
+          const total = parseInt((countRows as any[])[0]?.total) || 0;
+
+          // 查询数据
+          const [rows] = await (db as any).execute(
+            sql.raw(`SELECT * FROM shopItems WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ${input.pageSize} OFFSET ${offset}`)
+          );
+
+          const items = (rows as any[]).map((r: any) => ({
+            typeId: parseInt(r.typeId) || 0,
+            typeName: r.typeName || '',
+            typeHashName: r.typeHashName || '',
+            weaponId: r.weaponId || 0,
+            weaponHashName: r.weaponHashName || '',
+            templateId: parseInt(r.templateId) || 0,
+            templateHashName: r.templateHashName || '',
+            templateName: r.templateName || '',
+            iconUrl: r.iconUrl || '',
+            exteriorName: r.exteriorName || '',
+            rarityName: r.rarityName || '',
+            minSellPrice: parseFloat(r.minSellPrice) || 0,
+            fastShippingMinSellPrice: parseFloat(r.fastShippingMinSellPrice) || 0,
+            referencePrice: parseFloat(r.referencePrice) || 0,
+            sellNum: r.sellNum || 0,
+          }));
+
+          return { items, total, pageNum: input.pageNum, pageSize: input.pageSize };
+        } catch (err) {
+          console.error('[shop.getProducts] 查询失败:', err);
+          return { items: [], total: 0, pageNum: input.pageNum, pageSize: input.pageSize };
+        }
+      }),
+
+    /** 获取同步状态 */
+    getSyncStatus: publicProcedure
+      .query(async () => {
+        const { getSyncStatus } = await import("./cs2pifaApi");
+        const status = getSyncStatus();
+        const db = await getDb();
+        let totalItems = 0;
+        if (db) {
+          try {
+            const [rows] = await (db as any).execute(
+              sql`SELECT COUNT(*) as cnt FROM shopItems WHERE enabled = 1 AND sellNum > 0`
+            );
+            totalItems = parseInt((rows as any[])[0]?.cnt) || 0;
+          } catch {}
+        }
+        return { ...status, totalItems };
+      }),
+
+    /** 手动触发同步（仅管理员） */
+    triggerSync: publicProcedure
+      .mutation(async ({ ctx }) => {
+        const player = await getPlayerFromCookie(ctx.req);
+        if (!player) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const { syncShopItems } = await import("./cs2pifaApi");
+        const result = await syncShopItems();
+        return result;
       }),
 
     /** 购买商品（扣除shopCoin，写入shopOrders，调用cs2pifa下单） */

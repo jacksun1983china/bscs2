@@ -16,6 +16,7 @@ import { getDb } from "../db";
 import { arenaRooms } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { generalApiLimit, gameActionLimit, smsLimit, adminLoginLimit } from "./rateLimit";
+import { startSyncScheduler } from "../cs2pifaApi";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -119,6 +120,8 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // 启动cs2pifa商品数据定时同步
+    startSyncScheduler();
   });
 }
 

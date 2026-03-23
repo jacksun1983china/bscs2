@@ -1,40 +1,40 @@
 /**
  * cs2pifa API 服务
- * 商品列表实时从API读取，不存数据库
+ * 后端定时同步商品数据到数据库，前端从数据库读取
  * 签名方式：对参数 ksort 后拼接字符串，用 RSA SHA256 私钥签名，base64 编码
  */
 import crypto from "crypto";
 
 // ── 配置 ─────────────────────────────────────────────────────────────────────
-const APP_KEY = "open_8bfff2a5f69c4ba7a7f463ad5822460c";
+const APP_KEY = "open_99add142ac724ce9bd83d72d280753d5";
 
 const PRIVATE_KEY_RAW =
-  "MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQCz/e3kJB21FEsQ" +
-  "JyyoMa5zftu5xatbeN5FtVG9cSinssdmGix8w+UVSXgxbKNMRx/VKOg8RvEQWiwU" +
-  "SFQIAE9ltsSIG02f6DqmjP2eFioaklgOGIOPv8VbEzzAyvbWaVFzyiq8JGiPEFpb" +
-  "HfSHBIGLw6oHxnKdJrbPIVDzPx+ImGz3wd2QwjQ9lU3H6vO4qCB6uC45bPrZNNU5" +
-  "lXhwHpxmSxmyH7/zDWZuJ/UIWT1eF+ao+ucgEPVrab12Y56xJYqpXPkGl+DvAsms" +
-  "deOXw2PufyADYKMeiNrFfS/hag4CZ94QikLAQbg56ipKfHYKHiJdGb1c8vQG4QXN" +
-  "X1yVosUhAgMBAAECggEAO9M/+d+DPEfFd1X+At2YhWz57XJlNV8kSfktdREimTLU" +
-  "EfzLIqEeCIhF+e+JC3ZsfzY8kqRlxbCjDA7KV2p6+WzZQAALOgY/UFJ2jdACKJjR" +
-  "ycWeHO55036+Z7pOdw/Ecf8VWzmiw0KFNdnsB+CYinL7leABAnj2tDv3oxItEgJB" +
-  "JwEznnRj5IRixKuZCOrrpMvrZbWqGRQrVccNI4fbI8s0IwU0mexY+eDhJjnjquEn" +
-  "q2/5IM/CDOOp78tzrVEB3LHbTBp8+8GIoKNTa2s0+dNatT6TTyFXgJ41cA8HxXtY" +
-  "xM6lRXHbgUIe2Sm8/E2jrKwuNZjZLbijuilG7iWX0QKBgQDaBTrh8gx+lA01vtiq" +
-  "xx4IMhY/PgNlIyieX/x3TVIjrAoiX22If+gSihDuErR8xYiUQxOvfMa6yij3FPoB" +
-  "HwmwEIrHXz5Nmgk0FZKjrQkC7L4zerX4egtvvwhiqZq6sPai4BuTMh//kQYyia+N" +
-  "6X+NlLtw9C1qv2jI7rxVhB7HjQKBgQDTWMqfKDMdOXVkhMWLxc9JJCub9+LS2XpL" +
-  "BH0tDyMgA4Bw5dSqv/ubt+EqiE/F1xWGyGQ7QpTtnAzU9a/CZLOh7lJ+ZYcjWnIH" +
-  "a4W2aw49FGmQHl0qXqx3fq997BWbKmNZS/aNkQh0WqXwH2A7TD+Tc3W13XibwkJ6" +
-  "QRLrhyBU5QKBgQDAlawc2HZG/brpherYeElEDhJuzPWsyjDgLYPTUr7C+f59vHQC" +
-  "BpJWhhVMZ8N9D/SEmvfxpTPa3ibvk1z/zo39M6+TS8O6Qt3sXz4ITRpPthaRXM0P" +
-  "b6dYj5P1q0IdtaI33+Ub0kRHubCSxeMIZYEh7Ibi0R6pU+lYzOIaXDngJQKBgQDH" +
-  "OK6fQpSUGsKXAzT34XnY91iISC2vFcPajRu16svwdHyRb4R9hEUX70g4AJA57Npk" +
-  "1+brmYKrTGsoH4QTGTvfC7kFXoz5fVt5tRgw8U9VsjUj3gtyUhX++hNQ/scLIfTO" +
-  "ivWZUrqGe6Bp7hmXK/PN+Yte6Kq1IHPrrAW6sQCAJQKBgQDGk2ehToFISUn3WznB" +
-  "g6Ep4+VnZpkBchTaj2kfFvHrR0v84mP1sRU9hBKfovgRYq/aHP9b7fDo9UagFHQc" +
-  "IAYm2Q2kOBld1EHEgg0pFE1TCBg032lG/mjWw1QbDL4JV43mAv6SHB6bo40YmDAL" +
-  "AxBXQVVZJD7xppNaXZKpyNVXkQ==";
+  "MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDM6qX1y5V2XpKD" +
+  "1rpG+4NTFjF53FSlOJvAKYfboNi0PSFQeWGnJQXNkYj+hn8cQVWCz3Ms5ywFsW38" +
+  "V5EwbZtfiWklSMWsMAvzvnrct4XmgqWxeEe175I0LQOqmRSRBCf38cj6WQv0jYep" +
+  "cOd7/6kN035TfnRawKjc5IJrdShGe0x7Stb85nSEyk9tSTMuvLbDzdb7+BAhm5z4" +
+  "t6Vm32Skff2OPElQ6Kkj4GtZUu63rTUcscdGMeiDiERw1M/D5X8nD9hME11Spk1L" +
+  "e44Nf5L7H136o1tQvfdz12pBVShIN5Ijzs78GT1zYsiT11McwBUxp6c3EchmG7aQZ" +
+  "JXJ2LutAgMBAAECggEAXT7Rcj3Hr2tthGyrqy08HwzUSr2GDwDpbtH3LmvM8Id4p2" +
+  "P0mdhxAZAeJKQTJ0pbnQDFSkOPdq+8er1mJgFaWGjw3bR1rtrWNX4R7mncln4Q4+" +
+  "b1ysZPY0qwhmrOPwcDIQJ3D+SBWjEk8GeeDoDR7qa0r021qK5OqOWaq0dOonMbmIV" +
+  "ezQGxphA6G74GMomSX0CguwCUPr2TvYLRH2DJV/O7lN3dIgQ0dqYiPyo4tN3rpFH" +
+  "k75ZRy6ZvagDT+NEpTAnwWXIaUAWABWAyjHTjYTual1DYsAeHxNKGdzTxKmjoFUD" +
+  "jNMGBtXcpmPEe+sSRAt1svqDa3slcJQ+MQ1AoyQKBgQDRRcFC2kNmE2LxgaINmlqP" +
+  "5na29Iffzulv+zIiFP+wjbY5Jq4OeqK0O3tSThqInSQCIyg6ozDLIPB9qRBZl/t/" +
+  "Zgj8FOfW62VZGlg7mZ3KHCcpVgqVnEIsw5wW8FcfoWc+gEFK3E6myzoQV3hlmPwD" +
+  "FHZ5dCnYJzCbIdFIsvy6rwKBgQD6q+f6IVy6fa4rHnzg3cfm4zh2VqSB+3+goNLn" +
+  "PS/BD+Ly8XmlD0uv1NocYWtj9yVtrAIYlPeF2x0vHBjhJtbw5JbiOtKydOvmjXft" +
+  "5BVKqf8F5v4IQoi9Ehtl6YXMotAZa0QZee/tEy4ixANixtjl6PHLvui/61/T+Q82" +
+  "VWaWYwKBgEopdzCy2rm82w6NCxnY/okKej2h8NjuoalukrijSm2N+urL+1jkOu62" +
+  "OaDUTvDlB1K+lM4a8Pq7ZJ6ToFiv1I+0YDC9U9/FMfherrAIY3OxgGtUs5GLe6QT" +
+  "eihi6e0qrMTofLsD0deoI56Q8PjIO174DHhEI2QXl1ESrfEehRO/AoGBAPEEer5od4" +
+  "UkNGNnJAD9nSgljvNRaUlFLLigCUim7xR9FuQqQ6Dt7QL58GDbVms+hXFGspk6Gi" +
+  "hMvmm+ZTmOo5no4B5TGqTVgMAjg41rAQHSI89kAxqkBl9sWoWJm8lfPiFCnq60LH" +
+  "lROMnal7rQoFmmuV4CiD2HrZLdZMAEKugrAoGBAMxmhvr9eMG3J9lwuTlzKzYr9Z" +
+  "qtf8FYGDphV2Gzj2Yp1MZQ22e7Q5vuKumzj8IUvJMXtTIaXqWJRTfuU04j67O0IQB" +
+  "Xm7ahMJt00IBNWnWsUKlrEm88wlRg1agU4s44P0u1AH15NuYN9kJRuSdvLKlqsWe" +
+  "/0vZkVyEtJM0Ts+7I";
 
 // 格式化为 PKCS8 PEM
 function formatPrivateKey(raw: string): string {
@@ -46,32 +46,16 @@ const PRIVATE_KEY_PEM = formatPrivateKey(PRIVATE_KEY_RAW);
 
 const BASE_URL = "https://open.cs2pifa.com/v1/api";
 
-// ── 内存缓存（5分钟TTL，减少频率限制触发）────────────────────────────────────────
-interface CacheEntry<T> {
-  data: T;
-  expireAt: number;
-}
-const cache = new Map<string, CacheEntry<unknown>>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5分钟
-
-function getCached<T>(key: string): T | null {
-  const entry = cache.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.expireAt) {
-    cache.delete(key);
-    return null;
-  }
-  return entry.data as T;
-}
-
-function setCached<T>(key: string, data: T): void {
-  cache.set(key, { data, expireAt: Date.now() + CACHE_TTL_MS });
-}
+// ── 同步状态 ─────────────────────────────────────────────────────────────────
+let syncTimer: ReturnType<typeof setInterval> | null = null;
+let isSyncing = false;
+let lastSyncTime = 0;
+const SYNC_INTERVAL_MS = 150 * 1000; // 150秒（比120秒限制多30秒余量，更安全）
 
 // ── 签名工具 ──────────────────────────────────────────────────────────────────
 
 /**
- * 构建待签名字符串（PHP Sign 方法的 JS 实现）
+ * 构建待签名字符串
  * - 过滤空值，ksort 排序
  * - 特殊字段 commodityHashName / templateHashName / requestList 不转义 unicode
  * - 其余字段 JSON.stringify 不转义斜杠
@@ -92,10 +76,8 @@ function buildSignString(params: Record<string, unknown>): string {
     const v = filtered[k];
     let encoded: string;
     if (UNICODE_KEYS.has(k)) {
-      // 不转义 unicode（PHP JSON_UNESCAPED_UNICODE）
       encoded = JSON.stringify(v);
     } else {
-      // 不转义斜杠（PHP JSON_UNESCAPED_SLASHES）
       encoded = JSON.stringify(v)?.replace(/\\\//g, "/") ?? "";
     }
     str += k + encoded;
@@ -104,7 +86,7 @@ function buildSignString(params: Record<string, unknown>): string {
 }
 
 /**
- * RSA SHA256 签名（PHP SignByPrivateKey 方法的 JS 实现）
+ * RSA SHA256 签名
  */
 function signByPrivateKey(data: string): string {
   const sign = crypto.createSign("SHA256");
@@ -114,14 +96,17 @@ function signByPrivateKey(data: string): string {
 }
 
 /**
- * 获取当前时间戳字符串（格式：Y-m-d H:i:s）
+ * 获取当前北京时间戳字符串（格式：Y-m-d H:i:s）
  */
 function getTimestamp(): string {
   const now = new Date();
+  // 转换为北京时间 (UTC+8)
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const beijing = new Date(utc + 8 * 3600000);
   const pad = (n: number) => String(n).padStart(2, "0");
   return (
-    `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ` +
-    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+    `${beijing.getFullYear()}-${pad(beijing.getMonth() + 1)}-${pad(beijing.getDate())} ` +
+    `${pad(beijing.getHours())}:${pad(beijing.getMinutes())}:${pad(beijing.getSeconds())}`
   );
 }
 
@@ -150,7 +135,7 @@ async function apiPost<T = unknown>(endpoint: string, extra: Record<string, unkn
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(30000),
   });
 
   if (!res.ok) {
@@ -159,7 +144,6 @@ async function apiPost<T = unknown>(endpoint: string, extra: Record<string, unkn
 
   const json = (await res.json()) as { code: number; msg?: string; message?: string; data?: unknown };
   if (json.code !== 0) {
-    // code 900: 频率限制，给出友好提示
     if (json.code === 900) {
       throw new Error('RATE_LIMITED');
     }
@@ -202,84 +186,69 @@ export interface Cs2ProductListResult {
   pageSize: number;
 }
 
+// ── 批量查询在售商品价格的返回类型 ──────────────────────────────────────────────
+interface BatchSaleItem {
+  saleTemplateResponse: {
+    templateId: number;
+    templateHashName: string;
+    iconUrl: string;
+    exteriorName: string;
+    rarityName: string;
+    qualityName: string;
+  };
+  saleCommodityResponse: {
+    minSellPrice: string;
+    fastshippingminSellPrice?: string;
+    referencePrice: string;
+    sellNum: number;
+  };
+}
+
+// ── 模板数据类型 ──────────────────────────────────────────────────────────────
+interface TemplateItem {
+  id: number;
+  name: string;
+  hashName: string;
+  typeId: number;
+  typeName: string;
+  typeHashName: string;
+  weaponId: number;
+  weaponName: string;
+  weaponHashName: string;
+  updateTime: string;
+}
+
 // ── 公开 API 方法 ─────────────────────────────────────────────────────────────
 
 /**
- * 获取商品分类列表（templateQuery 接口）
+ * 获取模板列表（templateQuery 接口）
+ * 注意：此接口限频 1次/120秒
  */
-export async function getCategories(): Promise<Cs2Category[]> {
-  const cacheKey = 'categories';
-  const cached = getCached<Cs2Category[]>(cacheKey);
-  if (cached) return cached;
+export async function getTemplateList(): Promise<TemplateItem[]> {
+  const downloadUrl = await apiPost<string>("templateQuery");
+  if (!downloadUrl) return [];
 
-  const data = await apiPost<{ templateTypeResponseList: Cs2Category[] }>("templateQuery");
-  const result = data?.templateTypeResponseList ?? [];
-  setCached(cacheKey, result);
-  return result;
+  const res = await fetch(downloadUrl, { signal: AbortSignal.timeout(60000) });
+  if (!res.ok) throw new Error(`下载模板文件失败: ${res.status}`);
+  const templates = (await res.json()) as TemplateItem[];
+  return templates;
 }
 
 /**
- * 按分类查询商品列表（queryTemplateSaleByCategory 接口）
+ * 批量查询在售商品价格（batchGetOnSaleCommodityInfo 接口）
+ * 注意：此接口限频 30次/秒，每次最多100个模板
  */
-export async function getProductsByCategory(params: {
-  typeId?: number;
-  keyword?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  pageNum?: number;
-  pageSize?: number;
-  sortDesc?: boolean;
-}): Promise<Cs2ProductListResult> {
-  // 缓存key（不含客户端过滤参数，只含API参数）
-  const cacheKey = `products:${params.typeId ?? 'all'}:${params.keyword ?? ''}:${params.pageNum ?? 1}:${params.pageSize ?? 20}`;
-  const cached = getCached<Cs2ProductListResult>(cacheKey);
-  if (cached) {
-    // 对缓存数据重新应用客户端过滤和排序
-    let list = [...(cached.saleTemplateByCategoryResponseList ?? [])];
-    if (params.minPrice !== undefined) list = list.filter((p) => p.referencePrice >= params.minPrice!);
-    if (params.maxPrice !== undefined) list = list.filter((p) => p.referencePrice <= params.maxPrice!);
-    list = params.sortDesc
-      ? list.sort((a, b) => b.referencePrice - a.referencePrice)
-      : list.sort((a, b) => a.referencePrice - b.referencePrice);
-    return { ...cached, saleTemplateByCategoryResponseList: list };
+export async function batchGetOnSaleInfo(templateIds: number[]): Promise<BatchSaleItem[]> {
+  if (templateIds.length === 0) return [];
+  if (templateIds.length > 100) {
+    throw new Error("每次最多查询100个模板");
   }
 
-  const extra: Record<string, unknown> = {
-    pageNum: String(params.pageNum ?? 1),
-    pageSize: String(params.pageSize ?? 20),
-  };
-  if (params.typeId) extra.typeId = String(params.typeId);
-  if (params.keyword) extra.templateName = params.keyword;
-
-  const data = await apiPost<Cs2ProductListResult>("queryTemplateSaleByCategory", extra);
-
-  let list = data?.saleTemplateByCategoryResponseList ?? [];
-
-  // 客户端过滤价格区间（API 不支持价格区间参数）
-  if (params.minPrice !== undefined) {
-    list = list.filter((p) => p.referencePrice >= params.minPrice!);
-  }
-  if (params.maxPrice !== undefined) {
-    list = list.filter((p) => p.referencePrice <= params.maxPrice!);
-  }
-
-  // 排序
-  if (params.sortDesc) {
-    list = list.sort((a, b) => b.referencePrice - a.referencePrice);
-  } else {
-    list = list.sort((a, b) => a.referencePrice - b.referencePrice);
-  }
-
-  const result = {
-    ...data,
-    saleTemplateByCategoryResponseList: list,
-  };
-  // 缓存原始数据（未过滤）
-  setCached(cacheKey, {
-    ...data,
-    saleTemplateByCategoryResponseList: data?.saleTemplateByCategoryResponseList ?? [],
+  const requestList = templateIds.map(id => ({ templateId: id }));
+  const data = await apiPost<BatchSaleItem[]>("batchGetOnSaleCommodityInfo", {
+    requestList,
   });
-  return result;
+  return data ?? [];
 }
 
 /**
@@ -296,4 +265,232 @@ export async function createTemplateOrder(params: {
     outOrderNo: params.outOrderNo,
   });
   return data;
+}
+
+// ── 定时同步逻辑 ─────────────────────────────────────────────────────────────
+
+/**
+ * 同步商品数据到数据库
+ * 流程：
+ * 1. 调用 templateQuery 获取所有模板列表（含名称、分类等基础信息）
+ * 2. 将热门武器类型的模板ID分批调用 batchGetOnSaleCommodityInfo 获取价格
+ * 3. 将数据写入 shopItems 表
+ */
+export async function syncShopItems(): Promise<{ success: boolean; count: number; error?: string }> {
+  if (isSyncing) {
+    console.log("[cs2pifa] 同步正在进行中，跳过本次");
+    return { success: false, count: 0, error: "同步正在进行中" };
+  }
+
+  // 检查距离上次同步是否超过120秒
+  const now = Date.now();
+  if (now - lastSyncTime < 120000) {
+    console.log("[cs2pifa] 距离上次同步不足120秒，跳过");
+    return { success: false, count: 0, error: "距离上次同步不足120秒" };
+  }
+
+  isSyncing = true;
+  lastSyncTime = now;
+
+  try {
+    console.log("[cs2pifa] 开始同步商品数据...");
+
+    // 1. 获取模板列表
+    const templates = await getTemplateList();
+    console.log(`[cs2pifa] 获取到 ${templates.length} 个模板`);
+
+    if (templates.length === 0) {
+      console.log("[cs2pifa] 模板列表为空，跳过同步");
+      return { success: false, count: 0, error: "模板列表为空" };
+    }
+
+    // 2. 筛选热门武器类型（步枪、手枪、匕首、狙击步枪、微型冲锋枪、霰弹枪、机枪、手套）
+    const HOT_TYPES = new Set(["步枪", "手枪", "匕首", "狙击步枪", "微型冲锋枪", "霰弹枪", "机枪", "手套", "武器箱"]);
+    const hotTemplates = templates.filter(t => HOT_TYPES.has(t.typeName));
+    console.log(`[cs2pifa] 筛选出 ${hotTemplates.length} 个热门类型模板`);
+
+    // 3. 分批查询价格（每批100个，每秒最多30次）
+    const BATCH_SIZE = 100;
+    const allSaleItems: BatchSaleItem[] = [];
+    const templateMap = new Map<number, TemplateItem>();
+    hotTemplates.forEach(t => templateMap.set(t.id, t));
+
+    for (let i = 0; i < hotTemplates.length; i += BATCH_SIZE) {
+      const batch = hotTemplates.slice(i, i + BATCH_SIZE);
+      const ids = batch.map(t => t.id);
+
+      try {
+        const saleItems = await batchGetOnSaleInfo(ids);
+        allSaleItems.push(...saleItems);
+        console.log(`[cs2pifa] 批次 ${Math.floor(i / BATCH_SIZE) + 1}: 获取到 ${saleItems.length} 个在售商品`);
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (errMsg === "RATE_LIMITED") {
+          console.log(`[cs2pifa] 批次 ${Math.floor(i / BATCH_SIZE) + 1}: 触发频率限制，等待2秒后重试...`);
+          await new Promise(r => setTimeout(r, 2000));
+          try {
+            const saleItems = await batchGetOnSaleInfo(ids);
+            allSaleItems.push(...saleItems);
+          } catch {
+            console.log(`[cs2pifa] 批次 ${Math.floor(i / BATCH_SIZE) + 1}: 重试仍失败，跳过`);
+          }
+        } else {
+          console.log(`[cs2pifa] 批次 ${Math.floor(i / BATCH_SIZE) + 1}: 查询失败: ${errMsg}`);
+        }
+      }
+
+      // 每批之间间隔100ms，避免触发频率限制
+      if (i + BATCH_SIZE < hotTemplates.length) {
+        await new Promise(r => setTimeout(r, 100));
+      }
+    }
+
+    console.log(`[cs2pifa] 共获取到 ${allSaleItems.length} 个在售商品价格数据`);
+
+    // 4. 写入数据库
+    const { getDb } = await import("./db");
+    const { sql } = await import("drizzle-orm");
+    const db = await getDb();
+    if (!db) {
+      console.log("[cs2pifa] 数据库连接失败，跳过写入");
+      return { success: false, count: 0, error: "数据库连接失败" };
+    }
+
+    // 过滤有效数据（有价格且在售）
+    const validItems = allSaleItems.filter(item =>
+      item.saleCommodityResponse &&
+      item.saleTemplateResponse &&
+      item.saleCommodityResponse.sellNum > 0
+    );
+
+    console.log(`[cs2pifa] 有效在售商品: ${validItems.length} 个`);
+
+    if (validItems.length === 0) {
+      console.log("[cs2pifa] 无有效商品数据，跳过写入");
+      return { success: true, count: 0 };
+    }
+
+    // 使用 REPLACE INTO 批量写入（每批500条）
+    const WRITE_BATCH = 500;
+    let totalWritten = 0;
+
+    for (let i = 0; i < validItems.length; i += WRITE_BATCH) {
+      const batch = validItems.slice(i, i + WRITE_BATCH);
+
+      const values = batch.map(item => {
+        const tmpl = templateMap.get(item.saleTemplateResponse.templateId);
+        const sale = item.saleCommodityResponse;
+        const tpl = item.saleTemplateResponse;
+
+        return `(
+          ${tpl.templateId},
+          '${String(tmpl?.typeId ?? 0)}',
+          '${(tmpl?.typeName ?? '').replace(/'/g, "\\'")}',
+          '${(tmpl?.typeHashName ?? '').replace(/'/g, "\\'")}',
+          ${tmpl?.weaponId ?? 0},
+          '${(tmpl?.weaponHashName ?? '').replace(/'/g, "\\'")}',
+          '${(tpl.templateHashName ?? '').replace(/'/g, "\\'")}',
+          '${(tmpl?.name ?? '').replace(/'/g, "\\'")}',
+          '${(tpl.iconUrl ?? '').replace(/'/g, "\\'")}',
+          '${(tpl.exteriorName ?? '').replace(/'/g, "\\'")}',
+          '${(tpl.rarityName ?? '').replace(/'/g, "\\'")}',
+          ${parseFloat(sale.minSellPrice) || 0},
+          ${parseFloat(sale.fastshippingminSellPrice ?? '0') || 0},
+          ${parseFloat(sale.referencePrice) || 0},
+          ${sale.sellNum || 0},
+          1
+        )`;
+      });
+
+      const sqlStr = `
+        INSERT INTO shopItems (templateId, typeId, typeName, typeHashName, weaponId, weaponHashName, templateHashName, templateName, iconUrl, exteriorName, rarityName, minSellPrice, fastShippingMinSellPrice, referencePrice, sellNum, enabled)
+        VALUES ${values.join(",")}
+        ON DUPLICATE KEY UPDATE
+          typeName = VALUES(typeName),
+          typeHashName = VALUES(typeHashName),
+          weaponId = VALUES(weaponId),
+          weaponHashName = VALUES(weaponHashName),
+          templateHashName = VALUES(templateHashName),
+          templateName = VALUES(templateName),
+          iconUrl = VALUES(iconUrl),
+          exteriorName = VALUES(exteriorName),
+          rarityName = VALUES(rarityName),
+          minSellPrice = VALUES(minSellPrice),
+          fastShippingMinSellPrice = VALUES(fastShippingMinSellPrice),
+          referencePrice = VALUES(referencePrice),
+          sellNum = VALUES(sellNum),
+          enabled = VALUES(enabled)
+      `;
+
+      try {
+        await db.execute(sql.raw(sqlStr));
+        totalWritten += batch.length;
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error(`[cs2pifa] 写入数据库失败 (批次 ${Math.floor(i / WRITE_BATCH) + 1}): ${errMsg}`);
+      }
+    }
+
+    // 将不在本次同步中的商品标记为下架（sellNum=0）
+    const syncedTemplateIds = validItems.map(item => item.saleTemplateResponse.templateId);
+    if (syncedTemplateIds.length > 0) {
+      try {
+        await db.execute(
+          sql.raw(`UPDATE shopItems SET sellNum = 0 WHERE templateId NOT IN (${syncedTemplateIds.join(",")}) AND enabled = 1`)
+        );
+      } catch {
+        // 忽略
+      }
+    }
+
+    console.log(`[cs2pifa] 同步完成，共写入 ${totalWritten} 条商品数据`);
+    return { success: true, count: totalWritten };
+
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[cs2pifa] 同步失败: ${errMsg}`);
+    return { success: false, count: 0, error: errMsg };
+  } finally {
+    isSyncing = false;
+  }
+}
+
+/**
+ * 启动定时同步任务
+ */
+export function startSyncScheduler(): void {
+  if (syncTimer) {
+    console.log("[cs2pifa] 定时同步已在运行");
+    return;
+  }
+
+  console.log(`[cs2pifa] 启动定时同步任务，间隔 ${SYNC_INTERVAL_MS / 1000} 秒`);
+
+  // 启动后延迟10秒执行第一次同步
+  setTimeout(() => {
+    syncShopItems().catch(err => console.error("[cs2pifa] 首次同步失败:", err));
+  }, 10000);
+
+  // 定时执行
+  syncTimer = setInterval(() => {
+    syncShopItems().catch(err => console.error("[cs2pifa] 定时同步失败:", err));
+  }, SYNC_INTERVAL_MS);
+}
+
+/**
+ * 停止定时同步任务
+ */
+export function stopSyncScheduler(): void {
+  if (syncTimer) {
+    clearInterval(syncTimer);
+    syncTimer = null;
+    console.log("[cs2pifa] 定时同步任务已停止");
+  }
+}
+
+/**
+ * 获取同步状态
+ */
+export function getSyncStatus(): { isSyncing: boolean; lastSyncTime: number } {
+  return { isSyncing, lastSyncTime };
 }
