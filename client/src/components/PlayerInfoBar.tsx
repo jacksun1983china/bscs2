@@ -269,7 +269,7 @@ export default function PlayerInfoBar({ showLogout = false, onAddFriend }: Playe
             {/* jinbi1: 42x42 → 26x26 */}
             <img src={ASSETS.jinbi1} alt="金币" style={{ width: 26, height: 26 }} />
             <span style={{ color: '#ffd700', fontSize: 14, fontWeight: 700 }}>
-              {parseFloat(player.gold || '0').toFixed(0)}
+              {(parseFloat(player.gold || '0') + parseFloat(player.diamond || '0')).toFixed(2)}
             </span>
           </div>
           {/* 箭头：gengduo 10x19 → 7x13 */}
@@ -279,7 +279,7 @@ export default function PlayerInfoBar({ showLogout = false, onAddFriend }: Playe
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <img src={ASSETS.jinbi2} alt="钻石" style={{ width: 26, height: 26 }} />
             <span style={{ color: '#7df9ff', fontSize: 14, fontWeight: 700 }}>
-              {parseFloat(player.diamond || '0').toFixed(0)}
+              {parseFloat(player.diamond || '0').toFixed(2)}
             </span>
           </div>
           <img src={ASSETS.gengduo} alt=">" style={{ width: 7, height: 13, opacity: 0.7 }} />

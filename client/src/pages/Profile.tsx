@@ -63,10 +63,13 @@ const WD = {
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 
 export default function Profile() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { isMusicOn: musicOn, isSfxOn: sfxOn, toggleMusic, toggleSfx } = useSound();
   const [settingsVisible, setSettingsVisible] = useState(false);
-  const [steamVisible, setSteamVisible] = useState(false);
+  const [steamVisible, setSteamVisible] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('openSteam') === '1';
+  });
   const [securityPwdVisible, setSecurityPwdVisible] = useState(false);
   const [profileEditVisible, setProfileEditVisible] = useState(false);
 

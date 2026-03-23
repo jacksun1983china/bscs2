@@ -1347,7 +1347,7 @@ export default function Backpack() {
                 }}
               >取消</button>
               <button
-                onClick={() => { setShowSteamBindTip(false); navigate('/settings'); }}
+                onClick={() => { setShowSteamBindTip(false); navigate('/profile?openSteam=1'); }}
                 style={{
                   padding: '10px 24px', borderRadius: 8,
                   background: 'linear-gradient(135deg,#065f46,#10b981)',
