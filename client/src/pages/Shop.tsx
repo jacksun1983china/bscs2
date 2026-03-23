@@ -1,7 +1,7 @@
 /**
  * Shop.tsx — 商城页面
  * 商品列表实时从 cs2pifa API 读取，不存数据库
- * 玩家购买时扣除 shopCoin，写入 shopOrders 订单表
+ * 玩家购买时扣除钻石（diamond），写入 shopOrders 订单表
  */
 import { PageSlideIn } from '@/components/PageTransition';
 import { useState } from 'react';
@@ -131,21 +131,35 @@ function ShopItemCard({ item, onBuy }: { item: Cs2Product; onBuy: () => void }) 
             {item.exteriorName}
           </div>
         )}
-        {/* 价格 */}
+        {/* 价格与库存 */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: q(6),
+          justifyContent: 'space-between',
           marginTop: q(8),
         }}>
-          <img src={S.priceIcon} alt="" style={{ width: q(28), height: q(28) }} />
-          <span style={{
-            color: '#ffd700',
-            fontSize: q(28),
-            fontWeight: 700,
-          }}>
-            {item.referencePrice.toFixed(2)}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: q(6) }}>
+            <img src={S.priceIcon} alt="" style={{ width: q(28), height: q(28) }} />
+            <span style={{
+              color: '#ffd700',
+              fontSize: q(28),
+              fontWeight: 700,
+            }}>
+              {item.referencePrice.toFixed(2)}
+            </span>
+          </div>
+          {item.sellNum > 1 && (
+            <span style={{
+              color: '#9980cc',
+              fontSize: q(20),
+              background: 'rgba(120,60,220,0.15)',
+              border: '1px solid rgba(120,60,220,0.3)',
+              borderRadius: q(8),
+              padding: `${q(2)} ${q(8)}`,
+            }}>
+              库存 {item.sellNum}
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -216,12 +230,12 @@ function BuyModal({
         }}>
           <span style={{ color: '#9980cc', fontSize: q(24) }}>当前余额</span>
           <span style={{ color: canAfford ? '#ffd700' : '#ff4444', fontSize: q(28), fontWeight: 700 }}>
-            {balance.toFixed(2)} 商城币
+            {balance.toFixed(2)} 钻石
           </span>
         </div>
         {!canAfford && (
           <div style={{ color: '#ff4444', fontSize: q(22), textAlign: 'center', marginBottom: q(16) }}>
-            余额不足，请先充值商城币
+            钻石余额不足
           </div>
         )}
         <div style={{ display: 'flex', gap: q(16) }}>
@@ -310,7 +324,7 @@ export default function Shop() {
   const items = data?.items || [];
   const total = data?.total || 0;
   const totalPages = Math.max(1, Math.ceil(total / 20));
-  const balance = parseFloat(playerData?.shopCoin || '0');
+  const balance = parseFloat(playerData?.diamond || '0');
 
   const handleBuy = () => {
     if (!buyItem) return;

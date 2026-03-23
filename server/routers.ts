@@ -1621,10 +1621,10 @@ export const appRouter = router({
         const [playerData] = await db.select().from(players).where(eqOp(players.id, player.playerId));
         if (!playerData) throw new TRPCError({ code: "NOT_FOUND", message: "用户不存在" });
         const price = input.referencePrice;
-        const balance = parseFloat(playerData.shopCoin ?? '0');
-        if (balance < price) throw new TRPCError({ code: "BAD_REQUEST", message: "商城币余额不足" });
+        const balance = parseFloat(playerData.diamond ?? '0');
+        if (balance < price) throw new TRPCError({ code: "BAD_REQUEST", message: "钻石余额不足" });
         const newBalance = (balance - price).toFixed(2);
-        await db.update(players).set({ shopCoin: newBalance }).where(eqOp(players.id, player.playerId));
+        await db.update(players).set({ diamond: newBalance }).where(eqOp(players.id, player.playerId));
         const outOrderNo = `shop_${player.playerId}_${Date.now()}`;
         await db.insert(shopOrders).values({
           playerId: player.playerId,
