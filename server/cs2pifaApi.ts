@@ -261,7 +261,7 @@ export async function createTemplateOrder(params: {
 }): Promise<{ orderNo: string; status: number }> {
   const data = await apiPost<{ orderNo: string; status: number }>("byTemplateCreateOrder", {
     templateId: String(params.templateId),
-    tradeLink: params.tradeLink,
+    steamTradeUrl: params.tradeLink,
     merchantOrderNo: params.outOrderNo,
   });
   return data;
