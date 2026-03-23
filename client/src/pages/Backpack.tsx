@@ -223,9 +223,10 @@ export default function Backpack() {
   const filteredItems = allItems
     .filter(item => !searchText || (item.itemName ?? '').includes(searchText))
     .filter(item => {
-      // 顶部分类筛选：分解=待处理(status 0), 提货=已提取(status 1), 提货保护=保护中(status 3)
+      // 顶部分类筛选：分解=可分解(status 0), 提货=可提货(status 0), 提货保护=保护中(status 3)
+      // 三个tab都操作status=0的待处理物品，提货保护显示status=3的保护中物品
       if (topFilter === 'decompose') return item.status === 0;
-      if (topFilter === 'pickup') return item.status === 1;
+      if (topFilter === 'pickup') return item.status === 0;
       if (topFilter === 'protect') return item.status === 3;
       return true;
     })
@@ -1003,41 +1004,115 @@ export default function Backpack() {
               </span>
             </div>
 
-            {/* 分解按钮 */}
-            <div
-              onClick={handleDecompose}
-              style={{
-                height: q(64),
-                width: q(140),
-                background: hasSelected
-                  ? 'linear-gradient(135deg, #b45309, #f59e0b)'
-                  : 'linear-gradient(135deg, rgba(120,60,10,0.5), rgba(160,100,20,0.5))',
-                border: hasSelected
-                  ? '1.5px solid rgba(245,158,11,0.8)'
-                  : '1.5px solid rgba(120,100,60,0.4)',
-                borderRadius: q(10),
-                marginLeft: q(12),
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: hasSelected ? 'pointer' : 'not-allowed',
-                opacity: hasSelected ? 1 : 0.5,
-                transition: 'all 0.2s ease',
-                boxShadow: hasSelected ? '0 0 12px rgba(245,158,11,0.4)' : 'none',
-                flexShrink: 0,
-              }}
-            >
-              <span
+            {/* 动态操作按钮：根据topFilter切换 */}
+            {topFilter === 'decompose' && (
+              <div
+                onClick={handleDecompose}
                 style={{
-                  color: '#fff',
-                  fontSize: q(26),
-                  fontWeight: 700,
-                  letterSpacing: q(2),
+                  height: q(64),
+                  width: q(140),
+                  background: hasSelected
+                    ? 'linear-gradient(135deg, #b45309, #f59e0b)'
+                    : 'linear-gradient(135deg, rgba(120,60,10,0.5), rgba(160,100,20,0.5))',
+                  border: hasSelected
+                    ? '1.5px solid rgba(245,158,11,0.8)'
+                    : '1.5px solid rgba(120,100,60,0.4)',
+                  borderRadius: q(10),
+                  marginLeft: q(12),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: hasSelected ? 'pointer' : 'not-allowed',
+                  opacity: hasSelected ? 1 : 0.5,
+                  transition: 'all 0.2s ease',
+                  boxShadow: hasSelected ? '0 0 12px rgba(245,158,11,0.4)' : 'none',
+                  flexShrink: 0,
                 }}
               >
-                分解
-              </span>
-            </div>
+                <span
+                  style={{
+                    color: '#fff',
+                    fontSize: q(26),
+                    fontWeight: 700,
+                    letterSpacing: q(2),
+                  }}
+                >
+                  分解
+                </span>
+              </div>
+            )}
+            {topFilter === 'pickup' && (
+              <div
+                onClick={handlePickup}
+                style={{
+                  height: q(64),
+                  width: q(140),
+                  background: hasSelected
+                    ? 'linear-gradient(135deg, #065f46, #10b981)'
+                    : 'linear-gradient(135deg, rgba(6,60,40,0.5), rgba(16,120,80,0.5))',
+                  border: hasSelected
+                    ? '1.5px solid rgba(16,185,129,0.8)'
+                    : '1.5px solid rgba(16,120,80,0.4)',
+                  borderRadius: q(10),
+                  marginLeft: q(12),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: hasSelected ? 'pointer' : 'not-allowed',
+                  opacity: hasSelected ? 1 : 0.5,
+                  transition: 'all 0.2s ease',
+                  boxShadow: hasSelected ? '0 0 12px rgba(16,185,129,0.4)' : 'none',
+                  flexShrink: 0,
+                }}
+              >
+                <span
+                  style={{
+                    color: '#fff',
+                    fontSize: q(26),
+                    fontWeight: 700,
+                    letterSpacing: q(2),
+                  }}
+                >
+                  提货
+                </span>
+              </div>
+            )}
+            {topFilter === 'protect' && (
+              <div
+                onClick={() => toast.info('取消保护功能即将上线')}
+                style={{
+                  height: q(64),
+                  width: q(160),
+                  background: hasSelected
+                    ? 'linear-gradient(135deg, #9f1239, #f43f5e)'
+                    : 'linear-gradient(135deg, rgba(100,12,40,0.5), rgba(160,40,60,0.5))',
+                  border: hasSelected
+                    ? '1.5px solid rgba(244,63,94,0.8)'
+                    : '1.5px solid rgba(160,40,60,0.4)',
+                  borderRadius: q(10),
+                  marginLeft: q(12),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: hasSelected ? 'pointer' : 'not-allowed',
+                  opacity: hasSelected ? 1 : 0.5,
+                  transition: 'all 0.2s ease',
+                  boxShadow: hasSelected ? '0 0 12px rgba(244,63,94,0.4)' : 'none',
+                  flexShrink: 0,
+                }}
+              >
+                <span
+                  style={{
+                    color: '#fff',
+                    fontSize: q(26),
+                    fontWeight: 700,
+                    letterSpacing: q(2),
+                  }}
+                >
+                  取消保护
+                </span>
+              </div>
+            )}
       </div>
 
       {/* 底部导航 */}
