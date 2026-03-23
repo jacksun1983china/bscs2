@@ -223,11 +223,13 @@ export default function Backpack() {
   const filteredItems = allItems
     .filter(item => !searchText || (item.itemName ?? '').includes(searchText))
     .filter(item => {
-      // 顶部分类筛选：分解=可分解(status 0), 提货=可提货(status 0), 提货保护=保护中(status 3)
-      // 三个tab都操作status=0的待处理物品，提货保护显示status=3的保护中物品
+      // 顶部分类筛选：
+      // 分解: 所有待处理物品(status=0)
+      // 提货: 只显示shop来源且status=0的物品（只有商城购买的物品才能提货）
+      // 提货保护: 只显示shop来源且status=3的物品（保护中的商城物品）
       if (topFilter === 'decompose') return item.status === 0;
-      if (topFilter === 'pickup') return item.status === 0;
-      if (topFilter === 'protect') return item.status === 3;
+      if (topFilter === 'pickup') return item.source === 'shop' && item.status === 0;
+      if (topFilter === 'protect') return item.source === 'shop' && item.status === 3;
       return true;
     })
     .filter(item => {
@@ -760,14 +762,14 @@ export default function Backpack() {
 
                       {/* 价格 */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: q(8), marginTop: q(4) }}>
-                        <img src={item.source === 'arena' ? '/img/jinbi2.png' : '/img/jinbi1.png'} alt="" style={{ width: q(32), height: q(32) }} />
+                        <img src={(item.source === 'arena' || item.source === 'shop') ? '/img/jinbi2.png' : '/img/jinbi1.png'} alt="" style={{ width: q(32), height: q(32) }} />
                         <span
                           style={{
-                            color: item.source === 'arena' ? 'rgba(125,249,255,1)' : 'rgba(255,215,0,1)',
+                            color: (item.source === 'arena' || item.source === 'shop') ? 'rgba(125,249,255,1)' : 'rgba(255,215,0,1)',
                             fontSize: q(30),
                             fontWeight: 800,
                             lineHeight: q(36),
-                            textShadow: item.source === 'arena' ? '0 0 8px rgba(125,249,255,0.5)' : '0 0 8px rgba(255,215,0,0.4)',
+                            textShadow: (item.source === 'arena' || item.source === 'shop') ? '0 0 8px rgba(125,249,255,0.5)' : '0 0 8px rgba(255,215,0,0.4)',
                           }}
                         >
                           {value.toFixed(2)}
