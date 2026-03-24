@@ -29,10 +29,9 @@ export default function SettingsModal({ visible, onClose }: SettingsModalProps) 
       localStorage.removeItem('sfx_muted');
       localStorage.removeItem('sound_muted');
     } catch { /* 忽略 */ }
-    // 用 fetch 异步调后端清cookie，完全不阻塞
-    fetch('/api/trpc/player.logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
-    // 立即强制整页跳转到登录页，不等待任何响应
-    window.location.replace('/login');
+    // 直接导航到服务端logout路由，服务端清cookie后重定向到登录页
+    // 这是同步导航，不会被iOS Safari取消
+    window.location.href = '/api/logout';
   };
 
   // 动画关闭
