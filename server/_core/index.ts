@@ -61,22 +61,27 @@ async function startServer() {
 
   // 专用退出登录路由（GET请求，浏览器直接导航，确保iOS Safari兼容）
   app.get('/api/logout', (req, res) => {
-    const isSecure = req.protocol === 'https' ||
-      ((req.headers['x-forwarded-proto'] || '') as string).includes('https');
-    const cookieOpts = {
-      httpOnly: true,
-      path: '/',
-      sameSite: isSecure ? 'none' as const : 'lax' as const,
-      secure: isSecure,
-    };
-    // 清除玩家token cookie
-    res.clearCookie('bdcs2_player_token', cookieOpts);
-    // 也尝试用不同的sameSite清除（兜底）
-    res.clearCookie('bdcs2_player_token', { ...cookieOpts, sameSite: 'lax' });
-    res.clearCookie('bdcs2_player_token', { ...cookieOpts, sameSite: 'strict' });
-    res.clearCookie('bdcs2_player_token', { httpOnly: true, path: '/' });
-    // 302重定向到登录页
-    res.redirect(302, '/login');
+    // 直接用原始 Set-Cookie 头来过期 cookie，覆盖所有可能的属性组合
+    // 这比 Express 的 clearCookie 更可靠，因为 clearCookie 需要属性完全匹配
+    const expireDate = 'Thu, 01 Jan 1970 00:00:00 GMT';
+    const cookieHeaders = [
+      // 匹配 HTTPS 设置的 cookie（secure + sameSite=none）
+      `bdcs2_player_token=; Path=/; Expires=${expireDate}; HttpOnly; Secure; SameSite=None`,
+      // 匹配 HTTP 设置的 cookie（sameSite=lax）
+      `bdcs2_player_token=; Path=/; Expires=${expireDate}; HttpOnly; SameSite=Lax`,
+      // 最简单的形式（兜底）
+      `bdcs2_player_token=; Path=/; Expires=${expireDate}; HttpOnly`,
+      // 不带 HttpOnly 的形式（以防万一）
+      `bdcs2_player_token=; Path=/; Expires=${expireDate}`,
+      // Max-Age=0 形式（某些浏览器更认这个）
+      `bdcs2_player_token=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=None`,
+      `bdcs2_player_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`,
+      `bdcs2_player_token=; Path=/; Max-Age=0; HttpOnly`,
+    ];
+    res.setHeader('Set-Cookie', cookieHeaders);
+    // 不用302重定向，直接返回一个简单的HTML页面来跳转
+    // 这样确保浏览器先处理完 Set-Cookie 头，再进行跳转
+    res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>document.cookie='bdcs2_player_token=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT';document.cookie='bdcs2_player_token=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT;secure;samesite=none';window.location.replace('/login?logout=1');</script></head><body></body></html>`);
   });
 
   // OAuth callback under /api/oauth/callback

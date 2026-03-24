@@ -55,15 +55,21 @@ export default function Login() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  // 检查是否已登录（禁用缓存，每次都重新查询，避免退出后缓存导致又跳回首页）
-  const { data: playerMe } = trpc.player.me.useQuery(undefined, {
+  // 检查是否是从退出登录跳转来的（URL参数 logout=1）
+  const isFromLogout = useRef(
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('logout') === '1'
+  );
+  // 检查是否已登录（禁用缓存，每次都重新查询）
+  // 如果是从退出登录来的，不查询player.me，避免因cookie未清除导致又跳回首页
+  const { data: playerMe, isLoading: meLoading } = trpc.player.me.useQuery(undefined, {
     staleTime: 0,
     gcTime: 0,
     refetchOnMount: 'always',
+    enabled: !isFromLogout.current,
   });
   useEffect(() => {
-    if (playerMe) navigate('/');
-  }, [playerMe]);
+    if (!isFromLogout.current && !meLoading && playerMe) navigate('/');
+  }, [playerMe, meLoading]);
 
   // 倒计时
   useEffect(() => {
