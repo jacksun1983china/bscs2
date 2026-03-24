@@ -32,28 +32,15 @@ interface PlayerInfoBarProps {
 export default function PlayerInfoBar({ showLogout = false, onAddFriend }: PlayerInfoBarProps) {
   const [, navigate] = useLocation();
   const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
-  const utils = trpc.useUtils();
-  const handleLogout = async () => {
+  const handleLogout = () => {
     // 清除玩家相关的 localStorage 数据
     try {
       localStorage.removeItem('music_muted');
       localStorage.removeItem('sfx_muted');
       localStorage.removeItem('sound_muted');
     } catch { /* 忽略 */ }
-    // 1. 先清除 React Query 缓存
-    utils.player.me.setData(undefined, null as any);
-    utils.player.invalidate();
-    // 2. 调后端清cookie，等待完成
-    try {
-      await fetch('/api/trpc/player.logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    } catch { /* 忽略网络错误 */ }
-    // 3. 手动清除cookie（兜底）
-    try {
-      document.cookie = 'bdcs2_player_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
-      document.cookie = 'bdcs2_player_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=' + window.location.hostname;
-    } catch { /* 忽略 */ }
-    // 4. 强制跳转到登录页
-    window.location.replace('/login');
+    // 直接导航到服务端退出路由，服务端清除cookie后302重定向到登录页
+    window.location.href = '/api/logout';
   };
 
   const vipGradients: Record<number, string> = {

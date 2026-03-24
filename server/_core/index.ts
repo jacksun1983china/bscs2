@@ -59,6 +59,26 @@ async function startServer() {
   // 通用 API 限制：每 IP 每分钟 3000 次
   app.use("/api/trpc", generalApiLimit);
 
+  // 专用退出登录路由（GET请求，浏览器直接导航，确保iOS Safari兼容）
+  app.get('/api/logout', (req, res) => {
+    const isSecure = req.protocol === 'https' ||
+      ((req.headers['x-forwarded-proto'] || '') as string).includes('https');
+    const cookieOpts = {
+      httpOnly: true,
+      path: '/',
+      sameSite: isSecure ? 'none' as const : 'lax' as const,
+      secure: isSecure,
+    };
+    // 清除玩家token cookie
+    res.clearCookie('bdcs2_player_token', cookieOpts);
+    // 也尝试用不同的sameSite清除（兜底）
+    res.clearCookie('bdcs2_player_token', { ...cookieOpts, sameSite: 'lax' });
+    res.clearCookie('bdcs2_player_token', { ...cookieOpts, sameSite: 'strict' });
+    res.clearCookie('bdcs2_player_token', { httpOnly: true, path: '/' });
+    // 302重定向到登录页
+    res.redirect(302, '/login');
+  });
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API
