@@ -55,8 +55,12 @@ export default function Login() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  // 检查是否已登录
-  const { data: playerMe } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
+  // 检查是否已登录（禁用缓存，每次都重新查询，避免退出后缓存导致又跳回首页）
+  const { data: playerMe } = trpc.player.me.useQuery(undefined, {
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+  });
   useEffect(() => {
     if (playerMe) navigate('/');
   }, [playerMe]);
