@@ -8,6 +8,7 @@
  * 5. 去掉闪烁硬编码
  * 6. 汉化英文文字
  * 7. 最小/最大金额从后台读取
+ * 8. 集成第三方支付接口，点击充值后跳转支付页面
  */
 import { PageSlideIn } from '@/components/PageTransition';
 import { useState, useMemo, useEffect } from 'react';
@@ -54,9 +55,9 @@ export default function Deposit() {
   const [selectedAmount, setSelectedAmount] = useState<number>(200);
   const [payMethod, setPayMethod] = useState<PayMethod>('zhifubao');
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: configsData, isLoading: configsLoading } = trpc.player.rechargeConfigs.useQuery();
-  const [orderResult, setOrderResult] = useState<{ orderNo: string; amount: number; gold: number } | null>(null);
 
   // 数据加载完成后自动选中第一个档位
   useEffect(() => {
@@ -65,13 +66,7 @@ export default function Deposit() {
     }
   }, [configsData]);
 
-  const createOrderMut = trpc.player.createRechargeOrder.useMutation({
-    onSuccess: (data) => {
-      setOrderResult(data);
-      toast.success(`订单创建成功！订单号: ${data.orderNo}`);
-    },
-    onError: (e) => toast.error(e.message),
-  });
+  const createOrderMut = trpc.player.createRechargeOrder.useMutation();
 
   const amounts = useMemo(() => {
     // 只在数据加载完成后使用后端数据，不 fallback 到硬编码
@@ -97,6 +92,37 @@ export default function Deposit() {
     if (amounts.length === 0) return 50000;
     return Math.max(...amounts.map(a => a.amount));
   }, [amounts]);
+
+  // 处理充值点击 - 调用支付接口并跳转
+  const handleRecharge = async () => {
+    if (isSubmitting) return;
+    const config = configsData?.find((c: any) => Number(c.amount) === selectedAmount);
+    if (!config) {
+      toast.error('请先选择充值金额');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const result = await createOrderMut.mutateAsync({
+        configId: config.id,
+        payMethod: payMethod === 'zhifubao' ? 'alipay' : 'wechat',
+      });
+      if (result.success && result.payUrl) {
+        toast.success('正在跳转支付页面...');
+        // 跳转到支付页面
+        window.location.href = result.payUrl;
+      } else if (result.success) {
+        toast.success(`订单创建成功！订单号: ${result.orderNo}`);
+      } else {
+        toast.error('创建订单失败，请重试');
+      }
+    } catch (err: any) {
+      const msg = err?.message || err?.data?.message || '支付服务暂时不可用，请稍后重试';
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
 <PageSlideIn>
@@ -265,46 +291,20 @@ export default function Deposit() {
           })}
         </div>
 
-        {/* 充値按鈕 */}
+        {/* 充值按钮 */}
         <div style={{ padding: `${q(30)} ${q(30)} 0` }}>
           <div
-            style={{ position: 'relative', cursor: createOrderMut.isPending ? 'not-allowed' : 'pointer', width: '100%', opacity: createOrderMut.isPending ? 0.7 : 1 }}
-            onClick={() => {
-              if (createOrderMut.isPending) return;
-              // 找到对应的充値配置 ID
-              const config = configsData?.find((c: any) => Number(c.amount) === selectedAmount);
-              if (!config) {
-                toast.error('请先选择充値金额');
-                return;
-              }
-              createOrderMut.mutate({
-                configId: config.id,
-                payMethod: payMethod === 'zhifubao' ? 'alipay' : 'wechat',
-              });
-            }}
+            style={{ position: 'relative', cursor: isSubmitting ? 'not-allowed' : 'pointer', width: '100%', opacity: isSubmitting ? 0.7 : 1 }}
+            onClick={handleRecharge}
           >
-            <img src={CZ.btnChongzhi} alt="充値" style={{ width: '100%', display: 'block' }} />
+            <img src={CZ.btnChongzhi} alt="充值" style={{ width: '100%', display: 'block' }} />
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ color: '#fff', fontSize: q(34), fontWeight: 700, letterSpacing: 2, textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
-                {createOrderMut.isPending ? '提交中...' : `充値 ¥${selectedAmount}`}
+                {isSubmitting ? '提交中...' : `充值 ¥${selectedAmount}`}
               </span>
             </div>
           </div>
         </div>
-
-        {/* 订单创建成功提示 */}
-        {orderResult && (
-          <div style={{ margin: `${q(20)} ${q(30)} 0`, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', borderRadius: q(12), padding: q(20) }}>
-            <div style={{ color: '#10b981', fontSize: q(26), fontWeight: 700, marginBottom: q(8) }}>✓ 订单已提交，等待审批</div>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: q(22) }}>订单号：{orderResult.orderNo}</div>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: q(22), marginTop: q(4) }}>充値金额：¥{orderResult.amount} （将获得 {orderResult.gold} 金币）</div>
-            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: q(20), marginTop: q(8) }}>管理员审批后金币将自动到账</div>
-            <button
-              onClick={() => setOrderResult(null)}
-              style={{ marginTop: q(12), padding: `${q(8)} ${q(20)}`, borderRadius: q(8), background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', fontSize: q(22) }}
-            >继续充値</button>
-          </div>
-        )}
 
         {/* 充值说明 */}
         <div style={{ padding: `${q(20)} ${q(30)} 0`, color: 'rgba(255,255,255,0.5)', fontSize: q(22), lineHeight: 1.6 }}>
