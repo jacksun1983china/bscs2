@@ -1,3 +1,4 @@
+import { createPaymentOrder } from "./paymentApi";
 import { adminRouter } from "./routers/adminRouter";
 import { TRPCError } from "@trpc/server";
 import { arenaRouter } from "./arenaRouter";
@@ -310,11 +311,11 @@ export const appRouter = router({
         return getPlayerRechargeOrders(session.playerId, input.page, input.limit);
       }),
 
-    /** 创建充値订单（玩家提交充値申请，等待管理员审批） */
+    /** 创建充値订单 - 对接第三方支付平台 */
     createRechargeOrder: publicProcedure
       .input(z.object({
         configId: z.number().int().positive(),
-        payMethod: z.enum(['alipay', 'wechat', 'manual']).default('manual'),
+        payMethod: z.enum(['alipay', 'wechat', 'manual']).default('alipay'),
         remark: z.string().max(200).optional().default(''),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -326,8 +327,10 @@ export const appRouter = router({
         const configRows = await db.select().from(rechargeConfigs).where(eq(rechargeConfigs.id, input.configId));
         if (!configRows.length) throw new TRPCError({ code: "NOT_FOUND", message: "充値配置不存在" });
         const config = configRows[0];
+        const amount = parseFloat(String(config.amount));
         // 生成唯一订单号
         const orderNo = `R${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+        // 先在数据库中创建待支付订单
         await db.insert(rechargeOrders).values({
           orderNo,
           playerId: session.playerId,
@@ -335,10 +338,35 @@ export const appRouter = router({
           gold: config.gold,
           bonusDiamond: config.bonusDiamond ?? '0.00',
           payMethod: input.payMethod,
-          status: 0, // 待审批
+          status: 0, // 待支付
           remark: input.remark,
         });
-        return { success: true, orderNo, amount: parseFloat(String(config.amount)), gold: parseFloat(String(config.gold)) };
+        // 调用第三方支付平台创建支付订单
+        if (input.payMethod !== 'manual') {
+          try {
+            const payResult = await createPaymentOrder({
+              orderNo,
+              amount,
+              payMethod: input.payMethod as 'alipay' | 'wechat',
+              productName: `充值${amount}元`,
+            });
+            if (payResult.success && payResult.payUrl) {
+              // 更新订单的支付链接和平台订单号
+              await db.execute(sql`UPDATE rechargeOrders SET platformOrderNo = ${payResult.platformOrderNo || ''}, payUrl = ${payResult.payUrl} WHERE orderNo = ${orderNo}`);
+              return { success: true, orderNo, amount, gold: parseFloat(String(config.gold)), payUrl: payResult.payUrl };
+            } else {
+              // 支付平台返回失败，更新订单备注
+              await db.execute(sql`UPDATE rechargeOrders SET remark = ${payResult.error || '支付平台创建订单失败'} WHERE orderNo = ${orderNo}`);
+              throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: payResult.error || "支付平台创建订单失败" });
+            }
+          } catch (err: unknown) {
+            if (err instanceof TRPCError) throw err;
+            const errMsg = err instanceof Error ? err.message : String(err);
+            console.error("[Payment] 创建支付订单异常:", errMsg);
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "支付服务暂时不可用，请稍后重试" });
+          }
+        }
+        return { success: true, orderNo, amount, gold: parseFloat(String(config.gold)) };
       }),
 
     /** 提取道具（status 0→1），需要先绑定Steam账号，调用cs2pifa API创建提货订单 */

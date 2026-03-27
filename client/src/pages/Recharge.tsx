@@ -1,6 +1,7 @@
 /**
  * Recharge.tsx — 充值页面
  * 1:1 还原设计稿：支付宝/微信 + 金额选择网格 + 充值按钮
+ * 对接第三方支付平台，点击充值后跳转到支付页面
  * 公共组件：PlayerInfoBar（用户信息）、BottomNav（底部导航）
  */
 import { useState } from 'react';
@@ -21,19 +22,43 @@ export default function Recharge() {
   const [payMethod, setPayMethod] = useState<PayMethod>('alipay');
   const [selectedConfig, setSelectedConfig] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'recharge' | 'history'>('recharge');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
   const { data: configs } = trpc.player.rechargeConfigs.useQuery();
-  const { data: orders } = trpc.player.rechargeOrders.useQuery(
+  const { data: orders, refetch: refetchOrders } = trpc.player.rechargeOrders.useQuery(
     { page: 1, limit: 20 },
     { enabled: activeTab === 'history' && !!player }
   );
 
+  const createOrder = trpc.player.createRechargeOrder.useMutation();
+
   const selectedCfg = configs?.find((c: any) => c.id === selectedConfig);
 
-  const handleRecharge = () => {
+  const handleRecharge = async () => {
     if (!selectedConfig) { toast.error('请选择充值档位'); return; }
-    toast.info('请联系客服完成充值，或等待支付功能上线');
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const result = await createOrder.mutateAsync({
+        configId: selectedConfig,
+        payMethod,
+      });
+      if (result.success && result.payUrl) {
+        toast.success('正在跳转支付页面...');
+        // 跳转到支付页面
+        window.location.href = result.payUrl;
+      } else if (result.success) {
+        toast.info('订单已创建，请等待处理');
+      } else {
+        toast.error('创建订单失败，请重试');
+      }
+    } catch (err: any) {
+      const msg = err?.message || err?.data?.message || '支付服务暂时不可用，请稍后重试';
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!player) {
@@ -152,8 +177,13 @@ export default function Recharge() {
 
         {/* ── 充值按钮（btn_chongzhi）── */}
         <div style={{ padding: '10px 10px 6px', flexShrink: 0 }}>
-          <div onClick={handleRecharge} style={{ position: 'relative', cursor: selectedConfig ? 'pointer' : 'not-allowed', opacity: selectedConfig ? 1 : 0.5, borderRadius: 10, overflow: 'hidden', transition: 'opacity 0.2s' }}>
+          <div onClick={handleRecharge} style={{ position: 'relative', cursor: selectedConfig && !isSubmitting ? 'pointer' : 'not-allowed', opacity: selectedConfig && !isSubmitting ? 1 : 0.5, borderRadius: 10, overflow: 'hidden', transition: 'opacity 0.2s' }}>
             <img src={ASSETS.cz_btn} alt="充值" style={{ width: '100%', display: 'block' }} />
+            {isSubmitting && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', borderRadius: 10 }}>
+                <span style={{ color: '#fff', fontSize: 14, fontWeight: 600 }}>处理中...</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -161,7 +191,7 @@ export default function Recharge() {
         <div style={{ padding: '4px 10px 0', flexShrink: 0 }}>
           <div style={{ display: 'flex', background: 'rgba(20,8,50,0.6)', borderRadius: 10, padding: 3, border: '1px solid rgba(120,60,220,0.2)' }}>
             {(['recharge', 'history'] as const).map(tab => (
-              <div key={tab} onClick={() => setActiveTab(tab)} style={{
+              <div key={tab} onClick={() => { setActiveTab(tab); if (tab === 'history') refetchOrders(); }} style={{
                 flex: 1, textAlign: 'center', padding: '7px 0', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
                 background: activeTab === tab ? 'linear-gradient(135deg, #7c3aed, #c084fc)' : 'transparent',
                 color: activeTab === tab ? '#fff' : '#9980cc', transition: 'all 0.2s',
@@ -186,7 +216,7 @@ export default function Recharge() {
                       <div style={{ color: '#9980cc', fontSize: 11, marginTop: 2 }}>¥{parseFloat(order.amount || '0').toFixed(2)}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ color: order.status === 'paid' ? '#7df9ff' : '#f97316', fontSize: 12, fontWeight: 600 }}>{order.status === 'paid' ? '已完成' : '待支付'}</div>
+                      <div style={{ color: order.status === 1 ? '#7df9ff' : '#f97316', fontSize: 12, fontWeight: 600 }}>{order.status === 1 ? '已完成' : '待支付'}</div>
                       <div style={{ color: '#555', fontSize: 11, marginTop: 2 }}>{new Date(order.createdAt).toLocaleDateString('zh-CN')}</div>
                     </div>
                   </div>
