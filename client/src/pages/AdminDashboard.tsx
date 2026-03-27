@@ -23,6 +23,7 @@ import { AdminVipConfigs } from './admin/AdminVipConfigs';
 import { AdminVortexConfig } from './admin/AdminVortexConfig';
 import { AdminGoldLogs } from './admin/AdminGoldLogs';
 import { AdminXGames } from './admin/AdminXGames';
+import { AdminOrders } from './admin/AdminOrders';
 
 // ── 国际化文本 ──────────────────────────────────────────────────
 const I18N = {
@@ -923,6 +924,8 @@ export default function AdminDashboard() {
           {activeMenu === 'categories' && <AdminCategories lang={lang} t={t} />}
           {/* 宝箱管理 */}
           {activeMenu === 'boxes' && <AdminBoxes lang={lang} t={t} />}
+          {/* 订单管理 */}
+          {activeMenu === 'orders' && <AdminOrders lang={lang} />}
           {/* 充值档位管理 */}
           {activeMenu === 'rechargeConfigs' && <AdminRechargeConfigs lang={lang} />}
           {/* 商城管理 */}
