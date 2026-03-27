@@ -5,7 +5,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { SignJWT, jwtVerify } from "jose";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, like, gte, lte, or } from "drizzle-orm";
 import { adminProcedure, publicProcedure, router } from "../_core/trpc";
 import {
   addRollBots,
@@ -30,6 +30,7 @@ import {
   broadcasts,
   gameSettings,
   players,
+  playerItems,
   rechargeConfigs,
   rechargeOrders,
   rollRooms,
@@ -870,4 +871,113 @@ export const adminRouter = router({
       await (db as any).execute(sql`UPDATE vortexConfig SET rtp = ${rtpStr} ORDER BY id DESC LIMIT 1`);
       return { success: true };
     }),
+
+  /** ========== 订单管理（提取记录） ========== */
+  extractOrders: adminProcedure
+    .input(z.object({
+      page: z.number().min(1).default(1),
+      limit: z.number().default(20),
+      status: z.number().optional(),       // 0=待处理 1=已提取 2=已回收
+      playerId: z.number().optional(),
+      keyword: z.string().optional(),       // 搜索：玩家昵称/手机号/订单号
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+      const offset = (input.page - 1) * input.limit;
+
+      // 构建查询条件
+      const conditions: any[] = [];
+      if (input.status !== undefined) {
+        conditions.push(eq(playerItems.status, input.status));
+      }
+      if (input.playerId) {
+        conditions.push(eq(playerItems.playerId, input.playerId));
+      }
+      if (input.startDate) {
+        conditions.push(gte(playerItems.createdAt, new Date(input.startDate)));
+      }
+      if (input.endDate) {
+        conditions.push(lte(playerItems.createdAt, new Date(input.endDate + ' 23:59:59')));
+      }
+
+      // 如果有关键词搜索，需要join players表
+      if (input.keyword) {
+        const kw = `%${input.keyword}%`;
+        conditions.push(
+          or(
+            like(players.nickname, kw),
+            like(players.phone, kw),
+            like(playerItems.csOrderNo, kw),
+          )
+        );
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const [list, countResult] = await Promise.all([
+        db.select({
+          id: playerItems.id,
+          playerId: playerItems.playerId,
+          playerNickname: players.nickname,
+          playerPhone: players.phone,
+          itemId: playerItems.itemId,
+          itemName: boxGoods.name,
+          itemImageUrl: boxGoods.imageUrl,
+          itemQuality: boxGoods.level,
+          itemValue: boxGoods.price,
+          source: playerItems.source,
+          status: playerItems.status,
+          csTemplateId: playerItems.csTemplateId,
+          csOrderNo: playerItems.csOrderNo,
+          recycleGold: playerItems.recycleGold,
+          extractedAt: playerItems.extractedAt,
+          createdAt: playerItems.createdAt,
+        })
+          .from(playerItems)
+          .leftJoin(players, eq(playerItems.playerId, players.id))
+          .leftJoin(boxGoods, eq(playerItems.itemId, boxGoods.id))
+          .where(whereClause)
+          .orderBy(desc(playerItems.createdAt))
+          .limit(input.limit)
+          .offset(offset),
+        db.select({ count: sql<number>`count(*)` })
+          .from(playerItems)
+          .leftJoin(players, eq(playerItems.playerId, players.id))
+          .where(whereClause),
+      ]);
+
+      return {
+        list: list.map(r => ({
+          ...r,
+          itemValue: parseFloat(String(r.itemValue ?? '0')),
+          recycleGold: parseFloat(String(r.recycleGold ?? '0')),
+        })),
+        total: Number(countResult[0]?.count ?? 0),
+      };
+    }),
+
+  /** 订单统计 */
+  extractStats: adminProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+    const [stats] = await db.select({
+      total: sql<number>`count(*)`,
+      pending: sql<number>`SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END)`,
+      extracted: sql<number>`SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END)`,
+      recycled: sql<number>`SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END)`,
+      totalValue: sql<string>`COALESCE(SUM(CASE WHEN status = 1 THEN (SELECT price FROM boxGoods WHERE boxGoods.id = playerItems.itemId LIMIT 1) ELSE 0 END), 0)`,
+      totalRecycled: sql<string>`COALESCE(SUM(recycleGold), 0)`,
+    }).from(playerItems);
+    return {
+      total: Number(stats?.total ?? 0),
+      pending: Number(stats?.pending ?? 0),
+      extracted: Number(stats?.extracted ?? 0),
+      recycled: Number(stats?.recycled ?? 0),
+      totalValue: parseFloat(String(stats?.totalValue ?? '0')),
+      totalRecycled: parseFloat(String(stats?.totalRecycled ?? '0')),
+    };
+  }),
 });
