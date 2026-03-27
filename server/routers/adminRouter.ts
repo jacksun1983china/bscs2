@@ -873,13 +873,12 @@ export const adminRouter = router({
     }),
 
   /** ========== 订单管理（提取记录） ========== */
+  /** 提货订单列表（只显示已发起提货的记录，status=1） */
   extractOrders: adminProcedure
     .input(z.object({
       page: z.number().min(1).default(1),
       limit: z.number().default(20),
-      status: z.number().optional(),       // 0=待处理 1=已提取 2=已回收
-      playerId: z.number().optional(),
-      keyword: z.string().optional(),       // 搜索：玩家昵称/手机号/订单号
+      keyword: z.string().optional(),       // 搜索：玩家昵称/手机号/cs2pifa订单号
       startDate: z.string().optional(),
       endDate: z.string().optional(),
     }))
@@ -888,22 +887,14 @@ export const adminRouter = router({
       if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
       const offset = (input.page - 1) * input.limit;
 
-      // 构建查询条件
-      const conditions: any[] = [];
-      if (input.status !== undefined) {
-        conditions.push(eq(playerItems.status, input.status));
-      }
-      if (input.playerId) {
-        conditions.push(eq(playerItems.playerId, input.playerId));
-      }
+      // 构建查询条件：只查询 status=1（已提货）的记录
+      const conditions: any[] = [eq(playerItems.status, 1)];
       if (input.startDate) {
-        conditions.push(gte(playerItems.createdAt, new Date(input.startDate)));
+        conditions.push(gte(playerItems.extractedAt, new Date(input.startDate)));
       }
       if (input.endDate) {
-        conditions.push(lte(playerItems.createdAt, new Date(input.endDate + ' 23:59:59')));
+        conditions.push(lte(playerItems.extractedAt, new Date(input.endDate + ' 23:59:59')));
       }
-
-      // 如果有关键词搜索，需要join players表
       if (input.keyword) {
         const kw = `%${input.keyword}%`;
         conditions.push(
@@ -915,7 +906,7 @@ export const adminRouter = router({
         );
       }
 
-      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereClause = and(...conditions);
 
       const [list, countResult] = await Promise.all([
         db.select({
@@ -932,7 +923,6 @@ export const adminRouter = router({
           status: playerItems.status,
           csTemplateId: playerItems.csTemplateId,
           csOrderNo: playerItems.csOrderNo,
-          recycleGold: playerItems.recycleGold,
           extractedAt: playerItems.extractedAt,
           createdAt: playerItems.createdAt,
         })
@@ -940,7 +930,7 @@ export const adminRouter = router({
           .leftJoin(players, eq(playerItems.playerId, players.id))
           .leftJoin(boxGoods, eq(playerItems.itemId, boxGoods.id))
           .where(whereClause)
-          .orderBy(desc(playerItems.createdAt))
+          .orderBy(desc(playerItems.extractedAt))
           .limit(input.limit)
           .offset(offset),
         db.select({ count: sql<number>`count(*)` })
@@ -953,31 +943,26 @@ export const adminRouter = router({
         list: list.map(r => ({
           ...r,
           itemValue: parseFloat(String(r.itemValue ?? '0')),
-          recycleGold: parseFloat(String(r.recycleGold ?? '0')),
         })),
         total: Number(countResult[0]?.count ?? 0),
       };
     }),
 
-  /** 订单统计 */
+  /** 提货统计（只统计已提货的记录） */
   extractStats: adminProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
     const [stats] = await db.select({
-      total: sql<number>`count(*)`,
-      pending: sql<number>`SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END)`,
-      extracted: sql<number>`SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END)`,
-      recycled: sql<number>`SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END)`,
+      total: sql<number>`SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END)`,
+      todayCount: sql<number>`SUM(CASE WHEN status = 1 AND DATE(extractedAt) = CURDATE() THEN 1 ELSE 0 END)`,
       totalValue: sql<string>`COALESCE(SUM(CASE WHEN status = 1 THEN (SELECT price FROM boxGoods WHERE boxGoods.id = playerItems.itemId LIMIT 1) ELSE 0 END), 0)`,
-      totalRecycled: sql<string>`COALESCE(SUM(recycleGold), 0)`,
+      todayValue: sql<string>`COALESCE(SUM(CASE WHEN status = 1 AND DATE(extractedAt) = CURDATE() THEN (SELECT price FROM boxGoods WHERE boxGoods.id = playerItems.itemId LIMIT 1) ELSE 0 END), 0)`,
     }).from(playerItems);
     return {
       total: Number(stats?.total ?? 0),
-      pending: Number(stats?.pending ?? 0),
-      extracted: Number(stats?.extracted ?? 0),
-      recycled: Number(stats?.recycled ?? 0),
+      todayCount: Number(stats?.todayCount ?? 0),
       totalValue: parseFloat(String(stats?.totalValue ?? '0')),
-      totalRecycled: parseFloat(String(stats?.totalRecycled ?? '0')),
+      todayValue: parseFloat(String(stats?.todayValue ?? '0')),
     };
   }),
 });
