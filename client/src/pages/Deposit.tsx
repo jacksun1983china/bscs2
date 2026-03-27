@@ -185,7 +185,7 @@ export default function Deposit() {
           <div
             onClick={() => setPayMethod('weixin')}
             style={{
-              flex: 1, position: 'relative', cursor: 'pointer',
+              flex: 1, position: 'relative', cursor: 'pointer', display: 'none',
               opacity: payMethod === 'weixin' ? 1 : 0.6, transition: 'opacity 0.2s',
               border: payMethod === 'weixin' ? `${q(3)} solid #22c55e` : `${q(3)} solid transparent`,
               borderRadius: q(12), overflow: 'hidden',
