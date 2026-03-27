@@ -452,12 +452,13 @@ async function checkAndFillRooms() {
 
       for (let i = 0; i < needed; i++) {
         // 关键：先用原子 SQL 占座（与真实玩家 joinRoom 相同的并发安全机制）
-        // WHERE status='waiting' AND current_players < max_players 确保不超员
+        // 注意：MySQL UPDATE SET 从左到右执行，后面的表达式看到的是已更新的值
+        // 所以 currentPlayers 先 +1 后，后面直接用 currentPlayers >= maxPlayers 判断
         const [atomicResult] = await db.execute(
           sql`UPDATE arenaRooms
               SET currentPlayers = currentPlayers + 1,
-                  status = CASE WHEN currentPlayers + 1 >= maxPlayers THEN 'playing' ELSE 'waiting' END,
-                  currentRound = CASE WHEN currentPlayers + 1 >= maxPlayers THEN 1 ELSE 0 END
+                  status = CASE WHEN currentPlayers >= maxPlayers THEN 'playing' ELSE 'waiting' END,
+                  currentRound = CASE WHEN currentPlayers >= maxPlayers THEN 1 ELSE 0 END
               WHERE id = ${freshRoom.id}
                 AND status = 'waiting'
                 AND currentPlayers < maxPlayers`

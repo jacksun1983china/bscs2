@@ -278,11 +278,13 @@ export const arenaRouter = router({
       if (gold < entryFee) throw new TRPCError({ code: "BAD_REQUEST", message: `金币不足，需要 ${entryFee} 金币` });
 
       // 原子占座（并发安全）
+      // 注意：MySQL UPDATE SET 从左到右执行，后面的表达式看到的是已更新的值
+      // 所以 currentPlayers 先 +1 后，后面直接用 currentPlayers >= maxPlayers 判断
       const [updateResult] = await db.execute(
         sql`UPDATE arenaRooms
             SET currentPlayers = currentPlayers + 1,
-                status = CASE WHEN currentPlayers + 1 >= maxPlayers THEN 'playing' ELSE 'waiting' END,
-                currentRound = CASE WHEN currentPlayers + 1 >= maxPlayers THEN 1 ELSE 0 END
+                status = CASE WHEN currentPlayers >= maxPlayers THEN 'playing' ELSE 'waiting' END,
+                currentRound = CASE WHEN currentPlayers >= maxPlayers THEN 1 ELSE 0 END
             WHERE id = ${input.roomId}
               AND status = 'waiting'
               AND currentPlayers < maxPlayers`
