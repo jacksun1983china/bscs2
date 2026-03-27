@@ -531,6 +531,7 @@ export const adminRouter = router({
           status: rechargeOrders.status,
           remark: rechargeOrders.remark,
           createdAt: rechargeOrders.createdAt,
+          platformOrderNo: rechargeOrders.platformOrderNo,
           playerNickname: players.nickname,
           playerPhone: players.phone,
         })

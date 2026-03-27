@@ -177,8 +177,12 @@ export const rechargeOrders = mysqlTable("rechargeOrders", {
   bonusDiamond: decimal("bonusDiamond", { precision: 15, scale: 2 }).notNull().default("0.00"),
   /** 支付方式：alipay/wechat/manual */
   payMethod: varchar("payMethod", { length: 50 }).notNull().default("manual"),
-  /** 状态：0待支付 1已完成 2已取消 */
+  /** 状态：0待支付 1充值成功 2已取消 3回调中 4回调失败 */
   status: tinyint("status").notNull().default(0),
+  /** 支付平台订单号 */
+  platformOrderNo: varchar("platformOrderNo", { length: 128 }).notNull().default(""),
+  /** 支付链接 */
+  payUrl: varchar("payUrl", { length: 512 }).notNull().default(""),
   /** 备注 */
   remark: varchar("remark", { length: 255 }).notNull().default(""),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -462,6 +466,10 @@ export const gameSettings = mysqlTable("gameSettings", {
   maxMultiplier: decimal("maxMultiplier", { precision: 10, scale: 2 }).notNull().default("30000.00"),
   /** 是否启用 */
   enabled: tinyint("enabled").notNull().default(1),
+  /** 支付平台订单号 */
+  platformOrderNo: varchar("platformOrderNo", { length: 128 }).notNull().default(""),
+  /** 支付链接 */
+  payUrl: varchar("payUrl", { length: 512 }).notNull().default(""),
   /** 备注 */
   remark: varchar("remark", { length: 255 }).notNull().default(""),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -683,6 +691,10 @@ export const gameConfigs = mysqlTable("gameConfigs", {
   maxBet: int("maxBet").notNull().default(1000000),
   /** 排序 */
   sort: int("sort").notNull().default(0),
+  /** 支付平台订单号 */
+  platformOrderNo: varchar("platformOrderNo", { length: 128 }).notNull().default(""),
+  /** 支付链接 */
+  payUrl: varchar("payUrl", { length: 512 }).notNull().default(""),
   /** 备注 */
   remark: varchar("remark", { length: 255 }).notNull().default(""),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
