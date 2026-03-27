@@ -15,7 +15,7 @@ const OXAPAY_CONFIG = {
   /** OxaPay API 端点 */
   apiUrl: "https://api.oxapay.com/v1/payment/invoice",
   /** 商户 API 密钥 */
-  merchantApiKey: "ZM6HY6-7JI2UV-B15YSU-66DUZE",
+  merchantApiKey: "PM99VC-IW1DDW-14OC0L-MUMDJ4",
   /** 异步通知回调地址（POST方式） */
   callbackUrl: "https://bdcs2.com/api/payment/oxapay-notify",
   /** 支付完成后跳转地址 */
