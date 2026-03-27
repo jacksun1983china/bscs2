@@ -145,7 +145,7 @@ function ShopItemCard({ item, onBuy }: { item: Cs2Product; onBuy: () => void }) 
               fontSize: q(28),
               fontWeight: 700,
             }}>
-              {item.referencePrice.toFixed(2)}
+              {item.minSellPrice.toFixed(2)}
             </span>
           </div>
           {item.sellNum > 1 && (
@@ -180,7 +180,7 @@ function BuyModal({
   onCancel: () => void;
   loading: boolean;
 }) {
-  const canAfford = balance >= item.referencePrice;
+  const canAfford = balance >= item.minSellPrice;
   return (
     <div style={{
       position: 'absolute',
@@ -212,7 +212,7 @@ function BuyModal({
             <div style={{ display: 'flex', alignItems: 'center', gap: q(6), marginTop: q(10) }}>
               <img src={S.priceIcon} alt="" style={{ width: q(28), height: q(28) }} />
               <span style={{ color: '#ffd700', fontSize: q(32), fontWeight: 700 }}>
-                {item.referencePrice.toFixed(2)}
+                {item.minSellPrice.toFixed(2)}
               </span>
             </div>
           </div>
@@ -335,7 +335,7 @@ export default function Shop() {
       templateId: buyItem.templateId,
       templateName: buyItem.templateName,
       iconUrl: buyItem.iconUrl,
-      referencePrice: buyItem.referencePrice,
+      referencePrice: buyItem.minSellPrice,
     });
   };
 
