@@ -344,11 +344,16 @@ export const appRouter = router({
         // 调用第三方支付平台创建支付订单
         if (input.payMethod !== 'manual') {
           try {
+            // 获取用户真实IP
+            const forwarded = ctx.req.headers['x-forwarded-for'];
+            const clientIp = (typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : ctx.req.socket?.remoteAddress) || '127.0.0.1';
             const payResult = await createPaymentOrder({
               orderNo,
               amount,
               payMethod: input.payMethod as 'alipay' | 'wechat',
               productName: `充值${amount}元`,
+              clientIp: clientIp.replace('::ffff:', ''),
+              uid: String(session.playerId),
             });
             if (payResult.success && payResult.payUrl) {
               // 更新订单的支付链接和平台订单号

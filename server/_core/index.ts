@@ -86,21 +86,21 @@ async function startServer() {
   });
 
 
-  // ── 支付平台异步回调通知 ──────────────────────────────────────────
-  app.post('/api/payment/notify', async (req, res) => {
+  // ── 支付平台异步回调通知（GET方式，query参数） ─────────────────────────
+  app.get('/api/payment/notify', async (req, res) => {
     try {
-      console.log("[Payment Notify] 收到支付回调:", JSON.stringify(req.body));
-      const notifyData = parsePaymentNotify(req.body);
+      console.log("[Payment Notify] 收到支付回调(GET):", JSON.stringify(req.query));
+      const notifyData = parsePaymentNotify(req.query as Record<string, any>);
       
       if (!notifyData.signValid) {
         console.error("[Payment Notify] 签名验证失败");
-        res.status(400).send("sign error");
+        res.status(200).send("sign error");
         return;
       }
       
       if (notifyData.status !== "paid") {
         console.log("[Payment Notify] 支付未成功, status:", notifyData.status);
-        res.status(200).send("ok");
+        res.status(200).send("success");
         return;
       }
       
@@ -115,18 +115,21 @@ async function startServer() {
       }
       
       // 查询订单
-      const [order] = await db.execute(sql`SELECT id, playerId, gold, bonusDiamond, status FROM rechargeOrders WHERE orderNo = ${notifyData.orderNo} LIMIT 1`);
-      const orderRow = (order as any)?.[0] || (order as any);
+      const orderResult = await db.execute(sql`SELECT id, playerId, gold, bonusDiamond, status FROM rechargeOrders WHERE orderNo = ${notifyData.orderNo} LIMIT 1`);
+      const rows = Array.isArray(orderResult) ? (orderResult[0] || orderResult) : orderResult;
+      const orderRow = Array.isArray(rows) ? rows[0] : rows;
       
-      if (!orderRow || !orderRow.id) {
+      if (!orderRow || !(orderRow as any).id) {
         console.error("[Payment Notify] 订单不存在:", notifyData.orderNo);
-        res.status(200).send("ok");
+        res.status(200).send("success");
         return;
       }
       
-      if (orderRow.status === 1) {
+      const order = orderRow as any;
+      
+      if (order.status === 1) {
         console.log("[Payment Notify] 订单已处理过:", notifyData.orderNo);
-        res.status(200).send("ok");
+        res.status(200).send("success");
         return;
       }
       
@@ -134,28 +137,30 @@ async function startServer() {
       await db.execute(sql`UPDATE rechargeOrders SET status = 1, platformOrderNo = ${notifyData.platformOrderNo || ''}, updatedAt = NOW() WHERE orderNo = ${notifyData.orderNo} AND status = 0`);
       
       // 给玩家加金币
-      const goldAmount = parseFloat(String(orderRow.gold)) || 0;
-      const bonusDiamond = parseFloat(String(orderRow.bonusDiamond)) || 0;
+      const goldAmount = parseFloat(String(order.gold)) || 0;
+      const bonusDiamond = parseFloat(String(order.bonusDiamond)) || 0;
       
       if (goldAmount > 0) {
-        await db.execute(sql`UPDATE players SET gold = gold + ${goldAmount} WHERE id = ${orderRow.playerId}`);
+        await db.execute(sql`UPDATE players SET gold = gold + ${goldAmount} WHERE id = ${order.playerId}`);
         // 记录金币日志
         const { insertGoldLog } = await import("../db");
-        const [playerRow] = await db.execute(sql`SELECT gold FROM players WHERE id = ${orderRow.playerId}`);
-        const newGold = parseFloat(String((playerRow as any)?.[0]?.gold || (playerRow as any)?.gold || 0));
-        await insertGoldLog(orderRow.playerId, goldAmount, newGold, 'recharge', `充值 ${goldAmount} 金币`);
+        const playerResult = await db.execute(sql`SELECT gold FROM players WHERE id = ${order.playerId}`);
+        const pRows = Array.isArray(playerResult) ? (playerResult[0] || playerResult) : playerResult;
+        const pRow = Array.isArray(pRows) ? pRows[0] : pRows;
+        const newGold = parseFloat(String((pRow as any)?.gold || 0));
+        await insertGoldLog(order.playerId, goldAmount, newGold, 'recharge', `充值 ${goldAmount} 金币`);
       }
       
       // 如果有赠送钻石
       if (bonusDiamond > 0) {
-        await db.execute(sql`UPDATE players SET diamond = diamond + ${bonusDiamond} WHERE id = ${orderRow.playerId}`);
+        await db.execute(sql`UPDATE players SET diamond = diamond + ${bonusDiamond} WHERE id = ${order.playerId}`);
       }
       
-      console.log(`[Payment Notify] 充值成功: orderNo=${notifyData.orderNo}, playerId=${orderRow.playerId}, gold=${goldAmount}, diamond=${bonusDiamond}`);
-      res.status(200).send("ok");
+      console.log(`[Payment Notify] 充值成功: orderNo=${notifyData.orderNo}, playerId=${order.playerId}, gold=${goldAmount}, diamond=${bonusDiamond}`);
+      res.status(200).send("success");
     } catch (err) {
       console.error("[Payment Notify] 处理回调异常:", err);
-      res.status(200).send("ok");
+      res.status(200).send("success");
     }
   });
 
