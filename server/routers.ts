@@ -1,4 +1,5 @@
 import { createPaymentOrder } from "./paymentApi";
+import { createOxaPayInvoice } from "./oxaPayApi";
 import { adminRouter } from "./routers/adminRouter";
 import { TRPCError } from "@trpc/server";
 import { arenaRouter } from "./arenaRouter";
@@ -311,18 +312,67 @@ export const appRouter = router({
         return getPlayerRechargeOrders(session.playerId, input.page, input.limit);
       }),
 
-    /** 创建充値订单 - 对接第三方支付平台 */
+    /** 创建充値订单 - 对接第三方支付平台（支付宝）或 OxaPay（USDT） */
     createRechargeOrder: publicProcedure
       .input(z.object({
-        configId: z.number().int().positive(),
-        payMethod: z.enum(['alipay', 'wechat', 'manual']).default('alipay'),
+        configId: z.number().int().positive().optional(),
+        payMethod: z.enum(['alipay', 'wechat', 'manual', 'usdt']).default('alipay'),
         remark: z.string().max(200).optional().default(''),
+        usdtAmount: z.number().positive().optional(),
+        usdtRate: z.number().positive().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const session = await getPlayerFromCookie(ctx.req);
         if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+        // ── USDT 支付 (OxaPay) ──────────────────────────────────────
+        if (input.payMethod === 'usdt') {
+          if (!input.usdtAmount) throw new TRPCError({ code: "BAD_REQUEST", message: "请选择USDT充值金额" });
+          const VALID_USDT_TIERS = [10, 50, 100, 500, 1000, 5000, 10000, 50000];
+          if (!VALID_USDT_TIERS.includes(input.usdtAmount)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "无效的USDT充值金额" });
+          }
+          const usdtRate = input.usdtRate || 7.20;
+          const cnyAmount = Math.round(input.usdtAmount * usdtRate);
+          const goldAmount = cnyAmount; // 1 CNY = 1 金币
+          const orderNo = `U${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+          // 创建待支付订单
+          await db.insert(rechargeOrders).values({
+            orderNo,
+            playerId: session.playerId,
+            amount: String(cnyAmount) as any,
+            gold: String(goldAmount) as any,
+            bonusDiamond: '0.00' as any,
+            payMethod: 'usdt',
+            status: 0,
+            remark: `USDT充值 ${input.usdtAmount} USDT, 汇率 ${usdtRate}, 折合 ¥${cnyAmount}`,
+          });
+          // 调用 OxaPay 创建发票
+          try {
+            const oxaResult = await createOxaPayInvoice({
+              orderNo,
+              amount: input.usdtAmount,
+              description: `充值 ${input.usdtAmount} USDT (≈¥${cnyAmount})`,
+            });
+            if (oxaResult.success && oxaResult.payUrl) {
+              await db.execute(sql`UPDATE rechargeOrders SET platformOrderNo = ${oxaResult.trackId || ''}, payUrl = ${oxaResult.payUrl} WHERE orderNo = ${orderNo}`);
+              return { success: true, orderNo, amount: cnyAmount, gold: goldAmount, payUrl: oxaResult.payUrl, usdtAmount: input.usdtAmount };
+            } else {
+              await db.execute(sql`UPDATE rechargeOrders SET remark = ${oxaResult.error || 'OxaPay创建发票失败'} WHERE orderNo = ${orderNo}`);
+              throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: oxaResult.error || "USDT支付通道暂时不可用" });
+            }
+          } catch (err: unknown) {
+            if (err instanceof TRPCError) throw err;
+            const errMsg = err instanceof Error ? err.message : String(err);
+            console.error("[OxaPay] 创建发票异常:", errMsg);
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "USDT支付通道暂时不可用，请稍后重试" });
+          }
+        }
+
+        // ── 支付宝/微信支付（原有逻辑） ──────────────────────────────
+        if (!input.configId) throw new TRPCError({ code: "BAD_REQUEST", message: "请选择充值金额" });
         // 获取充値配置
         const configRows = await db.select().from(rechargeConfigs).where(eq(rechargeConfigs.id, input.configId));
         if (!configRows.length) throw new TRPCError({ code: "NOT_FOUND", message: "充値配置不存在" });

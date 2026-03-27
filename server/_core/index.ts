@@ -1,4 +1,5 @@
 import { parsePaymentNotify } from "../paymentApi";
+import { parseOxaPayNotify } from "../oxaPayApi";
 import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
@@ -161,6 +162,90 @@ async function startServer() {
     } catch (err) {
       console.error("[Payment Notify] 处理回调异常:", err);
       res.status(200).send("success");
+    }
+  });
+
+  // ── OxaPay USDT 支付回调通知（POST方式，JSON body） ─────────────────
+  // 注意：需要在 express.json() 之前捕获 raw body 用于 HMAC 验证
+  app.post('/api/payment/oxapay-notify', express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+      const rawBody = req.body.toString('utf8');
+      const hmacHeader = String(req.headers['hmac'] || req.headers['HMAC'] || '');
+      const body = JSON.parse(rawBody);
+      console.log("[OxaPay Notify] 收到支付回调(POST):", rawBody.substring(0, 500));
+
+      const notifyData = parseOxaPayNotify(body, rawBody, hmacHeader);
+
+      if (!notifyData.hmacValid) {
+        console.error("[OxaPay Notify] HMAC签名验证失败");
+        res.status(200).send("ok");
+        return;
+      }
+
+      if (!notifyData.isPaid) {
+        console.log("[OxaPay Notify] 支付未完成, status:", notifyData.status);
+        res.status(200).send("ok");
+        return;
+      }
+
+      // 查找订单并更新状态
+      const { getDb } = await import("../db");
+      const { sql } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) {
+        console.error("[OxaPay Notify] 数据库连接失败");
+        res.status(500).send("db error");
+        return;
+      }
+
+      // 用 order_id 查询订单
+      const orderNo = notifyData.orderId;
+      const orderResult = await db.execute(sql`SELECT id, playerId, gold, bonusDiamond, status FROM rechargeOrders WHERE orderNo = ${orderNo} LIMIT 1`);
+      const rows = Array.isArray(orderResult) ? (orderResult[0] || orderResult) : orderResult;
+      const orderRow = Array.isArray(rows) ? rows[0] : rows;
+
+      if (!orderRow || !(orderRow as any).id) {
+        console.error("[OxaPay Notify] 订单不存在:", orderNo);
+        res.status(200).send("ok");
+        return;
+      }
+
+      const order = orderRow as any;
+
+      if (order.status === 1) {
+        console.log("[OxaPay Notify] 订单已处理过:", orderNo);
+        res.status(200).send("ok");
+        return;
+      }
+
+      // 更新订单状态为已支付
+      await db.execute(sql`UPDATE rechargeOrders SET status = 1, platformOrderNo = ${notifyData.trackId || ''}, updatedAt = NOW() WHERE orderNo = ${orderNo} AND status = 0`);
+
+      // 给玩家加金币
+      const goldAmount = parseFloat(String(order.gold)) || 0;
+      const bonusDiamond = parseFloat(String(order.bonusDiamond)) || 0;
+
+      if (goldAmount > 0) {
+        await db.execute(sql`UPDATE players SET gold = gold + ${goldAmount} WHERE id = ${order.playerId}`);
+        // 记录金币日志
+        const { insertGoldLog } = await import("../db");
+        const playerResult = await db.execute(sql`SELECT gold FROM players WHERE id = ${order.playerId}`);
+        const pRows = Array.isArray(playerResult) ? (playerResult[0] || playerResult) : playerResult;
+        const pRow = Array.isArray(pRows) ? pRows[0] : pRows;
+        const newGold = parseFloat(String((pRow as any)?.gold || 0));
+        await insertGoldLog(order.playerId, goldAmount, newGold, 'recharge', `USDT充值 ${goldAmount} 金币`);
+      }
+
+      // 如果有赠送钻石
+      if (bonusDiamond > 0) {
+        await db.execute(sql`UPDATE players SET diamond = diamond + ${bonusDiamond} WHERE id = ${order.playerId}`);
+      }
+
+      console.log(`[OxaPay Notify] USDT充值成功: orderNo=${orderNo}, playerId=${order.playerId}, gold=${goldAmount}, diamond=${bonusDiamond}`);
+      res.status(200).send("ok");
+    } catch (err) {
+      console.error("[OxaPay Notify] 处理回调异常:", err);
+      res.status(200).send("ok");
     }
   });
 

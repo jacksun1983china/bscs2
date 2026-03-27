@@ -121,32 +121,43 @@ export default function Deposit() {
   const handleRecharge = async () => {
     if (isSubmitting) return;
 
-    if (isUsdt) {
-      // USDT暂未开放
-      toast.error('USDT支付通道即将开放，敬请期待');
-      return;
-    }
-
-    // 支付宝模式
-    const config = configsData?.find((c: any) => Number(c.amount) === selectedAmount);
-    if (!config) {
-      toast.error('请先选择充值金额');
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      const result = await createOrderMut.mutateAsync({
-        configId: config.id,
-        payMethod: 'alipay',
-      });
-      if (result.success && result.payUrl) {
-        toast.success('正在跳转支付页面...');
-        window.location.href = result.payUrl;
-      } else if (result.success) {
-        toast.success(`订单创建成功！订单号: ${result.orderNo}`);
+      if (isUsdt) {
+        // USDT 模式 - 调用 OxaPay 支付
+        const result = await createOrderMut.mutateAsync({
+          payMethod: 'usdt',
+          usdtAmount: selectedUsdt,
+          usdtRate: usdtRate,
+        });
+        if (result.success && result.payUrl) {
+          toast.success('正在跳转 USDT 支付页面...');
+          window.location.href = result.payUrl;
+        } else if (result.success) {
+          toast.success(`订单创建成功！订单号: ${result.orderNo}`);
+        } else {
+          toast.error('创建订单失败，请重试');
+        }
       } else {
-        toast.error('创建订单失败，请重试');
+        // 支付宝模式
+        const config = configsData?.find((c: any) => Number(c.amount) === selectedAmount);
+        if (!config) {
+          toast.error('请先选择充值金额');
+          setIsSubmitting(false);
+          return;
+        }
+        const result = await createOrderMut.mutateAsync({
+          configId: config.id,
+          payMethod: 'alipay',
+        });
+        if (result.success && result.payUrl) {
+          toast.success('正在跳转支付页面...');
+          window.location.href = result.payUrl;
+        } else if (result.success) {
+          toast.success(`订单创建成功！订单号: ${result.orderNo}`);
+        } else {
+          toast.error('创建订单失败，请重试');
+        }
       }
     } catch (err: any) {
       const msg = err?.message || err?.data?.message || '支付服务暂时不可用，请稍后重试';
