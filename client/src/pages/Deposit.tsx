@@ -1,6 +1,7 @@
 /**
  * Deposit.tsx — 充值页面
  * 支持支付宝（第三方支付）和 USDT（OxaPay）两种支付方式
+ * USDT模式下实时显示汇率和换算后的USDT金额
  */
 import { PageSlideIn } from '@/components/PageTransition';
 import { useState, useMemo, useEffect } from 'react';
@@ -46,8 +47,31 @@ export default function Deposit() {
   const [payMethod, setPayMethod] = useState<PayMethod>('alipay');
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [usdtRate, setUsdtRate] = useState<number>(7.20);
+  const [rateLoading, setRateLoading] = useState(false);
 
   const { data: configsData, isLoading: configsLoading } = trpc.player.rechargeConfigs.useQuery();
+
+  // 获取USDT实时汇率
+  useEffect(() => {
+    const fetchRate = async () => {
+      setRateLoading(true);
+      try {
+        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=cny');
+        const data = await res.json();
+        if (data?.tether?.cny) {
+          setUsdtRate(data.tether.cny);
+        }
+      } catch (e) {
+        console.log('汇率获取失败，使用默认汇率');
+      } finally {
+        setRateLoading(false);
+      }
+    };
+    fetchRate();
+    const timer = setInterval(fetchRate, 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (configsData && configsData.length > 0) {
@@ -79,6 +103,13 @@ export default function Deposit() {
     return Math.max(...amounts.map(a => a.amount));
   }, [amounts]);
 
+  // CNY 转 USDT
+  const cnyToUsdt = (cny: number) => {
+    return (cny / usdtRate).toFixed(2);
+  };
+
+  const isUsdt = payMethod === 'usdt';
+
   // 处理充值点击
   const handleRecharge = async () => {
     if (isSubmitting) return;
@@ -88,7 +119,6 @@ export default function Deposit() {
       return;
     }
 
-    // USDT暂未开放提示
     if (payMethod === 'usdt') {
       toast.error('USDT支付通道即将开放，敬请期待');
       return;
@@ -183,7 +213,6 @@ export default function Deposit() {
         >
           {/* 支付方式 - 两个小按钮并排 */}
           <div style={{ display: 'flex', flexDirection: 'row', gap: q(16), padding: `${q(24)} ${q(30)} 0` }}>
-            {/* 支付宝按钮 */}
             <div
               onClick={() => setPayMethod('alipay')}
               style={payBtnStyle(payMethod === 'alipay', '#1677FF')}
@@ -199,7 +228,6 @@ export default function Deposit() {
               </span>
             </div>
 
-            {/* USDT按钮 */}
             <div
               onClick={() => setPayMethod('usdt')}
               style={payBtnStyle(payMethod === 'usdt', '#26A17B')}
@@ -216,24 +244,69 @@ export default function Deposit() {
             </div>
           </div>
 
+          {/* USDT 实时汇率显示 */}
+          {isUsdt && (
+            <div style={{
+              margin: `${q(12)} ${q(30)} 0`,
+              padding: `${q(12)} ${q(20)}`,
+              borderRadius: q(10),
+              background: 'linear-gradient(135deg, rgba(38,161,123,0.15) 0%, rgba(38,161,123,0.08) 100%)',
+              border: `${q(1)} solid rgba(38,161,123,0.3)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: q(8) }}>
+                <div style={{
+                  width: q(10),
+                  height: q(10),
+                  borderRadius: '50%',
+                  background: rateLoading ? '#f59e0b' : '#22c55e',
+                  boxShadow: rateLoading ? '0 0 6px #f59e0b' : '0 0 6px #22c55e',
+                  animation: rateLoading ? 'ratePulse 1s ease-in-out infinite' : 'none',
+                }} />
+                <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: q(20) }}>
+                  实时汇率
+                </span>
+              </div>
+              <span style={{ color: '#26A17B', fontSize: q(22), fontWeight: 700 }}>
+                1 USDT ≈ ¥{usdtRate.toFixed(2)}
+              </span>
+            </div>
+          )}
+
           {/* 充值金额提示 */}
           <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', padding: `${q(20)} ${q(30)} 0`, gap: q(16) }}>
             <span style={{ color: '#fff', fontSize: q(28), fontWeight: 700, whiteSpace: 'nowrap' }}>充值金额</span>
             <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: q(22), whiteSpace: 'nowrap' }}>
-              最低：¥{minAmount}&nbsp;&nbsp;最高：¥{maxAmount}
+              {isUsdt
+                ? `最低：${cnyToUsdt(minAmount)} USDT　最高：${cnyToUsdt(maxAmount)} USDT`
+                : `最低：¥${minAmount}　最高：¥${maxAmount}`
+              }
             </span>
           </div>
 
           {/* 金额输入框 */}
           <div style={{ margin: `${q(12)} ${q(30)} 0`, position: 'relative', height: q(84) }}>
             <img src={CZ.inputBg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
-            <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-              <span style={{ color: 'rgba(255,246,13,1)', fontSize: q(36), fontWeight: 700 }}>
-                {payMethod === 'usdt' ? '$' : '￥'}
-              </span>
-              <span style={{ color: 'rgba(255,246,13,1)', fontSize: q(46), fontWeight: 700, marginLeft: q(4) }}>
-                {selectedAmount}
-              </span>
+            <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: q(6) }}>
+              {isUsdt ? (
+                <>
+                  <span style={{ color: '#26A17B', fontSize: q(46), fontWeight: 700 }}>
+                    {cnyToUsdt(selectedAmount)}
+                  </span>
+                  <span style={{ color: '#26A17B', fontSize: q(26), fontWeight: 600, marginTop: q(6) }}>
+                    USDT
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span style={{ color: 'rgba(255,246,13,1)', fontSize: q(36), fontWeight: 700 }}>￥</span>
+                  <span style={{ color: 'rgba(255,246,13,1)', fontSize: q(46), fontWeight: 700, marginLeft: q(4) }}>
+                    {selectedAmount}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
@@ -261,11 +334,30 @@ export default function Deposit() {
                   onClick={() => setSelectedAmount(item.amount)}
                   style={{ position: 'relative', cursor: 'pointer', aspectRatio: '164/148' }}
                 >
-                  <img
-                    src={isSelected ? CZ.cardSelected : CZ.cardNormal}
-                    alt=""
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }}
-                  />
+                  {/* USDT模式用绿色自绘卡片，支付宝模式用原图 */}
+                  {isUsdt ? (
+                    <div style={{
+                      position: 'absolute',
+                      inset: 0,
+                      borderRadius: q(12),
+                      background: isSelected
+                        ? 'linear-gradient(135deg, #26A17B 0%, #1a7a5c 50%, #26A17B 100%)'
+                        : 'linear-gradient(135deg, #1a3a30 0%, #0f2520 50%, #1a3a30 100%)',
+                      border: isSelected
+                        ? `${q(2)} solid #26A17B`
+                        : `${q(2)} solid rgba(38,161,123,0.3)`,
+                      boxShadow: isSelected
+                        ? '0 0 12px rgba(38,161,123,0.5), inset 0 1px 0 rgba(255,255,255,0.1)'
+                        : 'inset 0 1px 0 rgba(255,255,255,0.05)',
+                      transition: 'all 0.2s ease',
+                    }} />
+                  ) : (
+                    <img
+                      src={isSelected ? CZ.cardSelected : CZ.cardNormal}
+                      alt=""
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }}
+                    />
+                  )}
                   {hasBonus && (
                     <div
                       style={{
@@ -273,12 +365,16 @@ export default function Deposit() {
                         top: q(-6),
                         right: q(-6),
                         zIndex: 3,
-                        background: 'linear-gradient(135deg, #ff8c00 0%, #ff4500 100%)',
+                        background: isUsdt
+                          ? 'linear-gradient(135deg, #26A17B 0%, #1a7a5c 100%)'
+                          : 'linear-gradient(135deg, #ff8c00 0%, #ff4500 100%)',
                         borderRadius: q(20),
                         padding: `${q(3)} ${q(8)}`,
                         minWidth: q(44),
-                        textAlign: 'center',
-                        boxShadow: '0 2px 6px rgba(255,80,0,0.5)',
+                        textAlign: 'center' as const,
+                        boxShadow: isUsdt
+                          ? '0 2px 6px rgba(38,161,123,0.5)'
+                          : '0 2px 6px rgba(255,80,0,0.5)',
                       }}
                     >
                       <span style={{ color: '#fff', fontSize: q(18), fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -295,14 +391,37 @@ export default function Deposit() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       height: '100%',
+                      gap: q(2),
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: q(2) }}>
-                      <span style={{ color: isSelected ? '#ffe066' : '#fff', fontSize: q(20), fontWeight: 700 }}>¥</span>
-                      <span style={{ color: isSelected ? '#ffe066' : '#fff', fontSize: q(30), fontWeight: 900 }}>
-                        {item.amount >= 1000 ? `${item.amount / 1000}k` : item.amount}
-                      </span>
-                    </div>
+                    {isUsdt ? (
+                      <>
+                        <span style={{
+                          color: isSelected ? '#fff' : 'rgba(255,255,255,0.85)',
+                          fontSize: q(26),
+                          fontWeight: 900,
+                          lineHeight: 1,
+                        }}>
+                          {cnyToUsdt(item.amount)}
+                        </span>
+                        <span style={{
+                          color: isSelected ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.5)',
+                          fontSize: q(16),
+                          fontWeight: 600,
+                          lineHeight: 1,
+                          marginTop: q(4),
+                        }}>
+                          USDT
+                        </span>
+                      </>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: q(2) }}>
+                        <span style={{ color: isSelected ? '#ffe066' : '#fff', fontSize: q(20), fontWeight: 700 }}>¥</span>
+                        <span style={{ color: isSelected ? '#ffe066' : '#fff', fontSize: q(30), fontWeight: 900 }}>
+                          {item.amount >= 1000 ? `${item.amount / 1000}k` : item.amount}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -315,22 +434,64 @@ export default function Deposit() {
               style={{ position: 'relative', cursor: isSubmitting ? 'not-allowed' : 'pointer', width: '100%', opacity: isSubmitting ? 0.7 : 1 }}
               onClick={handleRecharge}
             >
-              <img src={CZ.btnChongzhi} alt="充值" style={{ width: '100%', display: 'block' }} />
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ color: '#fff', fontSize: q(34), fontWeight: 700, letterSpacing: 2, textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
-                  {isSubmitting ? '提交中...' : `充值 ${payMethod === 'usdt' ? '$' : '¥'}${selectedAmount}`}
-                </span>
-              </div>
+              {isUsdt ? (
+                <div style={{
+                  width: '100%',
+                  padding: `${q(24)} 0`,
+                  borderRadius: q(16),
+                  background: 'linear-gradient(135deg, #26A17B 0%, #1a7a5c 50%, #2fd4a0 100%)',
+                  boxShadow: '0 4px 20px rgba(38,161,123,0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <span style={{ color: '#fff', fontSize: q(34), fontWeight: 700, letterSpacing: 2, textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+                    {isSubmitting ? '提交中...' : `充值 ${cnyToUsdt(selectedAmount)} USDT`}
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <img src={CZ.btnChongzhi} alt="充值" style={{ width: '100%', display: 'block' }} />
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ color: '#fff', fontSize: q(34), fontWeight: 700, letterSpacing: 2, textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
+                      {isSubmitting ? '提交中...' : `充值 ¥${selectedAmount}`}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
+
+          {/* USDT模式下显示换算提示 */}
+          {isUsdt && (
+            <div style={{
+              margin: `${q(12)} ${q(30)} 0`,
+              padding: `${q(10)} ${q(16)}`,
+              borderRadius: q(8),
+              background: 'rgba(38,161,123,0.08)',
+              textAlign: 'center' as const,
+            }}>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: q(20) }}>
+                ≈ ¥{selectedAmount} CNY · 到账 {amounts.find(a => a.amount === selectedAmount)?.gold ?? selectedAmount} 金币
+              </span>
+            </div>
+          )}
 
           {/* 充值说明 */}
           <div style={{ padding: `${q(20)} ${q(30)} 0`, color: 'rgba(255,255,255,0.5)', fontSize: q(22), lineHeight: 1.6 }}>
             <p style={{ margin: 0 }}>• 充值金额将实时到账，如有问题请联系客服</p>
-            <p style={{ margin: `${q(8)} 0 0` }}>• 最低充值 ¥{minAmount}，最高单笔 ¥{maxAmount}</p>
+            <p style={{ margin: `${q(8)} 0 0` }}>
+              {isUsdt
+                ? `• 最低充值 ${cnyToUsdt(minAmount)} USDT，最高单笔 ${cnyToUsdt(maxAmount)} USDT`
+                : `• 最低充值 ¥${minAmount}，最高单笔 ¥${maxAmount}`
+              }
+            </p>
             <p style={{ margin: `${q(8)} 0 0` }}>• 充值奖励金币将在到账后自动发放</p>
-            {payMethod === 'usdt' && (
-              <p style={{ margin: `${q(8)} 0 0`, color: 'rgba(38,161,123,0.9)' }}>• USDT支付将跳转至加密货币支付页面完成付款</p>
+            {isUsdt && (
+              <>
+                <p style={{ margin: `${q(8)} 0 0`, color: 'rgba(38,161,123,0.9)' }}>• USDT支付将跳转至加密货币支付页面完成付款</p>
+                <p style={{ margin: `${q(8)} 0 0`, color: 'rgba(38,161,123,0.9)' }}>• 支持 TRC20 网络，到账时间约 1-5 分钟</p>
+              </>
             )}
           </div>
         </div>
@@ -343,6 +504,10 @@ export default function Deposit() {
           @keyframes skeletonPulse {
             0%, 100% { opacity: 0.4; }
             50% { opacity: 0.9; }
+          }
+          @keyframes ratePulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
           }
         `}</style>
       </div>
