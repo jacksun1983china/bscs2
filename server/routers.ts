@@ -1714,7 +1714,7 @@ export const appRouter = router({
         if (!db) return [];
         try {
           const [rows] = await (db as any).execute(
-            sql`SELECT DISTINCT typeId, typeName, typeHashName FROM shopItems WHERE enabled = 1 AND sellNum > 2 AND minSellPrice >= 20 ORDER BY typeName`
+            sql`SELECT DISTINCT typeId, typeName, typeHashName FROM shopItems WHERE enabled = 1 AND sellNum > 5 AND minSellPrice >= 20 ORDER BY typeName`
           );
           return (rows as any[]).map((r: any) => ({
             typeId: parseInt(r.typeId) || 0,
@@ -1742,7 +1742,7 @@ export const appRouter = router({
         if (!db) return { items: [], total: 0, pageNum: input.pageNum, pageSize: input.pageSize };
         try {
           // 构建WHERE条件
-          const conditions: string[] = ['enabled = 1', 'sellNum > 2', 'minSellPrice >= 20'];
+          const conditions: string[] = ['enabled = 1', 'sellNum > 5', 'minSellPrice >= 20'];
           if (input.typeId) conditions.push(`typeId = '${input.typeId}'`);
           if (input.keyword) conditions.push(`templateName LIKE '%${input.keyword.replace(/'/g, "\\'").replace(/%/g, '\\%')}%'`);
           if (input.minPrice !== undefined) conditions.push(`minSellPrice >= ${input.minPrice}`);
@@ -1797,7 +1797,7 @@ export const appRouter = router({
         if (db) {
           try {
             const [rows] = await (db as any).execute(
-              sql`SELECT COUNT(*) as cnt FROM shopItems WHERE enabled = 1 AND sellNum > 2 AND minSellPrice >= 20`
+              sql`SELECT COUNT(*) as cnt FROM shopItems WHERE enabled = 1 AND sellNum > 5 AND minSellPrice >= 20`
             );
             totalItems = parseInt((rows as any[])[0]?.cnt) || 0;
           } catch {}
