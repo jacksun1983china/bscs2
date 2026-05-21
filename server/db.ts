@@ -36,6 +36,7 @@ import {
   weeklyCommissionStats,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { generateVerificationCode, getSmsExpireMinutes, sendVerificationSms } from "./smsService";
 
 // 使用连接池替代单连接，彻底解决 ECONNRESET 问题
 // 连接池会自动回收断开的连接，无需手动重置
@@ -124,15 +125,16 @@ export async function createSmsCode(phone: string, purpose: string = "login"): P
       throw new Error(`发送太频繁，请 ${Math.ceil(60 - secondsElapsed)} 秒后重试`);
     }
   }
-  // 测试模式：固定验证码为 123456，方便测试
-  // 生产环境请改为随机验证码并对接真实短信服务商
-  const code = "123456";
-  const expireAt = new Date(Date.now() + 10 * 60 * 1000);
-  // 将同一手机号的旧验证码标记已使用
+
+  const code = generateVerificationCode();
+  const expireAt = new Date(Date.now() + getSmsExpireMinutes() * 60 * 1000);
+
+  await sendVerificationSms(phone, code, purpose);
+
+  // 仅在短信发送成功后，才使旧验证码失效并写入新验证码
   await db.update(smsCodes).set({ used: 1 }).where(and(eq(smsCodes.phone, phone), eq(smsCodes.purpose, purpose), eq(smsCodes.used, 0)));
   await db.insert(smsCodes).values({ phone, code, purpose, expireAt });
-  // 实际项目中应对接真实短信服务商 API，这里仅做日志输出供测试
-  console.log(`[SMS] 手机号: ${phone} 验证码: ${code} (请对接真实短信服务商)`);
+  console.log(`[SMS] 验证码已入库 手机号: ${phone} 用途: ${purpose}`);
   return code;
 }
 

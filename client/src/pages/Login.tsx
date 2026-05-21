@@ -82,7 +82,7 @@ export default function Login() {
   }, [countdown]);
 
   const sendCodeMutation = trpc.player.sendCode.useMutation({
-    onSuccess: () => { toast.success('验证码已发送（模拟：123456）'); setCountdown(60); },
+    onSuccess: () => { toast.success('验证码已发送，请注意查收短信'); setCountdown(60); },
     onError: (e) => toast.error(e.message),
   });
 

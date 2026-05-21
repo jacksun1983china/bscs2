@@ -10,7 +10,7 @@
  *   6. 机器人开箱结果由服务端正常随机决定（与真实玩家相同概率）
  */
 
-import { getDb, resetDb, insertGoldLog } from "./db";
+import { getDb, resetDb } from "./db";
 import {
   arenaRooms,
   arenaRoomPlayers,
@@ -28,6 +28,7 @@ import {
   broadcastGameOver,
   broadcastRoomListUpdate,
 } from "./arenaSSE";
+import { cleanupBotOnlyArenaRoom, getRealArenaPlayerIdSet } from "./arenaPersistence";
 // ── 配置 ────────────────────────────────────────────────────────────────────────
 const BOT_CHECK_INTERVAL = 8000;   // 每8秒检测一次
 const BOT_WAIT_THRESHOLD = 10;     // 等待超过10秒派机器人（秒）
@@ -121,6 +122,7 @@ async function botPlayAllRounds(roomId: number) {
     .from(arenaRoomPlayers)
     .where(eq(arenaRoomPlayers.roomId, roomId))
     .orderBy(arenaRoomPlayers.seatNo);
+  const realPlayerIdSet = await getRealArenaPlayerIdSet(db, roomPlayerList);
 
   const boxIds: number[] = JSON.parse(room.boxIds || "[]");
 
@@ -176,8 +178,8 @@ async function botPlayAllRounds(roomId: number) {
         goodsValue: String(picked.price),
       });
 
-      // 若是真实玩家（正数ID），将物品放入背包（status=3 临时持有，等结算）
-      if (rp.playerId > 0) {
+      // 仅真人玩家需要保留竞技场待结算物品；机器人对局不写背包记录
+      if (realPlayerIdSet.has(rp.playerId)) {
         const recycleValue = String(parseFloat(String(picked.price || '0')).toFixed(2));
         await db.insert(playerItems).values({
           playerId: rp.playerId,
@@ -223,6 +225,8 @@ async function finishBotGame(
     .select()
     .from(arenaRoundResults)
     .where(eq(arenaRoundResults.roomId, roomId));
+  const realPlayerIdSet = await getRealArenaPlayerIdSet(db, roomPlayerList);
+  const hasRealPlayers = realPlayerIdSet.size > 0;
 
   const valueMap: Record<number, number> = {};
   for (const r of allResults) {
@@ -243,20 +247,22 @@ async function finishBotGame(
   const isDraw = topPlayers.length > 1;
   if (isDraw) winnerId = 0;
 
-  // 更新参与者记录
-  for (const rp of roomPlayerList) {
-    const totalValue = (valueMap[rp.playerId] || 0).toFixed(2);
-    const isWinner = isDraw ? 0 : (rp.playerId === winnerId ? 1 : 0);
-    await db
-      .update(arenaRoomPlayers)
-      .set({ totalValue, isWinner })
-      .where(eq(arenaRoomPlayers.id, rp.id));
+  // 只有真人参与的对局才保留房间参与记录，纯机器人对局不持久化结算结果
+  if (hasRealPlayers) {
+    for (const rp of roomPlayerList) {
+      const totalValue = (valueMap[rp.playerId] || 0).toFixed(2);
+      const isWinner = isDraw ? 0 : (rp.playerId === winnerId ? 1 : 0);
+      await db
+        .update(arenaRoomPlayers)
+        .set({ totalValue, isWinner })
+        .where(eq(arenaRoomPlayers.id, rp.id));
+    }
   }
 
   if (isDraw) {
     // 平局：各自保留自己开出的物品（status=3 → status=0）
     for (const rp of roomPlayerList) {
-      if (rp.playerId > 0) {
+      if (realPlayerIdSet.has(rp.playerId)) {
         await db
           .update(playerItems)
           .set({ status: 0 })
@@ -271,7 +277,7 @@ async function finishBotGame(
     }
   } else {
     // 胜负：赢家获得所有玩家开出的物品
-    if (winnerId > 0) {
+    if (realPlayerIdSet.has(winnerId)) {
       // 赢家自己的物品：status=3 → status=0
       await db
         .update(playerItems)
@@ -285,7 +291,7 @@ async function finishBotGame(
         );
       // 输家的物品：转移给赢家
       for (const rp of roomPlayerList) {
-        if (rp.playerId !== winnerId && rp.playerId > 0) {
+        if (rp.playerId !== winnerId && realPlayerIdSet.has(rp.playerId)) {
           await db
             .update(playerItems)
             .set({ playerId: winnerId, status: 0 })
@@ -299,9 +305,9 @@ async function finishBotGame(
         }
       }
     } else {
-      // 赢家是机器人，真实玩家的物品丢失（正常游戏逻辑）
+      // 赢家不是真人时，仅处理真人玩家的临时物品，机器人不保留背包数据
       for (const rp of roomPlayerList) {
-        if (rp.playerId > 0) {
+        if (realPlayerIdSet.has(rp.playerId)) {
           await db
             .update(playerItems)
             .set({ status: 2 }) // status=2 表示已消耗/丢失
@@ -317,11 +323,13 @@ async function finishBotGame(
     }
   }
 
-  // 更新房间状态
-  await db
-    .update(arenaRooms)
-    .set({ status: "finished", winnerId })
-    .where(eq(arenaRooms.id, roomId));
+  // 含真人的对局需要保留结果；纯机器人对局广播完成后直接清理房间数据
+  if (hasRealPlayers) {
+    await db
+      .update(arenaRooms)
+      .set({ status: "finished", winnerId })
+      .where(eq(arenaRooms.id, roomId));
+  }
 
   // 广播游戏结束
   const playerResults = roomPlayerList.map((rp) => ({
@@ -334,6 +342,10 @@ async function finishBotGame(
     isDraw,
   }));
   broadcastGameOver(roomId, winnerId, playerResults, isDraw);
+
+  if (!hasRealPlayers) {
+    await cleanupBotOnlyArenaRoom(db, roomId);
+  }
 }
 
 // ── 主循环 ────────────────────────────────────────────────────────────────
@@ -499,7 +511,6 @@ async function checkAndFillRooms() {
           .update(players)
           .set({ gold: newBotGold })
           .where(eq(players.id, bot.id));
-        await insertGoldLog(bot.id, -entryFee, parseFloat(newBotGold), 'arena', `竞技场入场费（机器人加入房间 #${freshRoom.roomNo}）`);
 
         // 插入机器人为参与者
         await db.insert(arenaRoomPlayers).values({
@@ -649,7 +660,6 @@ async function ensureBotRooms() {
         .update(players)
         .set({ gold: newBotGold })
         .where(eq(players.id, bot.id));
-      await insertGoldLog(bot.id, -entryFee, parseFloat(newBotGold), 'arena', `竞技场入场费（机器人自动开房）`);
 
       // 7. 生成唯一房间号
       let roomNo = genBotRoomNo();

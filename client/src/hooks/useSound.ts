@@ -15,7 +15,7 @@ import { useCallback, useEffect, useState } from 'react';
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym';
 
 export const SOUND_URLS = {
-  bgm:      `${CDN}/bgm_7d6d5ecd.mp3`,
+  bgm:      '/audio/home-bgm.mp3',
   click:    `${CDN}/click_87f2f04e.mp3`,
   win:      `${CDN}/win_9d1ca62e.mp3`,
   lose:     `${CDN}/lose_cde8823d.mp3`,

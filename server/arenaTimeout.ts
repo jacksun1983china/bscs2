@@ -9,6 +9,7 @@ import { getDb, insertGoldLog } from "./db";
 import { arenaRooms, arenaRoomPlayers, players } from "../drizzle/schema";
 import { eq, and, lt } from "drizzle-orm";
 import { broadcastRoomCancelled, broadcastRoomListUpdate } from "./arenaSSE";
+import { cleanupBotOnlyArenaRoom, getRealArenaPlayerIdSet } from "./arenaPersistence";
 
 const TIMEOUT_MS = 10 * 60 * 1000; // 10 分钟
 const SCAN_INTERVAL_MS = 2 * 60 * 1000; // 每 2 分钟扫描一次
@@ -66,6 +67,8 @@ async function closeTimeoutRooms() {
           .select()
           .from(arenaRoomPlayers)
           .where(eq(arenaRoomPlayers.roomId, room.id));
+        const realPlayerIdSet = await getRealArenaPlayerIdSet(db, roomPlayers);
+        const hasRealPlayers = realPlayerIdSet.size > 0;
 
         const entryFee = parseFloat(room.entryFee ?? "0");
 
@@ -82,21 +85,28 @@ async function closeTimeoutRooms() {
               .update(players)
               .set({ gold: newGold })
               .where(eq(players.id, rp.playerId));
-            await insertGoldLog(
-              rp.playerId,
-              entryFee,
-              parseFloat(newGold),
-              "arena",
-              `竞技场房间超时退款（房间 #${room.roomNo}）`
-            );
+            if (hasRealPlayers && realPlayerIdSet.has(rp.playerId)) {
+              await insertGoldLog(
+                rp.playerId,
+                entryFee,
+                parseFloat(newGold),
+                "arena",
+                `竞技场房间超时退款（房间 #${room.roomNo}）`
+              );
+            }
           }
         }
 
-        // 标记房间为已取消
-        await db
-          .update(arenaRooms)
-          .set({ status: "cancelled" })
-          .where(eq(arenaRooms.id, room.id));
+        if (hasRealPlayers) {
+          // 含真人参与的超时房间仍保留取消状态，方便后续对账与查询
+          await db
+            .update(arenaRooms)
+            .set({ status: "cancelled" })
+            .where(eq(arenaRooms.id, room.id));
+        } else {
+          // 纯机器人超时房间不保留历史记录，直接清理以减轻数据库负担
+          await cleanupBotOnlyArenaRoom(db, room.id);
+        }
 
         // 广播房间取消
         broadcastRoomCancelled(room.id);

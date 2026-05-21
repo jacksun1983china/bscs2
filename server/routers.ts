@@ -4,6 +4,7 @@ import { adminRouter } from "./routers/adminRouter";
 import { TRPCError } from "@trpc/server";
 import { arenaRouter } from "./arenaRouter";
 import { sendPushToAgent } from "./webPush";
+import { verifyRealName } from "./realNameService";
 import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -89,6 +90,8 @@ import {
   playerItems,
   agentPushSubscriptions,
   giftLogs,
+  goldLogs,
+  cdkRedeemCodes,
 } from "../drizzle/schema";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
@@ -151,9 +154,8 @@ export const appRouter = router({
     sendCode: publicProcedure
       .input(z.object({ phone: z.string().min(11).max(11), purpose: z.string().default("login") }))
       .mutation(async ({ input }) => {
-        const code = await createSmsCode(input.phone, input.purpose);
-        console.log(`[模拟短信] 手机号: ${input.phone} 验证码: ${code}`);
-        return { success: true, message: "验证码已发送（模拟：123456）" };
+        await createSmsCode(input.phone, input.purpose);
+        return { success: true, message: "验证码已发送，请查收短信" };
       }),
 
     login: publicProcedure
@@ -212,15 +214,18 @@ export const appRouter = router({
       }
       // 昵称是默认格式（用户+数字）或为空时，需要设置昵称
       const needSetNickname = !player.nickname || /^用户\d+$/.test(player.nickname) || player.nickname === '';
-      return {
-        id: player.id, phone: player.phone, nickname: player.nickname, avatar: player.avatar,
-        vipLevel: player.vipLevel, gold: player.gold, diamond: player.diamond, shopCoin: player.shopCoin,
-        totalRecharge: player.totalRecharge, inviteCode: player.inviteCode,
-        invitedBy: player.invitedBy, invitedByNickname, identity: player.identity,
-        commissionEnabled: player.commissionEnabled, commissionBalance: player.commissionBalance,
-        steamAccount: player.steamAccount, realName: player.realName ? "已认证" : "",
-        createdAt: player.createdAt, needSetNickname,
-      };
+        return {
+          id: player.id, phone: player.phone, nickname: player.nickname, avatar: player.avatar,
+          vipLevel: player.vipLevel, gold: player.gold, diamond: player.diamond, shopCoin: player.shopCoin,
+          totalRecharge: player.totalRecharge, inviteCode: player.inviteCode,
+          invitedBy: player.invitedBy, invitedByNickname, identity: player.identity,
+          commissionEnabled: player.commissionEnabled, commissionBalance: player.commissionBalance,
+          steamAccount: player.steamAccount,
+          realName: player.realName ? "已认证" : "未认证",
+          realNameVerified: Boolean(player.realName),
+          createdAt: player.createdAt, needSetNickname,
+        };
+
     }),
 
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -228,6 +233,42 @@ export const appRouter = router({
       (ctx.res as any).clearCookie(PLAYER_COOKIE, { ...opts, maxAge: -1 });
       return { success: true };
     }),
+
+    /** 提交实名认证 */
+    submitRealNameVerification: publicProcedure
+      .input(z.object({
+        name: z.string().trim().min(2, "请输入真实姓名").max(30, "姓名长度不能超过30个字符"),
+        idCard: z.string().trim().regex(/^(\d{15}|\d{17}[\dXx])$/, "请输入正确的身份证号"),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接失败" });
+
+        const [player] = await db.select({
+          id: players.id,
+          realName: players.realName,
+          idCard: players.idCard,
+        }).from(players).where(eq(players.id, session.playerId)).limit(1);
+
+        if (!player) throw new TRPCError({ code: "NOT_FOUND", message: "用户不存在" });
+        if (player.realName) {
+          return { success: true, message: "您已完成实名认证", verified: true };
+        }
+
+        const verifyResult = await verifyRealName(input.name, input.idCard);
+        if (!verifyResult.verified) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: verifyResult.message || "实名认证未通过，请核对后重试" });
+        }
+
+        await db.update(players).set({
+          realName: input.name.trim(),
+          idCard: input.idCard.trim().toUpperCase(),
+        }).where(eq(players.id, session.playerId));
+
+        return { success: true, message: "实名认证成功", verified: true };
+      }),
 
     /** 绑定邀请码 */
     bindInviteCode: publicProcedure
@@ -671,9 +712,8 @@ export const appRouter = router({
       const player = await getPlayerById(session.playerId);
       if (!player) throw new TRPCError({ code: "NOT_FOUND", message: "用户不存在" });
       if (!player.phone) throw new TRPCError({ code: "BAD_REQUEST", message: "请先绑定手机号" });
-      const code = await createSmsCode(player.phone, "safe_password");
-      console.log(`[模拟短信] 安全密码验证码 手机号: ${player.phone} 验证码: ${code}`);
-      return { success: true, message: "验证码已发送" };
+      await createSmsCode(player.phone, "safe_password");
+      return { success: true, message: "验证码已发送，请查收短信" };
     }),
 
     /** 设置安全密码（验证码校验 + 保存） */
@@ -723,6 +763,72 @@ export const appRouter = router({
           startTime.setHours(0, 0, 0, 0);
         }
         return getGoldLogs(session.playerId, { page: input.page, limit: input.limit, type: input.type, startTime, endTime });
+      }),
+
+    /** 福利兑换：玩家输入 CDK 后领取平台币（当前接入金币） */
+    redeemCdk: publicProcedure
+      .input(z.object({ code: z.string().min(4).max(64) }))
+      .mutation(async ({ input, ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接失败" });
+
+        const normalizedCode = input.code.trim().toUpperCase();
+        const rows = await db.select().from(cdkRedeemCodes).where(eq(cdkRedeemCodes.code, normalizedCode)).limit(1);
+        const row = rows[0];
+        if (!row || row.status === 2) throw new TRPCError({ code: "NOT_FOUND", message: "CDK 不存在或已失效" });
+        if (row.status === 1) throw new TRPCError({ code: "BAD_REQUEST", message: "该 CDK 已被兑换" });
+        if (row.expireAt < new Date()) throw new TRPCError({ code: "BAD_REQUEST", message: "该 CDK 已过期" });
+
+        const redeemResult = await db.transaction(async (tx) => {
+          const latestRows = await tx.select().from(cdkRedeemCodes).where(eq(cdkRedeemCodes.id, row.id)).limit(1);
+          const latest = latestRows[0];
+          if (!latest || latest.status === 2) throw new TRPCError({ code: "NOT_FOUND", message: "CDK 不存在或已失效" });
+          if (latest.status === 1) throw new TRPCError({ code: "BAD_REQUEST", message: "该 CDK 已被兑换" });
+          if (latest.expireAt < new Date()) throw new TRPCError({ code: "BAD_REQUEST", message: "该 CDK 已过期" });
+
+          await tx.update(cdkRedeemCodes)
+            .set({ status: 1, usedByPlayerId: session.playerId, usedAt: new Date(), updatedAt: new Date() })
+            .where(and(eq(cdkRedeemCodes.id, latest.id), eq(cdkRedeemCodes.status, 0)));
+
+          const confirmedRows = await tx.select({ status: cdkRedeemCodes.status, usedByPlayerId: cdkRedeemCodes.usedByPlayerId })
+            .from(cdkRedeemCodes)
+            .where(eq(cdkRedeemCodes.id, latest.id))
+            .limit(1);
+          const confirmed = confirmedRows[0];
+          if (!confirmed || confirmed.status !== 1 || confirmed.usedByPlayerId !== session.playerId) {
+            throw new TRPCError({ code: "CONFLICT", message: "该 CDK 已被其他用户抢先兑换" });
+          }
+
+          const playerRows = await tx.select({ gold: players.gold }).from(players).where(eq(players.id, session.playerId)).limit(1);
+          const player = playerRows[0];
+          if (!player) throw new TRPCError({ code: "NOT_FOUND", message: "玩家不存在" });
+
+          const amount = parseFloat(String(latest.amount ?? "0"));
+          const currentGold = parseFloat(String(player.gold ?? "0"));
+          const newGold = currentGold + amount;
+
+          await tx.update(players).set({ gold: newGold.toFixed(2) }).where(eq(players.id, session.playerId));
+          await tx.insert(goldLogs).values({
+            playerId: session.playerId,
+            amount: amount.toFixed(2),
+            balance: newGold.toFixed(2),
+            type: "cdk",
+            description: `兑换福利CDK ${latest.code}`,
+            refId: latest.id,
+          });
+
+          return { amount, newGold, code: latest.code };
+        });
+
+        return {
+          success: true,
+          code: redeemResult.code,
+          amount: redeemResult.amount,
+          balance: redeemResult.newGold,
+          message: `兑换成功，已到账 ${redeemResult.amount.toFixed(2)} 平台币`,
+        };
       }),
 
     /** 提货记录（status=1 已提取的道具列表） */
@@ -801,7 +907,7 @@ export const appRouter = router({
           db.select({ count: sql<number>`count(*)` }).from(giftLogs).where(whereClause),
         ]);
         // 获取相关玩家昵称
-        const playerIds = [...new Set(list.flatMap(l => [l.fromPlayerId, l.toPlayerId]))];
+        const playerIds = Array.from(new Set(list.flatMap(l => [l.fromPlayerId, l.toPlayerId])));
         const playerMap: Record<number, string> = {};
         if (playerIds.length > 0) {
           const { inArray } = await import("drizzle-orm");

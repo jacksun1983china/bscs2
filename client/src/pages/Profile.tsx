@@ -14,6 +14,7 @@ import PlayerInfoCard from '@/components/PlayerInfoCard';
 import SettingsModal from '@/components/SettingsModal';
 import SteamSettingsModal from '@/pages/SteamSettings';
 import SecurityPasswordModal from '@/pages/SecurityPassword';
+import RealNameVerificationModal from '@/pages/RealNameVerification';
 import ProfileEditModal from '@/components/ProfileEditModal';
 
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
@@ -71,6 +72,7 @@ export default function Profile() {
     return params.get('openSteam') === '1';
   });
   const [securityPwdVisible, setSecurityPwdVisible] = useState(false);
+  const [realNameVisible, setRealNameVisible] = useState(false);
   const [profileEditVisible, setProfileEditVisible] = useState(false);
 
   const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
@@ -283,13 +285,14 @@ export default function Profile() {
             overflow: 'hidden',
             flexShrink: 0,
           }}
+          onClick={() => setRealNameVisible(true)}
         >
           <img src={WD.menuBg0} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill' }} />
           <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'row', alignItems: 'center', height: '100%', padding: `0 ${q(25)}` }}>
             <img src={WD.menuIcon2} alt="实名认证" style={{ width: q(72), height: q(72), objectFit: 'contain' }} />
             <span style={{ color: '#fff', fontSize: q(26), fontWeight: 500, marginLeft: q(20) }}>实名认证</span>
             <span style={{ color: 'rgba(249,178,255,1)', fontSize: q(22), marginLeft: 'auto' }}>
-              {player?.phone ? `${player.phone.slice(0, 3)}****${player.phone.slice(-4)}` : '未认证'}
+              {player?.realNameVerified ? '已认证' : '未认证'}
             </span>
             <img src={WD.arrowRight} alt=">" style={{ width: q(10), height: q(19), marginLeft: q(31), objectFit: 'contain' }} />
           </div>
@@ -400,6 +403,7 @@ export default function Profile() {
       <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
       <SteamSettingsModal visible={steamVisible} onClose={() => setSteamVisible(false)} />
       <SecurityPasswordModal visible={securityPwdVisible} onClose={() => setSecurityPwdVisible(false)} />
+      <RealNameVerificationModal visible={realNameVisible} onClose={() => setRealNameVisible(false)} />
       <ProfileEditModal
         visible={profileEditVisible}
         onClose={() => setProfileEditVisible(false)}

@@ -24,9 +24,9 @@ interface GameItem {
 
 // 左侧功能按钮标签（叠加在头像图标上）
 const FUNC_LABELS = [
-  { id: 'shop',    label: '商城', route: '/shop'   },
-  { id: 'welfare', label: '福利', route: undefined },
-  { id: 'event',   label: '活动', route: undefined },
+  { id: 'shop',    label: '商城', route: '/shop'     },
+  { id: 'welfare', label: '福利', route: '/welfare' },
+  { id: 'event',   label: '活动', route: undefined   },
   { id: 'mail',    label: '邮件', route: '/mailbox' },
   { id: 'records', label: '记录', route: '/my-records' },
   { id: 'vortex',  label: 'Vortex', route: '/vortex' },

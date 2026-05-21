@@ -1768,6 +1768,21 @@ export default function ArenaRoom() {
                 display: 'flex', alignItems: 'center', gap: q(4),
               }}>👁 {spectatorCount}人观战</span>
             )}
+            <button
+              onClick={() => navigate(`/arena?copyRoomId=${roomId}`)}
+              style={{
+                padding: `${q(8)} ${q(14)}`,
+                background: 'rgba(34,197,94,0.14)',
+                border: '1px solid rgba(34,197,94,0.35)',
+                borderRadius: q(10),
+                color: '#4ade80',
+                fontSize: q(20),
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              复制对局
+            </button>
           </div>
         </div>
 

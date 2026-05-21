@@ -43,6 +43,14 @@ function getRarityColor(rarityName: string) {
   return 'linear-gradient(135deg,#4a4a4a,#9a9a9a)';
 }
 
+function parsePriceFilter(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || parsed < 0) return undefined;
+  return parsed;
+}
+
 interface Cs2Product {
   typeId: number;
   typeName: string;
@@ -282,6 +290,8 @@ function BuyModal({
 // ── 主页面 ────────────────────────────────────────────────────────────────────
 export default function Shop() {
   const [searchText, setSearchText] = useState('');
+  const [minPriceText, setMinPriceText] = useState('');
+  const [maxPriceText, setMaxPriceText] = useState('');
   const [selectedTypeId, setSelectedTypeId] = useState<number | undefined>(undefined);
   const [sortDesc, setSortDesc] = useState(false);
   const [pageNum, setPageNum] = useState(1);
@@ -289,6 +299,9 @@ export default function Shop() {
   const [buyItem, setBuyItem] = useState<Cs2Product | null>(null);
   const [buyLoading, setBuyLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+
+  const parsedMinPrice = parsePriceFilter(minPriceText);
+  const parsedMaxPrice = parsePriceFilter(maxPriceText);
 
   const { data: playerData } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
 
@@ -302,6 +315,8 @@ export default function Shop() {
   const { data, isLoading, error } = trpc.shop.getProducts.useQuery({
     typeId: selectedTypeId,
     keyword: searchText || undefined,
+    minPrice: parsedMinPrice,
+    maxPrice: parsedMaxPrice,
     sortDesc,
     pageNum,
     pageSize: 20,
@@ -462,50 +477,104 @@ export default function Shop() {
               backgroundSize: '100% 100%',
               padding: `${q(12)} ${q(16)}`,
               display: 'flex',
-              alignItems: 'center',
+              flexDirection: 'column',
               gap: q(12),
               borderRadius: q(12),
             }}
           >
-            <div style={{
-              flex: 1,
-              backgroundImage: `url(${S.searchInputBg})`,
-              backgroundSize: '100% 100%',
-              borderRadius: q(8),
-              padding: `${q(8)} ${q(16)}`,
-              display: 'flex',
-              alignItems: 'center',
-            }}>
-              <input
-                value={searchText}
-                onChange={e => { setSearchText(e.target.value); setPageNum(1); }}
-                placeholder="请输入关键词搜索"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  outline: 'none',
-                  color: '#e0d0ff',
-                  fontSize: q(24),
-                  width: '100%',
-                }}
-              />
-            </div>
-            <button
-              onClick={() => { setSortDesc(v => !v); setPageNum(1); }}
-              style={{
+            <div style={{ display: 'flex', alignItems: 'center', gap: q(12) }}>
+              <div style={{
+                flex: 1,
+                backgroundImage: `url(${S.searchInputBg})`,
+                backgroundSize: '100% 100%',
+                borderRadius: q(8),
+                padding: `${q(8)} ${q(16)}`,
                 display: 'flex',
                 alignItems: 'center',
-                gap: q(4),
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                color: '#9980cc',
-                fontSize: q(22),
-              }}
-            >
-              <img src={S.sortPriceIcon} alt="" style={{ width: q(24), height: q(24) }} />
-              价格{sortDesc ? '↓' : '↑'}
-            </button>
+              }}>
+                <input
+                  value={searchText}
+                  onChange={e => { setSearchText(e.target.value); setPageNum(1); }}
+                  placeholder="请输入关键词搜索"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    color: '#e0d0ff',
+                    fontSize: q(24),
+                    width: '100%',
+                  }}
+                />
+              </div>
+              <button
+                onClick={() => { setSortDesc(v => !v); setPageNum(1); }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: q(4),
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#9980cc',
+                  fontSize: q(22),
+                  flexShrink: 0,
+                }}
+              >
+                <img src={S.sortPriceIcon} alt="" style={{ width: q(24), height: q(24) }} />
+                价格{sortDesc ? '↓' : '↑'}
+              </button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: q(10) }}>
+              <div style={{
+                flex: 1,
+                background: 'rgba(20,8,50,0.72)',
+                border: '1px solid rgba(160,80,255,0.28)',
+                borderRadius: q(8),
+                padding: `${q(8)} ${q(14)}`,
+              }}>
+                <input
+                  type="number"
+                  min="0"
+                  inputMode="decimal"
+                  value={minPriceText}
+                  onChange={e => { setMinPriceText(e.target.value); setPageNum(1); }}
+                  placeholder="最低金额"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    color: '#e0d0ff',
+                    fontSize: q(22),
+                    width: '100%',
+                  }}
+                />
+              </div>
+              <span style={{ color: '#9980cc', fontSize: q(24), flexShrink: 0 }}>~</span>
+              <div style={{
+                flex: 1,
+                background: 'rgba(20,8,50,0.72)',
+                border: '1px solid rgba(160,80,255,0.28)',
+                borderRadius: q(8),
+                padding: `${q(8)} ${q(14)}`,
+              }}>
+                <input
+                  type="number"
+                  min="0"
+                  inputMode="decimal"
+                  value={maxPriceText}
+                  onChange={e => { setMaxPriceText(e.target.value); setPageNum(1); }}
+                  placeholder="最高金额"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    color: '#e0d0ff',
+                    fontSize: q(22),
+                    width: '100%',
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
           {/* 商品列表区域 */}

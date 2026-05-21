@@ -24,6 +24,7 @@ import { AdminVortexConfig } from './admin/AdminVortexConfig';
 import { AdminGoldLogs } from './admin/AdminGoldLogs';
 import { AdminXGames } from './admin/AdminXGames';
 import { AdminOrders } from './admin/AdminOrders';
+import { AdminCdks } from './admin/AdminCdks';
 
 // ── 国际化文本 ──────────────────────────────────────────────────
 const I18N = {
@@ -93,6 +94,7 @@ const I18N = {
     records: '条记录',
     shop: '商城管理',
     vipManage: 'VIP配置',
+    cdkManage: '福利CDK',
     // Roll房
      rollRooms: '竹战房管理',
     arena: '竞技场管理',
@@ -220,6 +222,7 @@ const I18N = {
     records: 'records',
     shop: 'Shop Mgmt',
     vipManage: 'VIP Config',
+    cdkManage: 'Welfare CDK',
     rollRooms: 'Roll Rooms',
     arena: 'Arena Mgmt',
     createRollRoom: 'Create Roll Room',
@@ -641,9 +644,9 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
 }
 
 // ── 主仪表盘 ────────────────────────────────────────────────────
-const MENU_KEYS = ['players', 'games', 'xGames', 'rollRooms', 'arena', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'goldLogs', 'vipManage', 'agents', 'vortexAdmin', 'settings'] as const;
+const MENU_KEYS = ['players', 'games', 'xGames', 'rollRooms', 'arena', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'goldLogs', 'vipManage', 'cdkManage', 'agents', 'vortexAdmin', 'settings'] as const;
 const MENU_ICONS: Record<string, string> = {
-  players: '👥', games: '🎮', xGames: '🎰', rollRooms: '🎲', arena: '🏠️', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', goldLogs: '📊', vipManage: '👑', agents: '🎧', vortexAdmin: '🌀', settings: '⚙️',
+  players: '👥', games: '🎮', xGames: '🎰', rollRooms: '🎲', arena: '🏠️', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', goldLogs: '📊', vipManage: '👑', cdkManage: '🎟️', agents: '🎧', vortexAdmin: '🌀', settings: '⚙️',
 };
 
 export default function AdminDashboard() {
@@ -798,7 +801,7 @@ export default function AdminDashboard() {
                 key={key}
                 onClick={() => {
                   setActiveMenu(key);
-                  if (!['players', 'games', 'xGames', 'rollRooms', 'arena', 'banners', 'rebate', 'categories', 'boxes', 'rechargeConfigs', 'finance', 'goldLogs', 'settings', 'vortexAdmin', 'vipManage', 'agents', 'shop'].includes(key)) toast.info(t.featureSoon);
+                  if (!['players', 'games', 'xGames', 'rollRooms', 'arena', 'banners', 'rebate', 'categories', 'boxes', 'rechargeConfigs', 'finance', 'goldLogs', 'settings', 'vortexAdmin', 'vipManage', 'cdkManage', 'agents', 'shop', 'orders'].includes(key)) toast.info(t.featureSoon);
                 }}
                 title={!sidebarOpen ? label : undefined}
                 style={{
@@ -933,6 +936,8 @@ export default function AdminDashboard() {
           {/* 财务统计 */}
           {activeMenu === 'finance' && <AdminFinance lang={lang} />}
           {activeMenu === 'goldLogs' && <AdminGoldLogs />}
+          {/* 福利CDK管理 */}
+          {activeMenu === 'cdkManage' && <AdminCdks lang={lang} />}
           {/* 系统设置 */}
           {activeMenu === 'settings' && <AdminSettings lang={lang} t={t} />}
           {/* 坐席管理 */}

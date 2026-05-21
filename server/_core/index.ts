@@ -149,7 +149,7 @@ async function startServer() {
   app.use("/api/trpc/dingdong.", gameActionLimit);
   app.use("/api/trpc/fruitBomb.", gameActionLimit);
   // 短信接口：每 IP 每 5 分钟 3 次
-  app.use("/api/trpc/player.sendSmsCode", smsLimit);
+  app.use("/api/trpc/player.sendCode", smsLimit);
   // 管理员登录：每 IP 每 15 分钟 10 次
   app.use("/api/trpc/admin.login", adminLoginLimit);
   // 通用 API 限制：每 IP 每分钟 3000 次

@@ -39,6 +39,7 @@ import {
   broadcastGameOver,
   broadcastRoomCancelled,
 } from "./arenaSSE";
+import { cleanupBotOnlyArenaRoom, getRealArenaPlayerIdSet } from "./arenaPersistence";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
 const PLAYER_COOKIE = "bdcs2_player_token";
@@ -96,6 +97,115 @@ async function fetchRoomSummaries() {
     status: r.status,
     createdAt: r.createdAt,
   }));
+}
+
+const arenaRecordQueryInput = z.object({
+  page: z.number().min(1).default(1),
+  pageSize: z.number().min(1).max(20).default(10),
+  amountRange: z.enum(["all", "1-200", "201-800", "800+"]).default("all"),
+  sortBy: z.enum(["latest", "maxGrowth", "bestLuck"]).default("latest"),
+});
+
+function inArenaAmountRange(entryFee: number, amountRange: "all" | "1-200" | "201-800" | "800+") {
+  if (amountRange === "1-200") return entryFee >= 1 && entryFee <= 200;
+  if (amountRange === "201-800") return entryFee >= 201 && entryFee <= 800;
+  if (amountRange === "800+") return entryFee > 800;
+  return true;
+}
+
+function normalizeArenaRecordRows(rows: Array<any>) {
+  return rows.map((row) => ({
+    id: row.id,
+    roomId: row.roomId,
+    playerId: row.playerId,
+    nickname: row.nickname,
+    seatNo: row.seatNo,
+    totalValue: row.totalValue,
+    isWinner: row.isWinner,
+    createdAt: row.createdAt,
+    room: {
+      id: row.roomId,
+      roomNo: row.roomNo,
+      maxPlayers: row.maxPlayers,
+      rounds: row.rounds,
+      entryFee: row.entryFee,
+      status: row.roomStatus,
+      winnerId: row.winnerId,
+      creatorNickname: row.creatorNickname,
+    },
+  }));
+}
+
+async function queryArenaRecordList(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  options: {
+    page: number;
+    pageSize: number;
+    amountRange: "all" | "1-200" | "201-800" | "800+";
+    sortBy: "latest" | "maxGrowth" | "bestLuck";
+    playerId?: number;
+    winnerOnly?: boolean;
+  }
+) {
+  const whereClause = options.playerId != null
+    ? and(eq(arenaRooms.status, "finished"), eq(arenaRoomPlayers.playerId, options.playerId))
+    : options.winnerOnly
+      ? and(eq(arenaRooms.status, "finished"), eq(arenaRoomPlayers.isWinner, 1))
+      : eq(arenaRooms.status, "finished");
+
+  const rows = await db
+    .select({
+      id: arenaRoomPlayers.id,
+      roomId: arenaRoomPlayers.roomId,
+      playerId: arenaRoomPlayers.playerId,
+      nickname: arenaRoomPlayers.nickname,
+      seatNo: arenaRoomPlayers.seatNo,
+      totalValue: arenaRoomPlayers.totalValue,
+      isWinner: arenaRoomPlayers.isWinner,
+      createdAt: arenaRoomPlayers.createdAt,
+      roomNo: arenaRooms.roomNo,
+      maxPlayers: arenaRooms.maxPlayers,
+      rounds: arenaRooms.rounds,
+      entryFee: arenaRooms.entryFee,
+      roomStatus: arenaRooms.status,
+      winnerId: arenaRooms.winnerId,
+      creatorNickname: arenaRooms.creatorNickname,
+      roomCreatedAt: arenaRooms.createdAt,
+    })
+    .from(arenaRoomPlayers)
+    .innerJoin(arenaRooms, eq(arenaRoomPlayers.roomId, arenaRooms.id))
+    .where(whereClause)
+    .orderBy(desc(arenaRooms.createdAt), desc(arenaRoomPlayers.createdAt));
+
+  const records = normalizeArenaRecordRows(rows)
+    .filter((record) => inArenaAmountRange(parseFloat(record.room.entryFee ?? "0"), options.amountRange));
+
+  const getCreatedAtTime = (value: Date | string | number | null) => {
+    if (value == null) return 0;
+    const time = new Date(value as any).getTime();
+    return Number.isFinite(time) ? time : 0;
+  };
+  const getProfit = (record: any) => parseFloat(record.totalValue ?? "0") - parseFloat(record.room?.entryFee ?? "0");
+  const getLuckRatio = (record: any) => {
+    const fee = parseFloat(record.room?.entryFee ?? "0");
+    const totalValue = parseFloat(record.totalValue ?? "0");
+    return fee > 0 ? totalValue / fee : 0;
+  };
+
+  records.sort((a, b) => {
+    if (options.sortBy === "maxGrowth") {
+      return getProfit(b) - getProfit(a) || getCreatedAtTime(b.createdAt) - getCreatedAtTime(a.createdAt);
+    }
+    if (options.sortBy === "bestLuck") {
+      return getLuckRatio(b) - getLuckRatio(a)
+        || getProfit(b) - getProfit(a)
+        || getCreatedAtTime(b.createdAt) - getCreatedAtTime(a.createdAt);
+    }
+    return getCreatedAtTime(b.createdAt) - getCreatedAtTime(a.createdAt);
+  });
+
+  const offset = (options.page - 1) * options.pageSize;
+  return records.slice(offset, offset + options.pageSize);
 }
 
 // ── 路由定义 ──────────────────────────────────────────────────────────────
@@ -378,6 +488,7 @@ export const arenaRouter = router({
         .where(eq(arenaRoomPlayers.roomId, input.roomId))
         .orderBy(arenaRoomPlayers.seatNo);
       // 为每个玩家随机抽取物品
+      const realPlayerIdSet = await getRealArenaPlayerIdSet(db, roomPlayers);
       const results: Array<{
         playerId: number;
         nickname: string;
@@ -409,8 +520,8 @@ export const arenaRouter = router({
           goodsLevel: picked.level,
           goodsValue: String(picked.price),
         });
-        // 真实玩家（playerId > 0）将奖励道具暂存（status=3 表示竞技场待结算，游戏结束后再分配归属）
-        if (rp.playerId > 0) {
+        // 仅真人玩家需要保留竞技场待结算物品；机器人不写背包记录
+        if (realPlayerIdSet.has(rp.playerId)) {
           const recycleValue = String(parseFloat(String(picked.price || '0')).toFixed(2));
           await db.insert(playerItems).values({
             playerId: rp.playerId,
@@ -460,14 +571,18 @@ export const arenaRouter = router({
       if (room.status !== "waiting") throw new TRPCError({ code: "BAD_REQUEST", message: "只能取消等待中的房间" });
       // 退还入场费给所有参与者
       const roomPlayers = await db.select().from(arenaRoomPlayers).where(eq(arenaRoomPlayers.roomId, input.roomId));
+      const realPlayerIdSet = await getRealArenaPlayerIdSet(db, roomPlayers);
+      const hasRealPlayers = realPlayerIdSet.size > 0;
       const entryFee = parseFloat(room.entryFee);
       for (const rp of roomPlayers) {
         const [p] = await db.select().from(players).where(eq(players.id, rp.playerId));
         if (p) {
           const newGold = (parseFloat(p.gold ?? "0") + entryFee).toFixed(2);
           await db.update(players).set({ gold: newGold }).where(eq(players.id, rp.playerId));
-          // 记录金币日志（竞技场房间取消退款）
-          await insertGoldLog(rp.playerId, entryFee, parseFloat(newGold), 'arena', `竞技场房间取消退款`);
+          // 含真人参与的房间继续保留日志，但机器人账号本身不再写退款日志
+          if (hasRealPlayers && realPlayerIdSet.has(rp.playerId)) {
+            await insertGoldLog(rp.playerId, entryFee, parseFloat(newGold), 'arena', `竞技场房间取消退款`);
+          }
         }
       }
       await db.update(arenaRooms).set({ status: "cancelled" }).where(eq(arenaRooms.id, input.roomId));
@@ -516,28 +631,29 @@ export const arenaRouter = router({
       };
     }),
 
-  /** 获取我参与的竞技场记录 */
+  /** 获取我参与的竞技场记录（支持金额区间与榜单排序） */
   getMyRecords: publicProcedure
-    .input(z.object({ page: z.number().min(1).default(1), pageSize: z.number().min(1).max(20).default(10) }))
+    .input(arenaRecordQueryInput)
     .query(async ({ ctx, input }) => {
       const session = await getPlayerFromCookie((ctx as any).req);
       if (!session) throw new TRPCError({ code: "UNAUTHORIZED" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const offset = (input.page - 1) * input.pageSize;
-      const participated = await db
-        .select()
-        .from(arenaRoomPlayers)
-        .where(eq(arenaRoomPlayers.playerId, session.playerId))
-        .orderBy(desc(arenaRoomPlayers.createdAt))
-        .limit(input.pageSize)
-        .offset(offset);
-      if (participated.length === 0) return [];
-      const roomIds = participated.map((p) => p.roomId);
-      const roomList = await db.select().from(arenaRooms).where(inArray(arenaRooms.id, roomIds));
-      return participated.map((p) => {
-        const room = roomList.find((r) => r.id === p.roomId);
-        return { ...p, room };
+      return queryArenaRecordList(db, {
+        ...input,
+        playerId: session.playerId,
+      });
+    }),
+
+  /** 获取全服竞技场记录（默认按胜者记录聚合，避免同一房间重复展示） */
+  getGlobalRecords: publicProcedure
+    .input(arenaRecordQueryInput)
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      return queryArenaRecordList(db, {
+        ...input,
+        winnerOnly: true,
       });
     }),
 
@@ -585,6 +701,7 @@ export async function autoSpinAllRounds(roomId: number) {
     .from(arenaRoomPlayers)
     .where(eq(arenaRoomPlayers.roomId, roomId))
     .orderBy(arenaRoomPlayers.seatNo);
+  const realPlayerIdSet = await getRealArenaPlayerIdSet(db, roomPlayers);
 
   const boxIds: number[] = JSON.parse(room.boxIds || '[]');
   const totalRounds = room.rounds;
@@ -641,8 +758,8 @@ export async function autoSpinAllRounds(roomId: number) {
           goodsLevel: picked.level,
           goodsValue: String(picked.price),
         });
-        // 真实玩家（playerId > 0）将奖励道具暂存（status=3 表示竞技场待结算，游戏结束后再分配归属）
-        if (rp.playerId > 0) {
+        // 仅真人玩家需要保留竞技场待结算物品；机器人不写背包记录
+        if (realPlayerIdSet.has(rp.playerId)) {
           const recycleValue = String(parseFloat(String(picked.price || '0')).toFixed(2));
           await db.insert(playerItems).values({
             playerId: rp.playerId,
@@ -713,20 +830,25 @@ async function finishGame(roomId: number, db: Awaited<ReturnType<typeof getDb>>,
   const isDraw = topPlayers.length > 1;
   if (isDraw) winnerId = 0; // 平局时 winnerId = 0
 
-  // 更新参与者记录
-  for (const rp of roomPlayers) {
-    const totalValue = (valueMap[rp.playerId] || 0).toFixed(2);
-    const isWinner = isDraw ? 0 : (rp.playerId === winnerId ? 1 : 0);
-    await db
-      .update(arenaRoomPlayers)
-      .set({ totalValue, isWinner })
-      .where(eq(arenaRoomPlayers.id, rp.id));
+  const realPlayerIdSet = await getRealArenaPlayerIdSet(db, roomPlayers);
+  const hasRealPlayers = realPlayerIdSet.size > 0;
+
+  // 只有真人参与的对局才保留参与记录，纯机器人对局不持久化结算结果
+  if (hasRealPlayers) {
+    for (const rp of roomPlayers) {
+      const totalValue = (valueMap[rp.playerId] || 0).toFixed(2);
+      const isWinner = isDraw ? 0 : (rp.playerId === winnerId ? 1 : 0);
+      await db
+        .update(arenaRoomPlayers)
+        .set({ totalValue, isWinner })
+        .where(eq(arenaRoomPlayers.id, rp.id));
+    }
   }
 
   if (isDraw) {
     // 平局：各自保留自己开出的物品，将 status=3 改为 status=0（入背包）
     for (const rp of roomPlayers) {
-      if (rp.playerId > 0) {
+      if (realPlayerIdSet.has(rp.playerId)) {
         await db
           .update(playerItems)
           .set({ status: 0 })
@@ -742,7 +864,7 @@ async function finishGame(roomId: number, db: Awaited<ReturnType<typeof getDb>>,
   } else {
     // 胜负：赢家获得所有玩家开出的物品（包括输家的）
     // 1. 赢家自己的物品：status=3 改为 status=0
-    if (winnerId > 0) {
+    if (realPlayerIdSet.has(winnerId)) {
       await db
         .update(playerItems)
         .set({ status: 0 })
@@ -755,7 +877,7 @@ async function finishGame(roomId: number, db: Awaited<ReturnType<typeof getDb>>,
         );
       // 2. 输家的物品：将 playerId 改为 winnerId，status=3 改为 status=0
       for (const rp of roomPlayers) {
-        if (rp.playerId !== winnerId && rp.playerId > 0) {
+        if (rp.playerId !== winnerId && realPlayerIdSet.has(rp.playerId)) {
           await db
             .update(playerItems)
             .set({ playerId: winnerId, status: 0 })
@@ -770,11 +892,13 @@ async function finishGame(roomId: number, db: Awaited<ReturnType<typeof getDb>>,
       }
     }
   }
-  // 更新房间状态
-  await db
-    .update(arenaRooms)
-    .set({ status: "finished", winnerId })
-    .where(eq(arenaRooms.id, roomId));
+  // 含真人参与的对局需要保留结果；纯机器人对局广播完成后直接清理房间数据
+  if (hasRealPlayers) {
+    await db
+      .update(arenaRooms)
+      .set({ status: "finished", winnerId })
+      .where(eq(arenaRooms.id, roomId));
+  }
   // 广播游戏结束
   const playerResults = roomPlayers.map((rp) => ({
     playerId: rp.playerId,
@@ -786,4 +910,8 @@ async function finishGame(roomId: number, db: Awaited<ReturnType<typeof getDb>>,
     isDraw,
   }));
   broadcastGameOver(roomId, winnerId, playerResults, isDraw);
+
+  if (!hasRealPlayers) {
+    await cleanupBotOnlyArenaRoom(db, roomId);
+  }
 }

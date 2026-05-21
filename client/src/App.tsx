@@ -35,6 +35,7 @@ const Vortex = lazy(() => import("./pages/Vortex"));
 const MyRecords = lazy(() => import("./pages/MyRecords"));
 const VipPage = lazy(() => import("./pages/VipPage"));
 const Mailbox = lazy(() => import("./pages/Mailbox"));
+const WelfareRedeem = lazy(() => import("./pages/WelfareRedeem"));
 
 /** 全局页面切换 Loading 占位 */
 function PageLoader() {
@@ -184,6 +185,9 @@ function Router() {
         </Route>
         <Route path={"/mailbox"}>
           {() => <ProtectedRoute component={Mailbox} />}
+        </Route>
+        <Route path={"/welfare"}>
+          {() => <ProtectedRoute component={WelfareRedeem} />}
         </Route>
         {/* 客服系统 */}
         <Route path={"/kefu"}>

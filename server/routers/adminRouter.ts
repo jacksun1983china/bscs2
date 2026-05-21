@@ -5,7 +5,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { SignJWT, jwtVerify } from "jose";
-import { eq, desc, sql, and, like, gte, lte, or } from "drizzle-orm";
+import { eq, desc, sql, and, like, gte, lte, or, lt } from "drizzle-orm";
 import { adminProcedure, publicProcedure, router } from "../_core/trpc";
 import {
   addRollBots,
@@ -38,9 +38,20 @@ import {
   shopItems,
   shopOrders,
   vipConfigs,
+  cdkRedeemCodes,
 } from "../../drizzle/schema";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
+
+/** 生成后台福利 CDK，采用大写字母与数字组合，降低人工录入出错概率 */
+function generateCdkCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 16; i += 1) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
 
 export const adminRouter = router({
   // 管理员登录（独立账号密码，不依赖Manus OAuth）
@@ -795,6 +806,108 @@ export const adminRouter = router({
         input.reason,
       );
       return { success: true, newGold };
+    }),
+
+  /** 管理后台：福利 CDK 列表 */
+  cdkList: adminProcedure
+    .input(z.object({
+      page: z.number().min(1).default(1),
+      limit: z.number().min(1).max(100).default(20),
+      keyword: z.string().optional(),
+      status: z.enum(['all', 'unused', 'used', 'expired', 'deleted']).default('all'),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { list: [], total: 0 };
+      const now = new Date();
+      const offset = (input.page - 1) * input.limit;
+      const conditions: any[] = [];
+      const keyword = input.keyword?.trim();
+      if (keyword) {
+        const kw = `%${keyword}%`;
+        if (/^\d+$/.test(keyword)) {
+          conditions.push(or(like(cdkRedeemCodes.code, kw), eq(cdkRedeemCodes.usedByPlayerId, Number(keyword))));
+        } else {
+          conditions.push(like(cdkRedeemCodes.code, kw));
+        }
+      }
+      if (input.status === 'unused') {
+        conditions.push(eq(cdkRedeemCodes.status, 0));
+        conditions.push(gte(cdkRedeemCodes.expireAt, now));
+      } else if (input.status === 'used') {
+        conditions.push(eq(cdkRedeemCodes.status, 1));
+      } else if (input.status === 'expired') {
+        conditions.push(eq(cdkRedeemCodes.status, 0));
+        conditions.push(lt(cdkRedeemCodes.expireAt, now));
+      } else if (input.status === 'deleted') {
+        conditions.push(eq(cdkRedeemCodes.status, 2));
+      }
+      const where = conditions.length > 0 ? and(...conditions) : undefined;
+      const [rows, countResult] = await Promise.all([
+        db.select().from(cdkRedeemCodes).where(where).orderBy(desc(cdkRedeemCodes.id)).limit(input.limit).offset(offset),
+        db.select({ count: sql<number>`count(*)` }).from(cdkRedeemCodes).where(where),
+      ]);
+      return {
+        list: rows.map((row) => ({
+          id: row.id,
+          code: row.code,
+          amount: parseFloat(String(row.amount ?? '0')),
+          userPid: row.usedByPlayerId,
+          expireAt: row.expireAt,
+          usedAt: row.usedAt,
+          createdAt: row.createdAt,
+          rawStatus: row.status,
+          status: row.status === 2 ? '已删除' : row.status === 1 ? '已使用' : row.expireAt < now ? '已过期' : '未使用',
+        })),
+        total: Number(countResult[0]?.count ?? 0),
+      };
+    }),
+
+  /** 管理后台：批量生成福利 CDK */
+  createCdks: adminProcedure
+    .input(z.object({
+      amount: z.number().positive('金额必须大于0'),
+      expireDays: z.number().int().min(1).max(3650),
+      quantity: z.number().int().min(1).max(500),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: '数据库未连接' });
+      const expireAt = new Date(Date.now() + input.expireDays * 24 * 60 * 60 * 1000);
+      const rows = Array.from({ length: input.quantity }).map(() => ({
+        code: generateCdkCode(),
+        amount: input.amount.toFixed(2),
+        expireAt,
+        status: 0,
+      }));
+      try {
+        await db.insert(cdkRedeemCodes).values(rows as any);
+      } catch (error) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'CDK 生成失败，请重试' });
+      }
+      return {
+        success: true,
+        quantity: rows.length,
+        expireAt,
+        previewCodes: rows.slice(0, 10).map((row) => row.code),
+      };
+    }),
+
+  /** 管理后台：删除未使用的福利 CDK */
+  deleteCdk: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: '数据库未连接' });
+      const rows = await db.select().from(cdkRedeemCodes).where(eq(cdkRedeemCodes.id, input.id)).limit(1);
+      const row = rows[0];
+      if (!row) throw new TRPCError({ code: 'NOT_FOUND', message: 'CDK 不存在' });
+      if (row.status === 1) throw new TRPCError({ code: 'BAD_REQUEST', message: '该 CDK 已被使用，不能删除' });
+      if (row.status === 2) return { success: true };
+      await db.update(cdkRedeemCodes)
+        .set({ status: 2, updatedAt: new Date() })
+        .where(and(eq(cdkRedeemCodes.id, input.id), eq(cdkRedeemCodes.status, 0)));
+      return { success: true };
     }),
 
   // ── X-Game 分类管理 ──────────────────────────────────────────────

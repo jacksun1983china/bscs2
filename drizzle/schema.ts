@@ -1000,3 +1000,30 @@ export const giftLogs = mysqlTable("giftLogs", {
 }));
 
 export type GiftLog = typeof giftLogs.$inferSelect;
+
+// ── 福利 CDK 兑换码表 ──────────────────────────────────────────────────────
+export const cdkRedeemCodes = mysqlTable("cdkRedeemCodes", {
+  id: int("id").autoincrement().primaryKey(),
+  /** CDK 字符串 */
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  /** 兑换获得的平台币（当前接入金币） */
+  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
+  /** 状态：0未使用 1已使用 2已删除 */
+  status: tinyint("status").notNull().default(0),
+  /** 使用者玩家ID */
+  usedByPlayerId: int("usedByPlayerId"),
+  /** 使用时间 */
+  usedAt: timestamp("usedAt"),
+  /** 过期时间 */
+  expireAt: timestamp("expireAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().onUpdateNow(),
+}, (t) => ({
+  codeIdx: index("cdkRedeemCodes_code_idx").on(t.code),
+  statusIdx: index("cdkRedeemCodes_status_idx").on(t.status),
+  usedByPlayerIdIdx: index("cdkRedeemCodes_usedByPlayerId_idx").on(t.usedByPlayerId),
+  expireAtIdx: index("cdkRedeemCodes_expireAt_idx").on(t.expireAt),
+  createdAtIdx: index("cdkRedeemCodes_createdAt_idx").on(t.createdAt),
+}));
+
+export type CdkRedeemCode = typeof cdkRedeemCodes.$inferSelect;
