@@ -336,8 +336,14 @@ export const arenaRouter = router({
         } catch (err: any) {
           const duplicateCode = err?.cause?.code ?? err?.code;
           const duplicateMsg = String(err?.cause?.sqlMessage ?? err?.message ?? "");
-          const isRoomNoDuplicate = duplicateCode === "ER_DUP_ENTRY" && duplicateMsg.includes("arenaRooms_roomNo_unique");
+          const normalizedDuplicateMsg = duplicateMsg.toLowerCase();
+          const isRoomNoDuplicate = duplicateCode === "ER_DUP_ENTRY" && (
+            normalizedDuplicateMsg.includes("arenarooms_roomno_unique") ||
+            normalizedDuplicateMsg.includes("roomno") ||
+            normalizedDuplicateMsg.includes("duplicate entry")
+          );
           if (!isRoomNoDuplicate || i === 19) throw err;
+          console.warn(`[Arena] 房间号 ${roomNo} 撞号，自动重试第 ${i + 1} 次: ${duplicateMsg}`);
         }
       }
       // 添加创建者为参与者（座位1）
