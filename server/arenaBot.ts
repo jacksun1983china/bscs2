@@ -661,28 +661,33 @@ async function ensureBotRooms() {
         .set({ gold: newBotGold })
         .where(eq(players.id, bot.id));
 
-      // 7. 生成唯一房间号
-      let roomNo = genBotRoomNo();
-      for (let j = 0; j < 5; j++) {
-        const [exist] = await db.select().from(arenaRooms).where(eq(arenaRooms.roomNo, roomNo));
-        if (!exist) break;
+      // 7. 创建房间：房间号存在并发碰撞概率，插入时遇到唯一键冲突则自动重试
+      let roomNo = '';
+      let roomId = 0;
+      for (let j = 0; j < 20; j++) {
         roomNo = genBotRoomNo();
+        try {
+          const [insertResult] = await db.insert(arenaRooms).values({
+            roomNo,
+            creatorId: bot.id,
+            creatorNickname: bot.nickname || '机器人',
+            creatorAvatar: bot.avatar || '001',
+            maxPlayers,
+            currentPlayers: 1,
+            rounds,
+            entryFee: entryFee.toFixed(2),
+            boxIds: JSON.stringify(selectedBoxIds),
+            status: 'waiting',
+          });
+          roomId = (insertResult as any).insertId as number;
+          break;
+        } catch (err: any) {
+          const duplicateCode = err?.cause?.code ?? err?.code;
+          const duplicateMsg = String(err?.cause?.sqlMessage ?? err?.message ?? '');
+          const isRoomNoDuplicate = duplicateCode === 'ER_DUP_ENTRY' && duplicateMsg.includes('arenaRooms_roomNo_unique');
+          if (!isRoomNoDuplicate || j === 19) throw err;
+        }
       }
-
-      // 8. 创建房间
-      const [insertResult] = await db.insert(arenaRooms).values({
-        roomNo,
-        creatorId: bot.id,
-        creatorNickname: bot.nickname || '机器人',
-        creatorAvatar: bot.avatar || '001',
-        maxPlayers,
-        currentPlayers: 1,
-        rounds,
-        entryFee: entryFee.toFixed(2),
-        boxIds: JSON.stringify(selectedBoxIds),
-        status: 'waiting',
-      });
-      const roomId = (insertResult as any).insertId as number;
 
       // 9. 添加机器人为参与者（座位1）
       await db.insert(arenaRoomPlayers).values({

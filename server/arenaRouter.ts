@@ -313,27 +313,33 @@ export const arenaRouter = router({
         .where(eq(players.id, session.playerId));
       // 记录金币日志（创建竞技场房间入场费）
       await insertGoldLog(session.playerId, -entryFee, gold - entryFee, 'arena', `竞技场入场费（创建房间）`);
-      // 创建房间
-      let roomNo = genRoomNo();
-      // 确保房间号唯一
-      for (let i = 0; i < 5; i++) {
-        const [exist] = await db.select().from(arenaRooms).where(eq(arenaRooms.roomNo, roomNo));
-        if (!exist) break;
+      // 创建房间：房间号存在并发碰撞概率，插入时遇到唯一键冲突则自动重试
+      let roomNo = "";
+      let roomId = 0;
+      for (let i = 0; i < 20; i++) {
         roomNo = genRoomNo();
+        try {
+          const [insertResult] = await db.insert(arenaRooms).values({
+            roomNo,
+            creatorId: session.playerId,
+            creatorNickname: player.nickname || player.phone,
+            creatorAvatar: player.avatar || "001",
+            maxPlayers: input.maxPlayers,
+            currentPlayers: 1,
+            rounds: input.boxIds.length,
+            entryFee: entryFee.toFixed(2),
+            boxIds: JSON.stringify(input.boxIds),
+            status: "waiting",
+          });
+          roomId = (insertResult as any).insertId as number;
+          break;
+        } catch (err: any) {
+          const duplicateCode = err?.cause?.code ?? err?.code;
+          const duplicateMsg = String(err?.cause?.sqlMessage ?? err?.message ?? "");
+          const isRoomNoDuplicate = duplicateCode === "ER_DUP_ENTRY" && duplicateMsg.includes("arenaRooms_roomNo_unique");
+          if (!isRoomNoDuplicate || i === 19) throw err;
+        }
       }
-      const [insertResult] = await db.insert(arenaRooms).values({
-        roomNo,
-        creatorId: session.playerId,
-        creatorNickname: player.nickname || player.phone,
-        creatorAvatar: player.avatar || "001",
-        maxPlayers: input.maxPlayers,
-        currentPlayers: 1,
-        rounds: input.boxIds.length,
-        entryFee: entryFee.toFixed(2),
-        boxIds: JSON.stringify(input.boxIds),
-        status: "waiting",
-      });
-      const roomId = (insertResult as any).insertId as number;
       // 添加创建者为参与者（座位1）
       await db.insert(arenaRoomPlayers).values({
         roomId,
