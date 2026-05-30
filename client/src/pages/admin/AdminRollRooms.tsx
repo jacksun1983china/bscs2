@@ -126,12 +126,13 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
     createMutation.mutate({
       title: form.name,
       avatarBase64: undefined,
+      avatarUrl: form.avatarUrl || undefined,
       ownerId: form.parentId ? parseInt(form.parentId) : undefined,
       startAt: form.startTime,
       endAt: form.endTime,
       threshold: parseFloat(form.threshold),
       maxParticipants: parseInt(form.maxPlayers) || 100,
-      prizes: validPrizes.map(p => ({ name: p.name, value: parseFloat(p.amount), quantity: parseInt(p.quantity) || 1, coinType: (form.exchangeType === 'gold' ? 'gold' : 'shopCoin') as 'shopCoin' | 'gold', imageBase64: undefined, prizeType: p.prizeType as 'coin' | 'item', itemCategory: 'roll' })),
+      prizes: validPrizes.map(p => ({ name: p.name, value: parseFloat(p.amount), quantity: parseInt(p.quantity) || 1, coinType: (form.exchangeType === 'gold' ? 'gold' : 'shopCoin') as 'shopCoin' | 'gold', imageBase64: undefined, imageUrl: p.imageUrl || undefined, prizeType: p.prizeType as 'coin' | 'item', itemCategory: 'roll' })),
     });
   };
 
@@ -198,8 +199,8 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
             <label style={labelStyle}>{t.exchangeType}</label>
             <select style={{ ...inputStyle }} value={form.exchangeType} onChange={e => setForm(f => ({ ...f, exchangeType: e.target.value }))}>
               <option value="mall_coin">商城币</option>
-              <option value="gold">金币</option>
-              <option value="diamond">钻石</option>
+              <option value="gold">平台币</option>
+              <option value="diamond">商城币</option>
             </select>
           </div>
           {/* 机器人数量 */}

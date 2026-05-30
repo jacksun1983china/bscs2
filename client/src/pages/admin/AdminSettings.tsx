@@ -18,7 +18,7 @@ const DEFAULT_SETTINGS = [
   { key: 'customer_service_url', label: '客服链接', labelEn: 'CS URL', defaultValue: '', description: '客服跳转地址' },
   { key: 'min_recharge', label: '最低充值金额', labelEn: 'Min Recharge', defaultValue: '1', description: '最低充值金额（元）' },
   { key: 'withdraw_enabled', label: '提现开关', labelEn: 'Withdraw Enabled', defaultValue: '1', description: '1=开启 0=关闭' },
-  { key: 'register_bonus', label: '注册赠送金币', labelEn: 'Register Bonus', defaultValue: '0', description: '新用户注册赠送金币数量' },
+  { key: 'register_bonus', label: '注册赠送平台币', labelEn: 'Register Bonus', defaultValue: '0', description: '新用户注册赠送平台币数量' },
 ];
 
 export function AdminSettings({ lang, t }: AdminSettingsProps) {

@@ -1020,11 +1020,24 @@ export const appRouter = router({
       }))
       .query(async ({ input, ctx }) => {
         const session = await getPlayerFromCookie(ctx.req);
-        return getRollRoomList({
+        const result = await getRollRoomList({
           page: input.page, limit: input.limit,
           filter: input.filter, keyword: input.keyword,
           playerId: session?.playerId,
         });
+        // 将UTC时间转为北京时间返回给前端
+        const toBeijing = (d: Date | string) => {
+          const date = new Date(d);
+          return new Date(date.getTime() + 8 * 3600 * 1000);
+        };
+        return {
+          ...result,
+          list: result.list.map((room: any) => ({
+            ...room,
+            startAt: toBeijing(room.startAt),
+            endAt: toBeijing(room.endAt),
+          })),
+        };
       }),
 
     /** 获取Roll房详情 */
@@ -1033,7 +1046,19 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const detail = await getRollRoomDetail(input.id);
         if (!detail) throw new TRPCError({ code: "NOT_FOUND", message: "Roll房不存在" });
-        return detail;
+        // 将UTC时间转为北京时间
+        const toBeijing = (d: Date | string) => {
+          const date = new Date(d);
+          return new Date(date.getTime() + 8 * 3600 * 1000);
+        };
+        return {
+          ...detail,
+          room: {
+            ...detail.room,
+            startAt: toBeijing(detail.room.startAt),
+            endAt: toBeijing(detail.room.endAt),
+          },
+        };
       }),
 
     /** 参与Roll房 */

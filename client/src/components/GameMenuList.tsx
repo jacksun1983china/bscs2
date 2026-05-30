@@ -66,14 +66,6 @@ const GAMES: GameItem[] = [
     route: '/roll',
   },
   {
-    id: 'rush',
-    bgImage: LANHU.gameCard1Bg,
-    labelImage: null,
-    labelText: '过马路',
-    avatarImage: LANHU.gameAvatar5,
-    route: '/rush',
-  },
-  {
     id: 'vortex',
     bgImage: LANHU.gameCard3Bg,
     labelImage: null,

@@ -1,6 +1,6 @@
 /**
- * AdminGoldLogs.tsx — 管理后台金币流水查询页面
- * 功能：按玩家ID/时间/类型筛选金币变动记录，分页展示
+ * AdminGoldLogs.tsx — 管理后台平台币流水查询页面
+ * 功能：按玩家ID/时间/类型筛选平台币变动记录，分页展示
  */
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
@@ -59,7 +59,7 @@ export function AdminGoldLogs({ lang = 'zh' }: AdminGoldLogsProps) {
   };
 
   const t = lang === 'zh' ? {
-    title: '金币流水',
+    title: '平台币流水',
     playerIdPlaceholder: '输入玩家ID搜索',
     search: '搜索',
     reset: '重置',

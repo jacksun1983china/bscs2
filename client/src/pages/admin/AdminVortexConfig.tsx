@@ -138,7 +138,7 @@ export function AdminVortexConfig() {
         }}>
           <div style={{ color: '#c4b5fd', fontSize: 13, fontWeight: 600, marginBottom: 8 }}>RTP 说明</div>
           <div style={{ color: 'rgba(180,150,255,0.6)', fontSize: 12, lineHeight: 1.6 }}>
-            RTP（Return to Player）是游戏的理论返还率。设置为 96 表示玩家平均每投注 100 金币，理论上可获得 96 金币的回报。
+            RTP（Return to Player）是游戏的理论返还率。设置为 96 表示玩家平均每投注 100 平台币，理论上可获得 96 平台币的回报。
             <br />
             RTP 越高，玩家赢钱概率越大；RTP 越低，平台盈利越多。
             <br />

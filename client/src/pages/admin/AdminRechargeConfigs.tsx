@@ -1,6 +1,6 @@
 /**
  * AdminRechargeConfigs.tsx — 充值档位管理
- * 管理员可以增删改查充值档位（金额、金币、赠送钻石、标签、排序、状态）
+ * 管理员可以增删改查充值档位（金额、平台币、赠送商城币、标签、排序、状态）
  */
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
@@ -15,8 +15,8 @@ const T = {
     title: '充值档位管理',
     add: '新增档位',
     amount: '充值金额(¥)',
-    gold: '获得金币',
-    bonusDiamond: '赠送钻石',
+    gold: '获得平台币',
+    bonusDiamond: '赠送商城币',
     tag: '标签',
     sort: '排序',
     status: '状态',
@@ -36,8 +36,8 @@ const T = {
     title: 'Recharge Config',
     add: 'Add Config',
     amount: 'Amount(¥)',
-    gold: 'Gold',
-    bonusDiamond: 'Bonus Diamond',
+    gold: 'Platform Coin',
+    bonusDiamond: 'Bonus Shop Coin',
     tag: 'Tag',
     sort: 'Sort',
     status: 'Status',
@@ -120,7 +120,7 @@ export function AdminRechargeConfigs({ lang }: Props) {
     const bonusDiamond = parseFloat(form.bonusDiamond || '0');
     const sort = parseInt(form.sort || '0', 10);
     if (isNaN(amount) || amount <= 0) { toast.error('请输入有效充值金额'); return; }
-    if (isNaN(gold) || gold <= 0) { toast.error('请输入有效金币数量'); return; }
+    if (isNaN(gold) || gold <= 0) { toast.error('请输入有效平台币数量'); return; }
 
     if (form.id) {
       updateMutation.mutate({ id: form.id, amount, gold, bonusDiamond, tag: form.tag, sort, status: form.status });

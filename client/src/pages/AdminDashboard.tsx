@@ -25,6 +25,7 @@ import { AdminGoldLogs } from './admin/AdminGoldLogs';
 import { AdminXGames } from './admin/AdminXGames';
 import { AdminOrders } from './admin/AdminOrders';
 import { AdminCdks } from './admin/AdminCdks';
+import { AdminMailbox } from './admin/AdminMailbox';
 
 // ── 国际化文本 ──────────────────────────────────────────────────
 const I18N = {
@@ -46,7 +47,7 @@ const I18N = {
     categories: '分类管理',
     boxes: '宝箱管理',
     finance: '财务统计',
-    goldLogs: '金币流水',
+    goldLogs: '平台币流水',
     agents: '坐席管理',
     vortexAdmin: 'Vortex配置',
     xGames: 'X-Game管理',
@@ -63,8 +64,8 @@ const I18N = {
     phone: '手机号',
     nickname: '昵称',
     vip: 'VIP',
-    gold: '金币',
-    diamond: '钻石',
+    gold: '平台币',
+    diamond: '商城币',
     status: '状态',
     registered: '注册时间',
     actions: '操作',
@@ -95,6 +96,7 @@ const I18N = {
     shop: '商城管理',
     vipManage: 'VIP配置',
     cdkManage: '福利CDK',
+    mailbox: '站内信管理',
     // Roll房
      rollRooms: '竹战房管理',
     arena: '竞技场管理',
@@ -145,16 +147,16 @@ const I18N = {
     extractable: '可提取',
     extracted: '已提取',
     extract: '提取',
-    adjustGold: '调整金币',
-    adjustGoldTitle: '手动调整金币',
-    adjustAmount: '调整金币数量',
+    adjustGold: '调整平台币',
+    adjustGoldTitle: '手动调整平台币',
+    adjustAmount: '调整平台币数量',
     adjustAmountHint: '正数为增加，负数为扣除',
     adjustReason: '调整原因',
     adjustReasonPlaceholder: '请输入调整原因',
     adjustConfirm: '确认调整',
-    adjustSuccess: '金币调整成功',
-    currentGold: '当前金币',
-    afterAdjust: '调整后金币',
+    adjustSuccess: '平台币调整成功',
+    currentGold: '当前平台币',
+    afterAdjust: '调整后平台币',
   },
   en: {
     title: 'BDCS2 Admin Console',
@@ -174,7 +176,7 @@ const I18N = {
     categories: 'Categories',
     boxes: 'Box Config',
     finance: 'Finance',
-    goldLogs: 'Gold Logs',
+    goldLogs: 'Platform Coin Logs',
     agents: 'Agent Mgmt',
     vortexAdmin: 'Vortex Config',
     xGames: 'X-Game Mgmt',
@@ -191,8 +193,8 @@ const I18N = {
     phone: 'Phone',
     nickname: 'Nickname',
     vip: 'VIP',
-    gold: 'Gold',
-    diamond: 'Diamond',
+    gold: 'Platform Coin',
+    diamond: 'Shop Coin',
     status: 'Status',
     registered: 'Registered',
     actions: 'Actions',
@@ -223,6 +225,7 @@ const I18N = {
     shop: 'Shop Mgmt',
     vipManage: 'VIP Config',
     cdkManage: 'Welfare CDK',
+    mailbox: 'Mailbox',
     rollRooms: 'Roll Rooms',
     arena: 'Arena Mgmt',
     createRollRoom: 'Create Roll Room',
@@ -270,16 +273,16 @@ const I18N = {
     extractable: 'Extractable',
     extracted: 'Extracted',
     extract: 'Extract',
-    adjustGold: 'Adjust Gold',
-    adjustGoldTitle: 'Manual Gold Adjustment',
+    adjustGold: 'Adjust Platform Coin',
+    adjustGoldTitle: 'Manual Platform Coin Adjustment',
     adjustAmount: 'Adjustment Amount',
     adjustAmountHint: 'Positive to add, negative to deduct',
     adjustReason: 'Reason',
     adjustReasonPlaceholder: 'Enter reason for adjustment',
     adjustConfirm: 'Confirm',
-    adjustSuccess: 'Gold adjusted successfully',
-    currentGold: 'Current Gold',
-    afterAdjust: 'Gold After Adjustment',
+    adjustSuccess: 'Platform Coin adjusted successfully',
+    currentGold: 'Current Platform Coin',
+    afterAdjust: 'Platform Coin After Adjustment',
   },
 };
 
@@ -365,7 +368,7 @@ function PlayerDetailModal({
                 </div>
               ))}
             </div>
-            {/* 调整金币按鈕 */}
+            {/* 调整平台币按鈕 */}
             <div style={{ marginTop: 16 }}>
               <button
                 onClick={() => setShowAdjust(v => !v)}
@@ -379,14 +382,14 @@ function PlayerDetailModal({
                 💰 {t.adjustGold}
               </button>
             </div>
-            {/* 调整金币面板 */}
+            {/* 调整平台币面板 */}
             {showAdjust && (
               <div style={{
                 marginTop: 12, padding: 16, borderRadius: 12,
                 background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.25)',
               }}>
                 <div style={{ color: '#fbbf24', fontSize: 14, fontWeight: 700, marginBottom: 12 }}>{t.adjustGoldTitle}</div>
-                {/* 当前金币预览 */}
+                {/* 当前平台币预览 */}
                 <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
                   <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '8px 12px', border: '1px solid rgba(120,60,220,0.2)' }}>
                     <div style={{ color: 'rgba(180,150,255,0.6)', fontSize: 11, marginBottom: 2 }}>{t.currentGold}</div>
@@ -644,9 +647,9 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
 }
 
 // ── 主仪表盘 ────────────────────────────────────────────────────
-const MENU_KEYS = ['players', 'games', 'xGames', 'rollRooms', 'arena', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'goldLogs', 'vipManage', 'cdkManage', 'agents', 'vortexAdmin', 'settings'] as const;
+const MENU_KEYS = ['players', 'games', 'xGames', 'rollRooms', 'arena', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'goldLogs', 'vipManage', 'cdkManage', 'mailbox', 'agents', 'vortexAdmin', 'settings'] as const;
 const MENU_ICONS: Record<string, string> = {
-  players: '👥', games: '🎮', xGames: '🎰', rollRooms: '🎲', arena: '🏠️', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', goldLogs: '📊', vipManage: '👑', cdkManage: '🎟️', agents: '🎧', vortexAdmin: '🌀', settings: '⚙️',
+  players: '👥', games: '🎮', xGames: '🎰', rollRooms: '🎲', arena: '🏠️', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', goldLogs: '📊', vipManage: '👑', cdkManage: '🎟️', mailbox: '📬', agents: '🎧', vortexAdmin: '🌀', settings: '⚙️',
 };
 
 export default function AdminDashboard() {
@@ -801,7 +804,7 @@ export default function AdminDashboard() {
                 key={key}
                 onClick={() => {
                   setActiveMenu(key);
-                  if (!['players', 'games', 'xGames', 'rollRooms', 'arena', 'banners', 'rebate', 'categories', 'boxes', 'rechargeConfigs', 'finance', 'goldLogs', 'settings', 'vortexAdmin', 'vipManage', 'cdkManage', 'agents', 'shop', 'orders'].includes(key)) toast.info(t.featureSoon);
+                  if (!['players', 'games', 'xGames', 'rollRooms', 'arena', 'banners', 'rebate', 'categories', 'boxes', 'rechargeConfigs', 'finance', 'goldLogs', 'settings', 'vortexAdmin', 'vipManage', 'cdkManage', 'mailbox', 'agents', 'shop', 'orders'].includes(key)) toast.info(t.featureSoon);
                 }}
                 title={!sidebarOpen ? label : undefined}
                 style={{
@@ -946,6 +949,8 @@ export default function AdminDashboard() {
           {activeMenu === 'vipManage' && <AdminVipConfigs lang={lang} />}
           {/* Vortex游戏配置 */}
           {activeMenu === 'vortexAdmin' && <AdminVortexConfig />}
+          {/* 站内信管理 */}
+          {activeMenu === 'mailbox' && <AdminMailbox lang={lang} t={t} />}
           {/* 玩家管理（默认） */}
           {activeMenu === 'players' && <>
 

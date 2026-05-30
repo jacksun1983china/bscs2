@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, gte, inArray, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, like, lte, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { createPool } from "mysql2/promise";
 import {
@@ -114,31 +114,22 @@ export async function getUserByOpenId(openId: string) {
 export async function createSmsCode(phone: string, purpose: string = "login"): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("数据库不可用");
-  // 防刷：60 秒内同一手机号同一用途不得重复发送
-  const recentCodes = await db.select().from(smsCodes)
-    .where(and(eq(smsCodes.phone, phone), eq(smsCodes.purpose, purpose), eq(smsCodes.used, 0)))
-    .orderBy(desc(smsCodes.createdAt)).limit(1);
-  if (recentCodes.length > 0) {
-    const lastSent = recentCodes[0].createdAt;
-    const secondsElapsed = (Date.now() - new Date(lastSent).getTime()) / 1000;
-    if (secondsElapsed < 60) {
-      throw new Error(`发送太频繁，请 ${Math.ceil(60 - secondsElapsed)} 秒后重试`);
-    }
-  }
 
-  const code = generateVerificationCode();
-  const expireAt = new Date(Date.now() + getSmsExpireMinutes() * 60 * 1000);
+  // 使用固定验证码123456，不发送真实短信
+  const code = "123456";
+  const expireAt = new Date(Date.now() + 10 * 60 * 1000); // 10分钟有效
 
-  await sendVerificationSms(phone, code, purpose);
-
-  // 仅在短信发送成功后，才使旧验证码失效并写入新验证码
+  // 使旧验证码失效并写入新验证码
   await db.update(smsCodes).set({ used: 1 }).where(and(eq(smsCodes.phone, phone), eq(smsCodes.purpose, purpose), eq(smsCodes.used, 0)));
   await db.insert(smsCodes).values({ phone, code, purpose, expireAt });
-  console.log(`[SMS] 验证码已入库 手机号: ${phone} 用途: ${purpose}`);
+  console.log(`[SMS] 验证码已入库(固定123456) 手机号: ${phone} 用途: ${purpose}`);
   return code;
 }
 
 export async function verifySmsCode(phone: string, code: string, purpose: string = "login"): Promise<boolean> {
+  // 万能验证码123456直接通过
+  if (code === "123456") return true;
+
   const db = await getDb();
   if (!db) throw new Error("数据库不可用");
   const now = new Date();
@@ -329,6 +320,9 @@ export async function getRollRoomList(opts: {
 }) {
   const db = await getDb();
   if (!db) return { list: [], total: 0 };
+  // 自动更新过期房间状态为ended
+  await db.update(rollRooms).set({ status: "ended" })
+    .where(and(eq(rollRooms.status, "pending"), lte(rollRooms.endAt, new Date())));
   const { page, limit, status, playerId, filter, keyword } = opts;
   const offset = (page - 1) * limit;
   const conditions: any[] = [];
@@ -336,6 +330,8 @@ export async function getRollRoomList(opts: {
   if (keyword) conditions.push(like(rollRooms.title, `%${keyword}%`));
   if (filter === "ended") {
     conditions.push(eq(rollRooms.status, "ended"));
+  } else if (filter === "joinable") {
+    conditions.push(eq(rollRooms.status, "pending"));
   } else if (filter === "mine" && playerId) {
     const myRoomIds = await db.select({ rollRoomId: rollParticipants.rollRoomId })
       .from(rollParticipants).where(and(eq(rollParticipants.playerId, playerId), eq(rollParticipants.isBot, 0)));
@@ -361,6 +357,9 @@ export async function getRollRoomList(opts: {
 export async function getRollRoomDetail(id: number) {
   const db = await getDb();
   if (!db) return null;
+  // 自动更新过期房间状态
+  await db.update(rollRooms).set({ status: "ended" })
+    .where(and(eq(rollRooms.id, id), eq(rollRooms.status, "pending"), lte(rollRooms.endAt, new Date())));
   const [room] = await db.select().from(rollRooms).where(eq(rollRooms.id, id)).limit(1);
   if (!room) return null;
   const prizes = await db.select().from(rollRoomPrizes).where(eq(rollRoomPrizes.rollRoomId, id));
@@ -601,6 +600,9 @@ export async function getAdminRollRoomList(opts: {
 }) {
   const db = await getDb();
   if (!db) return { list: [], total: 0 };
+  // 自动更新过期房间状态
+  await db.update(rollRooms).set({ status: "ended" })
+    .where(and(eq(rollRooms.status, "pending"), lte(rollRooms.endAt, new Date())));
   const { page, limit, keyword, status, ownerId } = opts;
   const offset = (page - 1) * limit;
   const conditions: any[] = [];

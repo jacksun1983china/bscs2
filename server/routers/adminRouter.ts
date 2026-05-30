@@ -39,6 +39,7 @@ import {
   shopOrders,
   vipConfigs,
   cdkRedeemCodes,
+  messages,
 } from "../../drizzle/schema";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
@@ -254,13 +255,27 @@ export const adminRouter = router({
   rollRoomList: adminProcedure
     .input(z.object({ page: z.number().min(1).default(1), limit: z.number().default(10), keyword: z.string().optional(), status: z.string().optional(), ownerId: z.number().optional() }))
     .query(async ({ ctx, input }) => {
-      return getAdminRollRoomList(input);
+      const result = await getAdminRollRoomList(input);
+      // 将UTC时间转为北京时间
+      const toBeijing = (d: Date | string) => {
+        const date = new Date(d);
+        return new Date(date.getTime() + 8 * 3600 * 1000);
+      };
+      return {
+        ...result,
+        list: result.list.map((room: any) => ({
+          ...room,
+          startAt: toBeijing(room.startAt),
+          endAt: toBeijing(room.endAt),
+        })),
+      };
     }),
 
   createRollRoom: adminProcedure
     .input(z.object({
       title: z.string().min(1),
       avatarBase64: z.string().optional(),
+      avatarUrl: z.string().optional(),
       ownerId: z.number().optional(),
       threshold: z.number().default(0),
       maxParticipants: z.number().default(0),
@@ -272,12 +287,13 @@ export const adminRouter = router({
         quantity: z.number().min(1).default(1),
         coinType: z.enum(["shopCoin", "gold"]).default("shopCoin"),
         imageBase64: z.string().optional(),
+        imageUrl: z.string().optional(),
         prizeType: z.enum(["coin", "item"]).default("coin"),
         itemCategory: z.string().default("roll"),
       })),
     }))
     .mutation(async ({ ctx, input }) => {
-      let avatarUrl = "";
+      let avatarUrl = input.avatarUrl || "";
       if (input.avatarBase64) {
         const buffer = Buffer.from(input.avatarBase64, "base64");
         const key = `roll-avatars/${Date.now()}.jpg`;
@@ -285,7 +301,7 @@ export const adminRouter = router({
         avatarUrl = url;
       }
       const prizes = await Promise.all(input.prizes.map(async p => {
-        let imageUrl = "";
+        let imageUrl = p.imageUrl || "";
         if (p.imageBase64) {
           const buffer = Buffer.from(p.imageBase64, "base64");
           const key = `roll-prizes/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
@@ -1078,4 +1094,85 @@ export const adminRouter = router({
       todayValue: parseFloat(String(stats?.todayValue ?? '0')),
     };
   }),
+
+  // ── 站内信管理 ──────────────────────────────────────────────────────
+  /** 获取站内信列表（管理后台） */
+  getMessages: adminProcedure
+    .input(z.object({
+      page: z.number().min(1).default(1),
+      limit: z.number().min(1).max(100).default(20),
+      search: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { list: [], total: 0 };
+      const { page, limit, search } = input;
+      const offset = (page - 1) * limit;
+      const conditions = search ? like(messages.title, `%${search}%`) : undefined;
+      const [listRows, countRows] = await Promise.all([
+        conditions
+          ? db.select().from(messages).where(conditions).orderBy(desc(messages.createdAt)).limit(limit).offset(offset)
+          : db.select().from(messages).orderBy(desc(messages.createdAt)).limit(limit).offset(offset),
+        conditions
+          ? db.select({ count: sql<number>`count(*)` }).from(messages).where(conditions)
+          : db.select({ count: sql<number>`count(*)` }).from(messages),
+      ]);
+      return {
+        list: listRows,
+        total: Number(countRows[0]?.count ?? 0),
+      };
+    }),
+
+  /** 发送站内信（支持全服广播或指定玩家） */
+  sendMessage: adminProcedure
+    .input(z.object({
+      targetType: z.enum(['all', 'single']),
+      playerId: z.number().optional(),
+      title: z.string().min(1).max(200),
+      content: z.string().min(1),
+      type: z.string().default('system'),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: '数据库未连接' });
+      if (input.targetType === 'single') {
+        if (!input.playerId) throw new TRPCError({ code: 'BAD_REQUEST', message: '请指定玩家ID' });
+        // 验证玩家存在
+        const [player] = await db.select({ id: players.id }).from(players).where(eq(players.id, input.playerId)).limit(1);
+        if (!player) throw new TRPCError({ code: 'NOT_FOUND', message: '玩家不存在' });
+        await db.insert(messages).values({
+          playerId: input.playerId,
+          title: input.title,
+          content: input.content,
+          type: input.type,
+        });
+        return { success: true, count: 1 };
+      } else {
+        // 全服广播：给所有玩家发送
+        const allPlayers = await db.select({ id: players.id }).from(players);
+        if (allPlayers.length === 0) return { success: true, count: 0 };
+        const values = allPlayers.map(p => ({
+          playerId: p.id,
+          title: input.title,
+          content: input.content,
+          type: input.type,
+        }));
+        // 分批插入，每批500条
+        for (let i = 0; i < values.length; i += 500) {
+          const batch = values.slice(i, i + 500);
+          await db.insert(messages).values(batch);
+        }
+        return { success: true, count: allPlayers.length };
+      }
+    }),
+
+  /** 删除站内信 */
+  deleteMessage: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: '数据库未连接' });
+      await db.delete(messages).where(eq(messages.id, input.id));
+      return { success: true };
+    }),
 });
