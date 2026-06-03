@@ -84,7 +84,7 @@ async function startServer() {
 
       // 用 order_id 查询订单
       const orderNo = notifyData.orderId;
-      const orderResult = await db.execute(sql`SELECT id, playerId, gold, bonusDiamond, status FROM rechargeOrders WHERE orderNo = ${orderNo} LIMIT 1`);
+      const orderResult = await db.execute(sql`SELECT id, playerId, amount, gold, bonusDiamond, status FROM rechargeOrders WHERE orderNo = ${orderNo} LIMIT 1`);
       const rows = Array.isArray(orderResult) ? (orderResult[0] || orderResult) : orderResult;
       const orderRow = Array.isArray(rows) ? rows[0] : rows;
 
@@ -105,30 +105,30 @@ async function startServer() {
       // 更新订单状态为已支付
       await db.execute(sql`UPDATE rechargeOrders SET status = 1, platformOrderNo = ${notifyData.trackId || ''}, updatedAt = NOW() WHERE orderNo = ${orderNo} AND status = 0`);
 
-      // 给玩家加金币
+      // 给玩家加平台币（充值到账 + 赠送到账）
       const goldAmount = parseFloat(String(order.gold)) || 0;
-      const bonusDiamond = parseFloat(String(order.bonusDiamond)) || 0;
+      const bonusGoldAmount = parseFloat(String(order.bonusDiamond)) || 0;
+      const rechargeAmount = parseFloat(String(order.amount)) || 0;
+      const totalGoldAmount = goldAmount + bonusGoldAmount;
 
-      if (goldAmount > 0) {
-        await db.execute(sql`UPDATE players SET gold = gold + ${goldAmount} WHERE id = ${order.playerId}`);
-        // 记录金币日志
+      if (totalGoldAmount > 0) {
+        await db.execute(sql`UPDATE players SET gold = gold + ${totalGoldAmount} WHERE id = ${order.playerId}`);
+        // 记录平台币日志
         const { insertGoldLog } = await import("../db");
         const playerResult = await db.execute(sql`SELECT gold FROM players WHERE id = ${order.playerId}`);
         const pRows = Array.isArray(playerResult) ? (playerResult[0] || playerResult) : playerResult;
         const pRow = Array.isArray(pRows) ? pRows[0] : pRows;
         const newGold = parseFloat(String((pRow as any)?.gold || 0));
-        await insertGoldLog(order.playerId, goldAmount, newGold, 'recharge', `USDT充值 ${goldAmount} 金币`);
+        const rechargeRemark = bonusGoldAmount > 0
+          ? `USDT充值到账 ${goldAmount} 平台币，赠送 ${bonusGoldAmount} 平台币`
+          : `USDT充值到账 ${goldAmount} 平台币`;
+        await insertGoldLog(order.playerId, totalGoldAmount, newGold, 'recharge', rechargeRemark);
       }
 
-      // 如果有赠送钻石
-      if (bonusDiamond > 0) {
-        await db.execute(sql`UPDATE players SET diamond = diamond + ${bonusDiamond} WHERE id = ${order.playerId}`);
-      }
+      // 更新玩家总充值金额（按实际充值金额累计）
+      await db.execute(sql`UPDATE players SET totalRecharge = totalRecharge + ${rechargeAmount} WHERE id = ${order.playerId}`);
 
-      // 更新玩家总充值金额
-      await db.execute(sql`UPDATE players SET totalRecharge = totalRecharge + ${goldAmount} WHERE id = ${order.playerId}`);
-
-      console.log(`[OxaPay Notify] USDT充值成功: orderNo=${orderNo}, playerId=${order.playerId}, gold=${goldAmount}, diamond=${bonusDiamond}`);
+      console.log(`[OxaPay Notify] USDT充值成功: orderNo=${orderNo}, playerId=${order.playerId}, gold=${goldAmount}, bonusGold=${bonusGoldAmount}`);
       res.status(200).send("ok");
     } catch (err) {
       console.error("[OxaPay Notify] 处理回调异常:", err);
@@ -210,7 +210,7 @@ async function startServer() {
       }
       
       // 查询订单
-      const orderResult = await db.execute(sql`SELECT id, playerId, gold, bonusDiamond, status FROM rechargeOrders WHERE orderNo = ${notifyData.orderNo} LIMIT 1`);
+      const orderResult = await db.execute(sql`SELECT id, playerId, amount, gold, bonusDiamond, status FROM rechargeOrders WHERE orderNo = ${notifyData.orderNo} LIMIT 1`);
       const rows = Array.isArray(orderResult) ? (orderResult[0] || orderResult) : orderResult;
       const orderRow = Array.isArray(rows) ? rows[0] : rows;
       
@@ -231,30 +231,30 @@ async function startServer() {
       // 更新订单状态为已支付
       await db.execute(sql`UPDATE rechargeOrders SET status = 1, platformOrderNo = ${notifyData.platformOrderNo || ''}, updatedAt = NOW() WHERE orderNo = ${notifyData.orderNo} AND status = 0`);
       
-      // 给玩家加金币
+      // 给玩家加平台币（充值到账 + 赠送到账）
       const goldAmount = parseFloat(String(order.gold)) || 0;
-      const bonusDiamond = parseFloat(String(order.bonusDiamond)) || 0;
+      const bonusGoldAmount = parseFloat(String(order.bonusDiamond)) || 0;
+      const rechargeAmount = parseFloat(String(order.amount)) || 0;
+      const totalGoldAmount = goldAmount + bonusGoldAmount;
       
-      if (goldAmount > 0) {
-        await db.execute(sql`UPDATE players SET gold = gold + ${goldAmount} WHERE id = ${order.playerId}`);
-        // 记录金币日志
+      if (totalGoldAmount > 0) {
+        await db.execute(sql`UPDATE players SET gold = gold + ${totalGoldAmount} WHERE id = ${order.playerId}`);
+        // 记录平台币日志
         const { insertGoldLog } = await import("../db");
         const playerResult = await db.execute(sql`SELECT gold FROM players WHERE id = ${order.playerId}`);
         const pRows = Array.isArray(playerResult) ? (playerResult[0] || playerResult) : playerResult;
         const pRow = Array.isArray(pRows) ? pRows[0] : pRows;
         const newGold = parseFloat(String((pRow as any)?.gold || 0));
-        await insertGoldLog(order.playerId, goldAmount, newGold, 'recharge', `充值 ${goldAmount} 金币`);
-      }
-      
-      // 如果有赠送钻石
-      if (bonusDiamond > 0) {
-        await db.execute(sql`UPDATE players SET diamond = diamond + ${bonusDiamond} WHERE id = ${order.playerId}`);
+        const rechargeRemark = bonusGoldAmount > 0
+          ? `充值到账 ${goldAmount} 平台币，赠送 ${bonusGoldAmount} 平台币`
+          : `充值到账 ${goldAmount} 平台币`;
+        await insertGoldLog(order.playerId, totalGoldAmount, newGold, 'recharge', rechargeRemark);
       }
 
-      // 更新玩家总充值金额
-      await db.execute(sql`UPDATE players SET totalRecharge = totalRecharge + ${goldAmount} WHERE id = ${order.playerId}`);
+      // 更新玩家总充值金额（按实际充值金额累计）
+      await db.execute(sql`UPDATE players SET totalRecharge = totalRecharge + ${rechargeAmount} WHERE id = ${order.playerId}`);
       
-      console.log(`[Payment Notify] 充值成功: orderNo=${notifyData.orderNo}, playerId=${order.playerId}, gold=${goldAmount}, diamond=${bonusDiamond}`);
+      console.log(`[Payment Notify] 充值成功: orderNo=${notifyData.orderNo}, playerId=${order.playerId}, gold=${goldAmount}, bonusGold=${bonusGoldAmount}`);
       res.status(200).send("success");
     } catch (err) {
       console.error("[Payment Notify] 处理回调异常:", err);

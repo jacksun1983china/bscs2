@@ -1,6 +1,6 @@
 /**
  * AdminRechargeConfigs.tsx — 充值档位管理
- * 管理员可以增删改查充值档位（金额、平台币、赠送商城币、标签、排序、状态）
+ * 管理员可以增删改查充值档位（金额、平台币、赠送平台币、标签、排序、状态）
  */
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
@@ -16,7 +16,7 @@ const T = {
     add: '新增档位',
     amount: '充值金额(¥)',
     gold: '获得平台币',
-    bonusDiamond: '赠送商城币',
+    bonusDiamond: '赠送平台币',
     tag: '标签',
     sort: '排序',
     status: '状态',
@@ -37,7 +37,7 @@ const T = {
     add: 'Add Config',
     amount: 'Amount(¥)',
     gold: 'Platform Coin',
-    bonusDiamond: 'Bonus Shop Coin',
+    bonusDiamond: 'Bonus Platform Coin',
     tag: 'Tag',
     sort: 'Sort',
     status: 'Status',

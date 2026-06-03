@@ -197,8 +197,8 @@ function RechargeDetailModal({ record, onClose }: { record: any; onClose: () => 
         </div>
         <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: q(22), marginTop: q(8) }}>充值金额</div>
       </div>
-      <DetailRow label="获得金币" value={`${gold.toFixed(0)} 金币`} valueColor="#ffd700" />
-      {bonusDiamond > 0 && <DetailRow label="赠送钻石" value={`${bonusDiamond.toFixed(0)} 钻石`} valueColor="#7df9ff" />}
+      <DetailRow label="获得平台币" value={`${gold.toFixed(0)} 平台币`} valueColor="#ffd700" />
+      {bonusDiamond > 0 && <DetailRow label="赠送平台币" value={`${bonusDiamond.toFixed(0)} 平台币`} valueColor="#ffd700" />}
       <DetailRow label="支付方式" value={PAY_METHOD_LABELS[record.payMethod] ?? record.payMethod ?? '—'} />
       <DetailRow label="状态" value={statusInfo.label} valueColor={statusInfo.color} />
       <DetailRow label="订单号" value={record.orderNo ?? '—'} />

@@ -589,13 +589,13 @@ export const adminRouter = router({
       if (order.status !== 0) throw new TRPCError({ code: 'BAD_REQUEST', message: '订单已处理，请勿重复操作' });
       await db.update(rechargeOrders).set({ status: 1, remark: input.remark || order.remark }).where(eq(rechargeOrders.id, input.id));
       const goldToAdd = parseFloat(String(order.gold));
-      const diamondToAdd = parseFloat(String(order.bonusDiamond ?? '0'));
+      const bonusGoldToAdd = parseFloat(String(order.bonusDiamond ?? '0'));
+      const totalGoldToAdd = goldToAdd + bonusGoldToAdd;
       const amountToAdd = parseFloat(String(order.amount));
       const playerRows = await db.select().from(players).where(eq(players.id, order.playerId));
       if (!playerRows.length) throw new TRPCError({ code: 'NOT_FOUND', message: '玩家不存在' });
       const player = playerRows[0];
-      const newGold = parseFloat(player.gold) + goldToAdd;
-      const newDiamond = parseFloat(player.diamond) + diamondToAdd;
+      const newGold = parseFloat(player.gold) + totalGoldToAdd;
       const newTotalRecharge = parseFloat(String(player.totalRecharge ?? '0')) + amountToAdd;
       // 根据新的累计充值自动计算VIP等级
       const { asc } = await import('drizzle-orm');
@@ -618,13 +618,15 @@ export const adminRouter = router({
       }
       await db.update(players).set({
         gold: newGold.toFixed(2),
-        diamond: newDiamond.toFixed(2),
         totalRecharge: newTotalRecharge.toFixed(2),
         vipLevel: newVipLevel,
       }).where(eq(players.id, order.playerId));
-      // 记录金币流水
-      await insertGoldLog(order.playerId, goldToAdd, newGold, 'recharge', `充值审批到账 ${goldToAdd.toFixed(2)} 金币 (订单号: ${order.orderNo})`);
-      return { success: true, orderNo: order.orderNo, goldAdded: goldToAdd, diamondAdded: diamondToAdd, newVipLevel };
+      // 记录平台币流水
+      const rechargeRemark = bonusGoldToAdd > 0
+        ? `充值审批到账 ${goldToAdd.toFixed(2)} 平台币，赠送 ${bonusGoldToAdd.toFixed(2)} 平台币 (订单号: ${order.orderNo})`
+        : `充值审批到账 ${goldToAdd.toFixed(2)} 平台币 (订单号: ${order.orderNo})`;
+      await insertGoldLog(order.playerId, totalGoldToAdd, newGold, 'recharge', rechargeRemark);
+      return { success: true, orderNo: order.orderNo, goldAdded: totalGoldToAdd, baseGoldAdded: goldToAdd, bonusGoldAdded: bonusGoldToAdd, newVipLevel };
     }),
 
   /** 拒绝充值订单 */
