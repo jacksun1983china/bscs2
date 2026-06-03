@@ -228,9 +228,20 @@ export async function bindInviteCode(playerId: number, inviteCode: string) {
 export async function getTeamStats(playerId: number) {
   const db = await getDb();
   if (!db) return { total: 0, todayCount: 0, commissionBalance: "0.00", weeklyStats: [] as WeeklyCommissionStat[] };
-  const today = new Date();
+
+  const now = new Date();
+  const today = new Date(now);
   today.setHours(0, 0, 0, 0);
-  const [totalResult, todayResult, player, weeklyRows] = await Promise.all([
+  const currentWeekDate = new Date(now);
+  const currentWeekDay = currentWeekDate.getDay();
+  const currentWeekDiff = currentWeekDate.getDate() - currentWeekDay + (currentWeekDay === 0 ? -6 : 1);
+  currentWeekDate.setDate(currentWeekDiff);
+  currentWeekDate.setHours(0, 0, 0, 0);
+  const nextWeekDate = new Date(currentWeekDate);
+  nextWeekDate.setDate(currentWeekDate.getDate() + 7);
+  const currentWeekStart = `${currentWeekDate.getFullYear()}-${String(currentWeekDate.getMonth() + 1).padStart(2, '0')}-${String(currentWeekDate.getDate()).padStart(2, '0')}`;
+
+  const [totalResult, todayResult, player, weeklyRows, currentWeekRechargeResult] = await Promise.all([
     db.select({ count: sql<number>`count(*)` }).from(players).where(eq(players.invitedBy, playerId)),
     db.select({ count: sql<number>`count(*)` }).from(players).where(and(eq(players.invitedBy, playerId), gte(players.createdAt, today))),
     getPlayerById(playerId),
@@ -238,46 +249,74 @@ export async function getTeamStats(playerId: number) {
       .where(eq(weeklyCommissionStats.inviterId, playerId))
       .orderBy(desc(weeklyCommissionStats.weekStart))
       .limit(20),
+    db.select({
+      totalRecharge: sql<string>`COALESCE(SUM(${rechargeOrders.amount}), 0.00)`,
+    })
+      .from(rechargeOrders)
+      .innerJoin(players, eq(players.id, rechargeOrders.playerId))
+      .where(and(
+        eq(players.invitedBy, playerId),
+        eq(rechargeOrders.status, 1),
+        gte(rechargeOrders.createdAt, currentWeekDate),
+        lte(rechargeOrders.createdAt, nextWeekDate),
+      )),
   ]);
+
+  const total = Number(totalResult[0]?.count ?? 0);
+  const todayCount = Number(todayResult[0]?.count ?? 0);
+  const currentWeekRecharge = parseFloat(String(currentWeekRechargeResult[0]?.totalRecharge ?? '0')) || 0;
   let weeklyStats: WeeklyCommissionStat[] = weeklyRows;
-  // 如果没有周期数据，自动生成近 8 周的模拟数据
-  if (weeklyStats.length === 0) {
-    const now = new Date();
-    const toInsert: InsertWeeklyCommissionStat[] = [];
-    for (let i = 0; i < 8; i++) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i * 7);
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      d.setDate(diff);
-      const weekStart = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      const totalMem = Number(totalResult[0]?.count ?? 0);
-      const newMem = i === 0 ? Number(todayResult[0]?.count ?? 0) : Math.floor(Math.random() * 3);
-      const recharge = (Math.random() * 5000 + 500).toFixed(2);
-      const flow = (parseFloat(recharge) * (1 + Math.random() * 0.5)).toFixed(2);
-      toInsert.push({
-        inviterId: playerId,
-        weekStart,
-        commissionRate: player?.commissionRate ?? '4.00',
-        totalMembers: totalMem,
-        newMembers: newMem,
-        totalRecharge: recharge,
-        totalFlow: flow,
-      });
-    }
+  const currentWeekRow = weeklyStats.find((row) => row.weekStart === currentWeekStart);
+  const currentWeekFlow = currentWeekRow
+    ? parseFloat(String(currentWeekRow.totalFlow ?? currentWeekRecharge)) || currentWeekRecharge
+    : currentWeekRecharge;
+
+  const currentWeekPayload: InsertWeeklyCommissionStat = {
+    inviterId: playerId,
+    weekStart: currentWeekStart,
+    commissionRate: player?.commissionRate ?? '4.00',
+    totalMembers: total,
+    newMembers: todayCount,
+    totalRecharge: currentWeekRecharge.toFixed(2),
+    totalFlow: currentWeekFlow.toFixed(2),
+  };
+
+  if (currentWeekRow) {
+    await db.update(weeklyCommissionStats)
+      .set(currentWeekPayload)
+      .where(eq(weeklyCommissionStats.id, currentWeekRow.id));
+    weeklyStats = weeklyStats.map((row) => row.id === currentWeekRow.id
+      ? { ...row, ...currentWeekPayload }
+      : row);
+  } else {
     try {
-      await db.insert(weeklyCommissionStats).values(toInsert);
-      weeklyStats = await db.select().from(weeklyCommissionStats)
-        .where(eq(weeklyCommissionStats.inviterId, playerId))
-        .orderBy(desc(weeklyCommissionStats.weekStart))
-        .limit(20);
+      await db.insert(weeklyCommissionStats).values(currentWeekPayload);
     } catch (e) {
-      weeklyStats = toInsert.map((r, idx) => ({ ...r, id: idx + 1, createdAt: new Date(), updatedAt: new Date() })) as WeeklyCommissionStat[];
+      // 忽略插入失败，后续使用内存数据兜底
     }
+    weeklyStats = [
+      {
+        id: currentWeekRow?.id ?? 0,
+        ...currentWeekPayload,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as WeeklyCommissionStat,
+      ...weeklyStats,
+    ].sort((a, b) => String(b.weekStart).localeCompare(String(a.weekStart)));
   }
+
+  if (weeklyStats.length === 0) {
+    weeklyStats = [{
+      id: 0,
+      ...currentWeekPayload,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as WeeklyCommissionStat];
+  }
+
   return {
-    total: Number(totalResult[0]?.count ?? 0),
-    todayCount: Number(todayResult[0]?.count ?? 0),
+    total,
+    todayCount,
     commissionBalance: player?.commissionBalance ?? "0.00",
     weeklyStats,
   };
