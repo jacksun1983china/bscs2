@@ -224,6 +224,7 @@ export const appRouter = router({
           invitedBy: player.invitedBy, invitedByNickname, identity: player.identity,
           commissionEnabled: player.commissionEnabled, commissionBalance: player.commissionBalance,
           steamAccount: player.steamAccount,
+          hasSafePassword: Boolean((player.safePassword ?? '').trim()),
           realName: player.realName ? "已认证" : "未认证",
           realNameVerified: Boolean(player.realName),
           createdAt: player.createdAt, needSetNickname,
@@ -486,7 +487,10 @@ export const appRouter = router({
 
     /** 提取道具（status 0→1），需要先绑定Steam账号，调用cs2pifa API创建提货订单 */
     extractItem: publicProcedure
-      .input(z.object({ ids: z.array(z.number()).min(1) }))
+      .input(z.object({
+        ids: z.array(z.number()).min(1),
+        safePassword: z.string().max(20).optional(),
+      }))
       .mutation(async ({ input, ctx }) => {
         const session = await getPlayerFromCookie(ctx.req);
         if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
@@ -496,6 +500,7 @@ export const appRouter = router({
         const [playerInfo] = await db.select({
           steamAccount: players.steamAccount,
           realName: players.realName,
+          safePassword: players.safePassword,
         })
           .from(players).where(eq(players.id, session.playerId)).limit(1);
         if (!playerInfo?.realName?.trim()) {
@@ -503,6 +508,16 @@ export const appRouter = router({
         }
         if (!playerInfo?.steamAccount) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "STEAM_NOT_BOUND" });
+        }
+        const storedSafePassword = (playerInfo?.safePassword ?? '').trim();
+        if (storedSafePassword) {
+          const providedSafePassword = (input.safePassword ?? '').trim();
+          if (!providedSafePassword) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "请输入安全密码" });
+          }
+          if (providedSafePassword !== storedSafePassword) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "安全密码错误" });
+          }
         }
         const tradeLink = playerInfo.steamAccount;
         // 只能提取自己的、状态为 0（待处理）且来源为 shop 的道具

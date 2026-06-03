@@ -135,6 +135,7 @@ export default function Backpack() {
   // 弹窗状态
   const [confirmModal, setConfirmModal] = useState<{ type: 'extract' | 'recycle' | 'gift' | null }>({ type: null });
   const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
+  const [extractSafePassword, setExtractSafePassword] = useState('');
   // 赠送相关状态
   const [giftTarget, setGiftTarget] = useState('');
 
@@ -148,6 +149,7 @@ export default function Backpack() {
 
   const { data: player } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
   const { data: steamInfo } = trpc.player.getSteam.useQuery(undefined, { staleTime: 60_000 });
+  const requireExtractSafePassword = Boolean(player?.hasSafePassword);
   const [showExtractLogs, setShowExtractLogs] = useState(false);
   const [showSteamBindTip, setShowSteamBindTip] = useState(false);
   const [realNameVisible, setRealNameVisible] = useState(false);
@@ -199,18 +201,24 @@ export default function Backpack() {
     onSuccess: (data) => {
       toast.success(`成功提货 ${data.count} 件道具，请在提货进度中查看状态`);
       setSelectedIds(new Set());
+      setExtractSafePassword('');
       setConfirmModal({ type: null });
       utils.player.inventory.invalidate();
     },
     onError: (err) => {
       if (isRealNameRequiredError(err)) {
+        setExtractSafePassword('');
         setConfirmModal({ type: null });
         setRealNameVisible(true);
         toast.error(err.message);
       } else if (err.message === 'STEAM_NOT_BOUND') {
+        setExtractSafePassword('');
         setConfirmModal({ type: null });
         setShowSteamBindTip(true);
       } else {
+        if (err.message === '请输入安全密码' || err.message === '安全密码错误') {
+          utils.player.me.invalidate();
+        }
         toast.error(err.message);
       }
     },
@@ -309,6 +317,7 @@ export default function Backpack() {
       setShowSteamBindTip(true);
       return;
     }
+    setExtractSafePassword('');
     setConfirmModal({ type: 'extract' });
   }, [hasSelected, steamInfo]);
 
@@ -331,7 +340,11 @@ export default function Backpack() {
     const allIds = Array.from(selectedIds);
     if (allIds.length === 0) return;
     if (confirmModal.type === 'extract') {
-      extractMutation.mutate({ ids: allIds });
+      if (requireExtractSafePassword && !extractSafePassword.trim()) {
+        toast.error('请输入安全密码');
+        return;
+      }
+      extractMutation.mutate({ ids: allIds, safePassword: extractSafePassword.trim() || undefined });
     } else if (confirmModal.type === 'gift') {
       if (!giftTarget.trim()) {
         toast.error('请输入接收者的手机号或昵称');
@@ -341,6 +354,12 @@ export default function Backpack() {
     } else if (confirmModal.type === 'recycle') {
       recycleMutation.mutate({ ids: allIds });
     }
+  };
+
+  const closeConfirmModal = () => {
+    setConfirmModal({ type: null });
+    setExtractSafePassword('');
+    setGiftTarget('');
   };
 
   return (
@@ -1184,7 +1203,7 @@ export default function Backpack() {
             background: 'rgba(0,0,0,0.7)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
-          onClick={() => setConfirmModal({ type: null })}
+          onClick={closeConfirmModal}
         >
           <div
             onClick={e => e.stopPropagation()}
@@ -1209,6 +1228,25 @@ export default function Backpack() {
                 : `确认分解已选的 ${totalSelectedCount} 件道具？`
               }
             </div>
+            {confirmModal.type === 'extract' && requireExtractSafePassword && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ color: '#c0a0ff', fontSize: 12, marginBottom: 8 }}>
+                  该账号已设置安全密码，本次提货前请输入安全密码
+                </div>
+                <input
+                  type="password"
+                  placeholder="请输入安全密码"
+                  value={extractSafePassword}
+                  onChange={e => setExtractSafePassword(e.target.value)}
+                  maxLength={20}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 8,
+                    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(160,80,255,0.4)',
+                    color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            )}
             {confirmModal.type === 'gift' && (
               <div style={{ marginBottom: 12 }}>
                 <input
@@ -1242,7 +1280,7 @@ export default function Backpack() {
             )}
             <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
               <button
-                onClick={() => setConfirmModal({ type: null })}
+                onClick={closeConfirmModal}
                 style={{
                   flex: 1, padding: '10px 0', borderRadius: 8,
                   background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
