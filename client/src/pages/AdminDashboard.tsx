@@ -1137,8 +1137,8 @@ export default function AdminDashboard() {
             </div>
 
             {/* 表格 */}
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', paddingBottom: 6 }}>
+              <table style={{ width: '100%', minWidth: 1600, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'rgba(120,60,220,0.1)' }}>
                     {[t.id, t.parentInviteCode, t.phone, t.nickname, t.identity, t.betFlow, t.totalRechargeLabel, t.rebateRate, t.platformRebateEnabled, t.vip, t.gold, t.diamond, t.status, t.registered, t.actions].map(h => (
