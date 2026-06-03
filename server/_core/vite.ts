@@ -48,20 +48,65 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath =
+  const appRoot =
     process.env.NODE_ENV === "development"
-      ? path.resolve(import.meta.dirname, "../..", "dist", "public")
-      : path.resolve(import.meta.dirname, "public");
+      ? path.resolve(import.meta.dirname, "../..")
+      : path.resolve(import.meta.dirname, "..");
+  const distPath = path.resolve(appRoot, "dist", "public");
+  const uploadsPath = path.resolve(appRoot, "uploads");
+
   if (!fs.existsSync(distPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
     );
   }
 
-  app.use(express.static(distPath));
+  const setStaticCacheHeaders = (res: any, filePath: string) => {
+    const normalized = filePath.toLowerCase();
+    const baseName = path.basename(normalized);
+
+    if (normalized.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+      return;
+    }
+
+    if (/\.[a-z0-9]{8,}\.(js|css|png|jpg|jpeg|gif|svg|webp|avif|ico|mp3|wav|ogg)$/.test(baseName)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return;
+    }
+
+    if (/\.(png|jpg|jpeg|gif|svg|webp|avif|ico|mp3|wav|ogg)$/.test(baseName)) {
+      res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+      return;
+    }
+
+    res.setHeader('Cache-Control', 'public, max-age=14400');
+  };
+
+  if (fs.existsSync(uploadsPath)) {
+    app.use('/uploads', express.static(uploadsPath, {
+      fallthrough: true,
+      etag: true,
+      lastModified: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      setHeaders: setStaticCacheHeaders,
+    }));
+  }
+
+  app.use(express.static(distPath, {
+    fallthrough: true,
+    etag: true,
+    lastModified: true,
+    maxAge: 4 * 60 * 60 * 1000,
+    setHeaders: setStaticCacheHeaders,
+  }));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    res.sendFile(path.resolve(distPath, "index.html"), {
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    });
   });
 }

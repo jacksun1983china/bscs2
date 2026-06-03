@@ -88,6 +88,7 @@ import {
   shopOrders,
   players,
   playerItems,
+  messages,
   agentPushSubscriptions,
   giftLogs,
   goldLogs,
@@ -314,6 +315,19 @@ export const appRouter = router({
         const session = await getPlayerFromCookie(ctx.req);
         if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
         return getPlayerMessages(session.playerId, input.page, input.limit);
+      }),
+    /** 获取未读邮件数量 */
+    unreadMessageCount: publicProcedure
+      .query(async ({ ctx }) => {
+        const session = await getPlayerFromCookie(ctx.req);
+        if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const [row] = await db
+          .select({ unreadCount: sql<number>`count(*)` })
+          .from(messages)
+          .where(and(eq(messages.playerId, session.playerId), eq(messages.isRead, 0)));
+        return { unreadCount: Number(row?.unreadCount ?? 0) };
       }),
     /** 标记邮件已读 */
     markMessageRead: publicProcedure

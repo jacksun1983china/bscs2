@@ -79,6 +79,15 @@ export default function Home() {
     ? broadcastList.map((b: { content: string }) => b.content)
     : BROADCASTS;
 
+  useEffect(() => {
+    if (!bannerList?.length) return;
+    bannerList.forEach((banner) => {
+      if (!banner?.imageUrl) return;
+      const img = new Image();
+      img.src = banner.imageUrl;
+    });
+  }, [bannerList]);
+
   const goNextBanner = useCallback(() => {
     setBannerIndex(i => {
       const next = (i + 1) % banners.length;
@@ -293,7 +302,7 @@ export default function Home() {
           >
             {banners.map((b, i) => (
               <img
-                key={`${b.id}-${kbKey}-${i}`}
+                key={`${b.id ?? i}`}
                 src={b.imageUrl}
                 alt={b.title || 'banner'}
                 className={i === bannerIndex ? `fx-ken-burns-${kbKey % 2}` : ''}

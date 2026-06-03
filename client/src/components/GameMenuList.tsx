@@ -9,6 +9,7 @@
 import React from 'react';
 import { useLocation } from 'wouter';
 import { LANHU } from '@/lib/assets';
+import { trpc } from '@/lib/trpc';
 
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
@@ -77,6 +78,13 @@ const GAMES: GameItem[] = [
 
 export default function GameMenuList() {
   const [, navigate] = useLocation();
+  const { data: unreadMailData } = trpc.unreadMessageCount.useQuery(undefined, {
+    refetchInterval: 5000,
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+    retry: 1,
+  });
+  const unreadMailCount = unreadMailData?.unreadCount ?? 0;
 
   return (
     <div
@@ -91,6 +99,12 @@ export default function GameMenuList() {
       }}
       className="hide-scrollbar"
     >
+      <style>{`
+        @keyframes mailUnreadPulse {
+          0%, 100% { transform: scale(1); opacity: 0.92; }
+          50% { transform: scale(1.18); opacity: 1; }
+        }
+      `}</style>
       <div
         style={{
           margin: `0 ${q(29)} ${q(8)} ${q(29)}`,
@@ -139,6 +153,23 @@ export default function GameMenuList() {
                   alt=""
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
+                {funcLabel?.id === 'mail' && unreadMailCount > 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: q(10),
+                      right: q(10),
+                      width: q(22),
+                      height: q(22),
+                      borderRadius: '50%',
+                      background: 'radial-gradient(circle at 30% 30%, #ff9aa8 0%, #ff2d55 45%, #d70022 100%)',
+                      boxShadow: '0 0 10px rgba(255, 59, 92, 0.85)',
+                      border: `${q(2)} solid rgba(255,255,255,0.92)`,
+                      zIndex: 3,
+                      animation: 'mailUnreadPulse 1.4s ease-in-out infinite',
+                    }}
+                  />
+                )}
                 {funcLabel && (
                   <div
                     style={{
