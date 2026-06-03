@@ -118,6 +118,7 @@ interface InventoryItem {
   source: string;
   status: number;
   createdAt: Date;
+  giftFromNickname?: string | null;
   // 叠加数量和对应的所有 playerItems.id
   count: number;
   ids: number[];
@@ -303,7 +304,10 @@ export default function Backpack() {
     .reduce((s, i) => s + Number(i.recycleGold ?? i.itemValue ?? 0), 0) * 100) / 100;
   const selectedValue = selectedGoldValue + selectedDiamondValue;
 
+  const selectedItems = filteredItems.filter(i => selectedIds.has(i.id));
   const hasSelected = selectedIds.size > 0;
+  const hasArenaSelected = selectedItems.some(i => i.source === 'arena');
+  const canGiftSelected = hasSelected && !hasArenaSelected;
 
   const handleDecompose = useCallback(() => {
     if (!hasSelected) return;
@@ -328,9 +332,13 @@ export default function Backpack() {
 
   const handleGift = useCallback(() => {
     if (!hasSelected) return;
+    if (hasArenaSelected) {
+      toast.error('竞技场获得的物品不支持赠送');
+      return;
+    }
     setGiftTarget('');
     setConfirmModal({ type: 'gift' });
-  }, [hasSelected]);
+  }, [hasSelected, hasArenaSelected]);
 
   // 计算实际选中的总件数
   const totalSelectedCount = selectedIds.size;
@@ -1045,39 +1053,37 @@ export default function Backpack() {
             <div style={{ flex: 1 }} />
 
             {/* 赠送按钮 */}
-            <div
-              onClick={handleGift}
-              style={{
-                height: q(64),
-                width: q(120),
-                background: hasSelected
-                  ? 'linear-gradient(135deg, #0891b2, #22d3ee)'
-                  : 'linear-gradient(135deg, rgba(8,91,120,0.5), rgba(34,160,180,0.5))',
-                border: hasSelected
-                  ? '1.5px solid rgba(34,211,238,0.8)'
-                  : '1.5px solid rgba(34,160,180,0.4)',
-                borderRadius: q(10),
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: hasSelected ? 'pointer' : 'not-allowed',
-                opacity: hasSelected ? 1 : 0.5,
-                transition: 'all 0.2s ease',
-                boxShadow: hasSelected ? '0 0 12px rgba(34,211,238,0.4)' : 'none',
-                flexShrink: 0,
-              }}
-            >
-              <span
+            {canGiftSelected && (
+              <div
+                onClick={handleGift}
                 style={{
-                  color: '#fff',
-                  fontSize: q(26),
-                  fontWeight: 700,
-                  letterSpacing: q(2),
+                  height: q(64),
+                  width: q(120),
+                  background: 'linear-gradient(135deg, #0891b2, #22d3ee)',
+                  border: '1.5px solid rgba(34,211,238,0.8)',
+                  borderRadius: q(10),
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  opacity: 1,
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 0 12px rgba(34,211,238,0.4)',
+                  flexShrink: 0,
                 }}
               >
-                赠送
-              </span>
-            </div>
+                <span
+                  style={{
+                    color: '#fff',
+                    fontSize: q(26),
+                    fontWeight: 700,
+                    letterSpacing: q(2),
+                  }}
+                >
+                  赠送
+                </span>
+              </div>
+            )}
 
             {/* 动态操作按钮：根据topFilter切换 */}
             {topFilter === 'decompose' && (
@@ -1344,7 +1350,7 @@ export default function Backpack() {
               分解价值：{Number(detailItem.recycleGold ?? detailItem.itemValue ?? 0).toFixed(2)} {detailItem.source === 'arena' ? '钻石' : '金币'}
             </div>
             <div style={{ color: '#c0a0ff', fontSize: 12, marginBottom: 6 }}>
-              来源：{detailItem.source === 'arena' ? '竞技场' : detailItem.source === 'roll' ? 'Roll房' : '开箱'}
+              来源：{detailItem.giftFromNickname?.trim() || (detailItem.source === 'arena' ? '竞技场' : detailItem.source === 'roll' ? 'Roll房' : detailItem.source === 'shop' ? '商城' : '开箱')}
             </div>
             <div style={{ color: '#888', fontSize: 12, marginBottom: 16 }}>
               状态：{detailItem.status === 0 ? '待处理' : detailItem.status === 1 ? '已提取' : '已回收'}

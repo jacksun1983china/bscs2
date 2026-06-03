@@ -1064,6 +1064,9 @@ export const appRouter = router({
 
         const validItems = items.filter(i => input.ids.includes(i.id) && i.status === 0);
         if (validItems.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "没有可赠送的道具" });
+        if (validItems.some(i => i.source === 'arena')) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "竞技场获得的物品不支持赠送" });
+        }
 
         // 获取物品详情
         const { inArray } = await import("drizzle-orm");
@@ -1074,6 +1077,7 @@ export const appRouter = router({
 
         // 执行赠送：更新playerItems归属
         for (const item of validItems) {
+          const giftedAt = new Date();
           // 将物品转移给接收者（创建新记录）
           await db.insert(playerItems).values({
             playerId: toPlayer.id,
@@ -1082,6 +1086,7 @@ export const appRouter = router({
             status: 0,
             recycleGold: item.recycleGold,
             csTemplateId: item.csTemplateId || '',
+            createdAt: giftedAt,
           });
           // 标记原物品为已赠送（status=4）
           await db.update(playerItems)
@@ -1097,8 +1102,8 @@ export const appRouter = router({
             itemId: item.itemId,
             itemName: goods?.name ?? '未知物品',
             itemImageUrl: goods?.imageUrl ?? '',
-            itemValue: goods?.price ?? '0',
-            status: 'completed',
+            itemValue: String(item.recycleGold ?? goods?.price ?? '0'),
+            createdAt: giftedAt,
           });
         }
 

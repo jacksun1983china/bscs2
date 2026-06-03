@@ -25,6 +25,15 @@ const LEVEL_LABEL: Record<number, string> = { 1: '传说', 2: '稀有', 3: '普�
 
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 
+type GoldFilterTab = 'all' | '1-200' | '201-800' | '800+';
+
+const GOLD_FILTER_OPTIONS: Array<{ key: GoldFilterTab; label: string }> = [
+  { key: 'all', label: '全部' },
+  { key: '1-200', label: '1-200' },
+  { key: '201-800', label: '201-800' },
+  { key: '800+', label: '800+' },
+];
+
 function buildBoxCounts(boxIds: number[]) {
   return boxIds.reduce<Record<number, number>>((acc, boxId) => {
     acc[boxId] = (acc[boxId] ?? 0) + 1;
@@ -638,6 +647,7 @@ export default function Arena() {
   const [showCreate, setShowCreate] = useState(false);
   const [createPreset, setCreatePreset] = useState<CreateRoomPreset | null>(null);
   const [activeTab, setActiveTab] = useState<'waiting' | 'playing' | 'all'>('waiting');
+  const [activeGoldFilter, setActiveGoldFilter] = useState<GoldFilterTab>('all');
   const copyRoomId = typeof window !== 'undefined'
     ? Number(new URLSearchParams(window.location.search).get('copyRoomId') ?? '0')
     : 0;
@@ -673,6 +683,16 @@ export default function Arena() {
   });
 
   const displayRooms = liveRooms ?? roomsData;
+  const filteredRooms = (displayRooms as any[] | undefined)?.filter((room: any) => {
+    const entryFee = Number(room.entryFee ?? 0);
+    if (!Number.isFinite(entryFee) || entryFee <= 0) {
+      return activeGoldFilter === 'all';
+    }
+    if (activeGoldFilter === '1-200') return entryFee >= 1 && entryFee <= 200;
+    if (activeGoldFilter === '201-800') return entryFee >= 201 && entryFee <= 800;
+    if (activeGoldFilter === '800+') return entryFee > 800;
+    return true;
+  }) ?? [];
 
   const copyRoomQuery = trpc.arena.getRoomDetail.useQuery(
     { roomId: copyRoomId },
@@ -778,15 +798,47 @@ export default function Arena() {
           ))}
         </div>
 
+        <div style={{ marginBottom: q(18) }}>
+          <div style={{ color: 'rgba(224,208,255,0.86)', fontSize: q(22), marginBottom: q(10) }}>金币区间筛选</div>
+          <div style={{ display: 'flex', gap: q(10), flexWrap: 'wrap' }}>
+            {GOLD_FILTER_OPTIONS.map((option) => {
+              const isActive = activeGoldFilter === option.key;
+              return (
+                <button
+                  key={option.key}
+                  onClick={() => setActiveGoldFilter(option.key)}
+                  style={{
+                    padding: `${q(10)} ${q(18)}`,
+                    background: isActive ? 'rgba(124,58,237,0.4)' : 'rgba(120,60,220,0.1)',
+                    border: `1px solid ${isActive ? '#c084fc' : 'rgba(120,60,220,0.3)'}`,
+                    borderRadius: q(18),
+                    color: isActive ? '#f5d0fe' : '#9980cc',
+                    fontSize: q(22),
+                    fontWeight: isActive ? 700 : 500,
+                    cursor: 'pointer',
+                    boxShadow: isActive ? '0 0 12px rgba(192,132,252,0.25)' : 'none',
+                  }}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* 房间列表（每行2个卡片） */}
         {!displayRooms || (displayRooms as any[]).length === 0 ? (
           <div style={{ textAlign: 'center', padding: `${q(80)} 0`, color: '#6b7280', fontSize: q(28) }}>
             <div style={{ fontSize: q(60), marginBottom: q(16) }}>🏟️</div>
             暂无房间，快来创建一个吧！
           </div>
+        ) : filteredRooms.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: `${q(60)} 0`, color: '#9980cc', fontSize: q(24) }}>
+            当前金币区间暂无房间
+          </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: q(12) }}>
-            {(displayRooms as any[]).map((room: any) => (
+            {filteredRooms.map((room: any) => (
               <RoomCard
                 key={room.id}
                 room={room}

@@ -38,6 +38,7 @@ import {
   rushGames,
   dingdongGames,
   fruitBombBets,
+  giftLogs,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { generateVerificationCode, getSmsExpireMinutes, sendVerificationSms } from "./smsService";
@@ -722,14 +723,59 @@ export async function getPlayerInventory(playerId: number, page: number = 1, lim
     .where(and(eq(playerItems.playerId, playerId), eq(playerItems.status, 0)))
     .orderBy(desc(playerItems.createdAt));
 
+  const giftRecords = await db
+    .select({
+      itemId: giftLogs.itemId,
+      createdAt: giftLogs.createdAt,
+      fromNickname: players.nickname,
+    })
+    .from(giftLogs)
+    .leftJoin(players, eq(giftLogs.fromPlayerId, players.id))
+    .where(eq(giftLogs.toPlayerId, playerId))
+    .orderBy(desc(giftLogs.createdAt));
+
+  const giftQueues = new Map<number, Array<{ createdAt: Date; fromNickname: string | null }>>();
+  for (const record of giftRecords) {
+    const queue = giftQueues.get(record.itemId) ?? [];
+    queue.push({
+      createdAt: record.createdAt,
+      fromNickname: record.fromNickname ?? null,
+    });
+    giftQueues.set(record.itemId, queue);
+  }
+
+  const GIFT_MATCH_WINDOW_MS = 2 * 60 * 1000;
+
   // 每个物品独立，count=1，ids=[自身id]
-  const flat = allRaw.map(row => ({
-    ...row,
-    recycleGold: String(row.recycleGold ?? '0'),
-    itemValue: row.itemValue !== null && row.itemValue !== undefined ? String(row.itemValue) : null,
-    count: 1,
-    ids: [row.id],
-  }));
+  const flat = allRaw.map(row => {
+    let giftFromNickname: string | null = null;
+    const queue = giftQueues.get(row.itemId);
+    if (queue?.length) {
+      const rowTime = new Date(row.createdAt).getTime();
+      let matchedIndex = -1;
+      let bestDiff = Number.POSITIVE_INFINITY;
+      for (let i = 0; i < queue.length; i += 1) {
+        const diff = Math.abs(rowTime - new Date(queue[i].createdAt).getTime());
+        if (diff <= GIFT_MATCH_WINDOW_MS && diff < bestDiff) {
+          matchedIndex = i;
+          bestDiff = diff;
+        }
+      }
+      if (matchedIndex >= 0) {
+        const [matchedGift] = queue.splice(matchedIndex, 1);
+        giftFromNickname = matchedGift?.fromNickname ?? null;
+      }
+    }
+
+    return {
+      ...row,
+      recycleGold: String(row.recycleGold ?? '0'),
+      itemValue: row.itemValue !== null && row.itemValue !== undefined ? String(row.itemValue) : null,
+      count: 1,
+      ids: [row.id],
+      giftFromNickname,
+    };
+  });
   // 分页
   const total = flat.length;
   const offset = (page - 1) * limit;
