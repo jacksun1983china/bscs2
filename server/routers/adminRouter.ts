@@ -130,6 +130,17 @@ export const adminRouter = router({
       return getPlayerList(input);
     }),
 
+  rebateEnabledPlayers: adminProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db
+        .select()
+        .from(players)
+        .where(eq(players.commissionEnabled, 1))
+        .orderBy(desc(players.id));
+    }),
+
   updatePlayerStatus: adminProcedure
     .input(z.object({ id: z.number(), status: z.number(), banReason: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {

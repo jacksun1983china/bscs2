@@ -23,11 +23,21 @@ export function AdminRebate({ lang, t }: { lang: 'zh' | 'en'; t: I18nT }) {
   const [searchId, setSearchId] = useState('');
   const [searchResult, setSearchResult] = useState<any>(null);
   const [editForm, setEditForm] = useState({ identity: 'player', commissionRate: '4', commissionEnabled: '1' });
+  const utils = trpc.useUtils();
 
-  const { data: players, isLoading } = trpc.admin.playerList.useQuery({ page: 1, limit: 20, keyword: '' });
+  const { data: players, isLoading } = trpc.admin.playerList.useQuery({ page: 1, limit: 100, keyword: '' });
+  const { data: rebatePlayers, isLoading: rebatePlayersLoading } = trpc.admin.rebateEnabledPlayers.useQuery();
 
   const updateIdentityMutation = trpc.admin.updatePlayerIdentity.useMutation({
-    onSuccess: () => { toast.success('返佣配置已更新'); setSearchResult(null); setSearchId(''); },
+    onSuccess: async () => {
+      toast.success('返佣配置已更新');
+      setSearchResult(null);
+      setSearchId('');
+      await Promise.all([
+        utils.admin.playerList.invalidate(),
+        utils.admin.rebateEnabledPlayers.invalidate(),
+      ]);
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -174,9 +184,7 @@ export function AdminRebate({ lang, t }: { lang: 'zh' | 'en'; t: I18nT }) {
               </tr>
             </thead>
             <tbody>
-              {(players?.list || [])
-                .filter((p: any) => p.identity !== 'player' || p.commissionEnabled)
-                .map((p: any) => (
+              {(rebatePlayers || []).map((p: any) => (
                   <tr key={p.id} style={{ borderBottom: '1px solid rgba(120,60,220,0.1)' }}>
                     <td style={{ padding: '8px 10px', color: 'rgba(180,150,255,0.6)' }}>{p.id}</td>
                     <td style={{ padding: '8px 10px', color: '#e0d0ff' }}>{p.nickname}</td>
@@ -197,8 +205,11 @@ export function AdminRebate({ lang, t }: { lang: 'zh' | 'en'; t: I18nT }) {
                     </td>
                   </tr>
                 ))}
-              {(!players?.list || players.list.length === 0) && (
-                <tr><td colSpan={8} style={{ padding: '20px', color: 'rgba(180,150,255,0.4)', textAlign: 'center' }}>暂无数据</td></tr>
+              {rebatePlayersLoading && (
+                <tr><td colSpan={8} style={{ padding: '20px', color: 'rgba(180,150,255,0.4)', textAlign: 'center' }}>加载中...</td></tr>
+              )}
+              {!rebatePlayersLoading && (!rebatePlayers || rebatePlayers.length === 0) && (
+                <tr><td colSpan={8} style={{ padding: '20px', color: 'rgba(180,150,255,0.4)', textAlign: 'center' }}>暂无已开启返佣的玩家</td></tr>
               )}
             </tbody>
           </table>
