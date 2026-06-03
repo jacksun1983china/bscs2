@@ -102,6 +102,29 @@ const REALNAME_RECHARGE_THRESHOLD = 500;
 const REALNAME_REQUIRED_MESSAGE = "请先完成实名认证";
 const REALNAME_RECHARGE_REQUIRED_MESSAGE = `累计充值满${REALNAME_RECHARGE_THRESHOLD}元后请先完成实名认证`;
 
+function normalizeExtractFailureMessage(rawMessage: string) {
+  const message = String(rawMessage || '').trim();
+  if (!message) return '交易失败，请稍后重试';
+  if (
+    message === 'RATE_LIMITED' ||
+    message.includes('交易链接') ||
+    message.includes('tradeLinks') ||
+    message.includes('trade link') ||
+    message.includes('余额不足') ||
+    message.includes('金额不足') ||
+    message.includes('支付失败') ||
+    message.includes('下单失败') ||
+    message.includes('purchasePrice') ||
+    message.includes('cs2pifa API error:')
+  ) {
+    return '交易失败，请稍后重试';
+  }
+  if (message.includes('缺少cs2pifa模板ID')) {
+    return '该饰品暂时无法提货，请联系管理员处理';
+  }
+  return message;
+}
+
 async function getAgentFromCookie(req: any): Promise<{ agentId: number; username: string } | null> {
   try {
     const cookieHeader = req.headers?.cookie || "";
@@ -542,8 +565,8 @@ export const appRouter = router({
         const items = await db.select().from(playerItems)
           .where(eq(playerItems.playerId, session.playerId));
         const validItems = items
-          .filter(i => input.ids.includes(i.id) && i.status === 0 && i.source === 'shop');
-        if (validItems.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "没有可提取的道具（只有商城购买的物品才能提货）" });
+          .filter(i => input.ids.includes(i.id) && i.status === 0 && (i.source === 'shop' || i.source === 'gift'));
+        if (validItems.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "没有可提取的道具" });
 
         const { createTemplateOrder } = await import("./cs2pifaApi");
         const results: { id: number; csOrderNo: string; success: boolean; error?: string }[] = [];
@@ -551,7 +574,25 @@ export const appRouter = router({
         for (const item of validItems) {
           const outOrderNo = `extract_${session.playerId}_${item.id}_${Date.now()}`;
           try {
-            if (!item.csTemplateId) {
+            let templateId = (item.csTemplateId ?? '').trim();
+            if (!templateId && item.source === 'gift') {
+              const [giftSource] = await db.select({
+                originalTemplateId: playerItems.csTemplateId,
+                originalSource: playerItems.source,
+              })
+                .from(giftLogs)
+                .leftJoin(playerItems, eq(giftLogs.playerItemId, playerItems.id))
+                .where(and(eq(giftLogs.toPlayerId, session.playerId), eq(giftLogs.itemId, item.itemId)))
+                .orderBy(desc(giftLogs.id))
+                .limit(1);
+              templateId = (giftSource?.originalTemplateId ?? '').trim();
+              if (templateId) {
+                await db.update(playerItems)
+                  .set({ csTemplateId: templateId })
+                  .where(eq(playerItems.id, item.id));
+              }
+            }
+            if (!templateId) {
               throw new Error("缺少cs2pifa模板ID，无法提货");
             }
             // 从shopItems表查询hashName和价格
@@ -562,7 +603,7 @@ export const appRouter = router({
               minSellPrice: shopItems.minSellPrice,
               referencePrice: shopItems.referencePrice,
             }).from(shopItems)
-              .where(eq(shopItems.templateId, item.csTemplateId))
+              .where(eq(shopItems.templateId, templateId))
               .limit(1);
             if (shopItem) {
               hashName = shopItem.templateHashName || "";
@@ -570,10 +611,10 @@ export const appRouter = router({
               const refPrice = parseFloat(shopItem.referencePrice || shopItem.minSellPrice || '0');
               purchasePrice = (refPrice * 1.5).toFixed(2);
             }
-            console.log(`[extract] 提货参数: templateId=${item.csTemplateId}, hashName=${hashName}, purchasePrice=${purchasePrice}, tradeLink=${tradeLink}`);
+            console.log(`[extract] 提货参数: templateId=${templateId}, hashName=${hashName}, purchasePrice=${purchasePrice}, tradeLink=${tradeLink}`);
             // 调用cs2pifa API创建提货订单
             const orderResult = await createTemplateOrder({
-              templateId: parseInt(item.csTemplateId),
+              templateId: parseInt(templateId),
               tradeLink: tradeLink,
               outOrderNo: outOrderNo,
               hashName: hashName,
@@ -586,16 +627,17 @@ export const appRouter = router({
             results.push({ id: item.id, csOrderNo: orderResult.orderNo || outOrderNo, success: true });
             console.log(`[extract] 提货成功: 物品${item.id}, cs2pifa订单号: ${orderResult.orderNo}`);
           } catch (err: unknown) {
-            const errMsg = err instanceof Error ? err.message : String(err);
-            console.error(`[extract] 提货失败: 物品${item.id}, 错误: ${errMsg}`);
-            results.push({ id: item.id, csOrderNo: '', success: false, error: errMsg });
+            const rawErrMsg = err instanceof Error ? err.message : String(err);
+            const userErrMsg = normalizeExtractFailureMessage(rawErrMsg);
+            console.error(`[extract] 提货失败: 物品${item.id}, 原始错误: ${rawErrMsg}, 用户提示: ${userErrMsg}`);
+            results.push({ id: item.id, csOrderNo: '', success: false, error: userErrMsg });
           }
         }
 
         const successCount = results.filter(r => r.success).length;
         const failCount = results.filter(r => !r.success).length;
         if (successCount === 0) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `提货失败: ${results[0]?.error || '未知错误'}` });
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: results[0]?.error || '交易失败，请稍后重试' });
         }
         return { success: true, count: successCount, failCount, results };
       }),
@@ -1017,6 +1059,7 @@ export const appRouter = router({
           playerId: playerItems.playerId,
           source: playerItems.source,
           recycleGold: playerItems.recycleGold,
+          csTemplateId: playerItems.csTemplateId,
         }).from(playerItems).where(eq(playerItems.playerId, session.playerId));
 
         const validItems = items.filter(i => input.ids.includes(i.id) && i.status === 0);
@@ -1035,9 +1078,10 @@ export const appRouter = router({
           await db.insert(playerItems).values({
             playerId: toPlayer.id,
             itemId: item.itemId,
-            source: 'gift',
+            source: item.source || 'gift',
             status: 0,
             recycleGold: item.recycleGold,
+            csTemplateId: item.csTemplateId || '',
           });
           // 标记原物品为已赠送（status=4）
           await db.update(playerItems)

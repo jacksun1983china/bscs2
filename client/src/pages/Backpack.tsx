@@ -256,10 +256,10 @@ export default function Backpack() {
     .filter(item => {
       // 顶部分类筛选：
       // 分解: 所有待处理物品(status=0)
-      // 提货: 只显示shop来源且status=0的物品（只有商城购买的物品才能提货）
+      // 提货: 显示可直接提货的物品（商城购买或他人赠送的可提货物品）
       // 提货保护: 只显示shop来源且status=3的物品（保护中的商城物品）
       if (topFilter === 'decompose') return item.status === 0;
-      if (topFilter === 'pickup') return item.source === 'shop' && item.status === 0;
+      if (topFilter === 'pickup') return (item.source === 'shop' || item.source === 'gift') && item.status === 0;
       if (topFilter === 'protect') return item.source === 'shop' && item.status === 3;
       return true;
     })
