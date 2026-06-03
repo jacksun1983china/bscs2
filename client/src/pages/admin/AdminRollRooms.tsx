@@ -26,6 +26,19 @@ const inputStyle = {
   background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(120,60,220,0.3)',
   color: '#fff', outline: 'none',
 };
+const selectStyle = {
+  ...inputStyle,
+  cursor: 'pointer',
+  background: '#1a0840',
+  color: '#fff',
+  appearance: 'auto' as const,
+  WebkitAppearance: 'menulist' as const,
+  MozAppearance: 'menulist' as const,
+};
+const selectOptionStyle = {
+  background: '#1a0840',
+  color: '#fff',
+};
 const labelStyle = { color: 'rgba(180,150,255,0.7)', fontSize: 12, marginBottom: 4, display: 'block' as const };
 const BEIJING_TIME_ZONE = 'Asia/Shanghai';
 
@@ -229,10 +242,9 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
           {/* 兑换类型 */}
           <div>
             <label style={labelStyle}>{t.exchangeType}</label>
-            <select style={{ ...inputStyle }} value={form.exchangeType} onChange={e => setForm(f => ({ ...f, exchangeType: e.target.value }))}>
-              <option value="mall_coin">商城币</option>
-              <option value="gold">平台币</option>
-              <option value="diamond">商城币</option>
+            <select style={selectStyle} value={form.exchangeType} onChange={e => setForm(f => ({ ...f, exchangeType: e.target.value }))}>
+              <option value="gold" style={selectOptionStyle}>平台币</option>
+              <option value="mall_coin" style={selectOptionStyle}>商城币</option>
             </select>
           </div>
           {/* 机器人数量 */}
@@ -266,9 +278,9 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
               </div>
               <div>
                 {idx === 0 && <label style={labelStyle}>类型</label>}
-                <select style={{ ...inputStyle, cursor: 'pointer' }} value={prize.prizeType} onChange={e => setPrizes(ps => ps.map((p, i) => i === idx ? { ...p, prizeType: e.target.value as 'coin' | 'item' } : p))}>
-                  <option value="coin">💰 货币</option>
-                  <option value="item">🎁 道具</option>
+                <select style={selectStyle} value={prize.prizeType} onChange={e => setPrizes(ps => ps.map((p, i) => i === idx ? { ...p, prizeType: e.target.value as 'coin' | 'item' } : p))}>
+                  <option value="coin" style={selectOptionStyle}>💰 货币</option>
+                  <option value="item" style={selectOptionStyle}>🎁 道具</option>
                 </select>
               </div>
               <div>

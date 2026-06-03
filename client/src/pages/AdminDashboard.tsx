@@ -716,6 +716,23 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
 }
 
 // ── 主仪表盘 ────────────────────────────────────────────────────
+const adminSelectStyle = {
+  padding: '8px 12px',
+  borderRadius: 8,
+  fontSize: 13,
+  background: '#1a0840',
+  border: '1px solid rgba(120,60,220,0.3)',
+  color: '#fff',
+  outline: 'none',
+  cursor: 'pointer',
+  appearance: 'auto' as const,
+  WebkitAppearance: 'menulist' as const,
+  MozAppearance: 'menulist' as const,
+};
+const adminOptionStyle = {
+  background: '#1a0840',
+  color: '#fff',
+};
 const MENU_KEYS = ['players', 'games', 'xGames', 'rollRooms', 'arena', 'banners', 'rebate', 'orders', 'categories', 'boxes', 'rechargeConfigs', 'shop', 'finance', 'goldLogs', 'vipManage', 'cdkManage', 'mailbox', 'agents', 'vortexAdmin', 'settings'] as const;
 const MENU_ICONS: Record<string, string> = {
   players: '👥', games: '🎮', xGames: '🎰', rollRooms: '🎲', arena: '🏠️', banners: '🖼️', rebate: '💸', orders: '📦', categories: '🏷️', boxes: '🎁', rechargeConfigs: '💳', shop: '🛒', finance: '💰', goldLogs: '📊', vipManage: '👑', cdkManage: '🎟️', mailbox: '📬', agents: '🎧', vortexAdmin: '🌀', settings: '⚙️',
@@ -1123,15 +1140,11 @@ export default function AdminDashboard() {
                 <select
                   value={statusFilter ?? ''}
                   onChange={e => { setStatusFilter(e.target.value === '' ? undefined : Number(e.target.value)); setPage(1); }}
-                  style={{
-                    padding: '8px 12px', borderRadius: 8, fontSize: 13,
-                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(120,60,220,0.3)',
-                    color: '#fff', outline: 'none', cursor: 'pointer',
-                  }}
+                  style={adminSelectStyle}
                 >
-                  <option value="" style={{ background: '#1a0840' }}>{t.allStatus}</option>
-                  <option value="1" style={{ background: '#1a0840' }}>{t.active}</option>
-                  <option value="0" style={{ background: '#1a0840' }}>{t.banned}</option>
+                  <option value="" style={adminOptionStyle}>{t.allStatus}</option>
+                  <option value="1" style={adminOptionStyle}>{t.active}</option>
+                  <option value="0" style={adminOptionStyle}>{t.banned}</option>
                 </select>
               </div>
             </div>
@@ -1191,15 +1204,11 @@ export default function AdminDashboard() {
                         <select
                           value={(p.identity as string) || 'player'}
                           onChange={(e) => handleInlinePlayerUpdate(p, { identity: e.target.value as 'player' | 'streamer' | 'merchant' })}
-                          style={{
-                            padding: '6px 8px', borderRadius: 6, fontSize: 12,
-                            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(120,60,220,0.28)',
-                            color: '#fff', outline: 'none', cursor: 'pointer', minWidth: 92,
-                          }}
+                          style={{ ...adminSelectStyle, padding: '6px 8px', borderRadius: 6, fontSize: 12, minWidth: 92, border: '1px solid rgba(120,60,220,0.28)' }}
                         >
-                          <option value="player" style={{ background: '#1a0840' }}>{t.identityPlayer}</option>
-                          <option value="streamer" style={{ background: '#1a0840' }}>{t.identityAnchor}</option>
-                          <option value="merchant" style={{ background: '#1a0840' }}>{t.identityMerchant}</option>
+                          <option value="player" style={adminOptionStyle}>{t.identityPlayer}</option>
+                          <option value="streamer" style={adminOptionStyle}>{t.identityAnchor}</option>
+                          <option value="merchant" style={adminOptionStyle}>{t.identityMerchant}</option>
                         </select>
                       </td>
                       <td style={{ padding: '12px 16px', color: '#ffd700', fontSize: 13, whiteSpace: 'nowrap' }}>
@@ -1232,14 +1241,10 @@ export default function AdminDashboard() {
                         <select
                           value={String(Number(p.commissionEnabled ?? 1))}
                           onChange={(e) => handleInlinePlayerUpdate(p, { commissionEnabled: Number(e.target.value) })}
-                          style={{
-                            padding: '6px 8px', borderRadius: 6, fontSize: 12,
-                            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(120,60,220,0.28)',
-                            color: '#fff', outline: 'none', cursor: 'pointer', minWidth: 72,
-                          }}
+                          style={{ ...adminSelectStyle, padding: '6px 8px', borderRadius: 6, fontSize: 12, minWidth: 72, border: '1px solid rgba(120,60,220,0.28)' }}
                         >
-                          <option value="1" style={{ background: '#1a0840' }}>{t.yes}</option>
-                          <option value="0" style={{ background: '#1a0840' }}>{t.no}</option>
+                          <option value="1" style={adminOptionStyle}>{t.yes}</option>
+                          <option value="0" style={adminOptionStyle}>{t.no}</option>
                         </select>
                       </td>
                       <td style={{ padding: '12px 16px' }}>
