@@ -51,12 +51,29 @@ export default function Share() {
   const [activePeriod, setActivePeriod] = useState<'current' | 'last'>('current');
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [showExplain, setShowExplain] = useState(false);
+  const [showBindInviteModal, setShowBindInviteModal] = useState(false);
+  const [bindInviteCodeText, setBindInviteCodeText] = useState('');
 
+  const utils = trpc.useUtils();
   const { data: player } = trpc.player.me.useQuery(undefined, { retry: false, staleTime: 30_000 });
   const { data: teamStats } = trpc.player.teamStats.useQuery(undefined, { enabled: !!player, retry: false });
+  const hasBoundInviter = Boolean(player?.invitedBy);
 
   const withdrawMutation = trpc.player.withdrawCommission.useMutation({
     onSuccess: () => toast.success('佣金已提取！'),
+    onError: (e) => toast.error(e.message),
+  });
+
+  const bindInviteMutation = trpc.player.bindInviteCode.useMutation({
+    onSuccess: async (data) => {
+      toast.success(`绑定成功，已绑定邀请码 ${data.inviterInviteCode || bindInviteCodeText.trim().toUpperCase()}`);
+      setShowBindInviteModal(false);
+      setBindInviteCodeText('');
+      await Promise.all([
+        utils.player.me.invalidate(),
+        utils.player.teamStats.invalidate(),
+      ]);
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -244,13 +261,16 @@ export default function Share() {
 
           {/* 绑定邀请码链接行（text-wrapper_6，蓝色背景，点击复制链接） */}
           <div
-            onClick={copyLink}
+            onClick={() => {
+              if (hasBoundInviter) return;
+              setShowBindInviteModal(true);
+            }}
             style={{
               background: `url(${IMG.bindLinkBg}) center/100% 100% no-repeat`,
               margin: `${q(6)} ${q(42)} 0`,
               height: q(64),
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer',
+              cursor: hasBoundInviter ? 'default' : 'pointer',
               borderRadius: q(4),
               overflow: 'hidden',
               padding: `0 ${q(12)}`,
@@ -260,7 +280,9 @@ export default function Share() {
               color: '#fff', fontSize: q(28), fontWeight: 700,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
-              绑定邀请码-{player?.inviteCode ?? '---'}
+              {hasBoundInviter
+                ? `已绑定邀请码-${(player as any)?.invitedByInviteCode ?? '---'}`
+                : '绑定邀请码'}
             </span>
           </div>
 
@@ -278,7 +300,7 @@ export default function Share() {
                 color: '#fff', fontSize: q(24), fontWeight: 500,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
-                {(player as any)?.invitedByNickname ?? (player?.invitedBy ? `ID:${player.invitedBy}` : 'XXXXXXXXX')}
+                {(player as any)?.invitedByNickname ?? '---'}
               </span>
               <span style={{ color: 'rgba(249,178,255,1)', fontSize: q(22), marginTop: q(6) }}>推荐人</span>
             </div>
@@ -292,7 +314,7 @@ export default function Share() {
                 color: '#fff', fontSize: q(24), fontWeight: 500,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
-                {player?.invitedBy ? `DB${player.invitedBy}` : 'DB9908890'}
+                {player?.invitedBy ? `DB${player.invitedBy}` : '---'}
               </span>
               <span style={{ color: 'rgba(249,178,255,1)', fontSize: q(22), marginTop: q(6) }}>ID</span>
             </div>
@@ -418,6 +440,105 @@ export default function Share() {
       {/* ══════════════════════════════════════════════════════
           推广说明弹窗
           ══════════════════════════════════════════════════════ */}
+      {showBindInviteModal && (
+        <div
+          onClick={() => setShowBindInviteModal(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9998,
+            background: 'rgba(0,0,0,0.72)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: q(40),
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: q(670),
+              background: 'linear-gradient(180deg, #1a0a3e 0%, #0d0621 100%)',
+              border: '1px solid rgba(80,180,255,0.45)',
+              borderRadius: q(20),
+              padding: `${q(32)} ${q(28)}`,
+              boxShadow: '0 0 36px rgba(58,130,246,0.28)',
+            }}
+          >
+            <div style={{ textAlign: 'center', color: '#fff', fontSize: q(34), fontWeight: 700, marginBottom: q(24) }}>
+              绑定邀请码
+            </div>
+            <div style={{ color: 'rgba(230,210,255,0.86)', fontSize: q(22), lineHeight: 1.7, marginBottom: q(20), textAlign: 'center' }}>
+              请输入您要绑定的邀请码。每个账号只能绑定一次，绑定后不可更改。
+            </div>
+            <div style={{
+              background: 'rgba(20,8,50,0.85)',
+              border: '1px solid rgba(80,180,255,0.35)',
+              borderRadius: q(14),
+              padding: `${q(8)} ${q(18)}`,
+            }}>
+              <input
+                value={bindInviteCodeText}
+                onChange={(e) => setBindInviteCodeText(e.target.value.toUpperCase())}
+                placeholder="请输入邀请码"
+                maxLength={20}
+                style={{
+                  width: '100%',
+                  height: q(64),
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  color: '#fff',
+                  fontSize: q(28),
+                  fontWeight: 600,
+                  textAlign: 'center',
+                  letterSpacing: '0.08em',
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: q(16), marginTop: q(28) }}>
+              <div
+                onClick={() => {
+                  if (bindInviteMutation.isPending) return;
+                  setShowBindInviteModal(false);
+                }}
+                style={{
+                  flex: 1,
+                  height: q(64),
+                  borderRadius: q(32),
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(120,60,220,0.18)',
+                  border: '1px solid rgba(160,80,255,0.35)',
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ color: 'rgba(230,210,255,0.95)', fontSize: q(28), fontWeight: 600 }}>取消</span>
+              </div>
+              <div
+                onClick={() => {
+                  const inviteCode = bindInviteCodeText.trim().toUpperCase();
+                  if (!inviteCode) {
+                    toast.error('请输入邀请码');
+                    return;
+                  }
+                  bindInviteMutation.mutate({ inviteCode });
+                }}
+                style={{
+                  flex: 1,
+                  height: q(64),
+                  borderRadius: q(32),
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'linear-gradient(135deg, #2563eb 0%, #38bdf8 100%)',
+                  border: '1px solid rgba(125,211,252,0.55)',
+                  cursor: bindInviteMutation.isPending ? 'wait' : 'pointer',
+                  boxShadow: '0 0 18px rgba(56,189,248,0.28)',
+                }}
+              >
+                <span style={{ color: '#fff', fontSize: q(28), fontWeight: 700 }}>
+                  {bindInviteMutation.isPending ? '绑定中...' : '确认绑定'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showExplain && (
         <div
           onClick={() => setShowExplain(false)}

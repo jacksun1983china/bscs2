@@ -171,9 +171,10 @@ export const appRouter = router({
         const isNew = !player;
         if (!player) {
           const myInviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+          const normalizedInviteCode = input.inviteCode?.trim().toUpperCase();
           let invitedBy: number | undefined;
-          if (input.inviteCode) {
-            const inviter = await getPlayerByInviteCode(input.inviteCode);
+          if (normalizedInviteCode) {
+            const inviter = await getPlayerByInviteCode(normalizedInviteCode);
             if (inviter) invitedBy = inviter.id;
           }
           player = await createPlayer({
@@ -210,11 +211,13 @@ export const appRouter = router({
       if (!session) return null;
       const player = await getPlayerById(session.playerId);
       if (!player) return null;
-      // 如果有推荐人，查询推荐人昵称
+      // 如果有推荐人，查询推荐人昵称与邀请码
       let invitedByNickname: string | null = null;
+      let invitedByInviteCode: string | null = null;
       if (player.invitedBy) {
         const inviter = await getPlayerById(player.invitedBy);
         invitedByNickname = inviter?.nickname ?? null;
+        invitedByInviteCode = inviter?.inviteCode ?? null;
       }
       // 昵称是默认格式（用户+数字）或为空时，需要设置昵称
       const needSetNickname = !player.nickname || /^用户\d+$/.test(player.nickname) || player.nickname === '';
@@ -222,7 +225,7 @@ export const appRouter = router({
           id: player.id, phone: player.phone, nickname: player.nickname, avatar: player.avatar,
           vipLevel: player.vipLevel, gold: player.gold, diamond: player.diamond, shopCoin: player.shopCoin,
           totalRecharge: player.totalRecharge, inviteCode: player.inviteCode,
-          invitedBy: player.invitedBy, invitedByNickname, identity: player.identity,
+          invitedBy: player.invitedBy, invitedByNickname, invitedByInviteCode, identity: player.identity,
           commissionEnabled: player.commissionEnabled, commissionBalance: player.commissionBalance,
           steamAccount: player.steamAccount,
           hasSafePassword: Boolean((player.safePassword ?? '').trim()),
@@ -281,8 +284,9 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const session = await getPlayerFromCookie(ctx.req);
         if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
-        const inviter = await bindInviteCode(session.playerId, input.inviteCode);
-        return { success: true, inviterNickname: inviter.nickname, inviterId: inviter.id };
+        const normalizedInviteCode = input.inviteCode.trim().toUpperCase();
+        const inviter = await bindInviteCode(session.playerId, normalizedInviteCode);
+        return { success: true, inviterNickname: inviter.nickname, inviterId: inviter.id, inviterInviteCode: inviter.inviteCode };
       }),
 
     /** 获取推广数据 */

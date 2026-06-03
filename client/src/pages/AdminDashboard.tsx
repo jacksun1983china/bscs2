@@ -294,6 +294,7 @@ function PlayerDetailModal({
   const [showAdjust, setShowAdjust] = useState(false);
   const [adjustAmount, setAdjustAmount] = useState('');
   const [adjustReason, setAdjustReason] = useState('');
+  const [invitedByInviteCode, setInvitedByInviteCode] = useState('');
   const utils = trpc.useUtils();
   const adjustMutation = trpc.admin.adjustPlayerGold.useMutation({
     onSuccess: (data) => {
@@ -301,6 +302,15 @@ function PlayerDetailModal({
       setShowAdjust(false);
       setAdjustAmount('');
       setAdjustReason('');
+      refetch();
+      utils.admin.playerList.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const bindInviteMutation = trpc.admin.updatePlayerIdentity.useMutation({
+    onSuccess: () => {
+      toast.success('绑定邀请码已更新');
+      setInvitedByInviteCode('');
       refetch();
       utils.admin.playerList.invalidate();
     },
@@ -314,6 +324,16 @@ function PlayerDetailModal({
   };
   const currentGold = player ? parseFloat(player.gold || '0') : 0;
   const previewGold = currentGold + (parseFloat(adjustAmount) || 0);
+  const handleBindInvite = () => {
+    const inviteCode = invitedByInviteCode.trim().toUpperCase();
+    if (!inviteCode) { toast.error('请输入邀请码'); return; }
+    if (!player) return;
+    bindInviteMutation.mutate({
+      id: playerId,
+      identity: (player.identity as 'player' | 'streamer' | 'merchant') || 'player',
+      invitedByInviteCode: inviteCode,
+    });
+  };
 
   return (
     <div
@@ -354,6 +374,7 @@ function PlayerDetailModal({
                 [t.totalWinLabel, `¥${parseFloat(player.totalWin || '0').toFixed(2)}`],
                 [t.status, player.status === 1 ? `✅ ${t.active}` : `🚫 ${t.banned}`],
                 [t.inviteCode, player.inviteCode],
+                [t.parentId, player.invitedBy ? `DB${player.invitedBy}` : '-'],
                 [t.registerIp, player.registerIp || '-'],
                 [t.lastIp, player.lastIp || '-'],
                 [t.createdAt, player.createdAt ? new Date(player.createdAt).toLocaleString() : '-'],
@@ -383,6 +404,40 @@ function PlayerDetailModal({
               </button>
             </div>
             {/* 调整平台币面板 */}
+            <div style={{
+              marginTop: 12, padding: 16, borderRadius: 12,
+              background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)',
+            }}>
+              <div style={{ color: '#7dd3fc', fontSize: 14, fontWeight: 700, marginBottom: 12 }}>绑定邀请码</div>
+              <div style={{ color: 'rgba(180,150,255,0.72)', fontSize: 12, lineHeight: 1.6, marginBottom: 10 }}>
+                当前上级：{player.invitedBy ? `DB${player.invitedBy}` : '-'}。输入邀请码后可将该玩家绑定到对应邀请人。
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <input
+                  type="text"
+                  value={invitedByInviteCode}
+                  onChange={e => setInvitedByInviteCode(e.target.value.toUpperCase())}
+                  placeholder="请输入要绑定的邀请码"
+                  style={{
+                    flex: 1, padding: '8px 12px', borderRadius: 8, fontSize: 14,
+                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(59,130,246,0.35)',
+                    color: '#fff', outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+                <button
+                  onClick={handleBindInvite}
+                  disabled={bindInviteMutation.isPending}
+                  style={{
+                    padding: '0 16px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                    cursor: bindInviteMutation.isPending ? 'not-allowed' : 'pointer',
+                    background: bindInviteMutation.isPending ? 'rgba(37,99,235,0.35)' : 'linear-gradient(135deg,#2563eb,#38bdf8)',
+                    color: '#fff', border: 'none', opacity: bindInviteMutation.isPending ? 0.7 : 1,
+                  }}
+                >
+                  {bindInviteMutation.isPending ? t.loading : '更新绑定'}
+                </button>
+              </div>
+            </div>
             {showAdjust && (
               <div style={{
                 marginTop: 12, padding: 16, borderRadius: 12,

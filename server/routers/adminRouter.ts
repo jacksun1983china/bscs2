@@ -14,6 +14,7 @@ import {
   getAdminRollRoomList,
   getDb,
   getPlayerById,
+  getPlayerByInviteCode,
   getPlayerList,
   getPlayerRechargeOrders,
   getRollRoomDetail,
@@ -151,15 +152,23 @@ export const adminRouter = router({
       commissionRate: z.number().min(0).max(100).optional(),
       commissionEnabled: z.number().optional(),
       invitedBy: z.number().optional(),
+      invitedByInviteCode: z.string().trim().min(1).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       await updatePlayerIdentity(input.id, input.identity, input.commissionRate, input.commissionEnabled);
-      if (input.invitedBy !== undefined) {
+      let nextInvitedBy = input.invitedBy;
+      if (input.invitedByInviteCode) {
+        const inviter = await getPlayerByInviteCode(input.invitedByInviteCode.trim().toUpperCase());
+        if (!inviter) throw new TRPCError({ code: "BAD_REQUEST", message: "邀请码不存在" });
+        if (inviter.id === input.id) throw new TRPCError({ code: "BAD_REQUEST", message: "不能绑定自己的邀请码" });
+        nextInvitedBy = inviter.id;
+      }
+      if (nextInvitedBy !== undefined) {
         const db = await getDb();
         if (db) {
           const { players } = await import("../../drizzle/schema");
           const { eq } = await import("drizzle-orm");
-          await db.update(players).set({ invitedBy: input.invitedBy || null }).where(eq(players.id, input.id));
+          await db.update(players).set({ invitedBy: nextInvitedBy || null }).where(eq(players.id, input.id));
         }
       }
       return { success: true };

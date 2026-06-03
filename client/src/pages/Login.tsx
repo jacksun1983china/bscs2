@@ -87,6 +87,9 @@ export default function Login() {
   });
 
   const utils = trpc.useUtils();
+  const inviteCodeFromUrl = typeof window !== 'undefined'
+    ? (new URLSearchParams(window.location.search).get('invite')?.trim().toUpperCase() || '')
+    : '';
 
   const loginMutation = trpc.player.login.useMutation({
     onSuccess: async (data) => {
@@ -106,7 +109,7 @@ export default function Login() {
     if (!/^1[3-9]\d{9}$/.test(phone)) { toast.error('请输入正确的手机号'); return; }
     if (code.length !== 6) { toast.error('请输入6位验证码'); return; }
     if (!agree) { toast.error('请先同意用户协议'); return; }
-    loginMutation.mutate({ phone, code });
+    loginMutation.mutate({ phone, code, inviteCode: inviteCodeFromUrl || undefined });
   };
 
   return (
