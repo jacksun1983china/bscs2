@@ -27,6 +27,29 @@ const inputStyle = {
   color: '#fff', outline: 'none',
 };
 const labelStyle = { color: 'rgba(180,150,255,0.7)', fontSize: 12, marginBottom: 4, display: 'block' as const };
+const BEIJING_TIME_ZONE = 'Asia/Shanghai';
+
+function formatBeijingDateTime(value?: string | Date | null) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: BEIJING_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(date);
+}
+
+function toBeijingIsoString(value: string) {
+  if (!value) return value;
+  if (/[zZ]$|[+-]\d{2}:?\d{2}$/.test(value)) return value;
+  return `${value}:00+08:00`;
+}
 
 // ── 中奖名单弹窗 ──────────────────────────────────────────────────
 function WinnersModal({ roomId, onClose, t }: { roomId: number; onClose: () => void; t: I18nT }) {
@@ -57,7 +80,7 @@ function WinnersModal({ roomId, onClose, t }: { roomId: number; onClose: () => v
                   <td style={{ padding: '10px 12px', color: '#fff', fontSize: 13 }}>{w.player?.nickname ?? '-'}</td>
                   <td style={{ padding: '10px 12px', color: '#a78bfa', fontSize: 13 }}>{w.prize?.name ?? '-'}</td>
                   <td style={{ padding: '10px 12px', color: '#ffd700', fontSize: 13 }}>¥{parseFloat(w.prize?.amount ?? '0').toFixed(2)}</td>
-                  <td style={{ padding: '10px 12px', color: 'rgba(180,150,255,0.5)', fontSize: 11 }}>{w.createdAt ? new Date(w.createdAt).toLocaleString() : '-'}</td>
+                  <td style={{ padding: '10px 12px', color: 'rgba(180,150,255,0.5)', fontSize: 11 }}>{formatBeijingDateTime(w.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -94,10 +117,15 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
     try {
       const reader = new FileReader();
       reader.onload = async (ev) => {
-        const base64 = (ev.target?.result as string).split(',')[1];
-        const result = await uploadMutation.mutateAsync({ base64, filename: file.name, mimeType: file.type });
-        setForm(f => ({ ...f, avatarUrl: result.url }));
-        setUploading(false);
+        try {
+          const base64 = (ev.target?.result as string).split(',')[1];
+          const result = await uploadMutation.mutateAsync({ base64, filename: file.name, mimeType: file.type });
+          setForm(f => ({ ...f, avatarUrl: result.url }));
+        } catch (error: any) {
+          toast.error(error?.message || '图片上传失败');
+        } finally {
+          setUploading(false);
+        }
       };
       reader.readAsDataURL(file);
     } catch { setUploading(false); }
@@ -109,9 +137,13 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
     try {
       const reader = new FileReader();
       reader.onload = async (ev) => {
-        const base64 = (ev.target?.result as string).split(',')[1];
-        const result = await uploadMutation.mutateAsync({ base64, filename: file.name, mimeType: file.type });
-        setPrizes(ps => ps.map((p, i) => i === idx ? { ...p, imageUrl: result.url } : p));
+        try {
+          const base64 = (ev.target?.result as string).split(',')[1];
+          const result = await uploadMutation.mutateAsync({ base64, filename: file.name, mimeType: file.type });
+          setPrizes(ps => ps.map((p, i) => i === idx ? { ...p, imageUrl: result.url } : p));
+        } catch (error: any) {
+          toast.error(error?.message || '奖品图片上传失败');
+        }
       };
       reader.readAsDataURL(file);
     } catch { /* ignore */ }
@@ -128,8 +160,8 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
       avatarBase64: undefined,
       avatarUrl: form.avatarUrl || undefined,
       ownerId: form.parentId ? parseInt(form.parentId) : undefined,
-      startAt: form.startTime,
-      endAt: form.endTime,
+      startAt: toBeijingIsoString(form.startTime),
+      endAt: toBeijingIsoString(form.endTime),
       threshold: parseFloat(form.threshold),
       maxParticipants: parseInt(form.maxPlayers) || 100,
       prizes: validPrizes.map(p => ({ name: p.name, value: parseFloat(p.amount), quantity: parseInt(p.quantity) || 1, coinType: (form.exchangeType === 'gold' ? 'gold' : 'shopCoin') as 'shopCoin' | 'gold', imageBase64: undefined, imageUrl: p.imageUrl || undefined, prizeType: p.prizeType as 'coin' | 'item', itemCategory: 'roll' })),
@@ -349,8 +381,8 @@ export function AdminRollRooms({ lang, t }: { lang: 'zh' | 'en'; t: I18nT }) {
                     </div>
                   </td>
                   <td style={{ padding: '10px 14px', color: 'rgba(180,150,255,0.5)', fontSize: 11, whiteSpace: 'nowrap' }}>
-                    <div>{room.startAt ? new Date(room.startAt).toLocaleString() : '-'}</div>
-                    <div>{room.endAt ? new Date(room.endAt).toLocaleString() : '-'}</div>
+                    <div>{formatBeijingDateTime(room.startAt)}</div>
+                    <div>{formatBeijingDateTime(room.endAt)}</div>
                   </td>
                   <td style={{ padding: '10px 14px' }}>
                     <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: `${statusColor(room.status)}22`, color: statusColor(room.status), border: `1px solid ${statusColor(room.status)}44` }}>

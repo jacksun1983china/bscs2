@@ -275,20 +275,7 @@ export const adminRouter = router({
   rollRoomList: adminProcedure
     .input(z.object({ page: z.number().min(1).default(1), limit: z.number().default(10), keyword: z.string().optional(), status: z.string().optional(), ownerId: z.number().optional() }))
     .query(async ({ ctx, input }) => {
-      const result = await getAdminRollRoomList(input);
-      // 将UTC时间转为北京时间
-      const toBeijing = (d: Date | string) => {
-        const date = new Date(d);
-        return new Date(date.getTime() + 8 * 3600 * 1000);
-      };
-      return {
-        ...result,
-        list: result.list.map((room: any) => ({
-          ...room,
-          startAt: toBeijing(room.startAt),
-          endAt: toBeijing(room.endAt),
-        })),
-      };
+      return getAdminRollRoomList(input);
     }),
 
   createRollRoom: adminProcedure
@@ -330,13 +317,18 @@ export const adminRouter = router({
         }
         return { name: p.name, value: p.value.toFixed(2), quantity: p.quantity, coinType: p.coinType, imageUrl, prizeType: p.prizeType, itemCategory: p.itemCategory };
       }));
+      const parseBeijingDateTime = (value: string) => {
+        if (!value) return new Date(value);
+        if (/[zZ]$|[+-]\d{2}:?\d{2}$/.test(value)) return new Date(value);
+        return new Date(`${value}:00+08:00`);
+      };
       const roomId = await createRollRoom({
         title: input.title, avatarUrl,
         ownerId: input.ownerId || null,
         threshold: input.threshold.toFixed(2) as any,
         maxParticipants: input.maxParticipants,
-        startAt: new Date(input.startAt),
-        endAt: new Date(input.endAt),
+        startAt: parseBeijingDateTime(input.startAt),
+        endAt: parseBeijingDateTime(input.endAt),
         createdBy: ctx.user.openId,
       }, prizes as any);
       return { success: true, roomId };
