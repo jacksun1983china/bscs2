@@ -62,10 +62,17 @@ const I18N = {
     banned: '封禁',
     id: 'ID',
     phone: '手机号',
+    registerPhone: '注册手机号',
+    parentInviteCode: '上级',
     nickname: '昵称',
+    identity: '身份',
+    betFlow: '投注流水',
     vip: 'VIP',
     gold: '平台币',
     diamond: '商城币',
+    platformRebateEnabled: '是否平台返佣',
+    yes: '是',
+    no: '否',
     status: '状态',
     registered: '注册时间',
     actions: '操作',
@@ -191,10 +198,17 @@ const I18N = {
     banned: 'Banned',
     id: 'ID',
     phone: 'Phone',
+    registerPhone: 'Registered Phone',
+    parentInviteCode: 'Parent Invite Code',
     nickname: 'Nickname',
+    identity: 'Identity',
+    betFlow: 'Bet Flow',
     vip: 'VIP',
     gold: 'Platform Coin',
     diamond: 'Shop Coin',
+    platformRebateEnabled: 'Platform Rebate',
+    yes: 'Yes',
+    no: 'No',
     status: 'Status',
     registered: 'Registered',
     actions: 'Actions',
@@ -790,12 +804,44 @@ export default function AdminDashboard() {
     onError: (e) => toast.error(e.message),
   });
 
+  const updatePlayerIdentityMutation = trpc.admin.updatePlayerIdentity.useMutation({
+    onSuccess: () => {
+      toast.success(lang === 'zh' ? '玩家信息已更新' : 'Player updated');
+      utils.admin.playerList.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const handleSearch = () => { setKeyword(searchInput); setPage(1); };
   const handleBanToggle = (id: number, currentStatus: number) => {
     updateStatusMutation.mutate({
       id, status: currentStatus === 1 ? 0 : 1,
       banReason: currentStatus === 1 ? '' : 'Banned by admin',
     });
+  };
+
+  const handleInlinePlayerUpdate = (
+    player: PlayerItem,
+    patch: Partial<{
+      identity: 'player' | 'streamer' | 'merchant';
+      commissionRate: number;
+      commissionEnabled: number;
+      invitedByInviteCode: string;
+    }>
+  ) => {
+    updatePlayerIdentityMutation.mutate({
+      id: player.id,
+      identity: patch.identity ?? ((player.identity as 'player' | 'streamer' | 'merchant') || 'player'),
+      commissionRate: patch.commissionRate ?? (parseFloat(String(player.commissionRate ?? '4')) || 4),
+      commissionEnabled: patch.commissionEnabled ?? Number(player.commissionEnabled ?? 1),
+      ...(patch.invitedByInviteCode !== undefined ? { invitedByInviteCode: patch.invitedByInviteCode } : {}),
+    });
+  };
+
+  const getIdentityText = (identity?: string) => {
+    if (identity === 'streamer') return t.identityAnchor;
+    if (identity === 'merchant') return t.identityMerchant;
+    return t.identityPlayer;
   };
 
   // 未检查 session 时显示空白
@@ -1095,7 +1141,7 @@ export default function AdminDashboard() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: 'rgba(120,60,220,0.1)' }}>
-                    {[t.id, t.phone, t.nickname, t.vip, t.gold, t.diamond, t.status, t.registered, t.actions].map(h => (
+                    {[t.id, t.parentInviteCode, t.phone, t.nickname, t.identity, t.betFlow, t.totalRechargeLabel, t.rebateRate, t.platformRebateEnabled, t.vip, t.gold, t.diamond, t.status, t.registered, t.actions].map(h => (
                       <th key={h} style={{
                         padding: '12px 16px', textAlign: 'left', fontSize: 12,
                         color: 'rgba(180,150,255,0.7)', fontWeight: 600, whiteSpace: 'nowrap',
@@ -1106,9 +1152,9 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody>
                   {isLoading ? (
-                    <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: 'rgba(180,150,255,0.5)' }}>{t.loading}</td></tr>
+                    <tr><td colSpan={15} style={{ textAlign: 'center', padding: 40, color: 'rgba(180,150,255,0.5)' }}>{t.loading}</td></tr>
                   ) : !data?.list?.length ? (
-                    <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: 'rgba(180,150,255,0.4)' }}>
+                    <tr><td colSpan={15} style={{ textAlign: 'center', padding: 40, color: 'rgba(180,150,255,0.4)' }}>
                       {lang === 'zh' ? '暂无玩家数据' : 'No players found'}
                     </td></tr>
                   ) : (data?.list ?? []).map((p: PlayerItem, idx: number) => (
@@ -1121,22 +1167,93 @@ export default function AdminDashboard() {
                       onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)')}
                     >
                       <td style={{ padding: '12px 16px', color: 'rgba(180,150,255,0.6)', fontSize: 13 }}>#{p.id}</td>
-                      <td style={{ padding: '12px 16px', color: '#e0d0ff', fontSize: 13 }}>
+                      <td style={{ padding: '12px 16px', minWidth: 140 }}>
+                        <input
+                          defaultValue={(p as any).parentInviteCode || ''}
+                          placeholder={lang === 'zh' ? '请输⼊' : 'Enter'}
+                          onBlur={(e) => {
+                            const nextCode = e.currentTarget.value.trim().toUpperCase();
+                            if (!nextCode || nextCode === String((p as any).parentInviteCode || '').trim().toUpperCase()) return;
+                            handleInlinePlayerUpdate(p, { invitedByInviteCode: nextCode });
+                          }}
+                          style={{
+                            width: 110, padding: '6px 8px', borderRadius: 6, fontSize: 12,
+                            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(120,60,220,0.28)',
+                            color: '#fff', outline: 'none',
+                          }}
+                        />
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#e0d0ff', fontSize: 13, whiteSpace: 'nowrap' }}>
                         {p.phone}
                       </td>
-                      <td style={{ padding: '12px 16px', color: '#fff', fontSize: 13, fontWeight: 500 }}>{p.nickname}</td>
+                      <td style={{ padding: '12px 16px', color: '#fff', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{p.nickname}</td>
+                      <td style={{ padding: '12px 16px', minWidth: 120 }}>
+                        <select
+                          value={(p.identity as string) || 'player'}
+                          onChange={(e) => handleInlinePlayerUpdate(p, { identity: e.target.value as 'player' | 'streamer' | 'merchant' })}
+                          style={{
+                            padding: '6px 8px', borderRadius: 6, fontSize: 12,
+                            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(120,60,220,0.28)',
+                            color: '#fff', outline: 'none', cursor: 'pointer', minWidth: 92,
+                          }}
+                        >
+                          <option value="player" style={{ background: '#1a0840' }}>{t.identityPlayer}</option>
+                          <option value="streamer" style={{ background: '#1a0840' }}>{t.identityAnchor}</option>
+                          <option value="merchant" style={{ background: '#1a0840' }}>{t.identityMerchant}</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#ffd700', fontSize: 13, whiteSpace: 'nowrap' }}>
+                        {parseFloat(String((p as any).betFlow || '0')).toFixed(2)}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#7df9ff', fontSize: 13, whiteSpace: 'nowrap' }}>
+                        {parseFloat(p.totalRecharge || '0').toFixed(2)}
+                      </td>
+                      <td style={{ padding: '12px 16px', minWidth: 96 }}>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          defaultValue={parseFloat(String(p.commissionRate || '4')).toFixed(2)}
+                          onBlur={(e) => {
+                            const nextRate = parseFloat(e.currentTarget.value || '0');
+                            const currentRate = parseFloat(String(p.commissionRate || '4')) || 0;
+                            if (Number.isNaN(nextRate) || nextRate === currentRate) return;
+                            handleInlinePlayerUpdate(p, { commissionRate: nextRate });
+                          }}
+                          style={{
+                            width: 72, padding: '6px 8px', borderRadius: 6, fontSize: 12,
+                            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(120,60,220,0.28)',
+                            color: '#fff', outline: 'none',
+                          }}
+                        />
+                      </td>
+                      <td style={{ padding: '12px 16px', minWidth: 110 }}>
+                        <select
+                          value={String(Number(p.commissionEnabled ?? 1))}
+                          onChange={(e) => handleInlinePlayerUpdate(p, { commissionEnabled: Number(e.target.value) })}
+                          style={{
+                            padding: '6px 8px', borderRadius: 6, fontSize: 12,
+                            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(120,60,220,0.28)',
+                            color: '#fff', outline: 'none', cursor: 'pointer', minWidth: 72,
+                          }}
+                        >
+                          <option value="1" style={{ background: '#1a0840' }}>{t.yes}</option>
+                          <option value="0" style={{ background: '#1a0840' }}>{t.no}</option>
+                        </select>
+                      </td>
                       <td style={{ padding: '12px 16px' }}>
-                        <span style={{
+                        <span title={getIdentityText(p.identity as string)} style={{
                           padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600,
                           background: p.vipLevel > 0 ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.08)',
                           color: p.vipLevel > 0 ? '#f59e0b' : 'rgba(180,150,255,0.5)',
                           border: `1px solid ${p.vipLevel > 0 ? 'rgba(245,158,11,0.3)' : 'rgba(120,60,220,0.2)'}`,
                         }}>VIP{p.vipLevel}</span>
                       </td>
-                      <td style={{ padding: '12px 16px', color: '#ffd700', fontSize: 13 }}>
+                      <td style={{ padding: '12px 16px', color: '#ffd700', fontSize: 13, whiteSpace: 'nowrap' }}>
                         {parseFloat(p.gold || '0').toFixed(2)}
                       </td>
-                      <td style={{ padding: '12px 16px', color: '#7df9ff', fontSize: 13 }}>
+                      <td style={{ padding: '12px 16px', color: '#7df9ff', fontSize: 13, whiteSpace: 'nowrap' }}>
                         {parseFloat(p.diamond || '0').toFixed(2)}
                       </td>
                       <td style={{ padding: '12px 16px' }}>

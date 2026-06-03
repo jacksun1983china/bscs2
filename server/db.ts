@@ -34,6 +34,10 @@ import {
   smsCodes,
   users,
   weeklyCommissionStats,
+  rollxGames,
+  rushGames,
+  dingdongGames,
+  fruitBombBets,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { generateVerificationCode, getSmsExpireMinutes, sendVerificationSms } from "./smsService";
@@ -194,7 +198,46 @@ export async function getPlayerList(opts: {
     db.select().from(players).where(whereClause).orderBy(desc(players.createdAt)).limit(limit).offset(offset),
     db.select({ count: sql<number>`count(*)` }).from(players).where(whereClause),
   ]);
-  return { list, total: Number(countResult[0]?.count ?? 0) };
+
+  const playerIds = list.map((player) => player.id);
+  const invitedByIds = Array.from(new Set(list.map((player) => player.invitedBy).filter((id): id is number => typeof id === 'number' && id > 0)));
+
+  const [inviterRows, rollxRows, rushRows, dingdongRows, fruitBombRows] = await Promise.all([
+    invitedByIds.length
+      ? db.select({ id: players.id, inviteCode: players.inviteCode, nickname: players.nickname }).from(players).where(inArray(players.id, invitedByIds))
+      : Promise.resolve([] as Array<{ id: number; inviteCode: string; nickname: string }>),
+    playerIds.length
+      ? db.select({ playerId: rollxGames.playerId, total: sql<string>`COALESCE(SUM(${rollxGames.betAmount}), 0.00)` }).from(rollxGames).where(inArray(rollxGames.playerId, playerIds)).groupBy(rollxGames.playerId)
+      : Promise.resolve([] as Array<{ playerId: number; total: string }>),
+    playerIds.length
+      ? db.select({ playerId: rushGames.playerId, total: sql<string>`COALESCE(SUM(${rushGames.betAmount}), 0.00)` }).from(rushGames).where(inArray(rushGames.playerId, playerIds)).groupBy(rushGames.playerId)
+      : Promise.resolve([] as Array<{ playerId: number; total: string }>),
+    playerIds.length
+      ? db.select({ playerId: dingdongGames.playerId, total: sql<string>`COALESCE(SUM(${dingdongGames.betAmount}), 0.00)` }).from(dingdongGames).where(inArray(dingdongGames.playerId, playerIds)).groupBy(dingdongGames.playerId)
+      : Promise.resolve([] as Array<{ playerId: number; total: string }>),
+    playerIds.length
+      ? db.select({ playerId: fruitBombBets.playerId, total: sql<string>`COALESCE(SUM(${fruitBombBets.betAmount}), 0.00)` }).from(fruitBombBets).where(inArray(fruitBombBets.playerId, playerIds)).groupBy(fruitBombBets.playerId)
+      : Promise.resolve([] as Array<{ playerId: number; total: string }>),
+  ]);
+
+  const inviterMap = new Map(inviterRows.map((row) => [row.id, row]));
+  const betFlowMap = new Map<number, number>();
+  for (const row of [...rollxRows, ...rushRows, ...dingdongRows, ...fruitBombRows]) {
+    const current = betFlowMap.get(row.playerId) ?? 0;
+    betFlowMap.set(row.playerId, current + (parseFloat(String(row.total ?? '0')) || 0));
+  }
+
+  const enrichedList = list.map((player) => {
+    const inviter = player.invitedBy ? inviterMap.get(player.invitedBy) : undefined;
+    return {
+      ...player,
+      parentInviteCode: inviter?.inviteCode ?? '',
+      parentNickname: inviter?.nickname ?? '',
+      betFlow: (betFlowMap.get(player.id) ?? 0).toFixed(2),
+    };
+  });
+
+  return { list: enrichedList, total: Number(countResult[0]?.count ?? 0) };
 }
 
 export async function updatePlayerStatus(id: number, status: number, banReason: string = "") {
