@@ -10,6 +10,7 @@ import BottomNav from '@/components/BottomNav';
 import TopNav from '@/components/TopNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
 import SettingsModal from '@/components/SettingsModal';
+import RealNameVerificationModal from '@/pages/RealNameVerification';
 import { toast } from 'sonner';
 
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym';
@@ -70,6 +71,11 @@ const B = {
 
 // 750px 基准转换为 cqw
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
+
+const isRealNameRequiredError = (error: any) => {
+  const message = error?.message || error?.data?.message || '';
+  return message.includes('实名认证') && (error?.data?.code === 'FORBIDDEN' || message.includes('请先完成实名认证'));
+};
 
 // 品质颜色
 const QUALITY_BG: Record<string, string> = {
@@ -144,6 +150,7 @@ export default function Backpack() {
   const { data: steamInfo } = trpc.player.getSteam.useQuery(undefined, { staleTime: 60_000 });
   const [showExtractLogs, setShowExtractLogs] = useState(false);
   const [showSteamBindTip, setShowSteamBindTip] = useState(false);
+  const [realNameVisible, setRealNameVisible] = useState(false);
   const utils = trpc.useUtils();
   const { data: inventoryData, isLoading } = trpc.player.inventory.useQuery(
     { page, limit: PAGE_SIZE },
@@ -196,7 +203,11 @@ export default function Backpack() {
       utils.player.inventory.invalidate();
     },
     onError: (err) => {
-      if (err.message === 'STEAM_NOT_BOUND') {
+      if (isRealNameRequiredError(err)) {
+        setConfirmModal({ type: null });
+        setRealNameVisible(true);
+        toast.error(err.message);
+      } else if (err.message === 'STEAM_NOT_BOUND') {
         setConfirmModal({ type: null });
         setShowSteamBindTip(true);
       } else {
@@ -1361,6 +1372,7 @@ export default function Backpack() {
 
       {/* ── 提货进度弹窗 ── */}
       {showExtractLogs && <ExtractLogsModal onClose={() => setShowExtractLogs(false)} />}
+      <RealNameVerificationModal visible={realNameVisible} onClose={() => setRealNameVisible(false)} />
 
       <style>{`
         @keyframes spin {

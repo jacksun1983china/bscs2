@@ -97,6 +97,9 @@ import {
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
 const PLAYER_COOKIE = "bdcs2_player_token";
 const AGENT_COOKIE = "bdcs2_agent_token";
+const REALNAME_RECHARGE_THRESHOLD = 500;
+const REALNAME_REQUIRED_MESSAGE = "请先完成实名认证";
+const REALNAME_RECHARGE_REQUIRED_MESSAGE = `累计充值满${REALNAME_RECHARGE_THRESHOLD}元后请先完成实名认证`;
 
 async function getAgentFromCookie(req: any): Promise<{ agentId: number; username: string } | null> {
   try {
@@ -368,6 +371,14 @@ export const appRouter = router({
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+        const [playerProfile] = await db.select({
+          realName: players.realName,
+          totalRecharge: players.totalRecharge,
+        }).from(players).where(eq(players.id, session.playerId)).limit(1);
+        if (!playerProfile) throw new TRPCError({ code: "NOT_FOUND", message: "用户不存在" });
+        const hasVerifiedRealName = Boolean((playerProfile.realName || "").trim());
+        const currentTotalRecharge = parseFloat(String(playerProfile.totalRecharge ?? 0)) || 0;
+
         // ── USDT 支付 (OxaPay) ──────────────────────────────────────
         if (input.payMethod === 'usdt') {
           if (!input.usdtAmount) throw new TRPCError({ code: "BAD_REQUEST", message: "请选择USDT充值金额" });
@@ -378,6 +389,10 @@ export const appRouter = router({
           const usdtRate = input.usdtRate || 7.20;
           const cnyAmount = Math.round(input.usdtAmount * usdtRate);
           const goldAmount = cnyAmount; // 1 CNY = 1 金币
+          const projectedTotalRecharge = currentTotalRecharge + cnyAmount;
+          if (!hasVerifiedRealName && projectedTotalRecharge >= REALNAME_RECHARGE_THRESHOLD) {
+            throw new TRPCError({ code: "FORBIDDEN", message: REALNAME_RECHARGE_REQUIRED_MESSAGE });
+          }
           const orderNo = `U${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
           // 创建待支付订单
           await db.insert(rechargeOrders).values({
@@ -419,6 +434,10 @@ export const appRouter = router({
         if (!configRows.length) throw new TRPCError({ code: "NOT_FOUND", message: "充値配置不存在" });
         const config = configRows[0];
         const amount = parseFloat(String(config.amount));
+        const projectedTotalRecharge = currentTotalRecharge + amount;
+        if (!hasVerifiedRealName && projectedTotalRecharge >= REALNAME_RECHARGE_THRESHOLD) {
+          throw new TRPCError({ code: "FORBIDDEN", message: REALNAME_RECHARGE_REQUIRED_MESSAGE });
+        }
         // 生成唯一订单号
         const orderNo = `R${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
         // 先在数据库中创建待支付订单
@@ -473,9 +492,15 @@ export const appRouter = router({
         if (!session) throw new TRPCError({ code: "UNAUTHORIZED", message: "请先登录" });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "数据库连接失败" });
-        // 检查Steam绑定
-        const [playerInfo] = await db.select({ steamAccount: players.steamAccount })
+        // 检查实名认证与Steam绑定
+        const [playerInfo] = await db.select({
+          steamAccount: players.steamAccount,
+          realName: players.realName,
+        })
           .from(players).where(eq(players.id, session.playerId)).limit(1);
+        if (!playerInfo?.realName?.trim()) {
+          throw new TRPCError({ code: "FORBIDDEN", message: REALNAME_REQUIRED_MESSAGE });
+        }
         if (!playerInfo?.steamAccount) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "STEAM_NOT_BOUND" });
         }

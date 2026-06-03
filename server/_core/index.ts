@@ -250,6 +250,9 @@ async function startServer() {
       if (bonusDiamond > 0) {
         await db.execute(sql`UPDATE players SET diamond = diamond + ${bonusDiamond} WHERE id = ${order.playerId}`);
       }
+
+      // 更新玩家总充值金额
+      await db.execute(sql`UPDATE players SET totalRecharge = totalRecharge + ${goldAmount} WHERE id = ${order.playerId}`);
       
       console.log(`[Payment Notify] 充值成功: orderNo=${notifyData.orderNo}, playerId=${order.playerId}, gold=${goldAmount}, diamond=${bonusDiamond}`);
       res.status(200).send("success");

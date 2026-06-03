@@ -12,6 +12,7 @@ import TopNav from '@/components/TopNav';
 import BottomNav from '@/components/BottomNav';
 import PlayerInfoCard from '@/components/PlayerInfoCard';
 import SettingsModal from '@/components/SettingsModal';
+import RealNameVerificationModal from '@/pages/RealNameVerification';
 
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/';
 
@@ -29,6 +30,11 @@ type PayMethod = 'alipay' | 'usdt';
 
 /* 固定USDT充值挡位 */
 const USDT_TIERS = [10, 50, 100, 500, 1000, 5000, 10000, 50000];
+
+const isRealNameRequiredError = (error: any) => {
+  const message = error?.message || error?.data?.message || '';
+  return message.includes('实名认证') && (error?.data?.code === 'FORBIDDEN' || message.includes('请先完成实名认证'));
+};
 
 /* 支付宝图标 (内联SVG) */
 const AlipayIcon = ({ size }: { size: string }) => (
@@ -53,6 +59,7 @@ export default function Deposit() {
   const [selectedUsdt, setSelectedUsdt] = useState<number>(10);
   const [payMethod, setPayMethod] = useState<PayMethod>('alipay');
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [realNameVisible, setRealNameVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [usdtRate, setUsdtRate] = useState<number>(7.20);
   const [rateLoading, setRateLoading] = useState(false);
@@ -161,6 +168,9 @@ export default function Deposit() {
       }
     } catch (err: any) {
       const msg = err?.message || err?.data?.message || '支付服务暂时不可用，请稍后重试';
+      if (isRealNameRequiredError(err)) {
+        setRealNameVisible(true);
+      }
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
@@ -555,6 +565,7 @@ export default function Deposit() {
           <BottomNav active="chongzhi" />
         </div>
         <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+        <RealNameVerificationModal visible={realNameVisible} onClose={() => setRealNameVisible(false)} />
         <style>{`
           @keyframes skeletonPulse {
             0%, 100% { opacity: 0.4; }
