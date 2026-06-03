@@ -98,6 +98,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
     retry: false,
     refetchOnWindowFocus: false,
     staleTime: 30_000,
+    refetchInterval: 3000,
   });
 
   useEffect(() => {

@@ -302,6 +302,7 @@ export default function Shop() {
 
   const parsedMinPrice = parsePriceFilter(minPriceText);
   const parsedMaxPrice = parsePriceFilter(maxPriceText);
+  const utils = trpc.useUtils();
 
   const { data: playerData } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
 
@@ -326,10 +327,16 @@ export default function Shop() {
   });
 
   const buyMutation = trpc.shop.buyProduct.useMutation({
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       toast.success(res.message || '购买成功');
       setBuyItem(null);
       setBuyLoading(false);
+      await Promise.all([
+        utils.player.me.invalidate(),
+        utils.player.inventory.invalidate(),
+        utils.shop.getProducts.invalidate(),
+        utils.shop.getMyOrders.invalidate(),
+      ]);
     },
     onError: (err) => {
       toast.error(err.message || '购买失败');
