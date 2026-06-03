@@ -172,8 +172,8 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
   const modalStyle: React.CSSProperties = { background: 'linear-gradient(135deg,#1a0840,#0d0621)', border: '1px solid rgba(120,60,220,0.5)', borderRadius: 16, padding: 28, width: '100%', maxWidth: 680, marginTop: 20, marginBottom: 20 };
 
   return (
-    <div style={overlayStyle} onClick={onClose}>
-      <div style={modalStyle} onClick={e => e.stopPropagation()}>
+    <div style={overlayStyle}>
+      <div style={modalStyle} onClick={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <h3 style={{ color: '#fff', fontSize: 18, fontWeight: 700, margin: 0 }}>{t.createRollRoom}</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(180,150,255,0.7)', fontSize: 24, cursor: 'pointer' }}>×</button>
