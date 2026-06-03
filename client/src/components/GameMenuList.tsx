@@ -25,12 +25,11 @@ interface GameItem {
 
 // 左侧功能按钮标签（叠加在头像图标上）
 const FUNC_LABELS = [
-  { id: 'shop',    label: '商城', route: '/shop'     },
   { id: 'welfare', label: '福利', route: '/welfare' },
-  { id: 'event',   label: '活动', route: undefined   },
+  { id: 'roll',    label: 'ROLL', route: '/roll' },
+  { id: 'shop',    label: '商城', route: '/shop' },
   { id: 'mail',    label: '邮件', route: '/mailbox' },
   { id: 'records', label: '记录', route: '/my-records' },
-  { id: 'vortex',  label: 'Vortex', route: '/vortex' },
 ];
 
 const GAMES: GameItem[] = [
@@ -54,25 +53,9 @@ const GAMES: GameItem[] = [
     id: 'dingdong',
     bgImage: LANHU.gameCard3Bg,
     labelImage: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/caihongzhuanpan_197b930b.png',
-    labelText: '丁咚',
+    labelText: '彩虹转盘',
     avatarImage: LANHU.gameAvatar3,
     route: '/dingdong',
-  },
-  {
-    id: 'roll',
-    bgImage: LANHU.gameCard4Bg,
-    labelImage: LANHU.rollLabel,
-    labelText: 'ROLL房',
-    avatarImage: LANHU.gameAvatar4,
-    route: '/roll',
-  },
-  {
-    id: 'vortex',
-    bgImage: LANHU.gameCard3Bg,
-    labelImage: null,
-    labelText: 'Vortex',
-    avatarImage: LANHU.gameAvatar3,
-    route: '/vortex',
   },
 ];
 
