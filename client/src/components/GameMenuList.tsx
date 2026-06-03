@@ -78,7 +78,7 @@ const GAMES: GameItem[] = [
 
 export default function GameMenuList() {
   const [, navigate] = useLocation();
-  const { data: unreadMailData } = trpc.public.unreadMessageCount.useQuery(undefined, {
+  const { data: unreadMailData } = trpc.player.unreadMessageCount.useQuery(undefined, {
     refetchInterval: 5000,
     refetchOnWindowFocus: false,
     staleTime: 0,
