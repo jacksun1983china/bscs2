@@ -155,6 +155,27 @@ body.admin-mode .phone-container {
   box-shadow: none !important;
 }
 
+body.admin-mode select {
+  color-scheme: dark;
+  background-color: rgba(18, 8, 48, 0.92);
+  color: #f3e8ff;
+}
+
+body.admin-mode select option,
+body.admin-mode select optgroup {
+  background-color: #14082f;
+  color: #f3e8ff;
+}
+
+body.admin-mode select:focus {
+  box-shadow: 0 0 0 2px rgba(120, 60, 220, 0.24);
+}
+
+body.admin-mode select::-ms-expand {
+  background-color: #14082f;
+  color: #f3e8ff;
+}
+
 /* ── 坐席后台全屏布局 ─────────────────────────────────────────── */
 /* agent-mode: 全屏显示，不受 phone-container 9:16 约束 */
 body.agent-mode,
