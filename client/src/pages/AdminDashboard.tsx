@@ -97,10 +97,10 @@ const I18N = {
     vipManage: 'VIP配置',
     cdkManage: '福利CDK',
     mailbox: '站内信管理',
-    // Roll房
-     rollRooms: '竹战房管理',
+    // 对战房
+    rollRooms: '对战房管理',
     arena: '竞技场管理',
-    createRollRoom: '创建Roll房',
+    createRollRoom: '创建对战房',
     roomName: '房间名称',
     roomAvatar: '房间头像',
     prizeFirst: '一等奖金额',
@@ -226,9 +226,9 @@ const I18N = {
     vipManage: 'VIP Config',
     cdkManage: 'Welfare CDK',
     mailbox: 'Mailbox',
-    rollRooms: 'Roll Rooms',
+    rollRooms: 'Battle Rooms',
     arena: 'Arena Mgmt',
-    createRollRoom: 'Create Roll Room',
+    createRollRoom: 'Create Battle Room',
     roomName: 'Room Name',
     roomAvatar: 'Room Avatar',
     prizeFirst: '1st Prize Amount',
@@ -915,7 +915,7 @@ export default function AdminDashboard() {
 
           {activeMenu === 'xGames' && <AdminXGames />}
 
-          {/* Roll房管理 */}
+          {/* 对战房管理 */}
           {activeMenu === 'rollRooms' && <AdminRollRooms lang={lang} t={t} />}
 
           {/* 竞技场管理 */}

@@ -1,5 +1,5 @@
 /**
- * AdminRollRooms.tsx — Roll房管理组件
+ * AdminRollRooms.tsx — 对战房管理组件
  */
 import { useState, useRef } from 'react';
 import { trpc } from '@/lib/trpc';
@@ -68,7 +68,7 @@ function WinnersModal({ roomId, onClose, t }: { roomId: number; onClose: () => v
   );
 }
 
-// ── 创建Roll房弹窗 ────────────────────────────────────────────────
+// ── 创建对战房弹窗 ────────────────────────────────────────────────
 function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; onSuccess: () => void; t: I18nT }) {
   const [form, setForm] = useState({
     name: '', avatarUrl: '', prizeFirstAmount: '', parentId: '',
@@ -81,7 +81,7 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
   const avatarRef = useRef<HTMLInputElement>(null);
 
   const createMutation = trpc.admin.createRollRoom.useMutation({
-    onSuccess: () => { toast.success('Roll房创建成功'); onSuccess(); onClose(); },
+    onSuccess: () => { toast.success('对战房创建成功'); onSuccess(); onClose(); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -338,7 +338,7 @@ export function AdminRollRooms({ lang, t }: { lang: 'zh' | 'en'; t: I18nT }) {
               {isLoading ? (
                 <tr><td colSpan={13} style={{ padding: 40, textAlign: 'center', color: 'rgba(180,150,255,0.5)' }}>{t.loading}</td></tr>
               ) : (data?.list ?? []).length === 0 ? (
-                <tr><td colSpan={13} style={{ padding: 40, textAlign: 'center', color: 'rgba(180,150,255,0.3)' }}>暂无Roll房</td></tr>
+                <tr><td colSpan={13} style={{ padding: 40, textAlign: 'center', color: 'rgba(180,150,255,0.3)' }}>暂无对战房</td></tr>
               ) : (data?.list ?? []).map((room: any) => (
                 <tr key={room.id} style={{ borderBottom: '1px solid rgba(120,60,220,0.1)' }}>
                   <td style={{ padding: '10px 14px', color: 'rgba(180,150,255,0.6)', fontSize: 12 }}>{room.id}</td>

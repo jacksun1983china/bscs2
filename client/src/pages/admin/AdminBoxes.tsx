@@ -48,6 +48,224 @@ interface EditGood {
   probability: number;
 }
 
+interface BoxCategoryOption {
+  id: number;
+  name: string;
+}
+
+function CreateBoxModal({ categories, onClose, onCreated }: {
+  categories: BoxCategoryOption[];
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [form, setForm] = useState({
+    name: '',
+    imageUrl: '',
+    goodsBgUrl: '',
+    price: 0,
+    categoryId: categories[0]?.id ?? 0,
+    description: '',
+    sort: 0,
+  });
+  const [goods, setGoods] = useState<EditGood[]>([{ name: '', imageUrl: '', level: 3, price: 0, probability: 1 }]);
+  const [saving, setSaving] = useState(false);
+
+  const createMutation = trpc.sku.createBox.useMutation();
+  const uploadMutation = trpc.admin.uploadFile.useMutation();
+
+  const handleGoodChange = (index: number, field: keyof EditGood, value: string | number) => {
+    setGoods(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value } as EditGood;
+      return next;
+    });
+  };
+
+  const handleAddGood = () => {
+    setGoods(prev => [...prev, { name: '', imageUrl: '', level: 3, price: 0, probability: 1 }]);
+  };
+
+  const handleRemoveGood = (index: number) => {
+    setGoods(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadFile = async (file: File) => {
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = () => reject(new Error('文件读取失败'));
+      reader.readAsDataURL(file);
+    });
+    return uploadMutation.mutateAsync({
+      filename: file.name,
+      base64,
+      mimeType: file.type || 'image/png',
+    });
+  };
+
+  const handleBoxImageUpload = async (field: 'imageUrl' | 'goodsBgUrl', file: File) => {
+    try {
+      const result = await uploadFile(file);
+      setForm(prev => ({ ...prev, [field]: result.url }));
+      toast.success(field === 'imageUrl' ? '宝箱封面上传成功' : '商品背景上传成功');
+    } catch (e: any) {
+      toast.error('图片上传失败: ' + e.message);
+    }
+  };
+
+  const handleGoodImageUpload = async (index: number, file: File) => {
+    try {
+      const result = await uploadFile(file);
+      handleGoodChange(index, 'imageUrl', result.url);
+      toast.success('商品图片上传成功');
+    } catch (e: any) {
+      toast.error('图片上传失败: ' + e.message);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!form.name.trim()) return toast.error('请输入宝箱名称');
+    if (!form.categoryId) return toast.error('请选择分类');
+    if (Number(form.price) < 0) return toast.error('价格不能小于 0');
+    const validGoods = goods
+      .map(g => ({
+        ...g,
+        name: g.name.trim(),
+        price: Number(g.price) || 0,
+        probability: Number(g.probability) || 0,
+      }))
+      .filter(g => g.name);
+    const categoryName = categories.find(cat => cat.id === form.categoryId)?.name ?? '';
+    setSaving(true);
+    try {
+      await createMutation.mutateAsync({
+        name: form.name.trim(),
+        imageUrl: form.imageUrl,
+        goodsBgUrl: form.goodsBgUrl,
+        price: Number(form.price) || 0,
+        categoryId: form.categoryId,
+        category: categoryName,
+        description: form.description.trim(),
+        sort: Number(form.sort) || 0,
+        goods: validGoods,
+      });
+      toast.success('宝箱创建成功');
+      onCreated();
+      onClose();
+    } catch (e: any) {
+      toast.error('创建失败: ' + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: 'linear-gradient(135deg, #1a0840 0%, #0d0621 100%)', border: '1px solid rgba(120,60,220,0.5)', borderRadius: 16, padding: 24, width: '92%', maxWidth: 980, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(80,20,160,0.5)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div>
+            <h3 style={{ color: '#e0d0ff', fontSize: 18, fontWeight: 700, margin: 0 }}>新增宝箱</h3>
+            <p style={{ color: 'rgba(180,150,255,0.5)', fontSize: 13, margin: '4px 0 0' }}>创建宝箱基础信息，并可同时录入宝箱商品列表</p>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onClose} style={{ ...btnStyle('rgba(255,255,255,0.08)'), border: '1px solid rgba(120,60,220,0.3)' }}>取消</button>
+            <button onClick={handleCreate} disabled={saving || createMutation.isPending} style={btnStyle('linear-gradient(135deg,#10b981,#06b6d4)')}>
+              {saving || createMutation.isPending ? '创建中...' : '确认新增'}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16, marginBottom: 20 }}>
+          <div>
+            <div style={{ color: 'rgba(180,150,255,0.6)', fontSize: 11, marginBottom: 6 }}>宝箱名称 *</div>
+            <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} style={{ ...inputStyle, width: '100%' }} placeholder="请输入宝箱名称" />
+          </div>
+          <div>
+            <div style={{ color: 'rgba(180,150,255,0.6)', fontSize: 11, marginBottom: 6 }}>分类 *</div>
+            <select value={form.categoryId || ''} onChange={e => setForm(prev => ({ ...prev, categoryId: Number(e.target.value) }))} style={{ ...inputStyle, width: '100%' }}>
+              <option value="">请选择分类</option>
+              {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <div style={{ color: 'rgba(180,150,255,0.6)', fontSize: 11, marginBottom: 6 }}>价格 (¥)</div>
+            <input type="number" value={form.price} onChange={e => setForm(prev => ({ ...prev, price: Number(e.target.value) }))} style={{ ...inputStyle, width: '100%' }} step="0.01" />
+          </div>
+          <div>
+            <div style={{ color: 'rgba(180,150,255,0.6)', fontSize: 11, marginBottom: 6 }}>排序</div>
+            <input type="number" value={form.sort} onChange={e => setForm(prev => ({ ...prev, sort: Number(e.target.value) }))} style={{ ...inputStyle, width: '100%' }} />
+          </div>
+          <div style={{ gridColumn: '1 / 3' }}>
+            <div style={{ color: 'rgba(180,150,255,0.6)', fontSize: 11, marginBottom: 6 }}>描述（可选）</div>
+            <textarea value={form.description} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))} style={{ ...inputStyle, width: '100%', minHeight: 80, resize: 'vertical' }} placeholder="请输入宝箱描述" />
+          </div>
+          <div>
+            <div style={{ color: 'rgba(180,150,255,0.6)', fontSize: 11, marginBottom: 6 }}>封面背景图</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {form.imageUrl ? <img src={form.imageUrl} alt="封面" style={{ width: 72, height: 72, objectFit: 'contain', borderRadius: 8, border: '1px solid rgba(120,60,220,0.3)' }} /> : <div style={{ width: 72, height: 72, borderRadius: 8, background: 'rgba(120,60,220,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(180,150,255,0.3)', fontSize: 12 }}>未上传</div>}
+              <label style={{ ...btnStyle('rgba(123,47,255,0.2)'), border: '1px solid rgba(123,47,255,0.35)' }}>
+                上传封面
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleBoxImageUpload('imageUrl', f); }} />
+              </label>
+            </div>
+          </div>
+          <div>
+            <div style={{ color: 'rgba(180,150,255,0.6)', fontSize: 11, marginBottom: 6 }}>商品背景图</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {form.goodsBgUrl ? <img src={form.goodsBgUrl} alt="商品背景" style={{ width: 72, height: 72, objectFit: 'contain', borderRadius: 8, border: '1px solid rgba(120,60,220,0.3)' }} /> : <div style={{ width: 72, height: 72, borderRadius: 8, background: 'rgba(120,60,220,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(180,150,255,0.3)', fontSize: 12 }}>未上传</div>}
+              <label style={{ ...btnStyle('rgba(6,182,212,0.15)', { color: '#06b6d4', border: '1px solid rgba(6,182,212,0.35)' }) }}>
+                上传背景
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleBoxImageUpload('goodsBgUrl', f); }} />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ background: 'rgba(13,6,33,0.6)', border: '1px solid rgba(120,60,220,0.2)', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(120,60,220,0.15)', borderBottom: '1px solid rgba(120,60,220,0.2)' }}>
+            <div style={{ color: '#e0d0ff', fontSize: 14, fontWeight: 600 }}>宝箱商品列表</div>
+            <button onClick={handleAddGood} style={btnStyle('linear-gradient(135deg,#7b2fff,#06b6d4)', { fontSize: 12, padding: '5px 12px' })}>+ 添加商品</button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '40px 70px 1fr 90px 100px 100px 60px', padding: '10px 16px', background: 'rgba(120,60,220,0.08)', borderBottom: '1px solid rgba(120,60,220,0.2)', gap: 8 }}>
+            {['#', '图片', '商品名称', '等级', '价格(¥)', '概率', '操作'].map(h => <div key={h} style={{ color: 'rgba(180,150,255,0.7)', fontSize: 12, fontWeight: 600 }}>{h}</div>)}
+          </div>
+          {goods.map((g, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '40px 70px 1fr 90px 100px 100px 60px', padding: '8px 16px', borderBottom: i < goods.length - 1 ? '1px solid rgba(120,60,220,0.08)' : 'none', alignItems: 'center', gap: 8 }}>
+              <div style={{ color: 'rgba(180,150,255,0.4)', fontSize: 12 }}>{i + 1}</div>
+              <div style={{ position: 'relative' }}>
+                {g.imageUrl ? <img src={g.imageUrl} alt="" style={{ width: 48, height: 36, objectFit: 'contain', borderRadius: 4 }} /> : <div style={{ width: 48, height: 36, background: 'rgba(120,60,220,0.1)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(180,150,255,0.3)', fontSize: 10 }}>无图</div>}
+                <label style={{ position: 'absolute', inset: 0, cursor: 'pointer' }}>
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleGoodImageUpload(i, f); }} />
+                </label>
+              </div>
+              <input value={g.name} onChange={e => handleGoodChange(i, 'name', e.target.value)} style={{ ...inputStyle, padding: '4px 8px', fontSize: 12, width: '100%' }} placeholder="请输入商品名称" />
+              <select value={g.level} onChange={e => handleGoodChange(i, 'level', Number(e.target.value))} style={{ ...inputStyle, padding: '4px 6px', fontSize: 12 }}>
+                <option value={1}>传说</option>
+                <option value={2}>稀有</option>
+                <option value={3}>普通</option>
+                <option value={4}>基础</option>
+              </select>
+              <input type="number" value={g.price} onChange={e => handleGoodChange(i, 'price', Number(e.target.value))} style={{ ...inputStyle, padding: '4px 8px', fontSize: 12, width: '100%' }} step="0.01" />
+              <input type="number" value={g.probability} onChange={e => handleGoodChange(i, 'probability', Number(e.target.value))} style={{ ...inputStyle, padding: '4px 8px', fontSize: 12, width: '100%' }} step="0.01" />
+              <button onClick={() => handleRemoveGood(i)} style={{ ...btnStyle('rgba(239,68,68,0.15)', { border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: 11, padding: '4px 8px' }) }}>删除</button>
+            </div>
+          ))}
+          <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(120,60,220,0.1)', color: 'rgba(180,150,255,0.65)', fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
+            <span>有效商品数：{goods.filter(g => g.name.trim()).length}</span>
+            <span>概率权重总和：{goods.reduce((sum, g) => sum + (Number(g.probability) || 0), 0).toFixed(4)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // 商品详情弹窗（支持查看和编辑）
 function BoxGoodsModal({ boxId, boxName, onClose, onSaved }: {
   boxId: number;
@@ -505,6 +723,7 @@ export function AdminBoxes({ lang, t }: { lang: 'zh' | 'en'; t: I18nT }) {
   const [categoryId, setCategoryId] = useState<number | undefined>(undefined);
   const [viewBoxId, setViewBoxId] = useState<number | null>(null);
   const [viewBoxName, setViewBoxName] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
 
   const { data: categories } = trpc.sku.categoryList.useQuery();
   const { data, refetch } = trpc.sku.boxList.useQuery({
@@ -544,13 +763,16 @@ export function AdminBoxes({ lang, t }: { lang: 'zh' | 'en'; t: I18nT }) {
   return (
     <div>
       {/* 标题栏 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h2 style={{ color: '#e0d0ff', fontSize: 20, fontWeight: 700, margin: 0 }}>宝箱管理</h2>
           <p style={{ color: 'rgba(180,150,255,0.5)', fontSize: 13, margin: '4px 0 0' }}>
             共 {data?.total ?? 0} 个宝箱
           </p>
         </div>
+        <button onClick={() => setShowCreate(true)} style={btnStyle('linear-gradient(135deg,#7b2fff,#06b6d4)')}>
+          + 新增宝箱
+        </button>
       </div>
 
       {/* 筛选栏 */}
@@ -744,6 +966,18 @@ export function AdminBoxes({ lang, t }: { lang: 'zh' | 'en'; t: I18nT }) {
             下一页
           </button>
         </div>
+      )}
+
+      {/* 新增宝箱弹窗 */}
+      {showCreate && (
+        <CreateBoxModal
+          categories={(categories ?? []).map(cat => ({ id: cat.id, name: cat.name }))}
+          onClose={() => setShowCreate(false)}
+          onCreated={() => {
+            setShowCreate(false);
+            refetch();
+          }}
+        />
       )}
 
       {/* 商品详情弹窗 */}
