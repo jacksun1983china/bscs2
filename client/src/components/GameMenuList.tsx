@@ -14,31 +14,35 @@ import { trpc } from '@/lib/trpc';
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 
+interface LeftMenuItem {
+  id: string;
+  label: string;
+  avatarImage: string;
+  route?: string;
+}
+
 interface GameItem {
   id: string;
   bgImage: string;
   labelImage: string | null;
   labelText: string;
-  avatarImage: string;
   route?: string;
 }
 
-// 左侧功能按钮标签（叠加在头像图标上）
-const FUNC_LABELS = [
-  { id: 'welfare', label: '福利', route: '/welfare' },
-  { id: 'roll',    label: 'ROLL', route: '/roll' },
-  { id: 'shop',    label: '商城', route: '/shop' },
-  { id: 'mail',    label: '邮件', route: '/mailbox' },
-  { id: 'records', label: '记录', route: '/my-records' },
+const LEFT_MENU_ITEMS: LeftMenuItem[] = [
+  { id: 'welfare', label: '福利', avatarImage: LANHU.gameAvatar2, route: '/welfare' },
+  { id: 'roll', label: 'ROLL', avatarImage: LANHU.gameAvatar3, route: '/roll' },
+  { id: 'shop', label: '商城', avatarImage: LANHU.gameAvatar1, route: '/shop' },
+  { id: 'mail', label: '邮件', avatarImage: LANHU.gameAvatar4, route: '/mailbox' },
+  { id: 'records', label: '记录', avatarImage: LANHU.gameAvatar5, route: '/my-records' },
 ];
 
-const GAMES: GameItem[] = [
+const RIGHT_GAME_ITEMS: GameItem[] = [
   {
     id: 'arena',
     bgImage: LANHU.gameCard1Bg,
     labelImage: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/jingjichang_3e232529.png',
     labelText: '竞技场',
-    avatarImage: LANHU.gameAvatar1,
     route: '/arena',
   },
   {
@@ -46,7 +50,6 @@ const GAMES: GameItem[] = [
     bgImage: LANHU.gameCard2Bg,
     labelImage: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/rollx_929893a6.png',
     labelText: 'ROLL-X',
-    avatarImage: LANHU.gameAvatar2,
     route: '/rollx',
   },
   {
@@ -54,7 +57,6 @@ const GAMES: GameItem[] = [
     bgImage: LANHU.gameCard3Bg,
     labelImage: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/caihongzhuanpan_197b930b.png',
     labelText: '彩虹转盘',
-    avatarImage: LANHU.gameAvatar3,
     route: '/dingdong',
   },
 ];
@@ -114,11 +116,10 @@ export default function GameMenuList() {
             width: q(122),
           }}
         >
-          {GAMES.map((game, idx) => {
-            const funcLabel = FUNC_LABELS[idx];
+          {LEFT_MENU_ITEMS.map((item, idx) => {
             return (
               <div
-                key={game.id}
+                key={item.id}
                 className={`fx-slide-in-${idx} fx-float-${idx} fx-card-hover`}
                 style={{
                   position: 'relative',
@@ -127,16 +128,16 @@ export default function GameMenuList() {
                   borderRadius: q(10),
                   overflow: 'hidden',
                   flexShrink: 0,
-                  cursor: funcLabel?.route ? 'pointer' : 'default',
+                  cursor: item.route ? 'pointer' : 'default',
                 }}
-                onClick={() => funcLabel?.route && navigate(funcLabel.route)}
+                onClick={() => item.route && navigate(item.route)}
               >
                 <img
-                  src={game.avatarImage}
+                  src={item.avatarImage}
                   alt=""
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
-                {funcLabel?.id === 'mail' && unreadMailCount > 0 && (
+                {item.id === 'mail' && unreadMailCount > 0 && (
                   <div
                     style={{
                       position: 'absolute',
@@ -153,7 +154,7 @@ export default function GameMenuList() {
                     }}
                   />
                 )}
-                {funcLabel && (
+                {item && (
                   <div
                     style={{
                       position: 'absolute',
@@ -175,7 +176,7 @@ export default function GameMenuList() {
                         lineHeight: 1,
                       }}
                     >
-                      {funcLabel.label}
+                      {item.label}
                     </span>
                   </div>
                 )}
@@ -194,7 +195,7 @@ export default function GameMenuList() {
             minWidth: 0,
           }}
         >
-          {GAMES.map((game, idx) => (
+          {RIGHT_GAME_ITEMS.map((game, idx) => (
             <div
               key={game.id}
               className={`fx-slide-in-${idx} fx-float-${idx} fx-card-hover`}
