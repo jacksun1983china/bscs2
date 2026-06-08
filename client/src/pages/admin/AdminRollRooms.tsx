@@ -97,7 +97,7 @@ function RoomRosterModal({ roomId, status, onClose, t, lang }: { roomId: number;
                 ) : (data?.winners ?? []).map((w: any) => (
                   <tr key={w.id} style={{ borderBottom: '1px solid rgba(120,60,220,0.1)' }}>
                     <td style={{ padding: '10px 12px', color: 'rgba(180,150,255,0.5)', fontSize: 12 }}>{w.id}</td>
-                    <td style={{ padding: '10px 12px', color: '#fff', fontSize: 13 }}>{w.isBot ? '-' : (w.playerId || '-')}</td>
+                    <td style={{ padding: '10px 12px', color: '#fff', fontSize: 13 }}>{w.playerId || '-'}</td>
                     <td style={{ padding: '10px 12px', color: '#fff', fontSize: 13 }}>{w.nicknameSnapshot ?? '-'}</td>
                     <td style={{ padding: '10px 12px', color: '#a78bfa', fontSize: 13 }}>{w.prizeName ?? '-'}</td>
                     <td style={{ padding: '10px 12px', color: '#ffd700', fontSize: 13 }}>¥{Number(w.prizeValue ?? 0).toFixed(2)}</td>
@@ -121,7 +121,7 @@ function RoomRosterModal({ roomId, status, onClose, t, lang }: { roomId: number;
                 ) : (data?.participants ?? []).map((participant: any) => (
                   <tr key={participant.id} style={{ borderBottom: '1px solid rgba(120,60,220,0.1)' }}>
                     <td style={{ padding: '10px 12px', color: 'rgba(180,150,255,0.5)', fontSize: 12 }}>{participant.id}</td>
-                    <td style={{ padding: '10px 12px', color: '#fff', fontSize: 13 }}>{participant.isBot ? '-' : (participant.playerId || '-')}</td>
+                    <td style={{ padding: '10px 12px', color: '#fff', fontSize: 13 }}>{participant.playerId || '-'}</td>
                     <td style={{ padding: '10px 12px', color: '#fff', fontSize: 13 }}>{participant.isBot ? (participant.botNickname || '机器人') : (participant.nickname || '-')}</td>
                     <td style={{ padding: '10px 12px', color: participant.isBot ? '#f59e0b' : '#06b6d4', fontSize: 12 }}>{participant.isBot ? '机器人' : '玩家'}</td>
                     <td style={{ padding: '10px 12px', color: 'rgba(180,150,255,0.5)', fontSize: 11 }}>{formatBeijingDateTime(participant.createdAt)}</td>
