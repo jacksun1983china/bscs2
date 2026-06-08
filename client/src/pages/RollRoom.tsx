@@ -82,6 +82,13 @@ function RollCard({ room, index, onClick }: { room: any; index: number; onClick:
   const firstPrize = room.prizes?.[0];
   const prizeImg = firstPrize?.imageUrl || R.prizeImgs[index % R.prizeImgs.length];
   const prizeValue = firstPrize ? parseFloat(firstPrize.value || '0').toFixed(2) : '0.00';
+  const totalPrizeValue = (room.prizes || []).reduce((sum: number, prize: any) => {
+    const value = parseFloat(prize?.value || '0');
+    const quantity = Number(prize?.quantity ?? 1);
+    const safeQuantity = Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+    return sum + value * safeQuantity;
+  }, 0);
+  const totalPrizeValueText = totalPrizeValue.toFixed(2).replace(/\.00$/, '');
 
   // 开奖时间格式化
   const endTime = room.endAt ? new Date(room.endAt) : null;
@@ -197,11 +204,11 @@ function RollCard({ room, index, onClick }: { room: any; index: number; onClick:
                 lineHeight: q(36),
                 display: 'block',
               }}>{room.title}</span>
-              {/* 金币图标 + 门槛数 */}
+              {/* 金币图标 + 房间总价值 */}
               <div style={{ display: 'flex', alignItems: 'center', gap: q(6) }}>
                 <img src={R.coinIcon} alt="" style={{ width: q(28), height: q(28), objectFit: 'contain' }} />
                 <span style={{ color: 'rgba(255,255,255,1)', fontSize: q(22), fontFamily: 'Alibaba-PuHuiTi-R, sans-serif', whiteSpace: 'nowrap' }}>
-                  {isFree ? '0' : parseFloat(room.threshold || '0').toFixed(0)}
+                  {totalPrizeValueText}
                 </span>
               </div>
               {/* 开奖时间 */}
