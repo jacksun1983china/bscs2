@@ -479,6 +479,9 @@ export async function joinRollRoom(roomId: number, playerId: number) {
   if (r.maxParticipants > 0 && r.participantCount >= r.maxParticipants) throw new Error("Roll房人员已满");
   const player = await getPlayerById(playerId);
   if (!player) throw new Error("玩家不存在");
+  if (r.ownerId && player.invitedBy !== r.ownerId) {
+    throw new Error(`仅上级ID为 ${r.ownerId} 的下级玩家可参与该Roll房`);
+  }
   const threshold = parseFloat(r.threshold as string);
   if (threshold > 0) {
     const rechargeResult = await db.select({ total: sql<number>`COALESCE(SUM(gold), 0)` })

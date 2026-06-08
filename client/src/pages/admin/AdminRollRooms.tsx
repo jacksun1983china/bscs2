@@ -78,7 +78,7 @@ function WinnersModal({ roomId, onClose, t }: { roomId: number; onClose: () => v
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'rgba(123,47,255,0.12)' }}>
-                {['ID', '手机号', '昵称', '奖品', '金额', '时间'].map(h => (
+                {['记录ID', '用户ID', '昵称', '奖品', '金额', '时间'].map(h => (
                   <th key={h} style={{ padding: '10px 12px', color: 'rgba(180,150,255,0.7)', fontSize: 12, textAlign: 'left' }}>{h}</th>
                 ))}
               </tr>
@@ -88,8 +88,8 @@ function WinnersModal({ roomId, onClose, t }: { roomId: number; onClose: () => v
                 <tr><td colSpan={6} style={{ padding: 30, textAlign: 'center', color: 'rgba(180,150,255,0.3)' }}>暂无中奖记录</td></tr>
               ) : (data ?? []).map((w: any) => (
                 <tr key={w.id} style={{ borderBottom: '1px solid rgba(120,60,220,0.1)' }}>
-                  <td style={{ padding: '10px 12px', color: 'rgba(180,150,255,0.5)', fontSize: 12 }}>{w.playerId}</td>
-                  <td style={{ padding: '10px 12px', color: '#fff', fontSize: 13 }}>{w.player?.phone?.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') ?? '-'}</td>
+                  <td style={{ padding: '10px 12px', color: 'rgba(180,150,255,0.5)', fontSize: 12 }}>{w.id}</td>
+                  <td style={{ padding: '10px 12px', color: '#fff', fontSize: 13 }}>{w.playerId || '-'}</td>
                   <td style={{ padding: '10px 12px', color: '#fff', fontSize: 13 }}>{w.player?.nickname ?? '-'}</td>
                   <td style={{ padding: '10px 12px', color: '#a78bfa', fontSize: 13 }}>{w.prize?.name ?? '-'}</td>
                   <td style={{ padding: '10px 12px', color: '#ffd700', fontSize: 13 }}>¥{parseFloat(w.prize?.amount ?? '0').toFixed(2)}</td>
@@ -108,10 +108,10 @@ function WinnersModal({ roomId, onClose, t }: { roomId: number; onClose: () => v
 function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; onSuccess: () => void; t: I18nT }) {
   const [form, setForm] = useState({
     name: '', avatarUrl: '', prizeFirstAmount: '', parentId: '',
-    startTime: '', endTime: '', threshold: '', maxPlayers: '100',
+    startTime: '', endTime: '', threshold: '',
     exchangeType: 'mall_coin', botCount: '0',
   });
-  const [prizes, setPrizes] = useState([{ name: '', amount: '', quantity: '1', imageUrl: '', prizeType: 'coin' as 'coin' | 'item' }]);
+  const [prizes, setPrizes] = useState([{ name: '', amount: '', quantity: '1', imageUrl: '' }]);
   const [winners, setWinners] = useState(['']);
   const [uploading, setUploading] = useState(false);
   const avatarRef = useRef<HTMLInputElement>(null);
@@ -176,8 +176,8 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
       startAt: toBeijingIsoString(form.startTime),
       endAt: toBeijingIsoString(form.endTime),
       threshold: parseFloat(form.threshold),
-      maxParticipants: parseInt(form.maxPlayers) || 100,
-      prizes: validPrizes.map(p => ({ name: p.name, value: parseFloat(p.amount), quantity: parseInt(p.quantity) || 1, coinType: (form.exchangeType === 'gold' ? 'gold' : 'shopCoin') as 'shopCoin' | 'gold', imageBase64: undefined, imageUrl: p.imageUrl || undefined, prizeType: p.prizeType as 'coin' | 'item', itemCategory: 'roll' })),
+      maxParticipants: 0,
+      prizes: validPrizes.map(p => ({ name: p.name, value: parseFloat(p.amount), quantity: parseInt(p.quantity) || 1, coinType: (form.exchangeType === 'gold' ? 'gold' : 'shopCoin') as 'shopCoin' | 'gold', imageBase64: undefined, imageUrl: p.imageUrl || undefined, prizeType: 'coin' as const, itemCategory: 'roll' })),
     });
   };
 
@@ -234,11 +234,6 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
             <label style={labelStyle}>{t.threshold} * (¥)</label>
             <input style={inputStyle} type="number" value={form.threshold} onChange={e => setForm(f => ({ ...f, threshold: e.target.value }))} placeholder="0.00" />
           </div>
-          {/* 参与人数 */}
-          <div>
-            <label style={labelStyle}>{t.maxPlayers}</label>
-            <input style={inputStyle} type="number" value={form.maxPlayers} onChange={e => setForm(f => ({ ...f, maxPlayers: e.target.value }))} />
-          </div>
           {/* 兑换类型 */}
           <div>
             <label style={labelStyle}>{t.exchangeType}</label>
@@ -258,12 +253,12 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
         <div style={{ marginTop: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <label style={{ ...labelStyle, marginBottom: 0, fontSize: 14, color: '#a78bfa' }}>奖品列表 *</label>
-            <button onClick={() => setPrizes(ps => [...ps, { name: '', amount: '', quantity: '1', imageUrl: '', prizeType: 'coin' as 'coin' | 'item' }])} style={{ padding: '4px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', background: 'rgba(123,47,255,0.2)', color: '#a78bfa', border: '1px solid rgba(123,47,255,0.35)' }}>
+            <button onClick={() => setPrizes(ps => [...ps, { name: '', amount: '', quantity: '1', imageUrl: '' }])} style={{ padding: '4px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', background: 'rgba(123,47,255,0.2)', color: '#a78bfa', border: '1px solid rgba(123,47,255,0.35)' }}>
               + {t.addPrize}
             </button>
           </div>
           {prizes.map((prize, idx) => (
-            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 0.8fr 1.5fr auto', gap: 8, marginBottom: 8, alignItems: 'flex-end' }}>
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.5fr auto', gap: 8, marginBottom: 8, alignItems: 'flex-end' }}>
               <div>
                 {idx === 0 && <label style={labelStyle}>{t.prizeName}</label>}
                 <input style={inputStyle} value={prize.name} onChange={e => setPrizes(ps => ps.map((p, i) => i === idx ? { ...p, name: e.target.value } : p))} placeholder="奖品名称" />
@@ -275,13 +270,6 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
               <div>
                 {idx === 0 && <label style={labelStyle}>{t.prizeQty}</label>}
                 <input style={inputStyle} type="number" value={prize.quantity} onChange={e => setPrizes(ps => ps.map((p, i) => i === idx ? { ...p, quantity: e.target.value } : p))} min="1" />
-              </div>
-              <div>
-                {idx === 0 && <label style={labelStyle}>类型</label>}
-                <select style={selectStyle} value={prize.prizeType} onChange={e => setPrizes(ps => ps.map((p, i) => i === idx ? { ...p, prizeType: e.target.value as 'coin' | 'item' } : p))}>
-                  <option value="coin" style={selectOptionStyle}>💰 货币</option>
-                  <option value="item" style={selectOptionStyle}>🎁 道具</option>
-                </select>
               </div>
               <div>
                 {idx === 0 && <label style={labelStyle}>{t.prizeImage}</label>}
@@ -305,14 +293,14 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
         {/* 中奖名单 */}
         <div style={{ marginTop: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <label style={{ ...labelStyle, marginBottom: 0, fontSize: 14, color: '#a78bfa' }}>{t.winnerList}（可选，指定中奖手机号）</label>
+            <label style={{ ...labelStyle, marginBottom: 0, fontSize: 14, color: '#a78bfa' }}>{t.winnerList}（可选，指定中奖用户ID）</label>
             <button onClick={() => setWinners(ws => [...ws, ''])} style={{ padding: '4px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', background: 'rgba(123,47,255,0.2)', color: '#a78bfa', border: '1px solid rgba(123,47,255,0.35)' }}>
               + 增加
             </button>
           </div>
           {winners.map((w, idx) => (
             <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-              <input style={{ ...inputStyle, flex: 1 }} value={w} onChange={e => setWinners(ws => ws.map((v, i) => i === idx ? e.target.value : v))} placeholder={t.winnerPhone} />
+              <input style={{ ...inputStyle, flex: 1 }} type="number" inputMode="numeric" value={w} onChange={e => setWinners(ws => ws.map((v, i) => i === idx ? e.target.value : v))} placeholder={t.winnerPhone} />
               {winners.length > 1 && (
                 <button onClick={() => setWinners(ws => ws.filter((_, i) => i !== idx))} style={{ padding: '7px 10px', borderRadius: 6, fontSize: 12, cursor: 'pointer', background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>✕</button>
               )}
