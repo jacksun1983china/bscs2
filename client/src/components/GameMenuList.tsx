@@ -92,20 +92,37 @@ export default function GameMenuList() {
       `}</style>
       <div
         style={{
-          margin: `0 ${q(29)} ${q(8)} ${q(29)}`,
+          margin: `0 ${q(29)} 0 ${q(29)}`,
+          minHeight: '100%',
+          boxSizing: 'border-box',
           borderStyle: 'solid',
           borderImageSource: `url(${LANHU.gameMenuBg})`,
           borderImageSlice: '70 70 70 70 fill',
           borderImageWidth: `${q(70)} ${q(70)} ${q(70)} ${q(70)}`,
           borderImageRepeat: 'stretch',
-          padding: `${q(20)} ${q(20)}`,
+          padding: `${q(20)} ${q(20)} ${q(118)}`,
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'flex-start',
           gap: q(12),
           position: 'relative',
+          overflow: 'hidden',
         }}
       >
+        <div
+          style={{
+            position: 'absolute',
+            left: q(140),
+            right: q(24),
+            bottom: q(18),
+            height: q(116),
+            borderRadius: q(24),
+            background: 'linear-gradient(180deg, rgba(255,120,255,0.02) 0%, rgba(255,120,255,0.18) 100%)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 0 24px rgba(220,110,255,0.14)',
+            pointerEvents: 'none',
+          }}
+        />
+
         {/* 左侧功能按钮列 */}
         <div
           style={{
