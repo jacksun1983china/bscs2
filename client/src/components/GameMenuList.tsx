@@ -109,20 +109,6 @@ export default function GameMenuList() {
           overflow: 'hidden',
         }}
       >
-        <div
-          style={{
-            position: 'absolute',
-            left: q(140),
-            right: q(24),
-            bottom: q(18),
-            height: q(116),
-            borderRadius: q(24),
-            background: 'linear-gradient(180deg, rgba(255,120,255,0.02) 0%, rgba(255,120,255,0.18) 100%)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 0 24px rgba(220,110,255,0.14)',
-            pointerEvents: 'none',
-          }}
-        />
-
         {/* 左侧功能按钮列 */}
         <div
           style={{
