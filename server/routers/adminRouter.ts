@@ -825,17 +825,68 @@ export const adminRouter = router({
       const player = await getPlayerById(input.playerId);
       if (!player) throw new TRPCError({ code: 'NOT_FOUND', message: '玩家不存在' });
       const currentGold = parseFloat(String(player.gold ?? 0));
-      const newGold = currentGold + input.amount;
+      const adjustAmount = Number(input.amount || 0);
+      const newGold = currentGold + adjustAmount;
       if (newGold < 0) throw new TRPCError({ code: 'BAD_REQUEST', message: '金币不足，无法扣除' });
-      await db.update(players).set({ gold: String(newGold.toFixed(2)) }).where(eq(players.id, input.playerId));
+
+      let newTotalRecharge = parseFloat(String(player.totalRecharge ?? 0));
+      let newVipLevel = Number(player.vipLevel ?? 0);
+      let rechargeOrderNo = '';
+
+      if (adjustAmount > 0) {
+        const rechargeAmount = Number(adjustAmount.toFixed(2));
+        newTotalRecharge = parseFloat((newTotalRecharge + rechargeAmount).toFixed(2));
+        const { asc } = await import('drizzle-orm');
+        let vipRows = await db.select().from(vipConfigs).orderBy(asc(vipConfigs.level));
+        if (vipRows.length === 0) {
+          vipRows = Array.from({ length: 11 }, (_, i) => ({
+            id: i, level: i, name: `VIP${i}`,
+            requiredPoints: i === 0 ? 0 : i * 1000,
+            rechargeBonus: '0.00', privileges: null, createdAt: new Date(),
+          }));
+        }
+        newVipLevel = 0;
+        for (const vc of vipRows) {
+          if (newTotalRecharge >= vc.requiredPoints) {
+            newVipLevel = vc.level;
+          } else {
+            break;
+          }
+        }
+
+        rechargeOrderNo = `A${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+        await db.insert(rechargeOrders).values({
+          orderNo: rechargeOrderNo,
+          playerId: input.playerId,
+          amount: rechargeAmount.toFixed(2),
+          gold: rechargeAmount.toFixed(2),
+          bonusDiamond: '0.00',
+          payMethod: 'manual',
+          status: 1,
+          platformOrderNo: '',
+          payUrl: '',
+          remark: `后台手动充值：${input.reason}`,
+        });
+      }
+
+      await db.update(players).set({
+        gold: String(newGold.toFixed(2)),
+        ...(adjustAmount > 0 ? {
+          totalRecharge: newTotalRecharge.toFixed(2),
+          vipLevel: newVipLevel,
+        } : {}),
+      }).where(eq(players.id, input.playerId));
+
       await insertGoldLog(
         input.playerId,
-        input.amount,
+        adjustAmount,
         newGold,
-        input.amount >= 0 ? 'admin_gift' : 'admin_deduct',
-        input.reason,
+        adjustAmount > 0 ? 'recharge' : 'admin_deduct',
+        adjustAmount > 0
+          ? `后台手动充值到账 ${adjustAmount.toFixed(2)} 平台币${rechargeOrderNo ? ` (订单号: ${rechargeOrderNo})` : ''}，原因：${input.reason}`
+          : input.reason,
       );
-      return { success: true, newGold };
+      return { success: true, newGold, newTotalRecharge, newVipLevel, rechargeOrderNo };
     }),
 
   /** 管理后台：福利 CDK 列表 */
