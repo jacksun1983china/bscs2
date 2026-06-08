@@ -375,7 +375,7 @@ export default function RollRoomDetail() {
       </div>
 
       {/* 内容层（flex:1，可滚动） */}
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden' }}>
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden', paddingBottom: !isEnded ? q(190) : q(40) }}>
 
         {/* ── section_1：顶部区域（房间信息区）── */}
         <div style={{ position: 'relative', width: '100%', flexShrink: 0 }}>
@@ -717,72 +717,40 @@ export default function RollRoomDetail() {
 
         </div>
 
-        {/* 参与按钮区（section_7/section_9 样式，position: relative，在奖品区下方） */}
-        {!isEnded && (
-          <div style={{
-            position: 'relative',
-            width: q(707),
-            marginLeft: q(15),
-            marginTop: q(72),
-            marginBottom: q(20),
-            display: 'flex',
-            flexDirection: 'row',
-            gap: q(27),
-            flexWrap: 'wrap',
-           
-          }}>
-            {/* 左侧参与按钮（340×62px） */}
-            <div style={{
-              width: q(340),
-              height: q(62),
-              backgroundImage: `url(${D.joinBtnBg})`,
-              backgroundSize: '100% 100%',
-              backgroundRepeat: 'no-repeat',
-              position: 'relative',
-            }}>
-              {/* 按钮内部（324×45px, margin: 9px 0 0 8px） */}
-              <div
-                onClick={() => !isJoined && !joinMutation.isPending && joinMutation.mutate({ roomId })}
-                style={{
-                  width: q(324),
-                  height: q(45),
-                  backgroundImage: `url(${D.joinBtnInner})`,
-                  backgroundSize: '100% 100%',
-                  backgroundRepeat: 'no-repeat',
-                  margin: `${q(9)} 0 0 ${q(8)}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: isJoined ? 'default' : 'pointer',
-                  opacity: isJoined ? 0.6 : 1,
-                }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: q(8) }}>
-                  <img src={D.amountIcon} alt="" style={{ width: q(40), height: q(40) }} />
-                  <span style={{
-                    color: 'rgba(255,246,13,1)',
-                    fontSize: q(28),
-                    fontFamily: 'Alibaba-PuHuiTi-B, sans-serif',
-                    fontWeight: 700,
-                    whiteSpace: 'nowrap',
-                    lineHeight: q(34),
-                  }}>
-                    {isJoined ? '已参与' : (joinMutation.isPending ? '参与中...' : '立即参与')}
-                  </span>
-                </div>
-              </div>
-            </div>
 
-            {/* 右侧倒计时区（340×62px） */}
-            <div style={{
-              width: q(340),
-              height: q(62),
-              backgroundImage: `url(${D.joinBtnBg})`,
-              backgroundSize: '100% 100%',
-              backgroundRepeat: 'no-repeat',
-              position: 'relative',
-            }}>
-              <div style={{
+        {/* 已结束提示 */}
+        {isEnded && (
+          <div style={{ textAlign: 'center', color: 'rgba(133,102,255,1)', fontSize: q(26), padding: `${q(30)} 0` }}>该Roll房已结束</div>
+        )}
+
+        </div> {/* 背景图层结束 */}
+      </div>
+
+      {/* 底部悬浮参与区 */}
+      {!isEnded && (
+        <div style={{
+          position: 'absolute',
+          left: q(15),
+          right: q(15),
+          bottom: q(118),
+          zIndex: 120,
+          display: 'flex',
+          flexDirection: 'row',
+          gap: q(27),
+          pointerEvents: 'auto',
+        }}>
+          <div style={{
+            width: q(340),
+            height: q(62),
+            backgroundImage: `url(${D.joinBtnBg})`,
+            backgroundSize: '100% 100%',
+            backgroundRepeat: 'no-repeat',
+            position: 'relative',
+            flexShrink: 0,
+          }}>
+            <div
+              onClick={() => !isJoined && !joinMutation.isPending && joinMutation.mutate({ roomId })}
+              style={{
                 width: q(324),
                 height: q(45),
                 backgroundImage: `url(${D.joinBtnInner})`,
@@ -792,7 +760,12 @@ export default function RollRoomDetail() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-              }}>
+                cursor: isJoined ? 'default' : 'pointer',
+                opacity: isJoined ? 0.6 : 1,
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: q(8) }}>
+                <img src={D.amountIcon} alt="" style={{ width: q(40), height: q(40) }} />
                 <span style={{
                   color: 'rgba(255,246,13,1)',
                   fontSize: q(28),
@@ -800,21 +773,47 @@ export default function RollRoomDetail() {
                   fontWeight: 700,
                   whiteSpace: 'nowrap',
                   lineHeight: q(34),
-                  fontVariantNumeric: 'tabular-nums',
-                  letterSpacing: q(2),
-                }}>{countdown || '计算中...'}</span>
+                }}>
+                  {isJoined ? '已参与' : (joinMutation.isPending ? '参与中...' : '立即参与')}
+                </span>
               </div>
             </div>
           </div>
-        )}
 
-        {/* 已结束提示 */}
-        {isEnded && (
-          <div style={{ textAlign: 'center', color: 'rgba(133,102,255,1)', fontSize: q(26), padding: `${q(30)} 0` }}>该Roll房已结束</div>
-        )}
-
-        </div> {/* 背景图层结束 */}
-      </div>
+          <div style={{
+            width: q(340),
+            height: q(62),
+            backgroundImage: `url(${D.joinBtnBg})`,
+            backgroundSize: '100% 100%',
+            backgroundRepeat: 'no-repeat',
+            position: 'relative',
+            flexShrink: 0,
+          }}>
+            <div style={{
+              width: q(324),
+              height: q(45),
+              backgroundImage: `url(${D.joinBtnInner})`,
+              backgroundSize: '100% 100%',
+              backgroundRepeat: 'no-repeat',
+              margin: `${q(9)} 0 0 ${q(8)}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <span style={{
+                color: 'rgba(255,246,13,1)',
+                fontSize: q(28),
+                fontFamily: 'Alibaba-PuHuiTi-B, sans-serif',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                lineHeight: q(34),
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: q(2),
+              }}>{countdown || '计算中...'}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 底部导航 - absolute 定位盖在最顶层 */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 100 }}>
