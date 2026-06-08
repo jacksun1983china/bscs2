@@ -93,14 +93,14 @@ function RoomRosterModal({ roomId, status, onClose, t, lang }: { roomId: number;
               </thead>
               <tbody>
                 {(data?.winners ?? []).length === 0 ? (
-                  <tr><td colSpan={6} style={{ padding: 30, textAlign: 'center', color: 'rgba(180,150,255,0.3)' }}>暂无中奖记录</td></tr>
+                  <tr><td colSpan={6} style={{ padding: 30, textAlign: 'center', color: 'rgba(180,150,255,0.3)' }}>暂无真实中奖记录</td></tr>
                 ) : (data?.winners ?? []).map((w: any) => (
                   <tr key={w.id} style={{ borderBottom: '1px solid rgba(120,60,220,0.1)' }}>
                     <td style={{ padding: '10px 12px', color: 'rgba(180,150,255,0.5)', fontSize: 12 }}>{w.id}</td>
-                    <td style={{ padding: '10px 12px', color: '#fff', fontSize: 13 }}>{w.playerId || '-'}</td>
-                    <td style={{ padding: '10px 12px', color: '#fff', fontSize: 13 }}>{w.player?.nickname ?? w.nicknameSnapshot ?? '-'}</td>
-                    <td style={{ padding: '10px 12px', color: '#a78bfa', fontSize: 13 }}>{w.prize?.name ?? '-'}</td>
-                    <td style={{ padding: '10px 12px', color: '#ffd700', fontSize: 13 }}>¥{parseFloat(w.prize?.amount ?? '0').toFixed(2)}</td>
+                    <td style={{ padding: '10px 12px', color: '#fff', fontSize: 13 }}>{w.isBot ? '-' : (w.playerId || '-')}</td>
+                    <td style={{ padding: '10px 12px', color: '#fff', fontSize: 13 }}>{w.nicknameSnapshot ?? '-'}</td>
+                    <td style={{ padding: '10px 12px', color: '#a78bfa', fontSize: 13 }}>{w.prizeName ?? '-'}</td>
+                    <td style={{ padding: '10px 12px', color: '#ffd700', fontSize: 13 }}>¥{Number(w.prizeValue ?? 0).toFixed(2)}</td>
                     <td style={{ padding: '10px 12px', color: 'rgba(180,150,255,0.5)', fontSize: 11 }}>{formatBeijingDateTime(w.createdAt)}</td>
                   </tr>
                 ))}
