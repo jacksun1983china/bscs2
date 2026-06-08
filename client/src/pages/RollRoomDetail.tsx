@@ -458,49 +458,29 @@ export default function RollRoomDetail() {
                   </div>
                 </div>
 
-                {/* image-text_1：房间标识（110×28px, margin: 75px 0 0 146px） */}
-                <div style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: q(75),
-                  width: q(110),
-                  height: q(28),
-                  display: 'flex',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: q(8),
-                }}>
-                  <div style={{
-                    width: q(21), height: q(28),
-                    backgroundImage: `url(${D.rechargeIcon})`,
-                    backgroundPosition: `${q(-4)} ${q(-4)}`,
-                    backgroundSize: `${q(29)} ${q(36)}`,
+                {/* 立即参与按钮（加宽展示） */}
+                <div
+                  onClick={() => {
+                    if (!isEnded && !isJoined && !joinMutation.isPending) {
+                      joinMutation.mutate({ roomId });
+                    }
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: q(21),
+                    width: q(168),
+                    height: q(44),
+                    backgroundImage: `url(${D.viewBtn})`,
+                    backgroundSize: '100% 100%',
                     backgroundRepeat: 'no-repeat',
-                  }} />
-                  <span style={{
-                    color: 'rgba(255,255,255,1)',
-                    fontSize: q(26),
-                    fontFamily: 'Alibaba-PuHuiTi-R, sans-serif',
-                    whiteSpace: 'nowrap',
-                    lineHeight: q(34),
-                  }}>AGCS2</span>
-                </div>
-
-                {/* 查看按钮（114×44px, margin: 21px 0 0 294px） */}
-                <div style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: q(21),
-                  width: q(114),
-                  height: q(44),
-                  backgroundImage: `url(${D.viewBtn})`,
-                  backgroundSize: '100% 100%',
-                  backgroundRepeat: 'no-repeat',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                }}>
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: !isEnded && !isJoined ? 'pointer' : 'default',
+                    opacity: isEnded ? 0.65 : 1,
+                  }}
+                >
                   <span style={{
                     textShadow: '0px 1px 5px rgba(33,0,80,0.67)',
                     color: 'rgba(255,246,13,1)',
@@ -509,7 +489,7 @@ export default function RollRoomDetail() {
                     fontWeight: 700,
                     whiteSpace: 'nowrap',
                     lineHeight: q(24),
-                  }}>查看</span>
+                  }}>{isEnded ? '已结束' : (isJoined ? '已参与' : (joinMutation.isPending ? '参与中...' : '立即参与'))}</span>
                 </div>
               </div>
 
