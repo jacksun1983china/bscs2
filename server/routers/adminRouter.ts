@@ -17,9 +17,11 @@ import {
   getPlayerByInviteCode,
   getPlayerList,
   getPlayerRechargeOrders,
+  getRollRoomDesignatedWinnerIds,
   getRollRoomDetail,
   getRollWinners,
   insertGoldLog,
+  setRollRoomDesignatedWinnerIds,
   updatePlayerIdentity,
   updatePlayerStatus,
 } from "../db";
@@ -298,6 +300,7 @@ export const adminRouter = router({
         prizeType: z.enum(["coin", "item"]).default("coin"),
         itemCategory: z.string().default("roll"),
       })),
+      designatedWinnerIds: z.array(z.number().int().positive()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       let avatarUrl = input.avatarUrl || "";
@@ -330,7 +333,7 @@ export const adminRouter = router({
         startAt: parseBeijingDateTime(input.startAt),
         endAt: parseBeijingDateTime(input.endAt),
         createdBy: ctx.user.openId,
-      }, prizes as any);
+      }, prizes as any, input.designatedWinnerIds ?? []);
       return { success: true, roomId };
     }),
 
@@ -367,6 +370,24 @@ export const adminRouter = router({
     .input(z.object({ roomId: z.number() }))
     .query(async ({ ctx, input }) => {
       return getRollWinners(input.roomId);
+    }),
+
+  rollRoomDesignatedWinners: adminProcedure
+    .input(z.object({ roomId: z.number() }))
+    .query(async ({ input }) => {
+      return getRollRoomDesignatedWinnerIds(input.roomId);
+    }),
+
+  updateRollRoomDesignatedWinners: adminProcedure
+    .input(z.object({ roomId: z.number(), winnerIds: z.array(z.number().int().positive()).default([]) }))
+    .mutation(async ({ input }) => {
+      const detail = await getRollRoomDetail(input.roomId);
+      if (!detail) throw new TRPCError({ code: "NOT_FOUND", message: "Roll房不存在" });
+      if (detail.room.status === "ended") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "已结束的Roll房不支持编辑" });
+      }
+      const winnerIds = await setRollRoomDesignatedWinnerIds(input.roomId, input.winnerIds);
+      return { success: true, winnerIds };
     }),
 
   deleteRollRoom: adminProcedure

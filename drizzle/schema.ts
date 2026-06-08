@@ -390,6 +390,19 @@ export const rollParticipants = mysqlTable("rollParticipants", {
 
 export type RollParticipant = typeof rollParticipants.$inferSelect;
 
+// ── Roll房指定中奖名单 ──────────────────────────────────────────────────────
+export const rollRoomDesignatedWinners = mysqlTable("rollRoomDesignatedWinners", {
+  id: int("id").autoincrement().primaryKey(),
+  rollRoomId: int("rollRoomId").notNull(),
+  /** 指定中奖玩家ID */
+  playerId: int("playerId").notNull(),
+  /** 展示/开奖顺序 */
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RollRoomDesignatedWinner = typeof rollRoomDesignatedWinners.$inferSelect;
+
 // ── Roll房中奖记录 ──────────────────────────────────────────────────────
 export const rollWinners = mysqlTable("rollWinners", {
   id: int("id").autoincrement().primaryKey(),
