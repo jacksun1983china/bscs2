@@ -79,7 +79,6 @@ function useCountdown(endAt: Date | string | null) {
 function PrizeCard({ prize, index }: { prize: any; index: number }) {
   const prizeImg = prize.imageUrl || D.prizeDefault[index % D.prizeDefault.length];
   const value = parseFloat(prize.value || '0').toFixed(2);
-  const quality = prize.quality || '崭新出厂';
 
   return (
     <div style={{
@@ -127,41 +126,6 @@ function PrizeCard({ prize, index }: { prize: any; index: number }) {
           fontWeight: 500,
           lineHeight: q(28),
         }}>¥{value}</span>
-      </div>
-      {/* 品质标签（absolute right:0 top:22, 131×41px） */}
-      <div style={{
-        position: 'absolute',
-        right: 0,
-        top: q(22),
-        width: q(131),
-        height: q(41),
-        backgroundImage: `url(${D.qualityBg1})`,
-        backgroundSize: '100% 100%',
-        backgroundRepeat: 'no-repeat',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <div style={{
-          width: q(129),
-          height: q(41),
-          backgroundImage: `url(${D.qualityInner1})`,
-          backgroundSize: '100% 100%',
-          backgroundRepeat: 'no-repeat',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          <span style={{
-            textShadow: '0px 3px 0px rgba(216,118,10,1)',
-            color: 'rgba(255,255,255,1)',
-            fontSize: q(19),
-            fontFamily: 'Alibaba-PuHuiTi-H, sans-serif',
-            fontWeight: 900,
-            whiteSpace: 'nowrap',
-            lineHeight: q(30),
-          }}>{quality}</span>
-        </div>
       </div>
     </div>
   );
@@ -256,6 +220,10 @@ export default function RollRoomDetail() {
   const { room, prizes, participants } = data;
   const isEnded = room.status === 'ended' || (room.status as string) === 'finished';
   const isJoined = joinedData?.joined;
+  const totalPrizeCount = (prizes ?? []).reduce((sum: number, prize: any) => {
+    const quantity = Number(prize?.quantity ?? 1);
+    return sum + (Number.isFinite(quantity) && quantity > 0 ? quantity : 1);
+  }, 0);
 
   // 时间格式化
   const fmtTime = (t: Date | string) => {
@@ -510,11 +478,11 @@ export default function RollRoomDetail() {
                   </span>
                 </div>
                 <img src={D.sep1} alt="" style={{ width: q(1), height: q(40) }} />
-                {/* 钻石 */}
+                {/* 奖品数量 */}
                 <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: q(5) }}>
                   <img src={D.diamondIcon} alt="" style={{ width: q(32), height: q(32) }} />
                   <span style={{ color: 'rgba(255,246,13,1)', fontSize: q(26), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                    {parseFloat(room.actualPaidValue as string || '0').toFixed(0)}
+                    {totalPrizeCount}
                   </span>
                 </div>
                 <img src={D.sep2} alt="" style={{ width: q(1), height: q(40) }} />
