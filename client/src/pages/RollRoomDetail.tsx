@@ -167,6 +167,83 @@ function ParticipantAvatar({ p }: { p: any }) {
   );
 }
 
+function WinnerPrizeCard({ winner, index }: { winner: any; index: number }) {
+  const avatarSrc = winner.isBot ? (winner.avatar || getAvatarUrl(null)) : getAvatarUrl(winner.avatar);
+  const prizeImg = winner.prizeImageUrl || D.prizeDefault[index % D.prizeDefault.length];
+
+  return (
+    <div style={{
+      width: q(340),
+      minHeight: q(180),
+      borderRadius: q(15),
+      border: `${q(3)} solid rgba(0,0,0,1)`,
+      background: 'linear-gradient(180deg, rgba(54,18,140,0.95) 0%, rgba(29,7,90,0.95) 100%)',
+      padding: q(18),
+      display: 'flex',
+      flexDirection: 'column',
+      gap: q(16),
+      boxSizing: 'border-box',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: q(14) }}>
+        <div style={{
+          width: q(72),
+          height: q(72),
+          borderRadius: '50%',
+          overflow: 'hidden',
+          border: `${q(2)} solid ${winner.isBot ? 'rgba(100,100,100,0.4)' : 'rgba(120,60,220,0.6)'}`,
+          background: 'rgba(50,20,100,0.5)',
+          flexShrink: 0,
+        }}>
+          <img src={avatarSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{
+            color: winner.isBot ? 'rgba(200,200,200,1)' : 'rgba(255,255,255,1)',
+            fontSize: q(24),
+            lineHeight: q(30),
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>{winner.nickname}</div>
+          <div style={{
+            color: 'rgba(133,102,255,1)',
+            fontSize: q(20),
+            lineHeight: q(26),
+            marginTop: q(4),
+          }}>中奖数量 x{winner.winCount}</div>
+        </div>
+      </div>
+
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: q(14),
+        padding: `${q(12)} ${q(14)}`,
+        borderRadius: q(12),
+        background: 'rgba(116,78,240,0.18)',
+      }}>
+        <img src={prizeImg} alt={winner.prizeName} style={{ width: q(86), height: q(62), objectFit: 'contain', flexShrink: 0 }} />
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{
+            color: 'rgba(255,255,255,1)',
+            fontSize: q(22),
+            lineHeight: q(28),
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>{winner.prizeName || '未知奖品'}</div>
+          <div style={{
+            color: 'rgba(255,246,13,1)',
+            fontSize: q(20),
+            lineHeight: q(26),
+            marginTop: q(4),
+          }}>x{winner.winCount}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── 主页面 ────────────────────────────────────────────────────────
 export default function RollRoomDetail() {
   const [, navigate] = useLocation();
@@ -224,6 +301,46 @@ export default function RollRoomDetail() {
     const quantity = Number(prize?.quantity ?? 1);
     return sum + (Number.isFinite(quantity) && quantity > 0 ? quantity : 1);
   }, 0);
+  const expandedPrizes = (prizes ?? []).flatMap((prize: any) => {
+    const quantity = Number(prize?.quantity ?? 1);
+    const safeQuantity = Number.isFinite(quantity) && quantity > 0 ? Math.floor(quantity) : 1;
+    return Array.from({ length: safeQuantity }, (_, copyIndex) => ({
+      ...prize,
+      __copyKey: `${prize.id ?? prize.name ?? 'prize'}-${copyIndex}`,
+    }));
+  });
+  const participantMap = new Map(
+    (participants ?? []).map((participant: any) => [
+      participant.isBot ? `bot-${participant.botNickname || participant.nickname || participant.id}` : `player-${participant.playerId}`,
+      participant,
+    ])
+  );
+  const winnerPrizeCards = (winnersData ?? []).reduce((list: any[], winner: any) => {
+    const participant = participantMap.get(
+      winner.isBot ? `bot-${winner.nicknameSnapshot || winner.playerId || winner.id}` : `player-${winner.playerId}`
+    ) || (winner.isBot
+      ? (participants ?? []).find((item: any) => item.isBot && (item.botNickname || item.nickname) === winner.nicknameSnapshot)
+      : undefined);
+    const nickname = winner.nicknameSnapshot || participant?.nickname || participant?.botNickname || (winner.isBot ? '机器人' : `用户${winner.playerId}`);
+    const key = `${winner.isBot ? 'bot' : 'player'}-${winner.playerId}-${nickname}-${winner.prizeId ?? winner.prizeName ?? 'prize'}`;
+    const existing = list.find((item) => item.key === key);
+
+    if (existing) {
+      existing.winCount += 1;
+      return list;
+    }
+
+    list.push({
+      key,
+      isBot: !!winner.isBot,
+      nickname,
+      avatar: winner.isBot ? participant?.botAvatar : participant?.avatar,
+      prizeName: winner.prizeName,
+      prizeImageUrl: winner.prizeImageUrl,
+      winCount: 1,
+    });
+    return list;
+  }, []);
 
   // 时间格式化
   const fmtTime = (t: Date | string) => {
@@ -583,11 +700,17 @@ export default function RollRoomDetail() {
               flexWrap: 'wrap',
               gap: q(27),
             }}>
-              {prizes?.length === 0 ? (
-                <div style={{ width: '100%', textAlign: 'center', color: 'rgba(133,102,255,1)', fontSize: q(26), padding: `${q(60)} 0` }}>暂无奖品</div>
+              {isEnded && winnerPrizeCards.length > 0 ? (
+                winnerPrizeCards.map((winner: any, i: number) => (
+                  <WinnerPrizeCard key={winner.key} winner={winner} index={i} />
+                ))
+              ) : expandedPrizes.length === 0 ? (
+                <div style={{ width: '100%', textAlign: 'center', color: 'rgba(133,102,255,1)', fontSize: q(26), padding: `${q(60)} 0` }}>
+                  {isEnded ? '暂无中奖名单' : '暂无奖品'}
+                </div>
               ) : (
-                prizes?.map((prize: any, i: number) => (
-                  <PrizeCard key={prize.id} prize={prize} index={i} />
+                expandedPrizes.map((prize: any, i: number) => (
+                  <PrizeCard key={prize.__copyKey} prize={prize} index={i} />
                 ))
               )}
             </div>
@@ -612,21 +735,6 @@ export default function RollRoomDetail() {
             </div>
           )}
 
-          {/* 中奖名单（已结束时显示） */}
-          {isEnded && winnersData && winnersData.length > 0 && (
-            <div style={{ width: q(707), marginLeft: q(15), marginTop: q(20) }}>
-              <div style={{ color: 'rgba(255,246,13,1)', fontSize: q(28), fontFamily: 'Alibaba-PuHuiTi-M, sans-serif', marginBottom: q(16) }}>🏆 中奖名单</div>
-              {winnersData.map((w: any, i: number) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: q(16), padding: `${q(12)} ${q(16)}`, marginBottom: q(8), borderRadius: q(10), background: 'rgba(255,215,0,0.08)', border: '1px solid rgba(255,215,0,0.2)' }}>
-                  <span style={{ color: 'rgba(255,246,13,1)', fontSize: q(26), fontWeight: 700 }}>#{i + 1}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ color: 'rgba(255,255,255,1)', fontSize: q(26), fontWeight: 600 }}>{w.nickname || `用户${w.playerId}`}</div>
-                    <div style={{ color: 'rgba(133,102,255,1)', fontSize: q(22), marginTop: q(4) }}>获得：{w.prizeName}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* 参与按钮区（section_7/section_9 样式，position: relative，在奖品区下方） */}
