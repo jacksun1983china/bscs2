@@ -218,7 +218,7 @@ function CreateRoomModal({ onClose, onCreated, preset }: CreateRoomModalProps) {
 
           {/* 分类Tab */}
           <div style={{ marginBottom: q(12) }}>
-            <div style={{ color: '#9ca3af', fontSize: q(24), marginBottom: q(12) }}>选择宝笱（已选 <span style={{ color: '#c084fc', fontWeight: 700 }}>{totalSelected}</span> 个，最多 10 个）</div>
+            <div style={{ color: '#9ca3af', fontSize: q(24), marginBottom: q(12) }}>选择宝箱（已选 <span style={{ color: '#c084fc', fontWeight: 700 }}>{totalSelected}</span> 个，最多 10 个）</div>
             <div style={{ display: 'flex', gap: q(10), overflowX: 'auto', paddingBottom: q(4) }}>
               <button
                 onClick={() => setActiveCat(null)}
