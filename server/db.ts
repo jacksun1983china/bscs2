@@ -474,14 +474,81 @@ export async function getRollRoomList(opts: {
     db.select().from(rollRooms).where(whereClause).orderBy(desc(rollRooms.createdAt)).limit(limit).offset(offset),
     db.select({ count: sql<number>`count(*)` }).from(rollRooms).where(whereClause),
   ]);
-  // 为每个房间附加奖品预览（最多6个）
-  const listWithPrizes = await Promise.all(list.map(async (room) => {
-    const prizes = await db.select().from(rollRoomPrizes)
-      .where(eq(rollRoomPrizes.rollRoomId, room.id))
-      .limit(6);
-    return { ...room, prizes, prizeCount: room.totalPrizes };
-  }));
-  return { list: listWithPrizes, total: Number(countResult[0]?.count ?? 0) };
+  const total = Number(countResult[0]?.count ?? 0);
+  const roomIds = list.map(room => room.id);
+  if (roomIds.length === 0) {
+    return { list: [], total };
+  }
+
+  const [prizeRows, winnerRows] = await Promise.all([
+    db.select({
+      id: rollRoomPrizes.id,
+      rollRoomId: rollRoomPrizes.rollRoomId,
+      name: rollRoomPrizes.name,
+      value: rollRoomPrizes.value,
+      imageUrl: rollRoomPrizes.imageUrl,
+      quantity: rollRoomPrizes.quantity,
+    })
+      .from(rollRoomPrizes)
+      .where(inArray(rollRoomPrizes.rollRoomId, roomIds))
+      .orderBy(rollRoomPrizes.rollRoomId, rollRoomPrizes.id),
+    db.select({
+      id: rollWinners.id,
+      rollRoomId: rollWinners.rollRoomId,
+      playerId: rollWinners.playerId,
+      nicknameSnapshot: rollWinners.nicknameSnapshot,
+      playerNickname: players.nickname,
+      playerAvatar: players.avatar,
+      botNickname: rollParticipants.botNickname,
+      botAvatar: rollParticipants.botAvatar,
+    })
+      .from(rollWinners)
+      .leftJoin(players, eq(rollWinners.playerId, players.id))
+      .leftJoin(rollParticipants, and(
+        eq(rollParticipants.rollRoomId, rollWinners.rollRoomId),
+        eq(rollParticipants.playerId, rollWinners.playerId),
+      ))
+      .where(inArray(rollWinners.rollRoomId, roomIds))
+      .orderBy(rollWinners.rollRoomId, rollWinners.id),
+  ]);
+
+  const prizeMap = new Map<number, typeof prizeRows>();
+  for (const prize of prizeRows) {
+    const roomPrizeList = prizeMap.get(Number(prize.rollRoomId)) ?? [];
+    roomPrizeList.push(prize);
+    prizeMap.set(Number(prize.rollRoomId), roomPrizeList);
+  }
+
+  const winnerMap = new Map<number, Array<{
+    id: number;
+    playerId: number;
+    displayName: string;
+    avatarUrl: string;
+  }>>();
+  for (const winner of winnerRows) {
+    const roomWinnerList = winnerMap.get(Number(winner.rollRoomId)) ?? [];
+    roomWinnerList.push({
+      id: Number(winner.id),
+      playerId: Number(winner.playerId || 0),
+      displayName: winner.nicknameSnapshot || winner.playerNickname || winner.botNickname || `用户${winner.playerId}`,
+      avatarUrl: winner.playerAvatar || winner.botAvatar || "",
+    });
+    winnerMap.set(Number(winner.rollRoomId), roomWinnerList);
+  }
+
+  const listWithMeta = list.map((room) => {
+    const prizes = (prizeMap.get(room.id) ?? []).slice(0, 6);
+    const winnerPreview = (winnerMap.get(room.id) ?? []).slice(0, 6);
+    return {
+      ...room,
+      prizes,
+      prizeCount: room.totalPrizes,
+      winnerPreview,
+      winnerCount: winnerMap.get(room.id)?.length ?? 0,
+    };
+  });
+
+  return { list: listWithMeta, total };
 }
 
 export async function getRollRoomDetail(id: number) {

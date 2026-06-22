@@ -66,10 +66,19 @@ function toBeijingIsoString(value: string) {
   return `${value}:00+08:00`;
 }
 
+function getRollPreviewName(item: any) {
+  return item?.displayName ?? item?.nicknameSnapshot ?? item?.name ?? item?.botNickname ?? item?.nickname ?? (item?.playerId ? `用户${item.playerId}` : '-');
+}
+
+function getRollPreviewAvatar(item: any) {
+  return item?.avatarUrl ?? item?.avatar ?? item?.playerAvatar ?? item?.botAvatar ?? '';
+}
+
 function RoomRosterModal({ roomId, status, onClose, t, lang }: { roomId: number; status: string; onClose: () => void; t: I18nT; lang: 'zh' | 'en' }) {
   const { data, isLoading } = trpc.admin.rollRoomDetail.useQuery({ id: roomId });
-  const isEnded = status === 'ended';
-  const subtitle = isEnded
+  const resolvedStatus = data?.room?.status ?? status;
+  const showWinners = resolvedStatus === 'ended';
+  const subtitle = showWinners
     ? (lang === 'zh' ? '显示中奖人员名单' : 'Showing winners')
     : (lang === 'zh' ? '显示参与人员名单' : 'Showing participants');
 
@@ -82,7 +91,7 @@ function RoomRosterModal({ roomId, status, onClose, t, lang }: { roomId: number;
         </div>
         <div style={{ color: 'rgba(180,150,255,0.55)', fontSize: 12, marginBottom: 18 }}>{subtitle}</div>
         {isLoading ? <div style={{ textAlign: 'center', padding: 40, color: 'rgba(180,150,255,0.5)' }}>{t.loading}</div> : (
-          isEnded ? (
+          showWinners ? (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'rgba(123,47,255,0.12)' }}>
@@ -487,6 +496,51 @@ export function AdminRollRooms({ lang, t }: { lang: 'zh' | 'en'; t: I18nT }) {
     return lang === 'zh' ? '已结束' : 'Ended';
   };
 
+  const renderPrizeOrWinnerPreview = (room: any) => {
+    const isEndedRoom = room.status === 'ended';
+    const previewItems = isEndedRoom ? (room.winnerPreview ?? []) : (room.prizes ?? []);
+    const totalCount = isEndedRoom
+      ? Number(room.winnerCount ?? previewItems.length)
+      : Number(room.prizeCount ?? room.totalPrizes ?? previewItems.length);
+    const emptyText = isEndedRoom
+      ? (lang === 'zh' ? '暂无中奖人员' : 'No winners')
+      : (lang === 'zh' ? '暂无奖品' : 'No prizes');
+
+    return (
+      <div style={{ minWidth: 180, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {previewItems.length === 0 ? (
+          <div style={{ color: 'rgba(180,150,255,0.35)', fontSize: 11 }}>{emptyText}</div>
+        ) : (
+          previewItems.slice(0, 3).map((item: any, index: number) => {
+            const avatarUrl = getRollPreviewAvatar(item);
+            const label = isEndedRoom
+              ? getRollPreviewName(item)
+              : (item.name || `${lang === 'zh' ? '奖品' : 'Prize'} #${index + 1}`);
+            return (
+              <div key={`${room.id}-${isEndedRoom ? 'winner' : 'prize'}-${item.id ?? index}`} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" style={{ width: 22, height: 22, borderRadius: 999, objectFit: 'cover', flexShrink: 0 }} />
+                ) : (
+                  <div style={{ width: 22, height: 22, borderRadius: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isEndedRoom ? 'rgba(6,182,212,0.16)' : 'rgba(123,47,255,0.18)', color: isEndedRoom ? '#06b6d4' : '#a78bfa', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                    {isEndedRoom ? '人' : '奖'}
+                  </div>
+                )}
+                <div style={{ color: '#fff', fontSize: 12, lineHeight: '16px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={label}>
+                  {label}
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div style={{ color: 'rgba(180,150,255,0.45)', fontSize: 10 }}>
+          {isEndedRoom
+            ? `${lang === 'zh' ? '中奖人数' : 'Winners'} ${totalCount}`
+            : `${lang === 'zh' ? '奖品数量' : 'Prizes'} ${totalCount}`}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -533,7 +587,7 @@ export function AdminRollRooms({ lang, t }: { lang: 'zh' | 'en'; t: I18nT }) {
                   <td style={{ padding: '10px 14px', color: '#7df9ff', fontSize: 13 }}>{room.participantCount ?? 0}</td>
                   <td style={{ padding: '10px 14px', color: 'rgba(180,150,255,0.5)', fontSize: 12 }}>{room.botCount ?? 0}</td>
                   <td style={{ padding: '10px 14px', color: '#ffd700', fontSize: 13 }}>¥{parseFloat(room.totalValue ?? '0').toFixed(2)}</td>
-                  <td style={{ padding: '10px 14px', color: '#a78bfa', fontSize: 12 }}>{room.totalPrizes ?? 0}</td>
+                  <td style={{ padding: '10px 14px' }}>{renderPrizeOrWinnerPreview(room)}</td>
                   <td style={{ padding: '10px 14px', color: '#f59e0b', fontSize: 13 }}>¥{parseFloat(room.threshold ?? '0').toFixed(2)}</td>
                   <td style={{ padding: '10px 14px', color: '#10b981', fontSize: 13 }}>¥{parseFloat(room.actualPaidValue ?? '0').toFixed(2)}</td>
                   <td style={{ padding: '10px 14px', color: '#06b6d4', fontSize: 12 }}>{room.actualPaidCount ?? 0}</td>
