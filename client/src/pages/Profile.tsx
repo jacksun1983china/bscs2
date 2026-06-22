@@ -95,7 +95,7 @@ export default function Profile() {
     { icon: WD.menuIcon0, bg: WD.menuBg0, label: '修改资料', sub: '昵称/头像', onClick: () => setProfileEditVisible(true) },
     { icon: WD.menuIcon0, bg: WD.menuBg0, label: '我的记录', sub: '资产明细', onClick: () => navigate('/my-records') },
     { icon: WD.menuIcon1, bg: WD.menuBg1, label: 'STEAM', sub: isSteamBound ? '已绑定' : '未绑定', onClick: () => setSteamVisible(true) },
-    { icon: WD.menuIcon2, bg: WD.menuBg2, label: '安全密码', sub: '已设置', onClick: () => setSecurityPwdVisible(true) },
+    { icon: WD.menuIcon2, bg: WD.menuBg2, label: '安全密码', sub: player?.hasSafePassword ? '已设置' : '未设置', onClick: () => setSecurityPwdVisible(true) },
     { icon: WD.menuIcon0, bg: WD.menuBg1, label: '邮件', sub: '站内信', onClick: () => navigate('/mailbox') },
   ];
 

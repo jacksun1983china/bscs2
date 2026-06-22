@@ -14,6 +14,7 @@ interface SecurityPasswordModalProps {
 }
 
 export default function SecurityPasswordModal({ visible, onClose }: SecurityPasswordModalProps) {
+  const utils = trpc.useUtils();
   const [mounted, setMounted] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [code, setCode] = useState('');
@@ -41,7 +42,8 @@ export default function SecurityPasswordModal({ visible, onClose }: SecurityPass
   });
 
   const setPasswordMutation = trpc.player.setPassword.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
+      await utils.player.me.invalidate();
       toast.success('安全密码设置成功');
       setTimeout(() => { setCode(''); setNewPwd(''); setConfirmPwd(''); onClose(); }, 1000);
     },
