@@ -809,7 +809,7 @@ export type InsertShopOrder = typeof shopOrders.$inferInsert;
 // ── 竞技场房间表 ──────────────────────────────────────────────────────
 export const arenaRooms = mysqlTable("arenaRooms", {
   id: int("id").autoincrement().primaryKey(),
-  /** 房间号（6位随机数字） */
+  /** 房间号（长数字字符串，使用更大唯一空间避免历史撞号） */
   roomNo: varchar("roomNo", { length: 20 }).notNull().unique(),
   /** 创建者玩家ID */
   creatorId: int("creatorId").notNull(),

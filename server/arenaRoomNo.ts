@@ -5,13 +5,16 @@ import { arenaRooms } from "../drizzle/schema";
 const ARENA_ROOM_NO_MAX_RETRIES = 50;
 
 /**
- * 生成 6 位竞技场房号。
+ * 生成更大空间的竞技场房号。
  *
- * 这里仍然保持 6 位数字格式，避免影响现有前端展示与用户习惯；
- * 真正的防撞由“预检查 + 插入兜底重试”共同完成。
+ * 旧的 6 位纯随机房号总空间只有 90 万，随着机器人持续开房与历史房间累积，
+ * 线上已出现大量撞号。这里改为“时间片段 + 随机尾缀”的 12 位数字房号，
+ * 在不改变字符串展示方式的前提下显著扩大唯一空间。
  */
 export function genArenaRoomNo(): string {
-  return String(randomInt(100000, 1000000));
+  const timePart = Date.now().toString().slice(-9);
+  const randomPart = String(randomInt(100, 1000));
+  return `${timePart}${randomPart}`;
 }
 
 /**
