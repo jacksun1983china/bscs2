@@ -606,6 +606,13 @@ export default function ArenaRoom() {
       },
     }
   );
+  const { data: myPlayerInfo } = trpc.player.me.useQuery(undefined, { staleTime: 30_000, refetchOnWindowFocus: false });
+  const myGold = parseFloat((myPlayerInfo as any)?.gold ?? '0');
+  const myDiamond = parseFloat((myPlayerInfo as any)?.diamond ?? '0');
+  const roomEntryFee = parseFloat(roomDetail?.room?.entryFee ?? '0');
+  const joinDiamondSupplement = Math.max(0, roomEntryFee - myGold);
+  const joinTotalBalance = myGold + myDiamond;
+  const joinInsufficientBalance = roomEntryFee > 0 && joinTotalBalance < roomEntryFee;
 
   // 用 ref 跟踪最新的 roomDetail，供 useCallback 闭包中访问
   const roomDetailRef = useRef(roomDetail);
@@ -1488,7 +1495,7 @@ export default function ArenaRoom() {
               确认加入竞技场？
             </div>
             <div style={{ color: '#9ca3af', fontSize: q(24), marginBottom: q(8) }}>
-              加入后不可取消，将扣除入场费
+              加入后不可取消，将优先扣除平台币，平台币不足时自动用商城币补差
             </div>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: q(8),
@@ -1496,14 +1503,28 @@ export default function ArenaRoom() {
               border: '1px solid rgba(245,200,66,0.4)',
               borderRadius: q(12),
               padding: `${q(10)} ${q(24)}`,
-              marginBottom: q(24),
+              marginBottom: q(16),
             }}>
-              <img src="/img/jinbi1.png" alt="金币" style={{ width: q(32), height: q(32) }} />
+              <img src="/img/jinbi1.png" alt="入场费" style={{ width: q(32), height: q(32) }} />
               <span style={{ color: '#ffd700', fontSize: q(32), fontWeight: 800 }}>
                 {room ? parseFloat(room.entryFee).toFixed(0) : '?'}
               </span>
-              <span style={{ color: '#c084fc', fontSize: q(24) }}>金币</span>
+              <span style={{ color: '#c084fc', fontSize: q(24) }}>入场费</span>
             </div>
+            <div style={{ color: '#9ca3af', fontSize: q(21), marginBottom: q(8) }}>
+              当前余额：<span style={{ color: joinInsufficientBalance ? '#f87171' : '#ffd700', fontWeight: 700 }}>{myGold.toFixed(0)} 平台币 / {myDiamond.toFixed(0)} 商城币</span>
+            </div>
+            {joinInsufficientBalance ? (
+              <div style={{ color: '#f87171', fontSize: q(21), marginBottom: q(20), fontWeight: 700 }}>
+                总余额不足，无法加入
+              </div>
+            ) : joinDiamondSupplement > 0 ? (
+              <div style={{ color: '#f59e0b', fontSize: q(21), marginBottom: q(20), fontWeight: 700 }}>
+                将自动补扣 {joinDiamondSupplement.toFixed(0)} 商城币
+              </div>
+            ) : (
+              <div style={{ marginBottom: q(20) }} />
+            )}
             <div style={{ display: 'flex', gap: q(16) }}>
               <button
                 onClick={() => setShowJoinConfirm(false)}
@@ -1520,12 +1541,17 @@ export default function ArenaRoom() {
               </button>
               <button
                 onClick={() => {
+                  if (joinInsufficientBalance) {
+                    setShowJoinConfirm(false);
+                    setJoinError(`余额不足，需要 ${roomEntryFee.toFixed(0)}，当前平台币 ${myGold.toFixed(0)}，商城币 ${myDiamond.toFixed(0)}`);
+                    return;
+                  }
                   setShowJoinConfirm(false);
                   setJoinLoading(true);
                   setJoinError('');
                   joinSeat.mutate({ roomId });
                 }}
-                disabled={joinLoading}
+                disabled={joinLoading || joinInsufficientBalance}
                 style={{
                   flex: 1, padding: `${q(14)} 0`,
                   background: 'linear-gradient(135deg,#7c3aed,#a855f7)',
@@ -1537,7 +1563,7 @@ export default function ArenaRoom() {
                   boxShadow: '0 4px 16px rgba(120,60,220,0.4)',
                 }}
               >
-                {joinLoading ? '加入中...' : '确认加入'}
+                {joinLoading ? '加入中...' : joinInsufficientBalance ? '余额不足' : '确认加入'}
               </button>
             </div>
           </div>
@@ -2059,7 +2085,8 @@ export default function ArenaRoom() {
               <>等待玩家加入... ({players.length}/{maxPlayers})</>
             )}
             <div style={{ color: '#6b7280', fontSize: q(22), marginTop: q(12) }}>
-              入场费：{parseFloat(room.entryFee).toFixed(0)} 金币/人
+                入场费：{parseFloat(room.entryFee).toFixed(0)} / 人，平台币优先，不足时商城币补差
+
             </div>
             {!isPresent && myPlayerId > 0 && (
               <div style={{ color: '#60a5fa', fontSize: q(22), marginTop: q(8) }}>
