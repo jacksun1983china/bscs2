@@ -312,9 +312,9 @@ export async function getTeamStats(playerId: number) {
   const currentWeekRecharge = parseFloat(String(currentWeekRechargeResult[0]?.totalRecharge ?? '0')) || 0;
   let weeklyStats: WeeklyCommissionStat[] = weeklyRows;
   const currentWeekRow = weeklyStats.find((row) => row.weekStart === currentWeekStart);
-  const currentWeekFlow = currentWeekRow
-    ? parseFloat(String(currentWeekRow.totalFlow ?? currentWeekRecharge)) || currentWeekRecharge
-    : currentWeekRecharge;
+  // 目前周流水没有独立的实时累加写入链路，直接沿用历史表值会导致页面展示滞后。
+  // 为了满足“实时显示流水情况”的要求，这里统一按当前周已完成充值实时汇总刷新展示值。
+  const currentWeekFlow = currentWeekRecharge;
 
   const currentWeekPayload: InsertWeeklyCommissionStat = {
     inviterId: playerId,

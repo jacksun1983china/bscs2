@@ -55,12 +55,27 @@ export default function Share() {
   const [bindInviteCodeText, setBindInviteCodeText] = useState('');
 
   const utils = trpc.useUtils();
-  const { data: player } = trpc.player.me.useQuery(undefined, { retry: false, staleTime: 30_000 });
-  const { data: teamStats } = trpc.player.teamStats.useQuery(undefined, { enabled: !!player, retry: false });
+  const { data: player } = trpc.player.me.useQuery(undefined, {
+    retry: false,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+  const { data: teamStats } = trpc.player.teamStats.useQuery(undefined, {
+    enabled: !!player,
+    retry: false,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
+  });
   const hasBoundInviter = Boolean(player?.invitedBy);
 
   const withdrawMutation = trpc.player.withdrawCommission.useMutation({
-    onSuccess: () => toast.success('佣金已提取！'),
+    onSuccess: async () => {
+      toast.success('佣金已提取！');
+      await Promise.all([
+        utils.player.me.invalidate(),
+        utils.player.teamStats.invalidate(),
+      ]);
+    },
     onError: (e) => toast.error(e.message),
   });
 

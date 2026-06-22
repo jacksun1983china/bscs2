@@ -875,8 +875,8 @@ async function finishGame(roomId: number, db: Awaited<ReturnType<typeof getDb>>,
     }
   } else {
     // 胜负：赢家获得所有玩家开出的物品（包括输家的）
-    // 1. 赢家自己的物品：status=3 改为 status=0
     if (realPlayerIdSet.has(winnerId)) {
+      // 1. 赢家自己的物品：status=3 改为 status=0
       await db
         .update(playerItems)
         .set({ status: 0 })
@@ -887,12 +887,48 @@ async function finishGame(roomId: number, db: Awaited<ReturnType<typeof getDb>>,
             eq(playerItems.source, 'arena')
           )
         );
-      // 2. 输家的物品：将 playerId 改为 winnerId，status=3 改为 status=0
+
+      // 2. 真人输家的物品：将 playerId 改为 winnerId，status=3 改为 status=0
       for (const rp of roomPlayers) {
         if (rp.playerId !== winnerId && realPlayerIdSet.has(rp.playerId)) {
           await db
             .update(playerItems)
             .set({ playerId: winnerId, status: 0 })
+            .where(
+              and(
+                eq(playerItems.playerId, rp.playerId),
+                eq(playerItems.status, 3),
+                eq(playerItems.source, 'arena')
+              )
+            );
+        }
+      }
+
+      // 3. 机器人输家的掉落需要补入赢家背包，否则会出现“赢了但没吃到对方饰品”
+      const botLoserIds = roomPlayers
+        .filter((rp) => rp.playerId !== winnerId && !realPlayerIdSet.has(rp.playerId))
+        .map((rp) => rp.playerId);
+      if (botLoserIds.length > 0) {
+        const botRoundResults = allResults.filter((row) => botLoserIds.includes(row.playerId));
+        if (botRoundResults.length > 0) {
+          await db.insert(playerItems).values(
+            botRoundResults.map((row) => ({
+              playerId: winnerId,
+              itemId: row.goodsId,
+              source: 'arena',
+              status: 0,
+              recycleGold: String(parseFloat(String(row.goodsValue || '0')).toFixed(2)),
+            }))
+          );
+        }
+      }
+    } else {
+      // 赢家是机器人：真人玩家本局道具判负丢失，不能继续停留在待结算状态
+      for (const rp of roomPlayers) {
+        if (realPlayerIdSet.has(rp.playerId)) {
+          await db
+            .update(playerItems)
+            .set({ status: 2 })
             .where(
               and(
                 eq(playerItems.playerId, rp.playerId),

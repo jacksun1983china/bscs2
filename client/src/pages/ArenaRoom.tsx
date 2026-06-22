@@ -43,9 +43,9 @@ function buildGameOverData(
 ) {
   const vals = Object.values(playerTotals);
   const maxVal = vals.length > 0 ? Math.max(...vals) : 0;
-  // 平局检测：所有玩家总价值相同（且至少有 2 个玩家）
-  const allSame = vals.length >= 2 && vals.every((v) => v === vals[0]);
-  const isDraw = allSame;
+  // 与服务端结算口径保持一致：只要最高总价并列，就视为平局，而不是要求所有人都相同。
+  const topCount = playerList.filter((p) => (playerTotals[p.playerId] ?? 0) === maxVal).length;
+  const isDraw = maxVal > 0 && topCount > 1;
 
   const overPlayers = playerList.map((p) => ({
     playerId: p.playerId,
