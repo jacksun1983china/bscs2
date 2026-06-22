@@ -435,11 +435,34 @@ export async function createRollRoom(data: InsertRollRoom, prizes: InsertRollRoo
     totalValue += parseFloat(p.value as string) * (p.quantity ?? 1);
     totalPrizes += p.quantity ?? 1;
   }
-  const insertData = { ...data, totalValue: totalValue.toFixed(2), totalPrizes };
+  const normalizedBotCount = Math.max(0, Math.floor(Number(data.botCount ?? 0)));
+  const insertData = {
+    ...data,
+    botCount: 0,
+    participantCount: 0,
+    totalValue: totalValue.toFixed(2),
+    totalPrizes,
+  };
   const result = await db.insert(rollRooms).values(insertData);
   const roomId = (result as any)[0]?.insertId ?? 0;
   if (prizes.length > 0) {
     await db.insert(rollRoomPrizes).values(prizes.map(p => ({ ...p, rollRoomId: roomId })));
+  }
+  if (normalizedBotCount > 0) {
+    const { generateRealisticBotNames } = await import("../shared/realisticBotNames");
+    const botNameList = generateRealisticBotNames(normalizedBotCount);
+    const bots = Array.from({ length: normalizedBotCount }, (_, index) => ({
+      rollRoomId: roomId,
+      playerId: 0,
+      isBot: 1,
+      botNickname: botNameList[index] || `玩家${Math.floor(Math.random() * 9000) + 1000}`,
+      botAvatar: "",
+    }));
+    await db.insert(rollParticipants).values(bots);
+    await db.update(rollRooms).set({
+      participantCount: sql`participantCount + ${normalizedBotCount}`,
+      botCount: sql`botCount + ${normalizedBotCount}`,
+    }).where(eq(rollRooms.id, roomId));
   }
   await setRollRoomDesignatedWinnerIds(roomId, designatedWinnerIds);
   return roomId;
@@ -615,15 +638,20 @@ export async function joinRollRoom(roomId: number, playerId: number) {
 export async function addRollBots(roomId: number, count: number) {
   const db = await getDb();
   if (!db) throw new Error("数据库不可用");
+  const normalizedCount = Math.max(0, Math.floor(Number(count || 0)));
+  if (normalizedCount <= 0) return;
   const { generateRealisticBotNames } = await import("../shared/realisticBotNames");
-  const botNameList = generateRealisticBotNames(count);
-  const bots = Array.from({ length: count }, (_, i) => ({
+  const botNameList = generateRealisticBotNames(normalizedCount);
+  const bots = Array.from({ length: normalizedCount }, (_, i) => ({
     rollRoomId: roomId, playerId: 0, isBot: 1,
     botNickname: botNameList[i] || `玩家${Math.floor(Math.random() * 9000) + 1000}`,
     botAvatar: "",
   }));
   await db.insert(rollParticipants).values(bots);
-  await db.update(rollRooms).set({ botCount: sql`botCount + ${count}` }).where(eq(rollRooms.id, roomId));
+  await db.update(rollRooms).set({
+    participantCount: sql`participantCount + ${normalizedCount}`,
+    botCount: sql`botCount + ${normalizedCount}`,
+  }).where(eq(rollRooms.id, roomId));
 }
 
 export async function drawRollRoom(roomId: number, designatedWinners?: { prizeId: number; playerId: number }[]) {
@@ -634,75 +662,100 @@ export async function drawRollRoom(roomId: number, designatedWinners?: { prizeId
   if (room[0].status === "ended") throw new Error("Roll房已结束");
   const prizes = await db.select().from(rollRoomPrizes).where(eq(rollRoomPrizes.rollRoomId, roomId));
   const participants = await db.select().from(rollParticipants).where(eq(rollParticipants.rollRoomId, roomId));
-  const prizeSlots: { prizeId: number; value: number; coinType: string }[] = [];
+  const prizeSlots: { slotKey: string; prizeId: number; value: number; coinType: string }[] = [];
   for (const p of prizes) {
     for (let i = 0; i < p.quantity; i++) {
-      prizeSlots.push({ prizeId: p.id, value: parseFloat(p.value as string), coinType: p.coinType });
+      prizeSlots.push({
+        slotKey: `${p.id}:${i}`,
+        prizeId: p.id,
+        value: parseFloat(p.value as string),
+        coinType: p.coinType,
+      });
     }
   }
   const realPlayers = participants.filter(p => p.isBot === 0);
-  const bots = participants.filter(p => p.isBot === 1);
   const shuffle = <T>(arr: T[]) => arr.sort(() => Math.random() - 0.5);
   const shuffledPrizes = shuffle([...prizeSlots]);
   const winners: { prizeId: number; playerId: number; isBot: number; nicknameSnapshot: string; isDesignated: number }[] = [];
-  const usedPlayerIds = new Set<number>();
-  let prizeIndex = 0;
+  const usedPrizeSlotKeys = new Set<string>();
+  const usedParticipantKeys = new Set<string>();
+  const wonRealPlayerIds = new Set<number>();
+  const roomTitle = room[0].title;
+  const getParticipantKey = (participant: typeof participants[number]) => participant.isBot === 1
+    ? `bot:${participant.id}`
+    : `player:${participant.playerId}`;
+  const realParticipantByPlayerId = new Map(realPlayers.map(player => [player.playerId, player]));
+
+  const assignWinner = async (participant: typeof participants[number], prizeSlot: typeof shuffledPrizes[number], isDesignated: number) => {
+    if (!participant || !prizeSlot) return false;
+    const participantKey = getParticipantKey(participant);
+    if (usedParticipantKeys.has(participantKey) || usedPrizeSlotKeys.has(prizeSlot.slotKey)) return false;
+
+    if (participant.isBot === 1) {
+      winners.push({
+        prizeId: prizeSlot.prizeId,
+        playerId: participant.playerId || 0,
+        isBot: 1,
+        nicknameSnapshot: participant.botNickname || "机器人",
+        isDesignated,
+      });
+    } else {
+      const playerInfo = await getPlayerById(participant.playerId);
+      winners.push({
+        prizeId: prizeSlot.prizeId,
+        playerId: participant.playerId,
+        isBot: 0,
+        nicknameSnapshot: playerInfo?.nickname ?? "",
+        isDesignated,
+      });
+      wonRealPlayerIds.add(participant.playerId);
+    }
+
+    usedParticipantKeys.add(participantKey);
+    usedPrizeSlotKeys.add(prizeSlot.slotKey);
+    return true;
+  };
+
   const storedDesignatedWinnerIds = (!designatedWinners || designatedWinners.length === 0)
     ? await getRollRoomDesignatedWinnerIds(roomId)
     : [];
+
   if (designatedWinners && designatedWinners.length > 0) {
-    for (const dw of designatedWinners) {
-      const prizeSlot = shuffledPrizes.find(p => p.prizeId === dw.prizeId && !winners.some(w => w.prizeId === dw.prizeId));
-      if (prizeSlot && !usedPlayerIds.has(dw.playerId)) {
-        const player = await getPlayerById(dw.playerId);
-        winners.push({ prizeId: dw.prizeId, playerId: dw.playerId, isBot: 0, nicknameSnapshot: player?.nickname ?? "", isDesignated: 1 });
-        usedPlayerIds.add(dw.playerId);
-      }
+    for (const designatedWinner of designatedWinners) {
+      const participant = realParticipantByPlayerId.get(designatedWinner.playerId);
+      if (!participant) continue;
+      const prizeSlot = shuffledPrizes.find(slot => slot.prizeId === designatedWinner.prizeId && !usedPrizeSlotKeys.has(slot.slotKey));
+      if (!prizeSlot) continue;
+      await assignWinner(participant, prizeSlot, 1);
     }
   } else if (storedDesignatedWinnerIds.length > 0) {
     for (const playerId of storedDesignatedWinnerIds) {
-      if (prizeIndex >= shuffledPrizes.length) break;
-      if (usedPlayerIds.has(playerId)) continue;
-      if (!realPlayers.some(player => player.playerId === playerId)) continue;
-      const prize = shuffledPrizes[prizeIndex];
-      if (!prize) break;
-      const player = await getPlayerById(playerId);
-      winners.push({ prizeId: prize.prizeId, playerId, isBot: 0, nicknameSnapshot: player?.nickname ?? "", isDesignated: 1 });
-      usedPlayerIds.add(playerId);
-      prizeIndex++;
+      const participant = realParticipantByPlayerId.get(playerId);
+      if (!participant) continue;
+      const prizeSlot = shuffledPrizes.find(slot => !usedPrizeSlotKeys.has(slot.slotKey));
+      if (!prizeSlot) break;
+      await assignWinner(participant, prizeSlot, 1);
     }
   }
-  const shuffledBots = shuffle([...bots]);
-  for (const bot of shuffledBots) {
-    if (prizeIndex >= shuffledPrizes.length) break;
-    const prize = shuffledPrizes[prizeIndex];
-    if (!prize || winners.some(w => w.prizeId === prize.prizeId)) { prizeIndex++; continue; }
-    winners.push({ prizeId: prize.prizeId, playerId: 0, isBot: 1, nicknameSnapshot: bot.botNickname, isDesignated: 0 });
-    prizeIndex++;
+
+  const remainingParticipants = shuffle(participants.filter(participant => !usedParticipantKeys.has(getParticipantKey(participant))));
+  for (const participant of remainingParticipants) {
+    const prizeSlot = shuffledPrizes.find(slot => !usedPrizeSlotKeys.has(slot.slotKey));
+    if (!prizeSlot) break;
+    await assignWinner(participant, prizeSlot, 0);
   }
-  const shuffledReal = shuffle([...realPlayers]);
-  for (const p of shuffledReal) {
-    if (prizeIndex >= shuffledPrizes.length) break;
-    if (usedPlayerIds.has(p.playerId)) continue;
-    const prize = shuffledPrizes[prizeIndex];
-    if (!prize) break;
-    const playerInfo = await getPlayerById(p.playerId);
-    winners.push({ prizeId: prize.prizeId, playerId: p.playerId, isBot: 0, nicknameSnapshot: playerInfo?.nickname ?? "", isDesignated: 0 });
-    usedPlayerIds.add(p.playerId);
-    prizeIndex++;
-  }
+
   if (winners.length > 0) {
     await db.insert(rollWinners).values(winners.map(w => ({ ...w, rollRoomId: roomId })));
   }
   const formatRollPrizeValue = (value: unknown) => `${Number.parseFloat(String(value ?? 0)).toFixed(2)}`;
-  const buildRollWinMessage = (roomTitle: string, prizeName: string, prizeValue: unknown, appendedText: string = "") => {
+  const buildRollWinMessage = (roomTitleText: string, prizeName: string, prizeValue: unknown, appendedText: string = "") => {
     const suffix = appendedText ? `，${appendedText}` : "";
-    return `恭喜您，您在ROLL房活动《${roomTitle}》获得${prizeName}，价值：${formatRollPrizeValue(prizeValue)}。${suffix}`;
+    return `恭喜您，您在ROLL房活动《${roomTitleText}》获得${prizeName}，价值：${formatRollPrizeValue(prizeValue)}。${suffix}`;
   };
   let actualPaidValue = 0;
   let actualPaidCount = 0;
   for (const w of winners) {
-    const roomTitle = room[0].title;
     if (w.isBot || w.playerId === 0) continue;
     const prizeInfo = prizes.find(p => p.id === w.prizeId);
     if (!prizeInfo) continue;
@@ -711,15 +764,12 @@ export async function drawRollRoom(roomId: number, designatedWinners?: { prizeId
     actualPaidCount++;
 
     if ((prizeInfo as any).prizeType === 'item') {
-      // 道具奖品：写入玩家背包
-      // 先尝试在 items 表中查找同名道具
       let existingItem = await db.select().from(items)
         .where(eq(items.name, prizeInfo.name)).limit(1);
       let itemId: number;
       if (existingItem.length > 0) {
         itemId = existingItem[0].id;
       } else {
-        // 创建新道具记录
         const inserted = await db.insert(items).values({
           name: prizeInfo.name,
           imageUrl: prizeInfo.imageUrl || '',
@@ -731,7 +781,6 @@ export async function drawRollRoom(roomId: number, designatedWinners?: { prizeId
         });
         itemId = (inserted as any).insertId;
       }
-      // 写入玩家背包
       const rollRecycleValue = String(parseFloat(String(prizeInfo.value || '0')).toFixed(2));
       await db.insert(playerItems).values({
         playerId: w.playerId,
@@ -762,10 +811,10 @@ export async function drawRollRoom(roomId: number, designatedWinners?: { prizeId
       });
     }
   }
-  for (const p of realPlayers) {
-    if (!usedPlayerIds.has(p.playerId)) {
+  for (const participant of realPlayers) {
+    if (!wonRealPlayerIds.has(participant.playerId)) {
       await db.insert(messages).values({
-        playerId: p.playerId, title: "ROLL房参与结果",
+        playerId: participant.playerId, title: "ROLL房参与结果",
         content: `很遗憾，您在ROLL房活动《${roomTitle}》没有获得奖品。`,
         type: "roll", refId: roomId,
       });

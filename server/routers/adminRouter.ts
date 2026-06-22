@@ -288,6 +288,7 @@ export const adminRouter = router({
       ownerId: z.number().optional(),
       threshold: z.number().default(0),
       maxParticipants: z.number().default(0),
+      botCount: z.number().int().min(0).default(0),
       startAt: z.string(),
       endAt: z.string(),
       prizes: z.array(z.object({
@@ -326,10 +327,13 @@ export const adminRouter = router({
         return new Date(`${value}:00+08:00`);
       };
       const roomId = await createRollRoom({
-        title: input.title, avatarUrl,
+        title: input.title,
+        avatarUrl,
         ownerId: input.ownerId || null,
-        threshold: input.threshold.toFixed(2) as any,
+        threshold: input.threshold,
         maxParticipants: input.maxParticipants,
+        botCount: input.botCount,
+        status: "pending",
         startAt: parseBeijingDateTime(input.startAt),
         endAt: parseBeijingDateTime(input.endAt),
         createdBy: ctx.user.openId,

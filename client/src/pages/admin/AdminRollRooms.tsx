@@ -333,6 +333,7 @@ function CreateRollRoomModal({ onClose, onSuccess, t }: { onClose: () => void; o
       endAt: toBeijingIsoString(form.endTime),
       threshold: parseFloat(form.threshold),
       maxParticipants: 0,
+      botCount: Math.max(0, parseInt(form.botCount || '0', 10) || 0),
       designatedWinnerIds: [...new Set(designatedWinnerIds)],
       prizes: validPrizes.map(p => ({ name: p.name, value: parseFloat(p.amount), quantity: parseInt(p.quantity) || 1, coinType: (form.exchangeType === 'gold' ? 'gold' : 'shopCoin') as 'shopCoin' | 'gold', imageBase64: undefined, imageUrl: p.imageUrl || undefined, prizeType: 'coin' as const, itemCategory: 'roll' })),
     });
