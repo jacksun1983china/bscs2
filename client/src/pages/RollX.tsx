@@ -65,7 +65,7 @@ const CYBER = {
 // ── 原版倍率档位（从小到大，对应滑动条 0~21）──────────────────
 const BOARD_X_VALUES = [1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30];
 
-// ── 投注档位（前端显示值，实际发送后端时 ×100）───────────────
+// ── 投注档位（前端显示值与实际提交金额保持一致）───────────────
 const BET_VALUES = [1, 2, 5, 10, 20, 30, 50, 70, 100, 150, 200, 300, 400, 500, 700, 1000, 2000, 3000, 4000, 5000, 8000, 10000];
 
 // ── 计算绿色扇区角度 ──────────────────────────────────────────
@@ -105,7 +105,7 @@ export default function RollX() {
 
   const multiplier = BOARD_X_VALUES[coeffIndex];
   const betAmountDisplay = BET_VALUES[betIndex];
-  const betAmount = betAmountDisplay * 100;
+  const betAmount = betAmountDisplay;
 
   const [isSpinning, setIsSpinning] = useState(false);
   const [result, setResult] = useState<{ isWin: boolean; winAmount: number; netAmount: number; balanceAfter: number; multiplier: number; betAmount: number } | null>(null);
