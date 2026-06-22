@@ -827,10 +827,15 @@ export default function ArenaRoom() {
         // 重置实时游戏标记
         liveGameActiveRef.current = false;
         liveRoundsReceivedRef.current = 0;
+        const isDraw = !!(msg.isDraw);
         const overData = {
-          winnerId: msg.winnerId as number,
-          isDraw: !!(msg.isDraw),
-          players: (msg.players as any[]).map((p: any) => ({ ...p, isDraw: !!(msg.isDraw) })),
+          winnerId: isDraw ? 0 : (msg.winnerId as number),
+          isDraw,
+          players: (msg.players as any[]).map((p: any) => ({
+            ...p,
+            isWinner: isDraw ? false : !!p.isWinner,
+            isDraw,
+          })),
         };
         refetchRoom();
         utils.player.inventory.invalidate();
@@ -2071,7 +2076,7 @@ export default function ArenaRoom() {
 
         {/* 游戏结束展示 */}
         {gameStatus === 'finished' && gameOverData && (() => {
-          const winner = gameOverData.players.find((p) => p.isWinner);
+          const winner = gameOverData.isDraw ? undefined : gameOverData.players.find((p) => p.isWinner);
           const sortedPlayers = [...gameOverData.players].sort((a, b) => a.seatNo - b.seatNo);
           return (
             <div style={{
@@ -2103,8 +2108,29 @@ export default function ArenaRoom() {
                   const myData = gameOverData?.players.find((p) => p.playerId === myPlayerId);
                   if (!myData) return null;
                   const itemCount = totalRounds;
+                  // 平局提示
+                  if (gameOverData?.isDraw) {
+                    return (
+                      <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: q(8),
+                        marginTop: q(10),
+                        background: 'rgba(156,163,175,0.12)',
+                        border: '1px solid rgba(156,163,175,0.35)',
+                        borderRadius: q(20),
+                        padding: `${q(6)} ${q(20)}`,
+                        boxShadow: '0 0 12px rgba(156,163,175,0.15)',
+                      }}>
+                        <span style={{ fontSize: q(28) }}>🤝</span>
+                        <span style={{ color: '#d1d5db', fontSize: q(22), fontWeight: 700 }}>
+                          平局，本局道具已原样返回背包
+                        </span>
+                      </div>
+                    );
+                  }
                   // 输家专属提示
-                  if (!myData.isWinner && !gameOverData?.isDraw) {
+                  if (!myData.isWinner) {
                     return (
                       <div style={{
                         display: 'inline-flex',
@@ -2146,25 +2172,7 @@ export default function ArenaRoom() {
                       </div>
                     );
                   }
-                  // 平局提示
-                  return (
-                    <div style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: q(8),
-                      marginTop: q(10),
-                      background: 'rgba(34,197,94,0.15)',
-                      border: '1px solid rgba(34,197,94,0.4)',
-                      borderRadius: q(20),
-                      padding: `${q(6)} ${q(20)}`,
-                      boxShadow: '0 0 12px rgba(34,197,94,0.2)',
-                    }}>
-                      <span style={{ fontSize: q(28) }}>🎒</span>
-                      <span style={{ color: '#22c55e', fontSize: q(22), fontWeight: 700 }}>
-                        {itemCount} 件道具已入背包
-                      </span>
-                    </div>
-                  );
+                  return null;
                 })()}
               </div>
               <div style={{ display: 'flex', gap: q(12) }}>
@@ -2195,7 +2203,7 @@ export default function ArenaRoom() {
                       background: badgeBg,
                       borderRadius: q(20), padding: `${q(4)} ${q(16)}`,
                       color: '#fff', fontSize: q(20), fontWeight: 800,
-                      whiteSpace: 'nowrap', boxShadow: p.isWinner ? '0 2px 12px rgba(245,200,66,0.5)' : 'none',
+                      whiteSpace: 'nowrap', boxShadow: pDraw ? 'none' : p.isWinner ? '0 2px 12px rgba(245,200,66,0.5)' : 'none',
                     }}>
                       {badgeText}
                     </div>
