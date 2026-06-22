@@ -520,6 +520,8 @@ async function checkAndFillRooms() {
           nickname: bot.nickname,
           avatar: bot.avatar,
           seatNo,
+          payGold: entryFee.toFixed(2),
+          payDiamond: '0.00',
         });
 
         console.log(`[ArenaBot] 机器人 ${bot.nickname}(id=${bot.id}) 加入房间 #${freshRoom.roomNo}，座位 ${seatNo}，人数 ${currentCount}/${freshRoom.maxPlayers}`);
@@ -685,6 +687,8 @@ async function ensureBotRooms() {
           nickname: bot.nickname || '机器人',
           avatar: bot.avatar || '001',
           seatNo: 1,
+          payGold: entryFee.toFixed(2),
+          payDiamond: '0.00',
         });
       } catch (err) {
         if (roomId > 0) {

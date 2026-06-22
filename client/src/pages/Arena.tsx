@@ -84,6 +84,8 @@ function CreateRoomModal({ onClose, onCreated, preset }: CreateRoomModalProps) {
   // 获取玩家当前余额
   const { data: playerInfo } = trpc.player.me.useQuery(undefined, { staleTime: 30_000 });
   const myGold = parseFloat((playerInfo as any)?.gold ?? '0');
+  const myDiamond = parseFloat((playerInfo as any)?.diamond ?? '0');
+  const totalBalance = myGold + myDiamond;
 
   const { data: categories } = trpc.sku.categoryList.useQuery(undefined, { staleTime: 60_000 });
   const [activeCat, setActiveCat] = useState<number | null>(null);
@@ -149,7 +151,8 @@ function CreateRoomModal({ onClose, onCreated, preset }: CreateRoomModalProps) {
     return sum + parseFloat(box.price ?? '0') * (boxCounts[box.id] ?? 0);
   }, 0);
 
-  const insufficientGold = totalSelected > 0 && myGold < totalFee;
+  const diamondSupplement = Math.max(0, totalFee - myGold);
+  const insufficientBalance = totalSelected > 0 && totalBalance < totalFee;
 
   return (
     <div
@@ -376,9 +379,9 @@ function CreateRoomModal({ onClose, onCreated, preset }: CreateRoomModalProps) {
             <div style={{ display: 'flex', alignItems: 'center', gap: q(16) }}>
               <div style={{ color: '#9ca3af', fontSize: q(22) }}>
                 当前余额：
-                <span style={{ color: myGold >= totalFee ? '#ffd700' : '#f87171', fontWeight: 700 }}>
-                  {myGold.toFixed(0)}
-                </span> 金币
+                <span style={{ color: totalBalance >= totalFee ? '#ffd700' : '#f87171', fontWeight: 700 }}>
+                  {myGold.toFixed(0)} 平台币 / {myDiamond.toFixed(0)} 商城币
+                </span>
               </div>
               {totalSelected > 0 && (
                 <div style={{ color: '#9ca3af', fontSize: q(22) }}>
@@ -387,9 +390,11 @@ function CreateRoomModal({ onClose, onCreated, preset }: CreateRoomModalProps) {
                 </div>
               )}
             </div>
-            {insufficientGold && (
-              <div style={{ color: '#f87171', fontSize: q(22), fontWeight: 600 }}>💰 余额不足</div>
-            )}
+            {insufficientBalance ? (
+              <div style={{ color: '#f87171', fontSize: q(22), fontWeight: 600 }}>💰 总余额不足</div>
+            ) : diamondSupplement > 0 ? (
+              <div style={{ color: '#f59e0b', fontSize: q(20), fontWeight: 600 }}>将自动补扣 {diamondSupplement.toFixed(0)} 商城币</div>
+            ) : null}
           </div>
           {/* 错误提示 */}
           {error && <div style={{ color: '#f87171', fontSize: q(22), marginBottom: q(8) }}>{error}</div>}
@@ -397,26 +402,26 @@ function CreateRoomModal({ onClose, onCreated, preset }: CreateRoomModalProps) {
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button
               onClick={() => {
-                if (totalSelected === 0) { setError('请至少选择1个宝笱'); return; }
-                if (insufficientGold) { setError(`金币不足，需要 ${totalFee.toFixed(0)} 金币，当前 ${myGold.toFixed(0)} 金币`); return; }
+                if (totalSelected === 0) { setError('请至少选择1个宝箱'); return; }
+                if (insufficientBalance) { setError(`余额不足，需要 ${totalFee.toFixed(0)}，当前平台币 ${myGold.toFixed(0)}，商城币 ${myDiamond.toFixed(0)}`); return; }
                 setError('');
                 createRoom.mutate({ maxPlayers, boxIds: selectedBoxIds });
               }}
-              disabled={createRoom.isPending || insufficientGold}
+              disabled={createRoom.isPending || insufficientBalance}
               style={{
                 padding: `${q(14)} ${q(36)}`,
-                background: insufficientGold
+                background: insufficientBalance
                   ? 'rgba(120,60,220,0.2)'
                   : 'linear-gradient(135deg,#7c3aed,#c084fc)',
-                border: insufficientGold ? '1.5px solid rgba(120,60,220,0.3)' : 'none',
+                border: insufficientBalance ? '1.5px solid rgba(120,60,220,0.3)' : 'none',
                 borderRadius: q(10),
-                color: insufficientGold ? '#6b7280' : '#fff',
+                color: insufficientBalance ? '#6b7280' : '#fff',
                 fontSize: q(28), fontWeight: 700,
-                cursor: insufficientGold ? 'not-allowed' : 'pointer',
+                cursor: insufficientBalance ? 'not-allowed' : 'pointer',
                 opacity: createRoom.isPending ? 0.6 : 1,
               }}
             >
-              {createRoom.isPending ? '创建中...' : insufficientGold ? '余额不足' : '创建房间'}
+              {createRoom.isPending ? '创建中...' : insufficientBalance ? '余额不足' : '创建房间'}
             </button>
           </div>
         </div>

@@ -5,11 +5,12 @@
  * 并退还所有参与者的入场费。
  */
 
-import { getDb, insertGoldLog } from "./db";
-import { arenaRooms, arenaRoomPlayers, players } from "../drizzle/schema";
+import { getDb } from "./db";
+import { arenaRooms, arenaRoomPlayers } from "../drizzle/schema";
 import { eq, and, lt } from "drizzle-orm";
 import { broadcastRoomCancelled, broadcastRoomListUpdate } from "./arenaSSE";
 import { cleanupBotOnlyArenaRoom, getRealArenaPlayerIdSet } from "./arenaPersistence";
+import { getArenaRefundBreakdown, refundArenaBreakdown } from "./arenaCoinUtils";
 
 const TIMEOUT_MS = 10 * 60 * 1000; // 10 分钟
 const SCAN_INTERVAL_MS = 2 * 60 * 1000; // 每 2 分钟扫描一次
@@ -74,27 +75,14 @@ async function closeTimeoutRooms() {
 
         // 退还入场费给所有参与者
         for (const rp of roomPlayers) {
-          const [player] = await db
-            .select()
-            .from(players)
-            .where(eq(players.id, rp.playerId));
-
-          if (player && entryFee > 0) {
-            const newGold = (parseFloat(player.gold ?? "0") + entryFee).toFixed(2);
-            await db
-              .update(players)
-              .set({ gold: newGold })
-              .where(eq(players.id, rp.playerId));
-            if (hasRealPlayers && realPlayerIdSet.has(rp.playerId)) {
-              await insertGoldLog(
-                rp.playerId,
-                entryFee,
-                parseFloat(newGold),
-                "arena",
-                `竞技场房间超时退款（房间 #${room.roomNo}）`
-              );
-            }
-          }
+          const breakdown = getArenaRefundBreakdown(rp, entryFee);
+          await refundArenaBreakdown(
+            db,
+            rp.playerId,
+            breakdown,
+            `竞技场房间超时退款（房间 #${room.roomNo}）`,
+            hasRealPlayers && realPlayerIdSet.has(rp.playerId),
+          );
         }
 
         if (hasRealPlayers) {

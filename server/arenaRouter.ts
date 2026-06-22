@@ -19,7 +19,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, publicProcedure } from "./_core/trpc";
-import { getDb, insertGoldLog } from "./db";
+import { getDb } from "./db";
 import {
   arenaRooms,
   arenaRoomPlayers,
@@ -41,6 +41,13 @@ import {
 } from "./arenaSSE";
 import { cleanupBotOnlyArenaRoom, getRealArenaPlayerIdSet } from "./arenaPersistence";
 import { insertArenaRoomWithUniqueNo } from "./arenaRoomNo";
+import {
+  applyArenaCoinPlan,
+  buildArenaCoinPlan,
+  getArenaRefundBreakdown,
+  refundArenaBreakdown,
+  rollbackArenaCoinPlan,
+} from "./arenaCoinUtils";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
 const PLAYER_COOKIE = "bdcs2_player_token";
@@ -297,18 +304,8 @@ export const arenaRouter = router({
       // 按照 input.boxIds 顺序构建宝箱列表（允许重复）
       const boxMap = new Map(boxRows.map((b) => [b.id, b]));
       const entryFee = input.boxIds.reduce((s, bid) => s + parseFloat(boxMap.get(bid)?.price ?? '0'), 0);
-      // 检查金币余额
-      const gold = parseFloat(player.gold ?? "0");
-      if (gold < entryFee) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: `金币不足，需要 ${entryFee} 金币` });
-      }
-      // 扣除金币
-      await db
-        .update(players)
-        .set({ gold: (gold - entryFee).toFixed(2) })
-        .where(eq(players.id, session.playerId));
-      // 记录金币日志（创建竞技场房间入场费）
-      await insertGoldLog(session.playerId, -entryFee, gold - entryFee, 'arena', `竞技场入场费（创建房间）`);
+      const coinPlan = buildArenaCoinPlan(player, entryFee);
+      await applyArenaCoinPlan(db, session.playerId, coinPlan, '创建房间');
       let roomNo = "";
       let roomId = 0;
       try {
@@ -337,17 +334,15 @@ export const arenaRouter = router({
           nickname: player.nickname || player.phone,
           avatar: player.avatar || "001",
           seatNo: 1,
+          payGold: coinPlan.goldUsed.toFixed(2),
+          payDiamond: coinPlan.diamondUsed.toFixed(2),
         });
       } catch (err) {
         if (roomId > 0) {
           await db.delete(arenaRoomPlayers).where(eq(arenaRoomPlayers.roomId, roomId));
           await db.delete(arenaRooms).where(eq(arenaRooms.id, roomId));
         }
-        await db
-          .update(players)
-          .set({ gold: gold.toFixed(2) })
-          .where(eq(players.id, session.playerId));
-        await insertGoldLog(session.playerId, entryFee, gold, "arena", "竞技场创建失败退款");
+        await rollbackArenaCoinPlan(db, session.playerId, coinPlan, '创建房间失败退款');
         console.error(`[Arena] 玩家 ${session.playerId} 创建房间失败，已执行退款回滚`, err);
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "创建竞技场房间失败，请稍后重试" });
       }
@@ -393,8 +388,7 @@ export const arenaRouter = router({
       if (roomInfo.currentPlayers >= roomInfo.maxPlayers) throw new TRPCError({ code: "BAD_REQUEST", message: "房间已满" });
 
       const entryFee = parseFloat(roomInfo.entryFee);
-      const gold = parseFloat(player.gold ?? "0");
-      if (gold < entryFee) throw new TRPCError({ code: "BAD_REQUEST", message: `金币不足，需要 ${entryFee} 金币` });
+      const coinPlan = buildArenaCoinPlan(player, entryFee);
 
       // 原子占座（并发安全）
       // 注意：MySQL UPDATE SET 从左到右执行，后面的表达式看到的是已更新的值
@@ -425,17 +419,11 @@ export const arenaRouter = router({
         nickname: player.nickname || player.phone,
         avatar: player.avatar || "001",
         seatNo,
+        payGold: coinPlan.goldUsed.toFixed(2),
+        payDiamond: coinPlan.diamondUsed.toFixed(2),
       });
 
-      // 扣除金币
-      await db
-        .update(players)
-        .set({ gold: (gold - entryFee).toFixed(2) })
-        .where(eq(players.id, session.playerId));
-
-      // 记录金币日志
-      const goldAfterJoin = parseFloat((await (await getDb())!.select().from(players).where(eq(players.id, session.playerId)).then(r => r[0]?.gold ?? '0')));
-      await insertGoldLog(session.playerId, -entryFee, goldAfterJoin, 'arena', `竞技场入场费（加入座位）`);
+      await applyArenaCoinPlan(db, session.playerId, coinPlan, '加入座位');
 
       // 广播玩家加入事件
       broadcastPlayerJoined(
@@ -584,15 +572,14 @@ export const arenaRouter = router({
       const hasRealPlayers = realPlayerIdSet.size > 0;
       const entryFee = parseFloat(room.entryFee);
       for (const rp of roomPlayers) {
-        const [p] = await db.select().from(players).where(eq(players.id, rp.playerId));
-        if (p) {
-          const newGold = (parseFloat(p.gold ?? "0") + entryFee).toFixed(2);
-          await db.update(players).set({ gold: newGold }).where(eq(players.id, rp.playerId));
-          // 含真人参与的房间继续保留日志，但机器人账号本身不再写退款日志
-          if (hasRealPlayers && realPlayerIdSet.has(rp.playerId)) {
-            await insertGoldLog(rp.playerId, entryFee, parseFloat(newGold), 'arena', `竞技场房间取消退款`);
-          }
-        }
+        const breakdown = getArenaRefundBreakdown(rp, entryFee);
+        await refundArenaBreakdown(
+          db,
+          rp.playerId,
+          breakdown,
+          '竞技场房间取消退款',
+          hasRealPlayers && realPlayerIdSet.has(rp.playerId),
+        );
       }
       await db.update(arenaRooms).set({ status: "cancelled" }).where(eq(arenaRooms.id, input.roomId));
       broadcastRoomCancelled(input.roomId);

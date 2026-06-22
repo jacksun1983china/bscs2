@@ -850,6 +850,10 @@ export const arenaRoomPlayers = mysqlTable("arenaRoomPlayers", {
   avatar: varchar("avatar", { length: 512 }).notNull().default("001"),
   /** 座位号（1/2/3） */
   seatNo: tinyint("seatNo").notNull().default(1),
+  /** 创建/加入竞技场时实际扣除的平台币 */
+  payGold: decimal("payGold", { precision: 15, scale: 2 }).notNull().default("0.00"),
+  /** 创建/加入竞技场时实际扣除的商城币 */
+  payDiamond: decimal("payDiamond", { precision: 15, scale: 2 }).notNull().default("0.00"),
   /** 该玩家所有轮次获得物品总价值 */
   totalValue: decimal("totalValue", { precision: 15, scale: 2 }).notNull().default("0.00"),
   /** 是否赢家 */
