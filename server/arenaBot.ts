@@ -29,6 +29,7 @@ import {
   broadcastRoomListUpdate,
 } from "./arenaSSE";
 import { cleanupBotOnlyArenaRoom, getRealArenaPlayerIdSet } from "./arenaPersistence";
+import { insertArenaRoomWithUniqueNo } from "./arenaRoomNo";
 // ── 配置 ────────────────────────────────────────────────────────────────────────
 const BOT_CHECK_INTERVAL = 8000;   // 每8秒检测一次
 const BOT_WAIT_THRESHOLD = 10;     // 等待超过10秒派机器人（秒）
@@ -564,11 +565,6 @@ async function checkAndFillRooms() {
 
 // ── 机器人自动开房逻辑 ──────────────────────────────────────────────────────
 
-/** 生成6位随机房间号 */
-function genBotRoomNo(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-
 /** 按权重随机选择一个价格段 */
 function pickPriceTier(): number {
   const totalWeight = BOT_ROOM_PRICE_WEIGHTS.reduce((s, t) => s + t.weight, 0);
@@ -661,14 +657,12 @@ async function ensureBotRooms() {
         .set({ gold: newBotGold })
         .where(eq(players.id, bot.id));
 
-      // 7. 创建房间：房间号存在并发碰撞概率，插入时遇到唯一键冲突则自动重试
       let roomNo = '';
       let roomId = 0;
-      for (let j = 0; j < 20; j++) {
-        roomNo = genBotRoomNo();
-        try {
-          const [insertResult] = await db.insert(arenaRooms).values({
-            roomNo,
+      try {
+        const insertResult = await insertArenaRoomWithUniqueNo(
+          db,
+          {
             creatorId: bot.id,
             creatorNickname: bot.nickname || '机器人',
             creatorAvatar: bot.avatar || '001',
@@ -678,31 +672,32 @@ async function ensureBotRooms() {
             entryFee: entryFee.toFixed(2),
             boxIds: JSON.stringify(selectedBoxIds),
             status: 'waiting',
-          });
-          roomId = (insertResult as any).insertId as number;
-          break;
-        } catch (err: any) {
-          const duplicateCode = err?.cause?.code ?? err?.code;
-          const duplicateMsg = String(err?.cause?.sqlMessage ?? err?.message ?? '');
-          const normalizedDuplicateMsg = duplicateMsg.toLowerCase();
-          const isRoomNoDuplicate = duplicateCode === 'ER_DUP_ENTRY' && (
-            normalizedDuplicateMsg.includes('arenarooms_roomno_unique') ||
-            normalizedDuplicateMsg.includes('roomno') ||
-            normalizedDuplicateMsg.includes('duplicate entry')
-          );
-          if (!isRoomNoDuplicate || j === 19) throw err;
-          console.warn(`[ArenaBot] 房间号 ${roomNo} 撞号，自动重试第 ${j + 1} 次: ${duplicateMsg}`);
-        }
-      }
+          },
+          { logPrefix: `[ArenaBot] 机器人 ${bot.id}` }
+        );
+        roomNo = insertResult.roomNo;
+        roomId = insertResult.roomId;
 
-      // 9. 添加机器人为参与者（座位1）
-      await db.insert(arenaRoomPlayers).values({
-        roomId,
-        playerId: bot.id,
-        nickname: bot.nickname || '机器人',
-        avatar: bot.avatar || '001',
-        seatNo: 1,
-      });
+        // 9. 添加机器人为参与者（座位1）
+        await db.insert(arenaRoomPlayers).values({
+          roomId,
+          playerId: bot.id,
+          nickname: bot.nickname || '机器人',
+          avatar: bot.avatar || '001',
+          seatNo: 1,
+        });
+      } catch (err) {
+        if (roomId > 0) {
+          await db.delete(arenaRoomPlayers).where(eq(arenaRoomPlayers.roomId, roomId));
+          await db.delete(arenaRooms).where(eq(arenaRooms.id, roomId));
+        }
+        await db
+          .update(players)
+          .set({ gold: botGold.toFixed(2) })
+          .where(eq(players.id, bot.id));
+        console.error(`[ArenaBot] 机器人 ${bot.id} 创建房间失败，已执行金币回滚`, err);
+        throw err;
+      }
 
       console.log(`[ArenaBot] 机器人 ${bot.nickname} 创建房间 #${roomNo}（${maxPlayers}人场 ${rounds}轮 入场费¥${entryFee.toFixed(2)}）`);
 

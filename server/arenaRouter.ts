@@ -40,6 +40,7 @@ import {
   broadcastRoomCancelled,
 } from "./arenaSSE";
 import { cleanupBotOnlyArenaRoom, getRealArenaPlayerIdSet } from "./arenaPersistence";
+import { insertArenaRoomWithUniqueNo } from "./arenaRoomNo";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "bdcs2-secret-key-2025");
 const PLAYER_COOKIE = "bdcs2_player_token";
@@ -56,11 +57,6 @@ async function getPlayerFromCookie(req: any): Promise<{ playerId: number; phone:
   } catch {
     return null;
   }
-}
-
-/** 生成6位随机房间号 */
-function genRoomNo(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 /** 根据概率权重随机抽取一个 boxGoods */
@@ -313,14 +309,12 @@ export const arenaRouter = router({
         .where(eq(players.id, session.playerId));
       // 记录金币日志（创建竞技场房间入场费）
       await insertGoldLog(session.playerId, -entryFee, gold - entryFee, 'arena', `竞技场入场费（创建房间）`);
-      // 创建房间：房间号存在并发碰撞概率，插入时遇到唯一键冲突则自动重试
       let roomNo = "";
       let roomId = 0;
-      for (let i = 0; i < 20; i++) {
-        roomNo = genRoomNo();
-        try {
-          const [insertResult] = await db.insert(arenaRooms).values({
-            roomNo,
+      try {
+        const insertResult = await insertArenaRoomWithUniqueNo(
+          db,
+          {
             creatorId: session.playerId,
             creatorNickname: player.nickname || player.phone,
             creatorAvatar: player.avatar || "001",
@@ -330,30 +324,33 @@ export const arenaRouter = router({
             entryFee: entryFee.toFixed(2),
             boxIds: JSON.stringify(input.boxIds),
             status: "waiting",
-          });
-          roomId = (insertResult as any).insertId as number;
-          break;
-        } catch (err: any) {
-          const duplicateCode = err?.cause?.code ?? err?.code;
-          const duplicateMsg = String(err?.cause?.sqlMessage ?? err?.message ?? "");
-          const normalizedDuplicateMsg = duplicateMsg.toLowerCase();
-          const isRoomNoDuplicate = duplicateCode === "ER_DUP_ENTRY" && (
-            normalizedDuplicateMsg.includes("arenarooms_roomno_unique") ||
-            normalizedDuplicateMsg.includes("roomno") ||
-            normalizedDuplicateMsg.includes("duplicate entry")
-          );
-          if (!isRoomNoDuplicate || i === 19) throw err;
-          console.warn(`[Arena] 房间号 ${roomNo} 撞号，自动重试第 ${i + 1} 次: ${duplicateMsg}`);
+          },
+          { logPrefix: `[Arena] 玩家 ${session.playerId}` }
+        );
+        roomNo = insertResult.roomNo;
+        roomId = insertResult.roomId;
+
+        // 添加创建者为参与者（座位1）
+        await db.insert(arenaRoomPlayers).values({
+          roomId,
+          playerId: session.playerId,
+          nickname: player.nickname || player.phone,
+          avatar: player.avatar || "001",
+          seatNo: 1,
+        });
+      } catch (err) {
+        if (roomId > 0) {
+          await db.delete(arenaRoomPlayers).where(eq(arenaRoomPlayers.roomId, roomId));
+          await db.delete(arenaRooms).where(eq(arenaRooms.id, roomId));
         }
+        await db
+          .update(players)
+          .set({ gold: gold.toFixed(2) })
+          .where(eq(players.id, session.playerId));
+        await insertGoldLog(session.playerId, entryFee, gold, "arena", "竞技场创建失败退款");
+        console.error(`[Arena] 玩家 ${session.playerId} 创建房间失败，已执行退款回滚`, err);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "创建竞技场房间失败，请稍后重试" });
       }
-      // 添加创建者为参与者（座位1）
-      await db.insert(arenaRoomPlayers).values({
-        roomId,
-        playerId: session.playerId,
-        nickname: player.nickname || player.phone,
-        avatar: player.avatar || "001",
-        seatNo: 1,
-      });
       // 广播房间列表更新
       const summaries = await fetchRoomSummaries();
       broadcastRoomListUpdate(summaries);
