@@ -56,8 +56,13 @@ const trpcClient = trpc.createClient({
       transformer: superjson,
       fetch(input, init) {
         const headers = new Headers((init as any)?.headers);
-        // 从 localStorage 读取 admin token，通过 Authorization header 传递
-        const adminToken = localStorage.getItem('bdcs2_admin_token');
+        // 管理后台优先依赖 cookie；本地 token 仅作可选兜底，移动端存储异常时也不能阻断请求
+        let adminToken: string | null = null;
+        try {
+          adminToken = globalThis.localStorage?.getItem('bdcs2_admin_token') ?? null;
+        } catch {
+          adminToken = null;
+        }
         if (adminToken) {
           headers.set('Authorization', `Bearer ${adminToken}`);
         }

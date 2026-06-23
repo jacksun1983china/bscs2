@@ -522,6 +522,22 @@ function PlayerDetailModal({
   );
 }
 
+function safeAdminStorageSet(key: string, value: string) {
+  try {
+    globalThis.localStorage?.setItem(key, value);
+  } catch {
+    // 某些移动端浏览器 / WebView / 无痕模式可能禁用本地存储，不应影响登录流程
+  }
+}
+
+function safeAdminStorageRemove(key: string) {
+  try {
+    globalThis.localStorage?.removeItem(key);
+  } catch {
+    // 忽略本地存储不可用场景
+  }
+}
+
 // ── 登录页 ──────────────────────────────────────────────────────
 function AdminLogin({ onLogin, t, lang, setLang }: {
   onLogin: (account: string) => void;
@@ -536,10 +552,10 @@ function AdminLogin({ onLogin, t, lang, setLang }: {
 
   const loginMutation = trpc.admin.login.useMutation({
     onSuccess: (data) => {
-      localStorage.setItem('bdcs2_admin_session', JSON.stringify({ account: data.account, loginAt: Date.now() }));
-      // 存储 token 到 localStorage，通过 Authorization header 传递（解决代理环境 cookie 丢失问题）
+      safeAdminStorageSet('bdcs2_admin_session', JSON.stringify({ account: data.account, loginAt: Date.now() }));
+      // token 仅作为可选兜底缓存；即使本地存储不可用，也必须允许仅依赖 cookie 完成登录
       if ((data as any).token) {
-        localStorage.setItem('bdcs2_admin_token', (data as any).token);
+        safeAdminStorageSet('bdcs2_admin_token', (data as any).token);
       }
       onLogin(data.account);
       toast.success(lang === 'zh' ? '登录成功' : 'Login successful');
@@ -765,13 +781,14 @@ export default function AdminDashboard() {
     if (!verifyQuery.isSuccess && !verifyQuery.isError) return;
 
     if (verifyQuery.data?.valid) {
-      // 后端cookie有效，更新localStorage和登录状态
+      // 后端 cookie 有效时，仅将本地缓存作为可选辅助，不依赖它决定登录是否成立
       const account = verifyQuery.data.account || 'admin';
-      localStorage.setItem('bdcs2_admin_session', JSON.stringify({ account, loginAt: Date.now() }));
+      safeAdminStorageSet('bdcs2_admin_session', JSON.stringify({ account, loginAt: Date.now() }));
       setAdminAccount(account);
     } else if (!adminAccount) {
-      // 后端cookie失效，且当前没有通过登录表单登录，才清除
-      localStorage.removeItem('bdcs2_admin_session');
+      // 后端会话失效时清理可选缓存
+      safeAdminStorageRemove('bdcs2_admin_session');
+      safeAdminStorageRemove('bdcs2_admin_token');
       setAdminAccount(null);
     }
     setSessionChecked(true);
@@ -779,15 +796,15 @@ export default function AdminDashboard() {
 
   const logoutMutation = trpc.admin.logout.useMutation({
     onSuccess: () => {
-      localStorage.removeItem('bdcs2_admin_session');
-      localStorage.removeItem('bdcs2_admin_token');
+      safeAdminStorageRemove('bdcs2_admin_session');
+      safeAdminStorageRemove('bdcs2_admin_token');
       setAdminAccount(null);
       toast.success(lang === 'zh' ? '已退出登录' : 'Logged out');
     },
     onError: () => {
-      // 即使服务端失败，也清除本地session
-      localStorage.removeItem('bdcs2_admin_session');
-      localStorage.removeItem('bdcs2_admin_token');
+      // 即使服务端失败，也清除本地缓存
+      safeAdminStorageRemove('bdcs2_admin_session');
+      safeAdminStorageRemove('bdcs2_admin_token');
       setAdminAccount(null);
     },
   });
