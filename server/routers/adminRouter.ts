@@ -12,6 +12,7 @@ import {
   createRollRoom,
   drawRollRoom,
   getAdminRollRoomList,
+  accrueInviterCommissionFromRecharge,
   getDb,
   getPlayerById,
   getPlayerByInviteCode,
@@ -658,6 +659,7 @@ export const adminRouter = router({
         totalRecharge: newTotalRecharge.toFixed(2),
         vipLevel: newVipLevel,
       }).where(eq(players.id, order.playerId));
+      await accrueInviterCommissionFromRecharge(order.playerId, amountToAdd, order.id);
       // 记录平台币流水
       const rechargeRemark = bonusGoldToAdd > 0
         ? `充值审批到账 ${goldToAdd.toFixed(2)} 平台币，赠送 ${bonusGoldToAdd.toFixed(2)} 平台币 (订单号: ${order.orderNo})`
@@ -901,6 +903,10 @@ export const adminRouter = router({
           vipLevel: newVipLevel,
         } : {}),
       }).where(eq(players.id, input.playerId));
+
+      if (adjustAmount > 0) {
+        await accrueInviterCommissionFromRecharge(input.playerId, Number(adjustAmount.toFixed(2)));
+      }
 
       await insertGoldLog(
         input.playerId,

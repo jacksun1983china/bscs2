@@ -270,6 +270,96 @@ export async function bindInviteCode(playerId: number, inviteCode: string) {
   return inviter;
 }
 
+async function getTeamBetFlowByRange(inviterId: number, startAt: Date, endAt: Date) {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const [rollxRows, rushRows, dingdongRows, fruitBombRows] = await Promise.all([
+    db.select({ total: sql<string>`COALESCE(SUM(${rollxGames.betAmount}), 0.00)` })
+      .from(rollxGames)
+      .innerJoin(players, eq(players.id, rollxGames.playerId))
+      .where(and(
+        eq(players.invitedBy, inviterId),
+        gte(rollxGames.createdAt, startAt),
+        sql`${rollxGames.createdAt} < ${endAt}`,
+      )),
+    db.select({ total: sql<string>`COALESCE(SUM(${rushGames.betAmount}), 0.00)` })
+      .from(rushGames)
+      .innerJoin(players, eq(players.id, rushGames.playerId))
+      .where(and(
+        eq(players.invitedBy, inviterId),
+        gte(rushGames.createdAt, startAt),
+        sql`${rushGames.createdAt} < ${endAt}`,
+      )),
+    db.select({ total: sql<string>`COALESCE(SUM(${dingdongGames.betAmount}), 0.00)` })
+      .from(dingdongGames)
+      .innerJoin(players, eq(players.id, dingdongGames.playerId))
+      .where(and(
+        eq(players.invitedBy, inviterId),
+        gte(dingdongGames.createdAt, startAt),
+        sql`${dingdongGames.createdAt} < ${endAt}`,
+      )),
+    db.select({ total: sql<string>`COALESCE(SUM(${fruitBombBets.betAmount}), 0.00)` })
+      .from(fruitBombBets)
+      .innerJoin(players, eq(players.id, fruitBombBets.playerId))
+      .where(and(
+        eq(players.invitedBy, inviterId),
+        gte(fruitBombBets.createdAt, startAt),
+        sql`${fruitBombBets.createdAt} < ${endAt}`,
+      )),
+  ]);
+
+  return [rollxRows, rushRows, dingdongRows, fruitBombRows]
+    .reduce((sum, rows) => sum + (parseFloat(String(rows[0]?.total ?? '0')) || 0), 0);
+}
+
+export async function accrueInviterCommissionFromRecharge(playerId: number, rechargeAmount: number, orderId?: number | null) {
+  const db = await getDb();
+  if (!db) throw new Error("数据库不可用");
+  if (rechargeAmount <= 0) return { applied: false, commissionAmount: 0 };
+
+  const inviteeRows = await db.select({
+    id: players.id,
+    invitedBy: players.invitedBy,
+  }).from(players).where(eq(players.id, playerId)).limit(1);
+  const invitee = inviteeRows[0];
+  if (!invitee?.invitedBy) return { applied: false, commissionAmount: 0 };
+
+  const inviterRows = await db.select({
+    id: players.id,
+    commissionEnabled: players.commissionEnabled,
+    commissionRate: players.commissionRate,
+  }).from(players).where(eq(players.id, invitee.invitedBy)).limit(1);
+  const inviter = inviterRows[0];
+  if (!inviter || Number(inviter.commissionEnabled ?? 0) !== 1) {
+    return { applied: false, commissionAmount: 0, inviterId: invitee.invitedBy };
+  }
+
+  const commissionRate = parseFloat(String(inviter.commissionRate ?? '0')) || 0;
+  const commissionAmount = Number(((rechargeAmount * commissionRate) / 100).toFixed(2));
+  if (commissionAmount <= 0) {
+    return { applied: false, commissionAmount: 0, inviterId: inviter.id, commissionRate };
+  }
+
+  await db.update(players).set({
+    commissionBalance: sql`commissionBalance + ${commissionAmount}`,
+  }).where(eq(players.id, inviter.id));
+
+  try {
+    await db.insert(commissionLogs).values({
+      playerId: inviter.id,
+      fromPlayerId: playerId,
+      amount: commissionAmount.toFixed(2),
+      orderId: orderId ?? null,
+      status: 0,
+    });
+  } catch (error) {
+    console.error('[Commission] 写入返佣日志失败:', error);
+  }
+
+  return { applied: true, commissionAmount, inviterId: inviter.id, commissionRate };
+}
+
 export async function getTeamStats(playerId: number) {
   const db = await getDb();
   if (!db) return { total: 0, todayCount: 0, commissionBalance: "0.00", weeklyStats: [] as WeeklyCommissionStat[] };
@@ -286,7 +376,7 @@ export async function getTeamStats(playerId: number) {
   nextWeekDate.setDate(currentWeekDate.getDate() + 7);
   const currentWeekStart = `${currentWeekDate.getFullYear()}-${String(currentWeekDate.getMonth() + 1).padStart(2, '0')}-${String(currentWeekDate.getDate()).padStart(2, '0')}`;
 
-  const [totalResult, todayResult, player, weeklyRows, currentWeekRechargeResult] = await Promise.all([
+  const [totalResult, todayResult, player, weeklyRows, currentWeekRechargeResult, currentWeekFlow] = await Promise.all([
     db.select({ count: sql<number>`count(*)` }).from(players).where(eq(players.invitedBy, playerId)),
     db.select({ count: sql<number>`count(*)` }).from(players).where(and(eq(players.invitedBy, playerId), gte(players.createdAt, today))),
     getPlayerById(playerId),
@@ -303,8 +393,9 @@ export async function getTeamStats(playerId: number) {
         eq(players.invitedBy, playerId),
         eq(rechargeOrders.status, 1),
         gte(rechargeOrders.createdAt, currentWeekDate),
-        lte(rechargeOrders.createdAt, nextWeekDate),
+        sql`${rechargeOrders.createdAt} < ${nextWeekDate}`,
       )),
+    getTeamBetFlowByRange(playerId, currentWeekDate, nextWeekDate),
   ]);
 
   const total = Number(totalResult[0]?.count ?? 0);
@@ -312,9 +403,6 @@ export async function getTeamStats(playerId: number) {
   const currentWeekRecharge = parseFloat(String(currentWeekRechargeResult[0]?.totalRecharge ?? '0')) || 0;
   let weeklyStats: WeeklyCommissionStat[] = weeklyRows;
   const currentWeekRow = weeklyStats.find((row) => row.weekStart === currentWeekStart);
-  // 目前周流水没有独立的实时累加写入链路，直接沿用历史表值会导致页面展示滞后。
-  // 为了满足“实时显示流水情况”的要求，这里统一按当前周已完成充值实时汇总刷新展示值。
-  const currentWeekFlow = currentWeekRecharge;
 
   const currentWeekPayload: InsertWeeklyCommissionStat = {
     inviterId: playerId,
@@ -374,10 +462,20 @@ export async function withdrawCommission(playerId: number) {
   if (!player) throw new Error("玩家不存在");
   const balance = parseFloat(player.commissionBalance as string);
   if (balance <= 0) throw new Error("没有可提取的返佣余额");
+
   await db.update(players).set({
     commissionBalance: "0.00",
     shopCoin: sql`shopCoin + ${balance}`,
   }).where(eq(players.id, playerId));
+
+  await db.update(commissionLogs).set({
+    status: 1,
+    withdrawnAt: new Date(),
+  }).where(and(
+    eq(commissionLogs.playerId, playerId),
+    eq(commissionLogs.status, 0),
+  ));
+
   return { amount: balance };
 }
 

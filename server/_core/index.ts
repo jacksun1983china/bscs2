@@ -14,7 +14,7 @@ import { initArenaSSE } from "../arenaSSE";
 import { startBotLoop } from "../arenaBot";
 import { startArenaTimeoutWatcher } from "../arenaTimeout";
 import { autoSpinAllRounds } from "../arenaRouter";
-import { getDb } from "../db";
+import { accrueInviterCommissionFromRecharge, getDb } from "../db";
 import { arenaRooms } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { generalApiLimit, gameActionLimit, smsLimit, adminLoginLimit } from "./rateLimit";
@@ -127,6 +127,15 @@ async function startServer() {
 
       // 更新玩家总充值金额（按实际充值金额累计）
       await db.execute(sql`UPDATE players SET totalRecharge = totalRecharge + ${rechargeAmount} WHERE id = ${order.playerId}`);
+
+      try {
+        const commissionResult = await accrueInviterCommissionFromRecharge(order.playerId, rechargeAmount, Number(order.id));
+        if (commissionResult.applied) {
+          console.log(`[OxaPay Notify] 已为邀请人累计返佣: inviterId=${commissionResult.inviterId}, fromPlayerId=${order.playerId}, amount=${commissionResult.commissionAmount}`);
+        }
+      } catch (commissionError) {
+        console.error('[OxaPay Notify] 累计返佣失败:', commissionError);
+      }
 
       console.log(`[OxaPay Notify] USDT充值成功: orderNo=${orderNo}, playerId=${order.playerId}, gold=${goldAmount}, bonusGold=${bonusGoldAmount}`);
       res.status(200).send("ok");
@@ -253,6 +262,15 @@ async function startServer() {
 
       // 更新玩家总充值金额（按实际充值金额累计）
       await db.execute(sql`UPDATE players SET totalRecharge = totalRecharge + ${rechargeAmount} WHERE id = ${order.playerId}`);
+
+      try {
+        const commissionResult = await accrueInviterCommissionFromRecharge(order.playerId, rechargeAmount, Number(order.id));
+        if (commissionResult.applied) {
+          console.log(`[Payment Notify] 已为邀请人累计返佣: inviterId=${commissionResult.inviterId}, fromPlayerId=${order.playerId}, amount=${commissionResult.commissionAmount}`);
+        }
+      } catch (commissionError) {
+        console.error('[Payment Notify] 累计返佣失败:', commissionError);
+      }
       
       console.log(`[Payment Notify] 充值成功: orderNo=${notifyData.orderNo}, playerId=${order.playerId}, gold=${goldAmount}, bonusGold=${bonusGoldAmount}`);
       res.status(200).send("success");
