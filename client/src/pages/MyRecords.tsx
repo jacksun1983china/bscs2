@@ -57,6 +57,13 @@ function getTypeLabel(type: string) {
   return TYPE_LABELS[type] || type;
 }
 
+function getGoldLogCurrency(record: any) {
+  const description = String(record?.description ?? '');
+  if (description.includes('商城币') || description.includes('钻石')) return '商城币';
+  if (description.includes('平台币')) return '平台币';
+  return '金币';
+}
+
 const RECHARGE_STATUS_LABELS: Record<number, { label: string; color: string }> = {
   0: { label: '待审核', color: '#f59e0b' },
   1: { label: '已完成', color: '#4ade80' },
@@ -151,6 +158,7 @@ function GoldLogDetailModal({ record, onClose }: { record: any; onClose: () => v
   const amount = Number(record.amount);
   const balance = Number(record.balance);
   const date = new Date(record.createdAt);
+  const currencyLabel = getGoldLogCurrency(record);
   return (
     <DetailModal onClose={onClose} title="流水详情">
       {/* 金额 */}
@@ -163,10 +171,10 @@ function GoldLogDetailModal({ record, onClose }: { record: any; onClose: () => v
         <div style={{ color: amountColor(amount), fontSize: q(56), fontWeight: 900, lineHeight: 1.1 }}>
           {formatAmount(amount)}
         </div>
-        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: q(22), marginTop: q(8) }}>金币</div>
+        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: q(22), marginTop: q(8) }}>{currencyLabel}</div>
       </div>
       <DetailRow label="类型" value={getTypeLabel(record.type)} />
-      <DetailRow label="余额" value={`${balance.toFixed(2)} 金币`} />
+      <DetailRow label="余额" value={`${balance.toFixed(2)} ${currencyLabel}`} />
       <DetailRow label="时间" value={date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })} />
       {record.description && <DetailRow label="备注" value={record.description} />}
       {record.refId && <DetailRow label="流水号" value={String(record.refId)} />}

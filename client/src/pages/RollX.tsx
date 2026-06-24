@@ -157,8 +157,8 @@ export default function RollX() {
   const handleSpin = async () => {
     if (isSpinning) return;
     if (!player) { navigate('/login'); return; }
-    const gold = parseFloat(player.gold);
-    if (gold < betAmount) { showAlert('平台币不足，请先充值！', { type: 'error', title: '余额不足' }); return; }
+    const shopCoin = parseFloat(player.diamond);
+    if (shopCoin < betAmount) { showAlert('商城币不足，请先充值！', { type: 'error', title: '余额不足' }); return; }
 
     setIsSpinning(true);
     setShowResult(false);
@@ -186,7 +186,7 @@ export default function RollX() {
     }
   };
 
-  const gold = player ? parseFloat(player.gold) : 0;
+  const shopCoin = player ? parseFloat(player.diamond) : 0;
   const potentialWin = (betAmountDisplay * multiplier).toFixed(2);
 
   return (
@@ -610,9 +610,9 @@ export default function RollX() {
               paddingBottom: q(8),
             }}
           >
-            平台币余额：{' '}
+            商城币余额：{' '}
             <span style={{ color: CYBER.accentCyan, fontWeight: 600, textShadow: `0 0 8px rgba(34,211,238,0.5)` }}>
-              {gold.toFixed(2)}
+              {shopCoin.toFixed(2)}
             </span>
           </div>
 
@@ -746,7 +746,7 @@ export default function RollX() {
                   <span style={{ fontSize: 16 }}>\ud83d\udcb0</span> 投注规则
                 </div>
                 <div style={{ color: CYBER.textPrimary, fontSize: 13, lineHeight: 1.7 }}>
-                  投注范围为 <span style={{ color: CYBER.accent, fontWeight: 700 }}>1.00 ~ 10,000.00</span> 金币。每次旋转前请确认您的倍率和投注金额。
+                  投注范围为 <span style={{ color: CYBER.accent, fontWeight: 700 }}>1.00 ~ 10,000.00</span> 商城币。每次旋转前请确认您的倍率和投注金额。
                 </div>
               </div>
 
@@ -766,9 +766,9 @@ export default function RollX() {
                   border: `1px solid rgba(0,245,160,0.15)`,
                 }}>
                   <div style={{ color: CYBER.textSecondary, fontSize: 12, lineHeight: 1.8 }}>
-                    <div>例如：投注 <span style={{ color: CYBER.accent }}>100</span> 金币，倍率 <span style={{ color: CYBER.accent }}>2x</span></div>
-                    <div>→ 中奖可获得 <span style={{ color: CYBER.win, fontWeight: 700 }}>200</span> 金币（净赚 100）</div>
-                    <div>→ 未中奖则失去 <span style={{ color: CYBER.lose, fontWeight: 700 }}>100</span> 金币</div>
+                    <div>例如：投注 <span style={{ color: CYBER.accent }}>100</span> 商城币，倍率 <span style={{ color: CYBER.accent }}>2x</span></div>
+                    <div>→ 中奖可获得 <span style={{ color: CYBER.win, fontWeight: 700 }}>200</span> 商城币（净赚 100）</div>
+                    <div>→ 未中奖则失去 <span style={{ color: CYBER.lose, fontWeight: 700 }}>100</span> 商城币</div>
                   </div>
                 </div>
               </div>
@@ -857,7 +857,7 @@ export default function RollX() {
                 : `-${Math.abs(result.netAmount).toFixed(2)}`}
             </div>
             <div style={{ color: CYBER.textSecondary, fontSize: 14, marginBottom: 20 }}>
-              平台币余额：{result.balanceAfter.toFixed(2)}
+              商城币余额：{result.balanceAfter.toFixed(2)}
             </div>
             <button
               onClick={() => setShowResult(false)}

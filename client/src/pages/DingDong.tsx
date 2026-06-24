@@ -297,8 +297,8 @@ export default function DingDong() {
     const totalBet = Object.values(betMap).reduce((s, v) => s + v, 0);
     if (totalBet <= 0) { showAlert('请先设置下注金额'); return; }
     if (!playerData) { navigate('/login'); return; }
-    const gold = parseFloat(String(playerData.gold));
-    if (gold < totalBet) { showAlert('平台币不足'); return; }
+    const shopCoin = parseFloat(String(playerData.diamond));
+    if (shopCoin < totalBet) { showAlert('商城币不足'); return; }
     if (isSpinning) return;
     setIsSpinning(true);
     isSpinningRef.current = true;
@@ -322,7 +322,7 @@ export default function DingDong() {
     setDiceResult(null);
     setDiceChoice(null);
     setDiceValue(null);
-    showAlert(`获得 ${pendingWinAmount.toFixed(2)} 金币！`);
+    showAlert(`获得 ${pendingWinAmount.toFixed(2)} 商城币！`);
   }, [pendingWinAmount, showAlert]);
 
   const handleDiceClose = useCallback(() => {
@@ -356,7 +356,7 @@ export default function DingDong() {
     setBetMap({});
   }, []);
 
-  const gold = playerData ? parseFloat(String(playerData.gold)) : 0;
+  const shopCoin = playerData ? parseFloat(String(playerData.diamond)) : 0;
   const minBet = settings?.minBet ?? 1;
   const maxBet = settings?.maxBet ?? 10000;
   const totalBet = Object.values(betMap).reduce((s, v) => s + v, 0);
@@ -426,7 +426,7 @@ export default function DingDong() {
             🔫 武器机
           </div>
           <div style={{ color: '#ffd700', fontSize: q(24), fontWeight: 700 }}>
-            平台币：{gold.toFixed(2)}
+            商城币：{shopCoin.toFixed(2)}
           </div>
         </div>
 
@@ -870,7 +870,7 @@ export default function DingDong() {
               🎲 押大小
             </div>
             <div style={{ color: '#ffd700', fontSize: q(24), fontWeight: 700, marginBottom: q(16) }}>
-              当前奖金：{pendingWinAmount.toFixed(2)} 💰
+              当前奖金：{pendingWinAmount.toFixed(2)} 商城币
             </div>
             <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: q(20), marginBottom: q(20) }}>
               1·2·3 = 小 &nbsp;|&nbsp; 4·5·6 = 大<br />
