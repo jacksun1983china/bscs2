@@ -1265,9 +1265,9 @@ export const appRouter = router({
         const currentDiamond = parseFloat(player.diamond);
         const currentGold = parseFloat(player.gold);
         const totalAvailable = currentDiamond + currentGold;
-        if (totalAvailable < input.betAmount) throw new TRPCError({ code: "BAD_REQUEST", message: "商城币和平台币余额不足" });
-        const diamondUsed = Math.min(currentDiamond, input.betAmount);
-        const goldUsed = Math.max(0, input.betAmount - diamondUsed);
+        if (totalAvailable < input.betAmount) throw new TRPCError({ code: "BAD_REQUEST", message: "平台币和商城币余额不足" });
+        const goldUsed = Math.min(currentGold, input.betAmount);
+        const diamondUsed = Math.max(0, input.betAmount - goldUsed);
         // 服务端决定结果（基于RTP）
         const winProbability = (rtp / 100) / input.multiplier;
         const isWin = Math.random() < winProbability;
@@ -1279,7 +1279,7 @@ export const appRouter = router({
         } else {
           stopAngle = greenAngle + Math.random() * (360 - greenAngle) * 0.9;
         }
-        // 计算金额变化：商城币优先，不足时自动使用平台币补差；中奖金额统一回到商城币
+        // 计算金额变化：平台币优先，不足时自动使用商城币补差；中奖金额统一回到商城币
         const winAmount = isWin ? input.betAmount * input.multiplier : 0;
         const netAmount = isWin ? winAmount - input.betAmount : -input.betAmount;
         const diamondDelta = winAmount - diamondUsed;
@@ -1296,8 +1296,8 @@ export const appRouter = router({
             newDiamond,
             'rollx',
             isWin
-              ? `ROLL-X 赢得 ${winAmount.toFixed(2)} 商城币${goldUsed > 0 ? `（已使用 ${goldUsed.toFixed(2)} 平台币补差）` : ''}`
-              : `ROLL-X 投注 ${diamondUsed.toFixed(2)} 商城币`
+              ? `ROLL-X 赢得 ${winAmount.toFixed(2)} 商城币${diamondUsed > 0 ? `（已使用 ${diamondUsed.toFixed(2)} 商城币补差）` : ''}`
+              : `ROLL-X 投注 ${diamondUsed.toFixed(2)} 商城币补差`
           );
         }
         if (goldUsed > 0.0001) {
@@ -1306,7 +1306,7 @@ export const appRouter = router({
             goldDelta,
             newGold,
             'rollx',
-            `ROLL-X 投注 ${goldUsed.toFixed(2)} 平台币${diamondUsed > 0 ? '（商城币不足自动补差）' : '（商城币不足时使用平台币）'}`
+            `ROLL-X 投注 ${goldUsed.toFixed(2)} 平台币${diamondUsed > 0 ? '（平台币不足自动使用商城币补差）' : ''}`
           );
         }
         // 记录游戏日志
@@ -2378,9 +2378,9 @@ export const appRouter = router({
         const currentDiamond = parseFloat(player.diamond);
         const currentGold = parseFloat(player.gold);
         const totalAvailable = currentDiamond + currentGold;
-        if (totalAvailable < totalBet) throw new TRPCError({ code: "BAD_REQUEST", message: "商城币和平台币余额不足" });
-        const diamondUsed = Math.min(currentDiamond, totalBet);
-        const goldUsed = Math.max(0, totalBet - diamondUsed);
+        if (totalAvailable < totalBet) throw new TRPCError({ code: "BAD_REQUEST", message: "平台币和商城币余额不足" });
+        const goldUsed = Math.min(currentGold, totalBet);
+        const diamondUsed = Math.max(0, totalBet - goldUsed);
         // 7种水果倍率
         const FRUIT_MULTIPLIERS = [2.5, 5, 5, 10, 10, 20, 20];
         // 权重：倍率越高出现概率越低
@@ -2414,8 +2414,8 @@ export const appRouter = router({
             newDiamond,
             'dingdong',
             isWin
-              ? `彩虹转盘赢得 ${winAmount.toFixed(2)} 商城币${goldUsed > 0 ? `（已使用 ${goldUsed.toFixed(2)} 平台币补差）` : ''}`
-              : `彩虹转盘投注 ${diamondUsed.toFixed(2)} 商城币`
+              ? `彩虹转盘赢得 ${winAmount.toFixed(2)} 商城币${diamondUsed > 0 ? `（已使用 ${diamondUsed.toFixed(2)} 商城币补差）` : ''}`
+              : `彩虹转盘投注 ${diamondUsed.toFixed(2)} 商城币补差`
           );
         }
         if (goldUsed > 0.0001) {
@@ -2424,7 +2424,7 @@ export const appRouter = router({
             goldDelta,
             newGold,
             'dingdong',
-            `彩虹转盘投注 ${goldUsed.toFixed(2)} 平台币${diamondUsed > 0 ? '（商城币不足自动补差）' : '（商城币不足时使用平台币）'}`
+            `彩虹转盘投注 ${goldUsed.toFixed(2)} 平台币${diamondUsed > 0 ? '（平台币不足自动使用商城币补差）' : ''}`
           );
         }
         // 记录游戏（selectedCell 存储 JSON betMap，winCell 存储开奖水果）

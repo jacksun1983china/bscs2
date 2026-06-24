@@ -624,16 +624,16 @@ export default function RollX() {
             }}
           >
             <div>
-              商城币余额：{' '}
+              平台币余额：{' '}
               <span style={{ color: CYBER.accentCyan, fontWeight: 600, textShadow: `0 0 8px rgba(34,211,238,0.5)` }}>
-                {shopCoin.toFixed(2)}
+                {gameCoin.toFixed(2)}
               </span>
             </div>
             <div style={{ marginTop: q(4), fontSize: q(20), color: CYBER.textMuted }}>
-              平台币补差：<span style={{ color: CYBER.accentPink, fontWeight: 600 }}>{gameCoin.toFixed(2)}</span>
+              商城币补差：<span style={{ color: CYBER.accentPink, fontWeight: 600 }}>{shopCoin.toFixed(2)}</span>
             </div>
             <div style={{ marginTop: q(4), fontSize: q(18), color: CYBER.textMuted }}>
-              商城币优先使用，不足时自动使用平台币补差
+              平台币优先使用，不足时自动使用商城币补差
             </div>
           </div>
 
@@ -767,7 +767,7 @@ export default function RollX() {
                   <span style={{ fontSize: 16 }}>\ud83d\udcb0</span> 投注规则
                 </div>
                 <div style={{ color: CYBER.textPrimary, fontSize: 13, lineHeight: 1.7 }}>
-                  投注范围为 <span style={{ color: CYBER.accent, fontWeight: 700 }}>1.00 ~ 10,000.00</span>。系统会优先扣除商城币，商城币不足时自动使用平台币补差。
+                  投注范围为 <span style={{ color: CYBER.accent, fontWeight: 700 }}>1.00 ~ 10,000.00</span>。系统会优先扣除平台币，平台币不足时自动使用商城币补差。
                 </div>
               </div>
 
@@ -787,9 +787,9 @@ export default function RollX() {
                   border: `1px solid rgba(0,245,160,0.15)`,
                 }}>
                   <div style={{ color: CYBER.textSecondary, fontSize: 12, lineHeight: 1.8 }}>
-                    <div>例如：投注 <span style={{ color: CYBER.accent }}>100</span>，优先扣商城币，不足部分自动由平台币补差，倍率 <span style={{ color: CYBER.accent }}>2x</span></div>
+                    <div>例如：投注 <span style={{ color: CYBER.accent }}>100</span>，优先扣平台币，不足部分自动由商城币补差，倍率 <span style={{ color: CYBER.accent }}>2x</span></div>
                     <div>→ 中奖可获得 <span style={{ color: CYBER.win, fontWeight: 700 }}>200</span> 商城币（净赚 100）</div>
-                    <div>→ 未中奖则按本局实际扣款来源减少商城币 / 平台币</div>
+                    <div>→ 未中奖则按本局实际扣款来源减少平台币 / 商城币</div>
                   </div>
                 </div>
               </div>
@@ -880,12 +880,12 @@ export default function RollX() {
             <div style={{ color: CYBER.textSecondary, fontSize: 14, marginBottom: 6 }}>
               商城币余额：{result.diamondBalanceAfter.toFixed(2)}
             </div>
-            <div style={{ color: CYBER.textSecondary, fontSize: 14, marginBottom: result.usedGoldAmount > 0 ? 6 : 20 }}>
+            <div style={{ color: CYBER.textSecondary, fontSize: 14, marginBottom: result.usedDiamondAmount > 0 ? 6 : 20 }}>
               平台币余额：{result.goldBalanceAfter.toFixed(2)}
             </div>
-            {result.usedGoldAmount > 0 && (
+            {result.usedDiamondAmount > 0 && (
               <div style={{ color: CYBER.accentPink, fontSize: 12, marginBottom: 20 }}>
-                本局已自动使用 {result.usedGoldAmount.toFixed(2)} 平台币补差
+                本局已自动使用 {result.usedDiamondAmount.toFixed(2)} 商城币补差
               </div>
             )}
             <button

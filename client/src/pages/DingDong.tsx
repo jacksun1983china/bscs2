@@ -429,10 +429,10 @@ export default function DingDong() {
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ color: '#ffd700', fontSize: q(24), fontWeight: 700 }}>
-              商城币：{shopCoin.toFixed(2)}
+              平台币：{gameCoin.toFixed(2)}
             </div>
             <div style={{ color: '#f472b6', fontSize: q(18), marginTop: q(4) }}>
-              平台币补差：{gameCoin.toFixed(2)}
+              商城币补差：{shopCoin.toFixed(2)}
             </div>
           </div>
         </div>
@@ -442,7 +442,7 @@ export default function DingDong() {
           fontSize: q(18),
           textAlign: 'right',
         }}>
-          商城币优先使用，不足时自动使用平台币补差
+          平台币优先使用，不足时自动使用商城币补差
         </div>
 
         {/* ── 主游戏区（转盘） ── */}
