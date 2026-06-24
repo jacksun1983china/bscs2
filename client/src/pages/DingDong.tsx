@@ -298,7 +298,7 @@ export default function DingDong() {
     if (totalBet <= 0) { showAlert('请先设置下注金额'); return; }
     if (!playerData) { navigate('/login'); return; }
     const gold = parseFloat(String(playerData.gold));
-    if (gold < totalBet) { showAlert('金币不足'); return; }
+    if (gold < totalBet) { showAlert('平台币不足'); return; }
     if (isSpinning) return;
     setIsSpinning(true);
     isSpinningRef.current = true;
@@ -426,7 +426,7 @@ export default function DingDong() {
             🔫 武器机
           </div>
           <div style={{ color: '#ffd700', fontSize: q(24), fontWeight: 700 }}>
-            💰 {gold.toFixed(2)}
+            平台币：{gold.toFixed(2)}
           </div>
         </div>
 

@@ -158,7 +158,7 @@ export default function RollX() {
     if (isSpinning) return;
     if (!player) { navigate('/login'); return; }
     const gold = parseFloat(player.gold);
-    if (gold < betAmount) { showAlert('金币不足，请先充值！', { type: 'error', title: '余额不足' }); return; }
+    if (gold < betAmount) { showAlert('平台币不足，请先充值！', { type: 'error', title: '余额不足' }); return; }
 
     setIsSpinning(true);
     setShowResult(false);
@@ -610,7 +610,7 @@ export default function RollX() {
               paddingBottom: q(8),
             }}
           >
-            余额：{' '}
+            平台币余额：{' '}
             <span style={{ color: CYBER.accentCyan, fontWeight: 600, textShadow: `0 0 8px rgba(34,211,238,0.5)` }}>
               {gold.toFixed(2)}
             </span>
@@ -642,9 +642,9 @@ export default function RollX() {
                     }}
                   >
                     <span style={{ color: CYBER.textSecondary }}>{h.multiplier}x</span>
-                    <span style={{ color: CYBER.textSecondary }}>{(h.betAmount / 100).toFixed(2)}</span>
+                    <span style={{ color: CYBER.textSecondary }}>{h.betAmount.toFixed(2)}</span>
                     <span style={{ color: h.isWin ? CYBER.win : CYBER.lose, fontWeight: 700, textShadow: h.isWin ? `0 0 6px ${CYBER.winGlow}` : `0 0 6px ${CYBER.loseGlow}` }}>
-                      {h.isWin ? `+${(h.winAmount / 100).toFixed(2)}` : `-${(h.betAmount / 100).toFixed(2)}`}
+                      {h.isWin ? `+${h.winAmount.toFixed(2)}` : `-${h.betAmount.toFixed(2)}`}
                     </span>
                   </div>
                 ))}
@@ -853,11 +853,11 @@ export default function RollX() {
             </div>
             <div style={{ color: CYBER.textPrimary, fontSize: 22, marginBottom: 6 }}>
               {result.isWin
-                ? `+${(result.winAmount / 100).toFixed(2)}`
-                : `-${(Math.abs(result.netAmount) / 100).toFixed(2)}`}
+                ? `+${result.winAmount.toFixed(2)}`
+                : `-${Math.abs(result.netAmount).toFixed(2)}`}
             </div>
             <div style={{ color: CYBER.textSecondary, fontSize: 14, marginBottom: 20 }}>
-              余额：{(result.balanceAfter / 100).toFixed(2)}
+              平台币余额：{result.balanceAfter.toFixed(2)}
             </div>
             <button
               onClick={() => setShowResult(false)}

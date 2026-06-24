@@ -262,20 +262,20 @@ export default function PlayerInfoBar({ showLogout = false, onAddFriend }: Playe
 
         {/* 下行：金币 + 箭头 + 钻石 + 箭头 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* 金币 */}
+          {/* 平台币 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             {/* jinbi1: 42x42 → 26x26 */}
-            <img src={ASSETS.jinbi1} alt="金币" style={{ width: 26, height: 26 }} />
+            <img src={ASSETS.jinbi1} alt="平台币" style={{ width: 26, height: 26 }} />
             <span style={{ color: '#ffd700', fontSize: 14, fontWeight: 700 }}>
-              {(parseFloat(player.gold || '0') + parseFloat(player.diamond || '0')).toFixed(2)}
+              {parseFloat(player.gold || '0').toFixed(2)}
             </span>
           </div>
           {/* 箭头：gengduo 10x19 → 7x13 */}
           <img src={ASSETS.gengduo} alt=">" style={{ width: 7, height: 13, opacity: 0.7 }} />
 
-          {/* 钻石 */}
+          {/* 商城币 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <img src={ASSETS.jinbi2} alt="钻石" style={{ width: 26, height: 26 }} />
+            <img src={ASSETS.jinbi2} alt="商城币" style={{ width: 26, height: 26 }} />
             <span style={{ color: '#7df9ff', fontSize: 14, fontWeight: 700 }}>
               {parseFloat(player.diamond || '0').toFixed(2)}
             </span>
