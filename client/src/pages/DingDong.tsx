@@ -425,7 +425,7 @@ export default function DingDong() {
           padding: `${q(8)} ${q(16)} ${q(4)}`,
         }}>
           <div style={{ color: '#f0e6ff', fontSize: q(28), fontWeight: 900, letterSpacing: 2, textShadow: '0 0 20px rgba(160,80,255,0.7)' }}>
-            🔫 武器机
+            🌈 彩虹转盘
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ color: '#ffd700', fontSize: q(24), fontWeight: 700 }}>
