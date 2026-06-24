@@ -16,6 +16,19 @@ import { toast } from 'sonner';
 // ── px → cqw 转换（基准 750px）──────────────────────────────────
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
 
+const BOT_AVATAR_IDS = ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015', '016'] as const;
+
+function getSeededBotAvatar(botAvatar: string | null | undefined, seed: unknown): string {
+  if (botAvatar) return getAvatarUrl(botAvatar);
+  const seedText = String(seed ?? 'roll-bot');
+  let hash = 0;
+  for (let i = 0; i < seedText.length; i++) {
+    hash = ((hash << 5) - hash + seedText.charCodeAt(i)) >>> 0;
+  }
+  const avatarId = BOT_AVATAR_IDS[hash % BOT_AVATAR_IDS.length] || '001';
+  return getAvatarUrl(avatarId);
+}
+
 // ── CDN图片常量（Roll房内页专用）────────────────────────────────
 const D = {
   bgSection1: 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym/88df65cfc94576368c6787e5bbb683ff_543148bd.png',
@@ -133,7 +146,9 @@ function PrizeCard({ prize, index }: { prize: any; index: number }) {
 
 // ── 参与者头像格子 ────────────────────────────────────────────────
 function ParticipantAvatar({ p }: { p: any }) {
-  const avatarSrc = p.isBot ? (p.botAvatar || getAvatarUrl(null)) : getAvatarUrl(p.avatar);
+  const avatarSrc = p.isBot
+    ? getSeededBotAvatar(p.botAvatar, `${p.id ?? ''}-${p.botNickname || p.playerId || ''}`)
+    : getAvatarUrl(p.avatar);
   const nickname = p.isBot ? (p.botNickname || `机器人`) : (p.nickname || `用户${p.playerId}`);
   return (
     <div style={{
@@ -168,7 +183,9 @@ function ParticipantAvatar({ p }: { p: any }) {
 }
 
 function WinnerPrizeCard({ winner, index }: { winner: any; index: number }) {
-  const avatarSrc = winner.isBot ? (winner.avatar || getAvatarUrl(null)) : getAvatarUrl(winner.avatar);
+  const avatarSrc = winner.isBot
+    ? getSeededBotAvatar(winner.avatar, `${winner.nickname || ''}-${winner.prizeName || ''}-${index}`)
+    : getAvatarUrl(winner.avatar);
   const prizeImg = winner.prizeImageUrl || D.prizeDefault[index % D.prizeDefault.length];
 
   return (
@@ -237,7 +254,7 @@ function WinnerPrizeCard({ winner, index }: { winner: any; index: number }) {
             fontSize: q(20),
             lineHeight: q(26),
             marginTop: q(4),
-          }}>x{winner.winCount}</div>
+          }}>¥{Number.parseFloat(String(winner.prizeValue ?? 0)).toFixed(2)}</div>
         </div>
       </div>
     </div>
@@ -337,6 +354,7 @@ export default function RollRoomDetail() {
       avatar: winner.isBot ? participant?.botAvatar : participant?.avatar,
       prizeName: winner.prizeName,
       prizeImageUrl: winner.prizeImageUrl,
+      prizeValue: winner.prizeValue,
       winCount: 1,
     });
     return list;

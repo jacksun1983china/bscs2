@@ -84,6 +84,58 @@ export async function getDb() {
   return _db;
 }
 
+const ROLL_BOT_AVATAR_IDS = [
+  "001", "002", "003", "004", "005", "006", "007", "008",
+  "009", "010", "011", "012", "013", "014", "015", "016",
+] as const;
+
+function getRandomRollBotAvatarId(): string {
+  return ROLL_BOT_AVATAR_IDS[Math.floor(Math.random() * ROLL_BOT_AVATAR_IDS.length)] || "001";
+}
+
+function getRollPrizeGoodsLevel(value: unknown): number {
+  const numericValue = Number.parseFloat(String(value ?? 0));
+  if (numericValue >= 1000) return 1;
+  if (numericValue >= 100) return 2;
+  if (numericValue > 0) return 3;
+  return 4;
+}
+
+async function ensureRollPrizeBoxGoodId(prize: Pick<InsertRollRoomPrize, "name" | "imageUrl" | "value">): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("数据库不可用");
+
+  const prizeName = String(prize.name || "").trim();
+  const prizeImageUrl = String(prize.imageUrl || "").trim();
+  const prizeValue = Number.parseFloat(String(prize.value ?? 0)).toFixed(2);
+
+  const [existingGoods] = await db.select({ id: boxGoods.id })
+    .from(boxGoods)
+    .where(and(
+      eq(boxGoods.boxId, 0),
+      eq(boxGoods.name, prizeName),
+      eq(boxGoods.imageUrl, prizeImageUrl),
+      eq(boxGoods.price, prizeValue),
+    ))
+    .limit(1);
+
+  if (existingGoods) {
+    return Number(existingGoods.id);
+  }
+
+  const inserted = await db.insert(boxGoods).values({
+    boxId: 0,
+    name: prizeName,
+    imageUrl: prizeImageUrl,
+    level: getRollPrizeGoodsLevel(prize.value),
+    price: prizeValue,
+    probability: "1.0000",
+    sort: 0,
+  });
+
+  return (inserted as any)[0]?.insertId ?? (inserted as any).insertId ?? 0;
+}
+
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
@@ -554,7 +606,7 @@ export async function createRollRoom(data: InsertRollRoom, prizes: InsertRollRoo
       playerId: 0,
       isBot: 1,
       botNickname: botNameList[index] || `玩家${Math.floor(Math.random() * 9000) + 1000}`,
-      botAvatar: "",
+      botAvatar: getRandomRollBotAvatarId(),
     }));
     await db.insert(rollParticipants).values(bots);
     await db.update(rollRooms).set({
@@ -743,7 +795,7 @@ export async function addRollBots(roomId: number, count: number) {
   const bots = Array.from({ length: normalizedCount }, (_, i) => ({
     rollRoomId: roomId, playerId: 0, isBot: 1,
     botNickname: botNameList[i] || `玩家${Math.floor(Math.random() * 9000) + 1000}`,
-    botAvatar: "",
+    botAvatar: getRandomRollBotAvatarId(),
   }));
   await db.insert(rollParticipants).values(bots);
   await db.update(rollRooms).set({
@@ -862,23 +914,11 @@ export async function drawRollRoom(roomId: number, designatedWinners?: { prizeId
     actualPaidCount++;
 
     if ((prizeInfo as any).prizeType === 'item') {
-      let existingItem = await db.select().from(items)
-        .where(eq(items.name, prizeInfo.name)).limit(1);
-      let itemId: number;
-      if (existingItem.length > 0) {
-        itemId = existingItem[0].id;
-      } else {
-        const inserted = await db.insert(items).values({
-          name: prizeInfo.name,
-          imageUrl: prizeInfo.imageUrl || '',
-          value: prizeInfo.value,
-          quality: 'common',
-          type: 'skin',
-          game: 'ROLL',
-          status: 1,
-        });
-        itemId = (inserted as any).insertId;
-      }
+      const itemId = await ensureRollPrizeBoxGoodId({
+        name: prizeInfo.name,
+        imageUrl: prizeInfo.imageUrl || '',
+        value: prizeInfo.value,
+      });
       const rollRecycleValue = String(parseFloat(String(prizeInfo.value || '0')).toFixed(2));
       await db.insert(playerItems).values({
         playerId: w.playerId,
