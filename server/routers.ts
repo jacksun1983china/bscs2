@@ -1263,7 +1263,11 @@ export const appRouter = router({
         if (!playerRows.length) throw new TRPCError({ code: "NOT_FOUND", message: "玩家不存在" });
         const player = playerRows[0];
         const currentDiamond = parseFloat(player.diamond);
-        if (currentDiamond < input.betAmount) throw new TRPCError({ code: "BAD_REQUEST", message: "商城币不足" });
+        const currentGold = parseFloat(player.gold);
+        const totalAvailable = currentDiamond + currentGold;
+        if (totalAvailable < input.betAmount) throw new TRPCError({ code: "BAD_REQUEST", message: "商城币和平台币余额不足" });
+        const diamondUsed = Math.min(currentDiamond, input.betAmount);
+        const goldUsed = Math.max(0, input.betAmount - diamondUsed);
         // 服务端决定结果（基于RTP）
         const winProbability = (rtp / 100) / input.multiplier;
         const isWin = Math.random() < winProbability;
@@ -1275,14 +1279,36 @@ export const appRouter = router({
         } else {
           stopAngle = greenAngle + Math.random() * (360 - greenAngle) * 0.9;
         }
-        // 计算金额变化
+        // 计算金额变化：商城币优先，不足时自动使用平台币补差；中奖金额统一回到商城币
         const winAmount = isWin ? input.betAmount * input.multiplier : 0;
         const netAmount = isWin ? winAmount - input.betAmount : -input.betAmount;
-        const newDiamond = currentDiamond + netAmount;
+        const diamondDelta = winAmount - diamondUsed;
+        const goldDelta = -goldUsed;
+        const newDiamond = currentDiamond + diamondDelta;
+        const newGold = currentGold + goldDelta;
         // 更新玩家余额
-        await db.update(players).set({ diamond: newDiamond.toFixed(2) }).where(eq(players.id, playerToken.playerId));
+        await db.update(players).set({ diamond: newDiamond.toFixed(2), gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
         // 记录余额流水
-        await insertGoldLog(playerToken.playerId, netAmount, newDiamond, 'rollx', isWin ? `ROLL-X 赢得 ${winAmount.toFixed(2)} 商城币` : `ROLL-X 投注 ${input.betAmount.toFixed(2)} 商城币`);
+        if (Math.abs(diamondDelta) > 0.0001) {
+          await insertGoldLog(
+            playerToken.playerId,
+            diamondDelta,
+            newDiamond,
+            'rollx',
+            isWin
+              ? `ROLL-X 赢得 ${winAmount.toFixed(2)} 商城币${goldUsed > 0 ? `（已使用 ${goldUsed.toFixed(2)} 平台币补差）` : ''}`
+              : `ROLL-X 投注 ${diamondUsed.toFixed(2)} 商城币`
+          );
+        }
+        if (goldUsed > 0.0001) {
+          await insertGoldLog(
+            playerToken.playerId,
+            goldDelta,
+            newGold,
+            'rollx',
+            `ROLL-X 投注 ${goldUsed.toFixed(2)} 平台币${diamondUsed > 0 ? '（商城币不足自动补差）' : '（商城币不足时使用平台币）'}`
+          );
+        }
         // 记录游戏日志
         await db.insert(rollxGames).values({
           playerId: playerToken.playerId,
@@ -1292,9 +1318,21 @@ export const appRouter = router({
           winAmount: winAmount.toFixed(2),
           netAmount: netAmount.toFixed(2),
           stopAngle: stopAngle.toFixed(4),
-          balanceAfter: newDiamond.toFixed(2),
+          balanceAfter: (newDiamond + newGold).toFixed(2),
         });
-        return { isWin, winAmount, netAmount, stopAngle, balanceAfter: newDiamond, multiplier: input.multiplier, betAmount: input.betAmount };
+        return {
+          isWin,
+          winAmount,
+          netAmount,
+          stopAngle,
+          balanceAfter: newDiamond + newGold,
+          diamondBalanceAfter: newDiamond,
+          goldBalanceAfter: newGold,
+          usedDiamondAmount: diamondUsed,
+          usedGoldAmount: goldUsed,
+          multiplier: input.multiplier,
+          betAmount: input.betAmount,
+        };
       }),
 
     /** 获取游戏历史记录 */
@@ -2338,7 +2376,11 @@ export const appRouter = router({
         if (!playerRows.length) throw new TRPCError({ code: "NOT_FOUND" });
         const player = playerRows[0];
         const currentDiamond = parseFloat(player.diamond);
-        if (currentDiamond < totalBet) throw new TRPCError({ code: "BAD_REQUEST", message: "商城币不足" });
+        const currentGold = parseFloat(player.gold);
+        const totalAvailable = currentDiamond + currentGold;
+        if (totalAvailable < totalBet) throw new TRPCError({ code: "BAD_REQUEST", message: "商城币和平台币余额不足" });
+        const diamondUsed = Math.min(currentDiamond, totalBet);
+        const goldUsed = Math.max(0, totalBet - diamondUsed);
         // 7种水果倍率
         const FRUIT_MULTIPLIERS = [2.5, 5, 5, 10, 10, 20, 20];
         // 权重：倍率越高出现概率越低
@@ -2359,10 +2401,32 @@ export const appRouter = router({
         const winAmount = winBetAmount > 0 ? winBetAmount * multiplier : 0;
         const isWin = winAmount > 0;
         const netAmount = winAmount - totalBet;
-        const newDiamond = currentDiamond + netAmount;
-        await db.update(players).set({ diamond: newDiamond.toFixed(2) }).where(eq(players.id, playerToken.playerId));
+        const diamondDelta = winAmount - diamondUsed;
+        const goldDelta = -goldUsed;
+        const newDiamond = currentDiamond + diamondDelta;
+        const newGold = currentGold + goldDelta;
+        await db.update(players).set({ diamond: newDiamond.toFixed(2), gold: newGold.toFixed(2) }).where(eq(players.id, playerToken.playerId));
         // 记录余额流水
-        await insertGoldLog(playerToken.playerId, netAmount, newDiamond, 'dingdong', isWin ? `丁和大作赢得 ${winAmount.toFixed(2)} 商城币` : `丁和大作投注 ${totalBet.toFixed(2)} 商城币`);
+        if (Math.abs(diamondDelta) > 0.0001) {
+          await insertGoldLog(
+            playerToken.playerId,
+            diamondDelta,
+            newDiamond,
+            'dingdong',
+            isWin
+              ? `彩虹转盘赢得 ${winAmount.toFixed(2)} 商城币${goldUsed > 0 ? `（已使用 ${goldUsed.toFixed(2)} 平台币补差）` : ''}`
+              : `彩虹转盘投注 ${diamondUsed.toFixed(2)} 商城币`
+          );
+        }
+        if (goldUsed > 0.0001) {
+          await insertGoldLog(
+            playerToken.playerId,
+            goldDelta,
+            newGold,
+            'dingdong',
+            `彩虹转盘投注 ${goldUsed.toFixed(2)} 平台币${diamondUsed > 0 ? '（商城币不足自动补差）' : '（商城币不足时使用平台币）'}`
+          );
+        }
         // 记录游戏（selectedCell 存储 JSON betMap，winCell 存储开奖水果）
         await db.insert(dingdongGames).values({
           playerId: playerToken.playerId,
@@ -2373,7 +2437,7 @@ export const appRouter = router({
           multiplier: multiplier.toFixed(2),
           winAmount: winAmount.toFixed(2),
           netAmount: netAmount.toFixed(2),
-          balanceAfter: newDiamond.toFixed(2),
+          balanceAfter: (newDiamond + newGold).toFixed(2),
         });
         return {
           isWin,
@@ -2382,7 +2446,11 @@ export const appRouter = router({
           winAmount,
           netAmount,
           totalBet,
-          balanceAfter: newDiamond,
+          balanceAfter: newDiamond + newGold,
+          diamondBalanceAfter: newDiamond,
+          goldBalanceAfter: newGold,
+          usedDiamondAmount: diamondUsed,
+          usedGoldAmount: goldUsed,
           bets: input.betMap,
         };
       }),
@@ -2416,7 +2484,7 @@ export const appRouter = router({
         const newDiamond = currentDiamond + diamondDelta;
         await db.update(players).set({ diamond: newDiamond.toFixed(2) }).where(eq(players.id, playerToken.playerId));
         // 记录余额流水
-        await insertGoldLog(playerToken.playerId, diamondDelta, newDiamond, 'dingdong', win ? `丁和大作骰子翻倍 +${finalAmount.toFixed(2)} 商城币` : `丁和大作骰子失败 -${input.winAmount.toFixed(2)} 商城币`);
+        await insertGoldLog(playerToken.playerId, diamondDelta, newDiamond, 'dingdong', win ? `彩虹转盘骰子翻倍 +${finalAmount.toFixed(2)} 商城币` : `彩虹转盘骰子失败 -${input.winAmount.toFixed(2)} 商城币`);
         return {
           win,
           diceValue,

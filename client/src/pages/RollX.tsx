@@ -108,7 +108,18 @@ export default function RollX() {
   const betAmount = betAmountDisplay;
 
   const [isSpinning, setIsSpinning] = useState(false);
-  const [result, setResult] = useState<{ isWin: boolean; winAmount: number; netAmount: number; balanceAfter: number; multiplier: number; betAmount: number } | null>(null);
+  const [result, setResult] = useState<{
+    isWin: boolean;
+    winAmount: number;
+    netAmount: number;
+    balanceAfter: number;
+    diamondBalanceAfter: number;
+    goldBalanceAfter: number;
+    usedDiamondAmount: number;
+    usedGoldAmount: number;
+    multiplier: number;
+    betAmount: number;
+  } | null>(null);
   const [showResult, setShowResult] = useState(false);
 
   const [wheelRotation, setWheelRotation] = useState(0);
@@ -158,7 +169,8 @@ export default function RollX() {
     if (isSpinning) return;
     if (!player) { navigate('/login'); return; }
     const shopCoin = parseFloat(player.diamond);
-    if (shopCoin < betAmount) { showAlert('商城币不足，请先充值！', { type: 'error', title: '余额不足' }); return; }
+    const gameCoin = parseFloat(player.gold);
+    if (shopCoin + gameCoin < betAmount) { showAlert('商城币和平台币余额不足，请先充值！', { type: 'error', title: '余额不足' }); return; }
 
     setIsSpinning(true);
     setShowResult(false);
@@ -187,6 +199,7 @@ export default function RollX() {
   };
 
   const shopCoin = player ? parseFloat(player.diamond) : 0;
+  const gameCoin = player ? parseFloat(player.gold) : 0;
   const potentialWin = (betAmountDisplay * multiplier).toFixed(2);
 
   return (
@@ -610,10 +623,18 @@ export default function RollX() {
               paddingBottom: q(8),
             }}
           >
-            商城币余额：{' '}
-            <span style={{ color: CYBER.accentCyan, fontWeight: 600, textShadow: `0 0 8px rgba(34,211,238,0.5)` }}>
-              {shopCoin.toFixed(2)}
-            </span>
+            <div>
+              商城币余额：{' '}
+              <span style={{ color: CYBER.accentCyan, fontWeight: 600, textShadow: `0 0 8px rgba(34,211,238,0.5)` }}>
+                {shopCoin.toFixed(2)}
+              </span>
+            </div>
+            <div style={{ marginTop: q(4), fontSize: q(20), color: CYBER.textMuted }}>
+              平台币补差：<span style={{ color: CYBER.accentPink, fontWeight: 600 }}>{gameCoin.toFixed(2)}</span>
+            </div>
+            <div style={{ marginTop: q(4), fontSize: q(18), color: CYBER.textMuted }}>
+              商城币优先使用，不足时自动使用平台币补差
+            </div>
           </div>
 
           {/* 历史记录（简洁版）*/}
@@ -746,7 +767,7 @@ export default function RollX() {
                   <span style={{ fontSize: 16 }}>\ud83d\udcb0</span> 投注规则
                 </div>
                 <div style={{ color: CYBER.textPrimary, fontSize: 13, lineHeight: 1.7 }}>
-                  投注范围为 <span style={{ color: CYBER.accent, fontWeight: 700 }}>1.00 ~ 10,000.00</span> 商城币。每次旋转前请确认您的倍率和投注金额。
+                  投注范围为 <span style={{ color: CYBER.accent, fontWeight: 700 }}>1.00 ~ 10,000.00</span>。系统会优先扣除商城币，商城币不足时自动使用平台币补差。
                 </div>
               </div>
 
@@ -766,9 +787,9 @@ export default function RollX() {
                   border: `1px solid rgba(0,245,160,0.15)`,
                 }}>
                   <div style={{ color: CYBER.textSecondary, fontSize: 12, lineHeight: 1.8 }}>
-                    <div>例如：投注 <span style={{ color: CYBER.accent }}>100</span> 商城币，倍率 <span style={{ color: CYBER.accent }}>2x</span></div>
+                    <div>例如：投注 <span style={{ color: CYBER.accent }}>100</span>，优先扣商城币，不足部分自动由平台币补差，倍率 <span style={{ color: CYBER.accent }}>2x</span></div>
                     <div>→ 中奖可获得 <span style={{ color: CYBER.win, fontWeight: 700 }}>200</span> 商城币（净赚 100）</div>
-                    <div>→ 未中奖则失去 <span style={{ color: CYBER.lose, fontWeight: 700 }}>100</span> 商城币</div>
+                    <div>→ 未中奖则按本局实际扣款来源减少商城币 / 平台币</div>
                   </div>
                 </div>
               </div>
@@ -856,9 +877,17 @@ export default function RollX() {
                 ? `+${result.winAmount.toFixed(2)}`
                 : `-${Math.abs(result.netAmount).toFixed(2)}`}
             </div>
-            <div style={{ color: CYBER.textSecondary, fontSize: 14, marginBottom: 20 }}>
-              商城币余额：{result.balanceAfter.toFixed(2)}
+            <div style={{ color: CYBER.textSecondary, fontSize: 14, marginBottom: 6 }}>
+              商城币余额：{result.diamondBalanceAfter.toFixed(2)}
             </div>
+            <div style={{ color: CYBER.textSecondary, fontSize: 14, marginBottom: result.usedGoldAmount > 0 ? 6 : 20 }}>
+              平台币余额：{result.goldBalanceAfter.toFixed(2)}
+            </div>
+            {result.usedGoldAmount > 0 && (
+              <div style={{ color: CYBER.accentPink, fontSize: 12, marginBottom: 20 }}>
+                本局已自动使用 {result.usedGoldAmount.toFixed(2)} 平台币补差
+              </div>
+            )}
             <button
               onClick={() => setShowResult(false)}
               style={{

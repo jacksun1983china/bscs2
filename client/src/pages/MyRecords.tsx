@@ -42,7 +42,7 @@ const TYPE_LABELS: Record<string, string> = {
   arena: '竞技场',
   rollx: 'ROLL-X',
   vortex: 'Vortex',
-  dingdong: '丁咚大作战',
+  dingdong: '彩虹转盘',
   rush: '过马路',
   recycle: '回收道具',
   recharge: '充值',

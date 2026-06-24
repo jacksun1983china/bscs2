@@ -298,7 +298,8 @@ export default function DingDong() {
     if (totalBet <= 0) { showAlert('请先设置下注金额'); return; }
     if (!playerData) { navigate('/login'); return; }
     const shopCoin = parseFloat(String(playerData.diamond));
-    if (shopCoin < totalBet) { showAlert('商城币不足'); return; }
+    const gameCoin = parseFloat(String(playerData.gold));
+    if (shopCoin + gameCoin < totalBet) { showAlert('商城币和平台币余额不足'); return; }
     if (isSpinning) return;
     setIsSpinning(true);
     isSpinningRef.current = true;
@@ -357,6 +358,7 @@ export default function DingDong() {
   }, []);
 
   const shopCoin = playerData ? parseFloat(String(playerData.diamond)) : 0;
+  const gameCoin = playerData ? parseFloat(String(playerData.gold)) : 0;
   const minBet = settings?.minBet ?? 1;
   const maxBet = settings?.maxBet ?? 10000;
   const totalBet = Object.values(betMap).reduce((s, v) => s + v, 0);
@@ -425,9 +427,22 @@ export default function DingDong() {
           <div style={{ color: '#f0e6ff', fontSize: q(28), fontWeight: 900, letterSpacing: 2, textShadow: '0 0 20px rgba(160,80,255,0.7)' }}>
             🔫 武器机
           </div>
-          <div style={{ color: '#ffd700', fontSize: q(24), fontWeight: 700 }}>
-            商城币：{shopCoin.toFixed(2)}
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ color: '#ffd700', fontSize: q(24), fontWeight: 700 }}>
+              商城币：{shopCoin.toFixed(2)}
+            </div>
+            <div style={{ color: '#f472b6', fontSize: q(18), marginTop: q(4) }}>
+              平台币补差：{gameCoin.toFixed(2)}
+            </div>
           </div>
+        </div>
+        <div style={{
+          margin: `0 ${q(16)} ${q(8)}`,
+          color: 'rgba(255,255,255,0.6)',
+          fontSize: q(18),
+          textAlign: 'right',
+        }}>
+          商城币优先使用，不足时自动使用平台币补差
         </div>
 
         {/* ── 主游戏区（转盘） ── */}
