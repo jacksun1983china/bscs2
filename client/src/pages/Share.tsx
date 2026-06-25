@@ -19,6 +19,48 @@ import SettingsModal from '@/components/SettingsModal';
 
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
+const CHINA_TIME_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+function formatDateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getChinaWeekStartKey(date = new Date()) {
+  const chinaNow = new Date(date.getTime() + CHINA_TIME_OFFSET_MS);
+  const weekStart = new Date(Date.UTC(
+    chinaNow.getUTCFullYear(),
+    chinaNow.getUTCMonth(),
+    chinaNow.getUTCDate(),
+  ));
+  const day = chinaNow.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  weekStart.setUTCDate(weekStart.getUTCDate() + diff);
+  return formatDateKey(weekStart);
+}
+
+function getWeekRangeLabel(weekStart: string) {
+  const start = new Date(`${weekStart}T00:00:00.000Z`);
+  if (Number.isNaN(start.getTime())) return weekStart;
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 6);
+  const startLabel = weekStart.slice(5);
+  const endLabel = formatDateKey(end).slice(5);
+  return `${startLabel}~${endLabel}`;
+}
+
+function compareWeekStartDesc(a: { weekStart: string }, b: { weekStart: string }) {
+  return String(b.weekStart).localeCompare(String(a.weekStart));
+}
+
+function filterDisplayRows<T extends { weekStart: string }>(weeklyStats: T[], currentWeekStart: string, activePeriod: 'current' | 'last') {
+  const sortedRows = [...weeklyStats].sort(compareWeekStartDesc);
+  if (activePeriod === 'current') {
+    return sortedRows.filter((row) => row.weekStart === currentWeekStart).slice(0, 1);
+  }
+
+  return sortedRows.filter((row) => row.weekStart < currentWeekStart).slice(0, 10);
+}
+
 
 // 蓝湖分享页面 CDN 图片（严格对照 lanhu_fenxiang CSS/JSX）
 const CDN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663378529248/f39rghmcCDkVuc3rBX8cym';
@@ -106,17 +148,8 @@ export default function Share() {
 
   // 根据周期过滤数据
   const weeklyStats = teamStats?.weeklyStats ?? [];
-  const now = new Date();
-  const currentWeekStart = (() => {
-    const d = new Date(now);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    d.setDate(diff);
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  })();
-  const displayRows = activePeriod === 'current'
-    ? weeklyStats.filter(r => r.weekStart >= currentWeekStart)
-    : weeklyStats.filter(r => r.weekStart < currentWeekStart);
+  const currentWeekStart = getChinaWeekStartKey();
+  const displayRows = filterDisplayRows(weeklyStats, currentWeekStart, activePeriod);
 
   return (
 <PageSlideIn>
@@ -412,7 +445,7 @@ export default function Share() {
                 }}
               >
                 <div style={{ flex: 2.2, textAlign: 'center' }}>
-                  <span style={{ color: '#fff', fontSize: q(20) }}>{row.weekStart}</span>
+                  <span style={{ color: '#fff', fontSize: q(20) }}>{getWeekRangeLabel(row.weekStart)}</span>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center' }}>
                   <span style={{ color: '#fff', fontSize: q(22) }}>{parseFloat(String(row.commissionRate)).toFixed(0)}%</span>

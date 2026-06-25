@@ -93,6 +93,43 @@ function getRandomRollBotAvatarId(): string {
   return ROLL_BOT_AVATAR_IDS[Math.floor(Math.random() * ROLL_BOT_AVATAR_IDS.length)] || "001";
 }
 
+const CHINA_TIME_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+function formatDateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getChinaDayStart(date = new Date()) {
+  const chinaNow = new Date(date.getTime() + CHINA_TIME_OFFSET_MS);
+  const dayStartInChina = new Date(Date.UTC(
+    chinaNow.getUTCFullYear(),
+    chinaNow.getUTCMonth(),
+    chinaNow.getUTCDate(),
+  ));
+  return new Date(dayStartInChina.getTime() - CHINA_TIME_OFFSET_MS);
+}
+
+function getChinaWeekContext(date = new Date()) {
+  const chinaNow = new Date(date.getTime() + CHINA_TIME_OFFSET_MS);
+  const weekStartInChina = new Date(Date.UTC(
+    chinaNow.getUTCFullYear(),
+    chinaNow.getUTCMonth(),
+    chinaNow.getUTCDate(),
+  ));
+  const day = chinaNow.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  weekStartInChina.setUTCDate(weekStartInChina.getUTCDate() + diff);
+
+  const nextWeekStartInChina = new Date(weekStartInChina);
+  nextWeekStartInChina.setUTCDate(nextWeekStartInChina.getUTCDate() + 7);
+
+  return {
+    weekStartKey: formatDateKey(weekStartInChina),
+    weekStartAt: new Date(weekStartInChina.getTime() - CHINA_TIME_OFFSET_MS),
+    nextWeekStartAt: new Date(nextWeekStartInChina.getTime() - CHINA_TIME_OFFSET_MS),
+  };
+}
+
 function getRollPrizeGoodsLevel(value: unknown): number {
   const numericValue = Number.parseFloat(String(value ?? 0));
   if (numericValue >= 1000) return 1;
@@ -417,16 +454,12 @@ export async function getTeamStats(playerId: number) {
   if (!db) return { total: 0, todayCount: 0, commissionBalance: "0.00", weeklyStats: [] as WeeklyCommissionStat[] };
 
   const now = new Date();
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  const currentWeekDate = new Date(now);
-  const currentWeekDay = currentWeekDate.getDay();
-  const currentWeekDiff = currentWeekDate.getDate() - currentWeekDay + (currentWeekDay === 0 ? -6 : 1);
-  currentWeekDate.setDate(currentWeekDiff);
-  currentWeekDate.setHours(0, 0, 0, 0);
-  const nextWeekDate = new Date(currentWeekDate);
-  nextWeekDate.setDate(currentWeekDate.getDate() + 7);
-  const currentWeekStart = `${currentWeekDate.getFullYear()}-${String(currentWeekDate.getMonth() + 1).padStart(2, '0')}-${String(currentWeekDate.getDate()).padStart(2, '0')}`;
+  const today = getChinaDayStart(now);
+  const {
+    weekStartKey: currentWeekStart,
+    weekStartAt: currentWeekDate,
+    nextWeekStartAt: nextWeekDate,
+  } = getChinaWeekContext(now);
 
   const [totalResult, todayResult, player, weeklyRows, currentWeekRechargeResult, currentWeekFlow] = await Promise.all([
     db.select({ count: sql<number>`count(*)` }).from(players).where(eq(players.invitedBy, playerId)),
@@ -435,7 +468,7 @@ export async function getTeamStats(playerId: number) {
     db.select().from(weeklyCommissionStats)
       .where(eq(weeklyCommissionStats.inviterId, playerId))
       .orderBy(desc(weeklyCommissionStats.weekStart))
-      .limit(20),
+      .limit(11),
     db.select({
       totalRecharge: sql<string>`COALESCE(SUM(${rechargeOrders.amount}), 0.00)`,
     })
@@ -487,7 +520,7 @@ export async function getTeamStats(playerId: number) {
         updatedAt: new Date(),
       } as WeeklyCommissionStat,
       ...weeklyStats,
-    ].sort((a, b) => String(b.weekStart).localeCompare(String(a.weekStart)));
+    ].sort((a, b) => String(b.weekStart).localeCompare(String(a.weekStart))).slice(0, 11);
   }
 
   if (weeklyStats.length === 0) {
@@ -498,6 +531,10 @@ export async function getTeamStats(playerId: number) {
       updatedAt: new Date(),
     } as WeeklyCommissionStat];
   }
+
+  weeklyStats = [...weeklyStats]
+    .sort((a, b) => String(b.weekStart).localeCompare(String(a.weekStart)))
+    .slice(0, 11);
 
   return {
     total,
