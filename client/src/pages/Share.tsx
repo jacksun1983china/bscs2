@@ -8,7 +8,7 @@
  * 基准：750px 宽，使用 cqw 响应式单位
  */
 import { PageSlideIn } from '@/components/PageTransition';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { LANHU } from '@/lib/assets';
 import { toast } from 'sonner';
@@ -19,46 +19,9 @@ import SettingsModal from '@/components/SettingsModal';
 
 // px → cqw 转换（基准 750px）
 const q = (px: number) => `${(px / 750 * 100).toFixed(4)}cqw`;
-const CHINA_TIME_OFFSET_MS = 8 * 60 * 60 * 1000;
-
-function formatDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function getChinaWeekStartKey(date = new Date()) {
-  const chinaNow = new Date(date.getTime() + CHINA_TIME_OFFSET_MS);
-  const weekStart = new Date(Date.UTC(
-    chinaNow.getUTCFullYear(),
-    chinaNow.getUTCMonth(),
-    chinaNow.getUTCDate(),
-  ));
-  const day = chinaNow.getUTCDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  weekStart.setUTCDate(weekStart.getUTCDate() + diff);
-  return formatDateKey(weekStart);
-}
-
-function getWeekRangeLabel(weekStart: string) {
-  const start = new Date(`${weekStart}T00:00:00.000Z`);
-  if (Number.isNaN(start.getTime())) return weekStart;
-  const end = new Date(start);
-  end.setUTCDate(end.getUTCDate() + 6);
-  const startLabel = weekStart.slice(5);
-  const endLabel = formatDateKey(end).slice(5);
-  return `${startLabel}~${endLabel}`;
-}
-
-function compareWeekStartDesc(a: { weekStart: string }, b: { weekStart: string }) {
-  return String(b.weekStart).localeCompare(String(a.weekStart));
-}
-
-function filterDisplayRows<T extends { weekStart: string }>(weeklyStats: T[], currentWeekStart: string, activePeriod: 'current' | 'last') {
-  const sortedRows = [...weeklyStats].sort(compareWeekStartDesc);
-  if (activePeriod === 'current') {
-    return sortedRows.filter((row) => row.weekStart === currentWeekStart).slice(0, 1);
-  }
-
-  return sortedRows.filter((row) => row.weekStart < currentWeekStart).slice(0, 10);
+function formatDayLabel(dateKey: string) {
+  if (!dateKey) return '--';
+  return dateKey.slice(5);
 }
 
 
@@ -146,10 +109,13 @@ export default function Share() {
     toast.success('邀请链接已复制！');
   };
 
-  // 根据周期过滤数据
-  const weeklyStats = teamStats?.weeklyStats ?? [];
-  const currentWeekStart = getChinaWeekStartKey();
-  const displayRows = filterDisplayRows(weeklyStats, currentWeekStart, activePeriod);
+  const displayRows = useMemo(() => {
+    const periodDailyStats = teamStats?.periodDailyStats;
+    const rows = activePeriod === 'current'
+      ? (periodDailyStats?.current ?? [])
+      : (periodDailyStats?.last ?? []);
+    return [...rows].sort((a, b) => String(a.dateKey).localeCompare(String(b.dateKey)));
+  }, [activePeriod, teamStats?.periodDailyStats]);
 
   return (
 <PageSlideIn>
@@ -397,7 +363,7 @@ export default function Share() {
           </div>
         </div>
 
-        {/* ── 数据表格（group_10，真实数据来自 teamStats.weeklyStats） ── */}
+        {/* ── 数据表格（group_10，真实数据来自 teamStats.periodDailyStats） ── */}
         <div
           style={{
             background: `url(${IMG.tableAreaBg}) center/100% 100% no-repeat`,
@@ -445,7 +411,7 @@ export default function Share() {
                 }}
               >
                 <div style={{ flex: 2.2, textAlign: 'center' }}>
-                  <span style={{ color: '#fff', fontSize: q(20) }}>{getWeekRangeLabel(row.weekStart)}</span>
+                  <span style={{ color: '#fff', fontSize: q(20) }}>{formatDayLabel(row.dateKey)}</span>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center' }}>
                   <span style={{ color: '#fff', fontSize: q(22) }}>{parseFloat(String(row.commissionRate)).toFixed(0)}%</span>

@@ -130,6 +130,86 @@ function getChinaWeekContext(date = new Date()) {
   };
 }
 
+export type TeamDailyStat = {
+  dateKey: string;
+  weekStart: string;
+  commissionRate: string;
+  totalMembers: number;
+  newMembers: number;
+  totalRecharge: string;
+  totalFlow: string;
+};
+
+function getChinaDayWindowFromKey(dateKey: string) {
+  const chinaDayStart = new Date(`${dateKey}T00:00:00.000Z`);
+  const startAt = new Date(chinaDayStart.getTime() - CHINA_TIME_OFFSET_MS);
+  const endAt = new Date(startAt.getTime() + 24 * 60 * 60 * 1000);
+  return {
+    dateKey,
+    startAt,
+    endAt,
+  };
+}
+
+function getChinaWeekDateKeys(weekStartKey: string) {
+  const weekStartInChina = new Date(`${weekStartKey}T00:00:00.000Z`);
+  return Array.from({ length: 7 }, (_, index) => {
+    const chinaDay = new Date(weekStartInChina);
+    chinaDay.setUTCDate(chinaDay.getUTCDate() + index);
+    return formatDateKey(chinaDay);
+  });
+}
+
+async function buildTeamDailyStats(playerId: number, weekStartKey: string, commissionRate: string): Promise<TeamDailyStat[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await Promise.all(
+    getChinaWeekDateKeys(weekStartKey).map(async (dateKey) => {
+      const { startAt, endAt } = getChinaDayWindowFromKey(dateKey);
+      const [totalMembersResult, newMembersResult, rechargeResult, totalFlow] = await Promise.all([
+        db.select({ count: sql<number>`count(*)` })
+          .from(players)
+          .where(and(
+            eq(players.invitedBy, playerId),
+            sql`${players.createdAt} < ${endAt}`,
+          )),
+        db.select({ count: sql<number>`count(*)` })
+          .from(players)
+          .where(and(
+            eq(players.invitedBy, playerId),
+            gte(players.createdAt, startAt),
+            sql`${players.createdAt} < ${endAt}`,
+          )),
+        db.select({
+          totalRecharge: sql<string>`COALESCE(SUM(${rechargeOrders.amount}), 0.00)`,
+        })
+          .from(rechargeOrders)
+          .innerJoin(players, eq(players.id, rechargeOrders.playerId))
+          .where(and(
+            eq(players.invitedBy, playerId),
+            eq(rechargeOrders.status, 1),
+            gte(rechargeOrders.createdAt, startAt),
+            sql`${rechargeOrders.createdAt} < ${endAt}`,
+          )),
+        getTeamBetFlowByRange(playerId, startAt, endAt),
+      ]);
+
+      return {
+        dateKey,
+        weekStart: weekStartKey,
+        commissionRate,
+        totalMembers: Number(totalMembersResult[0]?.count ?? 0),
+        newMembers: Number(newMembersResult[0]?.count ?? 0),
+        totalRecharge: (parseFloat(String(rechargeResult[0]?.totalRecharge ?? "0")) || 0).toFixed(2),
+        totalFlow: totalFlow.toFixed(2),
+      } satisfies TeamDailyStat;
+    }),
+  );
+
+  return rows;
+}
+
 function getRollPrizeGoodsLevel(value: unknown): number {
   const numericValue = Number.parseFloat(String(value ?? 0));
   if (numericValue >= 1000) return 1;
@@ -451,7 +531,18 @@ export async function accrueInviterCommissionFromRecharge(playerId: number, rech
 
 export async function getTeamStats(playerId: number) {
   const db = await getDb();
-  if (!db) return { total: 0, todayCount: 0, commissionBalance: "0.00", weeklyStats: [] as WeeklyCommissionStat[] };
+  if (!db) {
+    return {
+      total: 0,
+      todayCount: 0,
+      commissionBalance: "0.00",
+      weeklyStats: [] as WeeklyCommissionStat[],
+      periodDailyStats: {
+        current: [] as TeamDailyStat[],
+        last: [] as TeamDailyStat[],
+      },
+    };
+  }
 
   const now = new Date();
   const today = getChinaDayStart(now);
@@ -460,6 +551,7 @@ export async function getTeamStats(playerId: number) {
     weekStartAt: currentWeekDate,
     nextWeekStartAt: nextWeekDate,
   } = getChinaWeekContext(now);
+  const lastWeekStart = getChinaWeekContext(new Date(currentWeekDate.getTime() - 24 * 60 * 60 * 1000)).weekStartKey;
 
   const [totalResult, todayResult, player, weeklyRows, currentWeekRechargeResult, currentWeekFlow] = await Promise.all([
     db.select({ count: sql<number>`count(*)` }).from(players).where(eq(players.invitedBy, playerId)),
@@ -486,13 +578,14 @@ export async function getTeamStats(playerId: number) {
   const total = Number(totalResult[0]?.count ?? 0);
   const todayCount = Number(todayResult[0]?.count ?? 0);
   const currentWeekRecharge = parseFloat(String(currentWeekRechargeResult[0]?.totalRecharge ?? '0')) || 0;
+  const commissionRate = player?.commissionRate ?? '4.00';
   let weeklyStats: WeeklyCommissionStat[] = weeklyRows;
   const currentWeekRow = weeklyStats.find((row) => row.weekStart === currentWeekStart);
 
   const currentWeekPayload: InsertWeeklyCommissionStat = {
     inviterId: playerId,
     weekStart: currentWeekStart,
-    commissionRate: player?.commissionRate ?? '4.00',
+    commissionRate,
     totalMembers: total,
     newMembers: todayCount,
     totalRecharge: currentWeekRecharge.toFixed(2),
@@ -536,11 +629,20 @@ export async function getTeamStats(playerId: number) {
     .sort((a, b) => String(b.weekStart).localeCompare(String(a.weekStart)))
     .slice(0, 11);
 
+  const [currentPeriodDailyStats, lastPeriodDailyStats] = await Promise.all([
+    buildTeamDailyStats(playerId, currentWeekStart, commissionRate),
+    buildTeamDailyStats(playerId, lastWeekStart, commissionRate),
+  ]);
+
   return {
     total,
     todayCount,
     commissionBalance: player?.commissionBalance ?? "0.00",
     weeklyStats,
+    periodDailyStats: {
+      current: currentPeriodDailyStats,
+      last: lastPeriodDailyStats,
+    },
   };
 }
 
