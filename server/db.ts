@@ -160,12 +160,21 @@ function getChinaWeekDateKeys(weekStartKey: string) {
   });
 }
 
-async function buildTeamDailyStats(playerId: number, weekStartKey: string, commissionRate: string): Promise<TeamDailyStat[]> {
+function getRecentChinaDateKeys(endDateKey: string, dayCount: number) {
+  const endDateInChina = new Date(`${endDateKey}T00:00:00.000Z`);
+  return Array.from({ length: dayCount }, (_, index) => {
+    const chinaDay = new Date(endDateInChina);
+    chinaDay.setUTCDate(chinaDay.getUTCDate() - (dayCount - 1 - index));
+    return formatDateKey(chinaDay);
+  });
+}
+
+async function buildTeamDailyStats(playerId: number, dateKeys: string[], commissionRate: string): Promise<TeamDailyStat[]> {
   const db = await getDb();
   if (!db) return [];
 
   const rows = await Promise.all(
-    getChinaWeekDateKeys(weekStartKey).map(async (dateKey) => {
+    dateKeys.map(async (dateKey) => {
       const { startAt, endAt } = getChinaDayWindowFromKey(dateKey);
       const [totalMembersResult, newMembersResult, rechargeResult, totalFlow] = await Promise.all([
         db.select({ count: sql<number>`count(*)` })
@@ -197,7 +206,7 @@ async function buildTeamDailyStats(playerId: number, weekStartKey: string, commi
 
       return {
         dateKey,
-        weekStart: weekStartKey,
+        weekStart: getChinaWeekContext(startAt).weekStartKey,
         commissionRate,
         totalMembers: Number(totalMembersResult[0]?.count ?? 0),
         newMembers: Number(newMembersResult[0]?.count ?? 0),
@@ -551,7 +560,7 @@ export async function getTeamStats(playerId: number) {
     weekStartAt: currentWeekDate,
     nextWeekStartAt: nextWeekDate,
   } = getChinaWeekContext(now);
-  const lastWeekStart = getChinaWeekContext(new Date(currentWeekDate.getTime() - 24 * 60 * 60 * 1000)).weekStartKey;
+  const lastPeriodEndDateKey = formatDateKey(new Date(now.getTime() + CHINA_TIME_OFFSET_MS - (7 * 24 * 60 * 60 * 1000)));
 
   const [totalResult, todayResult, player, weeklyRows, currentWeekRechargeResult, currentWeekFlow] = await Promise.all([
     db.select({ count: sql<number>`count(*)` }).from(players).where(eq(players.invitedBy, playerId)),
@@ -630,8 +639,8 @@ export async function getTeamStats(playerId: number) {
     .slice(0, 11);
 
   const [currentPeriodDailyStats, lastPeriodDailyStats] = await Promise.all([
-    buildTeamDailyStats(playerId, currentWeekStart, commissionRate),
-    buildTeamDailyStats(playerId, lastWeekStart, commissionRate),
+    buildTeamDailyStats(playerId, getChinaWeekDateKeys(currentWeekStart), commissionRate),
+    buildTeamDailyStats(playerId, getRecentChinaDateKeys(lastPeriodEndDateKey, 100), commissionRate),
   ]);
 
   return {

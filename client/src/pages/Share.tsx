@@ -114,7 +114,13 @@ export default function Share() {
     const rows = activePeriod === 'current'
       ? (periodDailyStats?.current ?? [])
       : (periodDailyStats?.last ?? []);
-    return [...rows].sort((a, b) => String(a.dateKey).localeCompare(String(b.dateKey)));
+
+    return [...rows].sort((a, b) => {
+      if (activePeriod === 'current') {
+        return String(a.dateKey).localeCompare(String(b.dateKey));
+      }
+      return String(b.dateKey).localeCompare(String(a.dateKey));
+    });
   }, [activePeriod, teamStats?.periodDailyStats]);
 
   return (
